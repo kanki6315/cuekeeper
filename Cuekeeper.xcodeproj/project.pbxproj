@@ -1,0 +1,579 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A6C890CABAF4353CE145B9D8 /* Assets.xcassets */; };
+		28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
+		29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */; };
+		38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184979F54A69B58764328050 /* PersistenceController.swift */; };
+		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
+		AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */ = {isa = PBXBuildFile; fileRef = BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */; };
+		AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
+		B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC022135F654D55A6A7311E /* RootView.swift */; };
+		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		8B825F1DFE91C7DCC3F9411A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4A85EB1B1A16873832E3E514 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7AD0EA2D4AC35F68DB77E170;
+			remoteInfo = Cuekeeper;
+		};
+		A0387BCC157F22FE4AD2F2D4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4A85EB1B1A16873832E3E514 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7AD0EA2D4AC35F68DB77E170;
+			remoteInfo = Cuekeeper;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		06442705EA3E6D3F4031E809 /* CaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureTests.swift; sourceTree = "<group>"; };
+		0AC022135F654D55A6A7311E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		184979F54A69B58764328050 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
+		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
+		40A57E11DA88086857902024 /* Cuekeeper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cuekeeper.entitlements; sourceTree = "<group>"; };
+		46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Cuekeeper.xcdatamodel; sourceTree = "<group>"; };
+		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
+		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
+		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		27D261610FBDE70E33F6FD27 /* CuekeeperUITests */ = {
+			isa = PBXGroup;
+			children = (
+				06442705EA3E6D3F4031E809 /* CaptureTests.swift */,
+			);
+			path = CuekeeperUITests;
+			sourceTree = "<group>";
+		};
+		57319CF8E6BF75448DE02999 = {
+			isa = PBXGroup;
+			children = (
+				BB63A509303213E9C143896F /* brand */,
+				9B745CEBE47DCA88FDCB58A9 /* Cuekeeper */,
+				7B10F434EE90C5483BD6177B /* CuekeeperTests */,
+				27D261610FBDE70E33F6FD27 /* CuekeeperUITests */,
+				5FEFC93A30BA70D94EF03E3C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5FEFC93A30BA70D94EF03E3C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AC9EB79EE979555FDF748422 /* Cuekeeper.app */,
+				46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */,
+				1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7B10F434EE90C5483BD6177B /* CuekeeperTests */ = {
+			isa = PBXGroup;
+			children = (
+				CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */,
+			);
+			path = CuekeeperTests;
+			sourceTree = "<group>";
+		};
+		9B745CEBE47DCA88FDCB58A9 /* Cuekeeper */ = {
+			isa = PBXGroup;
+			children = (
+				A6C890CABAF4353CE145B9D8 /* Assets.xcassets */,
+				40A57E11DA88086857902024 /* Cuekeeper.entitlements */,
+				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
+				C31D03E096ABF3A6E23F885D /* Info.plist */,
+				0AC022135F654D55A6A7311E /* RootView.swift */,
+				CE6FEAC4E23C39120396EE12 /* Storage */,
+			);
+			path = Cuekeeper;
+			sourceTree = "<group>";
+		};
+		BB63A509303213E9C143896F /* brand */ = {
+			isa = PBXGroup;
+			children = (
+				BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */,
+			);
+			name = brand;
+			path = design/brand;
+			sourceTree = "<group>";
+		};
+		CE6FEAC4E23C39120396EE12 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				252FA8AA4804BAF13CE8E06B /* Job.swift */,
+				184979F54A69B58764328050 /* PersistenceController.swift */,
+				F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5A212CD0E684CD58B669CF96 /* CuekeeperTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1E4BC5DF25D28570DB1D3BC8 /* Build configuration list for PBXNativeTarget "CuekeeperTests" */;
+			buildPhases = (
+				0EDFB79DDCBCB08902EB4D82 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				32CAA06F2EC1DFF0D7E70332 /* PBXTargetDependency */,
+			);
+			name = CuekeeperTests;
+			packageProductDependencies = (
+			);
+			productName = CuekeeperTests;
+			productReference = 46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7AD0EA2D4AC35F68DB77E170 /* Cuekeeper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A16B526FC5BBC22736A040B1 /* Build configuration list for PBXNativeTarget "Cuekeeper" */;
+			buildPhases = (
+				F188A65F2138C47EF72297CA /* Sources */,
+				7F320D7F11229E951718C76E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Cuekeeper;
+			packageProductDependencies = (
+			);
+			productName = Cuekeeper;
+			productReference = AC9EB79EE979555FDF748422 /* Cuekeeper.app */;
+			productType = "com.apple.product-type.application";
+		};
+		9C7672FB0F82A2EBCBA77A94 /* CuekeeperUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E922FF367111215CC0A89D2B /* Build configuration list for PBXNativeTarget "CuekeeperUITests" */;
+			buildPhases = (
+				0C8F41CAC4CB00BCF8C3C699 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8AB176A55477CA2BC42ACBAC /* PBXTargetDependency */,
+			);
+			name = CuekeeperUITests;
+			packageProductDependencies = (
+			);
+			productName = CuekeeperUITests;
+			productReference = 1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4A85EB1B1A16873832E3E514 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					5A212CD0E684CD58B669CF96 = {
+						DevelopmentTeam = TDBAHN96B3;
+						ProvisioningStyle = Automatic;
+					};
+					7AD0EA2D4AC35F68DB77E170 = {
+						DevelopmentTeam = TDBAHN96B3;
+						ProvisioningStyle = Automatic;
+						SystemCapabilities = "[\"com.apple.Push\": [\"enabled\": 1], \"com.apple.BackgroundModes\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
+					};
+					9C7672FB0F82A2EBCBA77A94 = {
+						DevelopmentTeam = TDBAHN96B3;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 7AD0EA2D4AC35F68DB77E170;
+					};
+				};
+			};
+			buildConfigurationList = 30560D0AD55B860D46C468AF /* Build configuration list for PBXProject "Cuekeeper" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 57319CF8E6BF75448DE02999;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5FEFC93A30BA70D94EF03E3C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7AD0EA2D4AC35F68DB77E170 /* Cuekeeper */,
+				5A212CD0E684CD58B669CF96 /* CuekeeperTests */,
+				9C7672FB0F82A2EBCBA77A94 /* CuekeeperUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7F320D7F11229E951718C76E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */,
+				AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0C8F41CAC4CB00BCF8C3C699 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0EDFB79DDCBCB08902EB4D82 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F188A65F2138C47EF72297CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */,
+				64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */,
+				AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */,
+				38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */,
+				B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		32CAA06F2EC1DFF0D7E70332 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7AD0EA2D4AC35F68DB77E170 /* Cuekeeper */;
+			targetProxy = A0387BCC157F22FE4AD2F2D4 /* PBXContainerItemProxy */;
+		};
+		8AB176A55477CA2BC42ACBAC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7AD0EA2D4AC35F68DB77E170 /* Cuekeeper */;
+			targetProxy = 8B825F1DFE91C7DCC3F9411A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		231F9572E7AF3117F92EA5B2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = Cuekeeper;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Cuekeeper/Cuekeeper.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Cuekeeper/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6D9835CC47C12F37FC85398A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.CuekeeperTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cuekeeper.app/Cuekeeper";
+			};
+			name = Release;
+		};
+		8D1FDCAF883884960A60A29D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CLOUDKIT_ENVIRONMENT = Production;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = TDBAHN96B3;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9FAB2B999FAC057C5C6CD694 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = Cuekeeper;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Cuekeeper/Cuekeeper.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Cuekeeper/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B9B2474A6270C0C2565021BD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.CuekeeperUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Cuekeeper;
+			};
+			name = Release;
+		};
+		BF3E30EBCC512622DE77A8EB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.CuekeeperUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Cuekeeper;
+			};
+			name = Debug;
+		};
+		C9C05BC418EEB8B2AAADE0CC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CLOUDKIT_ENVIRONMENT = Development;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = TDBAHN96B3;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EE458C1F5E9B2596E2325777 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.CuekeeperTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cuekeeper.app/Cuekeeper";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1E4BC5DF25D28570DB1D3BC8 /* Build configuration list for PBXNativeTarget "CuekeeperTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE458C1F5E9B2596E2325777 /* Debug */,
+				6D9835CC47C12F37FC85398A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		30560D0AD55B860D46C468AF /* Build configuration list for PBXProject "Cuekeeper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C9C05BC418EEB8B2AAADE0CC /* Debug */,
+				8D1FDCAF883884960A60A29D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A16B526FC5BBC22736A040B1 /* Build configuration list for PBXNativeTarget "Cuekeeper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				231F9572E7AF3117F92EA5B2 /* Debug */,
+				9FAB2B999FAC057C5C6CD694 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E922FF367111215CC0A89D2B /* Build configuration list for PBXNativeTarget "CuekeeperUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF3E30EBCC512622DE77A8EB /* Debug */,
+				B9B2474A6270C0C2565021BD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */,
+			);
+			currentVersion = 981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */;
+			path = Cuekeeper.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
+	};
+	rootObject = 4A85EB1B1A16873832E3E514 /* Project object */;
+}

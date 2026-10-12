@@ -19,6 +19,12 @@ struct CuekeeperApp: App {
                 }
             }
         }
+        #if CLOUDKIT_SCHEMA_SETUP
+        // Setup has its own local store; it never opens the normal daybook database.
+        let setupDirectory = URL.applicationSupportDirectory.appending(path: "CloudKitSchemaSetup", directoryHint: .isDirectory)
+        try? FileManager.default.createDirectory(at: setupDirectory, withIntermediateDirectories: true)
+        storeURL = setupDirectory.appending(path: "Schema.sqlite")
+        #endif
         _persistence = StateObject(wrappedValue: PersistenceController(storeURL: storeURL, cloudEnabled: !testing))
     }
 

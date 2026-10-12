@@ -195,6 +195,9 @@ private struct SettingsView: View {
             Section {
                 LabeledContent("On this device", value: "Saved locally")
                 LabeledContent("iCloud account", value: persistence.accountStatus)
+                if let setupStatus = persistence.schemaInitializationStatus {
+                    Text(setupStatus)
+                }
                 Text(persistence.transferStatus).foregroundStyle(.secondary)
                 if let date = persistence.lastTransfer {
                     LabeledContent("Last operation", value: date.formatted(date: .abbreviated, time: .shortened))

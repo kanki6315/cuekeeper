@@ -1,4 +1,8 @@
 name: Cuekeeper
+configs:
+  Debug: debug
+  CloudKitSetup: debug
+  Release: release
 options:
   bundleIdPrefix: com.arjunakankipati.cuekeeper
   deploymentTarget:
@@ -14,6 +18,9 @@ settings:
     CURRENT_PROJECT_VERSION: 1
     CLOUDKIT_ENVIRONMENT: Development
   configs:
+    CloudKitSetup:
+      CLOUDKIT_ENVIRONMENT: Development
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG CLOUDKIT_SCHEMA_SETUP"
     Release:
       CLOUDKIT_ENVIRONMENT: Production
 targets:
@@ -35,6 +42,7 @@ targets:
     info:
       path: Cuekeeper/Info.plist
       properties:
+        CuekeeperCloudKitEnvironment: $(CLOUDKIT_ENVIRONMENT)
         CFBundleDisplayName: Cuekeeper
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -84,3 +92,11 @@ schemes:
     test:
       targets: [CuekeeperTests, CuekeeperUITests]
       gatherCoverageData: true
+  Cuekeeper - Initialize CloudKit:
+    build:
+      targets:
+        Cuekeeper: [run]
+    run:
+      config: CloudKitSetup
+    archive:
+      config: Release

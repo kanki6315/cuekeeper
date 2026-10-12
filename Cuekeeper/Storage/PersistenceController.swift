@@ -11,6 +11,7 @@ final class PersistenceController: ObservableObject {
     @Published private(set) var loadError: String?
     @Published private(set) var accountStatus = "Checking…"
     @Published private(set) var transferStatus = "Waiting for iCloud activity"
+    @Published private(set) var schemaInitializationStatus: String?
     @Published private(set) var lastTransfer: Date?
     private var eventObserver: NSObjectProtocol?
 
@@ -58,20 +59,38 @@ final class PersistenceController: ObservableObject {
             Task { @MainActor [weak self] in
                 self?.loadError = error?.localizedDescription
                 self?.isLoaded = error == nil
-                #if DEBUG
-                if error == nil, let self, self.cloudEnabled,
-                   ProcessInfo.processInfo.arguments.contains("--initialize-cloudkit-schema") {
-                    do {
-                        try self.container.initializeCloudKitSchema(options: [])
-                        self.transferStatus = "Development schema initialized"
-                    } catch {
-                        self.transferStatus = "Schema initialization failed: \(error.localizedDescription)"
-                    }
+                #if CLOUDKIT_SCHEMA_SETUP
+                if error == nil, let self {
+                    await self.initializeDevelopmentSchema()
                 }
                 #endif
             }
         }
     }
+
+    #if CLOUDKIT_SCHEMA_SETUP
+    private func initializeDevelopmentSchema() async {
+        guard cloudEnabled,
+              Bundle.main.object(forInfoDictionaryKey: "CuekeeperCloudKitEnvironment") as? String == "Development" else {
+            schemaInitializationStatus = "Schema setup refused: a Development CloudKit configuration is required."
+            return
+        }
+        schemaInitializationStatus = "Preparing development schema…"
+        do {
+            let account = try await CKContainer(identifier: Self.containerIdentifier).accountStatus()
+            guard account == .available else {
+                schemaInitializationStatus = "Sign in to iCloud on this device, then run the initialization scheme again."
+                return
+            }
+            try container.initializeCloudKitSchema(options: [])
+            schemaInitializationStatus = "Development schema initialized. Return to the Cuekeeper scheme, then run ./cloudkit.sh export on your Mac."
+        } catch {
+            schemaInitializationStatus = "Schema initialization failed: \(error.localizedDescription)"
+        }
+        // A stable setup result, separate from transient import/export notifications.
+        print("Cuekeeper CloudKit setup: \(schemaInitializationStatus ?? "No result")")
+    }
+    #endif
 
     deinit {
         if let eventObserver { NotificationCenter.default.removeObserver(eventObserver) }

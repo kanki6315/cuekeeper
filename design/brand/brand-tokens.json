@@ -1,0 +1,18 @@
+{
+  "name": "Cuekeeper",
+  "mark": "Kept cues",
+  "colors": {
+    "forest": "#073E27",
+    "mint": "#A7DCB4",
+    "ivory": "#FAF8F2",
+    "charcoal": "#171E19",
+    "amber": "#E6A01A"
+  },
+  "typography": {
+    "ios": "SF Pro",
+    "wordmark": "Use approved reference; generated wordmark is not a font master"
+  },
+  "logo": "Two overlapping cue cards, tilted rear card, front bookmark with V notch and centered rounded horizontal cutout",
+  "reference": "cuekeeper-brand-identity.png",
+  "icon": "Cuekeeper.icon"
+}

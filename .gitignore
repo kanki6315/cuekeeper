@@ -1,0 +1,11 @@
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.impeccable/review/
+.release.env
+__pycache__/
+*.p8
+*.p12
+*.mobileprovision

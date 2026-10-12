@@ -1,0 +1,9 @@
+{
+  "tool": "Built-in image_gen",
+  "prompt": "Create one refined Cuekeeper native iPhone UI mockup by editing image 1 (Daybook). Image 1 is the exact layout and content authority. Image 2 (Call Sheet) is a color palette reference ONLY. Preserve image 1's agenda-first composition, date gutter, all four job rows, typography, spacing, text, icons, All upcoming selected state, attention row, native four-tab navigation and portrait dimensions. Apply image 2's warmer palette throughout: soft warm ivory background instead of cool white; near-black ink primary text instead of navy; neutral warm-gray secondary text instead of blue-gray; deep forest green instead of every bright blue accent on logo, Add Job button, selected segment and selected Upcoming tab; pale sage selected segment and Booked backgrounds; delicate warm-gray separators. Keep amber for Tentative and the attention icon, with a faint warm cream attention background. Maintain strong text contrast. No added texture, gradients, decoration, new copy, cards or enlarged next-job hero. Do not copy image 2's layout. Deliver a single crisp edge-to-edge app screen, no device bezel, no comparison board, no surrounding scene. Exact existing Daybook content and hierarchy, with Call Sheet's warm, calm palette.",
+  "references": [
+    "daybook.png",
+    "call-sheet.png"
+  ],
+  "approved": false
+}

@@ -1,0 +1,8 @@
+{
+  "tool": "Built-in image_gen",
+  "prompt": "Edit this Cuekeeper native iPhone Upcoming mockup into its matching premium dark-mode appearance. Preserve exactly the agenda-first layout, typography sizes and weights, spacing, date gutter, all four job rows, all text, icons, selected All upcoming segment, attention row and four-tab navigation. Only change the color system. Use a deep warm charcoal background (#191C1A), slightly elevated warm charcoal surfaces (#252A26), soft ivory primary text (#F1EFE7), comfortably readable warm gray secondary text (#B6BAB2), fine subdued olive-gray separators. Translate forest green brand and interactive accents into restrained light sage (#A6CCAD), never neon or teal. Add Job should be a solid light sage button with very dark forest-green label and plus icon. Selected All upcoming segment uses a muted dark forest surface with light sage text. Booked pills use dark green grounds and legible pale sage text. Tentative uses a muted amber-brown ground and warm pale amber text. Attention row uses subtly elevated warm charcoal with amber icon, ivory headline and warm gray subtext. Active Upcoming tab and logo use light sage; other tabs muted warm gray. Status bar and home indicator adapt to light on dark. Flat crisp native UI with no gradients, textures, glow, shadows, glass effects, new elements or layout changes. Maintain the warm calm identity of this exact light-mode screen. One edge-to-edge portrait screen, same proportions, no device frame or surrounding scene.",
+  "references": [
+    "daybook-warm.png"
+  ],
+  "approved": false
+}

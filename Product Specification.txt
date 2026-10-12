@@ -1,0 +1,253 @@
+Broadcast Work Tracker — Product Specification
+1. Product purpose
+A native iPhone and iPad app that helps broadcast freelancers track jobs from tentative booking through completion and payment.
+The app combines upcoming work, confirmed session schedules, broadcast links, and payment records. Its central requirement is low-effort upkeep: users should be able to capture an incomplete job quickly and add details as they arrive.
+The initial audience is anyone working in broadcasting, including commentators, presenters, producers, and crew. The structure should allow expansion to other freelance work later.
+2. Product principles
+- Capture first, detail later. Only a job name and placeholder dates are required.
+- Incomplete records remain useful. Unknown schedules, fees, or travel details never prevent saving.
+- Avoid repeated entry. Reuse clients, roles, and previous job details.
+- Keep statuses independent. Booking confirmation, schedule confirmation, invoicing, and payment represent different things.
+- Work offline. Local changes sync through iCloud when connectivity returns.
+- Preserve history. Completed and cancelled jobs remain available for reference.
+3. Core records
+Jobs
+A job represents an overall engagement, whether it lasts a short block of time or spans multiple days.
+Field	Behavior
+Name	Required
+Start and end dates	Required; initially act as placeholder dates
+Booking status	Tentative, booked, completed, or cancelled
+Client	Optional; reusable across jobs
+Default role or roles	Optional; sessions can override them
+Work arrangement	Remote, on-site, hybrid, or unspecified
+Location and timezone	Optional initially; timezone required for timed sessions
+Notes	Optional preparation, travel, or general information
+Overall fee	Optional; distinguish unknown from explicitly zero
+Currency	USD by default; EUR supported
+Fee agreement	Unknown, estimated, or agreed
+Fee breakdown	Optional detail added later
+
+
+“Times confirmed” is tracked through sessions rather than as a booking status. A booked job can still have an incomplete schedule.
+Sessions
+A session represents a scheduled block within a job.
+Field	Behavior
+Name	Optional descriptive label
+Date and start/end times	May remain incomplete until confirmed
+Schedule confirmation	Tentative or confirmed
+Coverage	Undecided, covering, or not covering
+Role or roles	Inherit from the job, with optional overrides
+Call time	Optional
+Notes	Optional
+Broadcast links	Zero or more URLs, each with an optional label or note
+
+
+Sessions can cross midnight. A job may initially have no sessions.
+Fees
+The overall fee is the primary amount used for tracking and invoicing.
+An optional breakdown can describe session fees, day rates, paid travel, or adjustments. It shows its calculated sum alongside the overall fee. A mismatch is highlighted, and the user can explicitly update the total from the breakdown.
+Adding or changing breakdown items never silently changes the agreed fee.
+Invoices
+An invoice can cover one or multiple jobs for the same client and currency.
+Fields include:
+- Invoice reference.
+- Client and currency.
+- Included jobs and their billed amounts.
+- Draft or sent status.
+- Sent date and optional due date.
+- Notes.
+- Payments received and outstanding balance.
+Billed amounts are preserved on the invoice. Later changes to a job’s fee must not silently rewrite a sent invoice.
+The first version tracks invoices created elsewhere; it does not generate or send invoice documents.
+Payments
+Payments record an amount, date, and optional note or reference.
+They can be attached to an invoice, or directly to a job when no invoice is required. Multiple payments and partial payments are supported.
+For invoices covering several jobs, the invoice is the source of truth for the balance. Jobs show the linked invoice’s payment state; the app does not assume which individual job a partial payment settled.
+4. Pages needed
+The proposed primary navigation is Upcoming, Jobs, Payments, and Settings. On iPad, these sections use a sidebar, with lists and details displayed alongside each other where useful.
+1. Upcoming
+Purpose: Show what is coming next and make adding work easy.
+Contents:
+- Jobs grouped by date, with tentative or booked status.
+- Confirmed sessions and their times.
+- Clear distinction between all-day job dates and timed sessions.
+- Prominent Add Job action.
+- A small, dismissible “Needs attention” section.
+Possible attention items include upcoming jobs with incomplete schedules and past jobs awaiting completion. Missing broadcast links should not create persistent warnings because links may be unavailable.
+2. All Jobs
+Purpose: Search and browse the full work history.
+Contents and actions:
+- Upcoming, completed, and cancelled jobs.
+- Search by job name or client.
+- Filters for date range, booking status, role, and client.
+- Relevant fee and payment information on each row.
+- Add or duplicate a job.
+Duplication reuses selected details such as client, roles, and fee. It requires new dates and excludes old links, invoices, and payments.
+3. Add / Edit Job
+Purpose: Capture a job quickly, then enrich it later.
+Initially visible:
+- Job name.
+- Start and end dates.
+- Save action.
+Optional fields:
+- Client.
+- Booking status.
+- Roles.
+- Overall fee and currency.
+- Work arrangement, location, and timezone.
+- Notes.
+The form should not require session creation, fee breakdowns, or invoicing details.
+4. Job Details
+Purpose: Act as the central record for one engagement.
+Sections:
+- Job overview, dates, and booking status.
+- Client, roles, location, and notes.
+- Sessions and schedule completeness.
+- Broadcast links, grouped by session.
+- Overall fee and optional breakdown.
+- Invoice association and payment information.
+- Calendar status.
+Actions:
+- Edit or duplicate the job.
+- Add a session.
+- Add a broadcast link.
+- Edit the fee breakdown.
+- Add to an invoice or record a direct payment.
+- Mark completed or cancelled.
+5. Session Details / Editor
+Purpose: Maintain one session’s schedule and links.
+Contents:
+- Session name and date.
+- Start/end times and timezone.
+- Optional call time.
+- Schedule confirmation and coverage selection.
+- Role overrides.
+- Notes and broadcast links.
+- Calendar entry status.
+A session becomes eligible for a timed calendar entry when its times are confirmed and coverage is set to “covering.”
+6. Fee Breakdown Editor
+Purpose: Add financial detail without slowing down initial entry.
+Contents:
+- Overall job fee.
+- Breakdown items with description, quantity, and rate.
+- Calculated breakdown sum.
+- Any difference between that sum and the overall fee.
+- Explicit action to use the breakdown sum as the overall fee.
+This can be a sheet within Job Details rather than a primary navigation page.
+7. Payments Overview
+Purpose: Answer “What needs invoicing?” and “What am I still owed?”
+Sections:
+- Jobs ready to invoice.
+- Draft invoices.
+- Sent invoices with outstanding balances.
+- Paid invoices and direct payments.
+Financial summaries:
+- Expected job fees.
+- Invoiced outstanding balances.
+- Payments received.
+USD and EUR are displayed separately. Expected fees and invoice balances are not added together as though they were separate earnings.
+“Overdue” is derived from a sent invoice’s due date and remaining balance.
+8. Invoice Details / Editor
+Purpose: Group jobs and track an invoice through payment.
+Contents and actions:
+- Client, currency, and invoice reference.
+- Select eligible jobs.
+- Review billed amounts and total.
+- Set sent date and optional due date.
+- Mark sent.
+- View and add payments.
+- View outstanding balance.
+- Open linked jobs.
+The app prevents accidental duplicate billing of a job already attached to an active invoice.
+9. Record Payment
+Purpose: Record receipt of money with minimal input.
+Fields:
+- Amount.
+- Received date.
+- Optional reference or note.
+- Linked invoice or direct-payment job.
+Currency is inherited from the linked record. This can be a sheet opened from an invoice or job.
+10. Clients
+Purpose: Reuse client information and find related work.
+Contents:
+- Client name.
+- Optional contact details and notes.
+- Default currency.
+- Related jobs and invoices.
+Client creation should also be available inline while adding a job. A full client record is never required first.
+11. Settings
+Purpose: Manage app preferences and integrations.
+Contents:
+- Default currency, initially USD.
+- Reusable roles.
+- Calendar selection and permission status.
+- Optional reminder preferences.
+- iCloud sync status and issues.
+- Export and recovery controls.
+12. Recently Deleted
+Purpose: Recover accidentally deleted records.
+Contents:
+- Deleted records and their recovery deadline.
+- Restore action.
+- Permanently delete action.
+Cancellation remains a normal job status and does not send a job here.
+13. First-Run Setup
+Purpose: Explain the app and configure optional integrations.
+Steps:
+- Explain local storage and iCloud syncing.
+- Set default currency.
+- Offer calendar connection and selection.
+- Offer notification preferences.
+Users can skip integrations and start entering jobs immediately.
+5. Calendar behavior
+Once calendar access is enabled:
+1. Adding a job creates all-day placeholders across its date range.
+2. Placeholders remain after timed sessions are added.
+3. Confirmed sessions marked “covering” create timed entries.
+4. Changes update existing entries rather than creating duplicates.
+5. Unconfirming a session or changing coverage removes its timed entry.
+6. Cancelling a job removes its calendar entries while retaining the job record.
+The initial calendar integration is managed from the app. Edits made directly in the calendar are not imported into job records.
+Calendar behavior must account for iPhone and iPad both using the same app data, so syncing across devices does not produce duplicate entries. Permission failures should be visible without blocking job creation.
+6. Main user flow
+1. Capture: Add a job name and placeholder dates.
+2. Book: Confirm the engagement and add client, roles, and fee as known.
+3. Schedule: Add confirmed sessions and select those being covered.
+4. Work: Refer to the upcoming schedule and job notes.
+5. Complete: Mark the job complete and save any broadcast links.
+6. Invoice: Group one or more jobs into an invoice record.
+7. Get paid: Record payments and track the remaining balance.
+8. Refer back: Search previous jobs, fees, and broadcast links.
+Each step is optional when it does not apply. Users can also add historical jobs directly.
+7. Storage, syncing, and recovery
+- Native iPhone and iPad app with local storage.
+- Core records remain usable without an internet connection.
+- iCloud sync across devices using the same Apple Account.
+- Clear indication when changes are pending or syncing encounters an issue.
+- Conflicting edits must not silently discard financial records.
+- Recently deleted records provide recovery from accidental deletion.
+- A restorable export provides backup beyond synchronization.
+- A readable export supports use outside the app.
+Sync and backup are separate requirements: syncing propagates changes, while recovery must allow the user to undo data loss.
+8. Initial scope exclusions
+- Showreel editing, clip storage, and timestamped highlight workflows.
+- Invoice document generation or sending.
+- Tax calculations, bookkeeping, and bank connections.
+- Currency conversion.
+- Team collaboration or sharing records between different users.
+- Automated extraction from emails or messages.
+- Detailed travel itinerary management.
+- Two-way calendar editing.
+Broadcast link capture remains part of the initial scope.
+9. Success criteria
+The first version succeeds when a user can:
+- Save a basic job without completing a long form.
+- See tentative work and confirmed sessions together.
+- Update schedules without manually maintaining duplicate calendar entries.
+- Find a past job and its broadcast links.
+- Track an overall fee without entering a breakdown.
+- Invoice several jobs together and record partial payments.
+- See outstanding USD and EUR amounts separately.
+- Use the same records on iPhone and iPad.
+- Work offline and recover accidentally deleted data.
+The primary measure is whether users keep their job records current with little effort. Detailed records should be an available benefit, not a prerequisite for using the app.

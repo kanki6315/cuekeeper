@@ -23,14 +23,6 @@ targets:
     sources:
       - path: Cuekeeper
       - path: design/brand/Cuekeeper.icon
-    attributes:
-      SystemCapabilities:
-        com.apple.iCloud:
-          enabled: 1
-        com.apple.Push:
-          enabled: 1
-        com.apple.BackgroundModes:
-          enabled: 1
     entitlements:
       path: Cuekeeper/Cuekeeper.entitlements
       properties:

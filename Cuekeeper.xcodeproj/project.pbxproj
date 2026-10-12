@@ -195,7 +195,6 @@
 					7AD0EA2D4AC35F68DB77E170 = {
 						DevelopmentTeam = TDBAHN96B3;
 						ProvisioningStyle = Automatic;
-						SystemCapabilities = "[\"com.apple.Push\": [\"enabled\": 1], \"com.apple.BackgroundModes\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
 					};
 					9C7672FB0F82A2EBCBA77A94 = {
 						DevelopmentTeam = TDBAHN96B3;

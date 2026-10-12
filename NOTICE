@@ -1,0 +1,5 @@
+release.sh and asc_profile.py are adapted from the local Harbor project and retain
+its Mozilla Public License 2.0 notices. Cuekeeper-specific changes include app
+identifiers, CloudKit profile validation, non-destructive profile replacement,
+build numbering and generated-project checks. See LICENSE-MPL-2.0.
+This notice does not assign a license to the rest of Cuekeeper.

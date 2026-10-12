@@ -14,9 +14,12 @@ spec.loader.exec_module(ck)
 SCHEMA = '''DEFINE SCHEMA
 RECORD TYPE CD_Job (
  CD_id STRING, CD_name STRING, CD_startDay STRING, CD_endDay STRING,
- CD_bookingStatus STRING, CD_createdAt TIMESTAMP, "___recordID" REFERENCE QUERYABLE,
+ CD_bookingStatus STRING, CD_createdAt TIMESTAMP,
+ CD_workArrangement STRING, CD_location STRING, CD_timeZoneID STRING, CD_notes STRING, "___recordID" REFERENCE QUERYABLE,
  GRANT WRITE TO "_creator"
 );
+RECORD TYPE CD_Client (CD_id STRING, CD_name STRING, CD_contact STRING, CD_notes STRING, CD_defaultCurrency STRING);
+RECORD TYPE CD_WorkRole (CD_id STRING, CD_name STRING);
 '''
 
 

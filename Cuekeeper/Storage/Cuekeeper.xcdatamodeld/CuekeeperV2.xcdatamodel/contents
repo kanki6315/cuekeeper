@@ -15,6 +15,9 @@
         <relationship name="roles" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="WorkRole" inverseName="jobs" inverseEntity="WorkRole"/>
     </entity>
     <entity name="Client" representedClassName="Client" syncable="YES">
+        <attribute name="contact" attributeType="String" defaultValueString=""/>
+        <attribute name="notes" attributeType="String" defaultValueString=""/>
+        <attribute name="defaultCurrency" attributeType="String" defaultValueString="USD"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" attributeType="String" defaultValueString=""/>
         <relationship name="jobs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="client" inverseEntity="Job"/>

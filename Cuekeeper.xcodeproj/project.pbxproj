@@ -11,10 +11,13 @@
 		28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
 		29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */; };
 		38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184979F54A69B58764328050 /* PersistenceController.swift */; };
+		5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */; };
 		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
+		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
 		AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */ = {isa = PBXBuildFile; fileRef = BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */; };
 		AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC022135F654D55A6A7311E /* RootView.swift */; };
+		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -40,15 +43,19 @@
 		0AC022135F654D55A6A7311E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		184979F54A69B58764328050 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
+		242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDraft.swift; sourceTree = "<group>"; };
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
 		40A57E11DA88086857902024 /* Cuekeeper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cuekeeper.entitlements; sourceTree = "<group>"; };
 		46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV2.xcdatamodel; sourceTree = "<group>"; };
+		91C80D913C2F1C3287CFD3DF /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Cuekeeper.xcdatamodel; sourceTree = "<group>"; };
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
+		D682B024A3E281F66B73080A /* JobEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobEditorView.swift; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -97,6 +104,8 @@
 				40A57E11DA88086857902024 /* Cuekeeper.entitlements */,
 				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
 				C31D03E096ABF3A6E23F885D /* Info.plist */,
+				D682B024A3E281F66B73080A /* JobEditorView.swift */,
+				91C80D913C2F1C3287CFD3DF /* LibraryView.swift */,
 				0AC022135F654D55A6A7311E /* RootView.swift */,
 				CE6FEAC4E23C39120396EE12 /* Storage */,
 			);
@@ -116,6 +125,7 @@
 			isa = PBXGroup;
 			children = (
 				252FA8AA4804BAF13CE8E06B /* Job.swift */,
+				242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */,
 				184979F54A69B58764328050 /* PersistenceController.swift */,
 				F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */,
 			);
@@ -260,6 +270,9 @@
 				28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */,
 				64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */,
 				AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */,
+				9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */,
+				5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */,
+				C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */,
 				38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */,
 				B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */,
 			);
@@ -693,8 +706,9 @@
 			isa = XCVersionGroup;
 			children = (
 				981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */,
+				66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */,
 			);
-			currentVersion = 981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */;
+			currentVersion = 66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */;
 			path = Cuekeeper.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

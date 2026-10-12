@@ -41,6 +41,9 @@ enum Day {
 
 @objc(Client)
 final class Client: NSManagedObject {
+    @NSManaged var contact: String
+    @NSManaged var notes: String
+    @NSManaged var defaultCurrency: String
     @NSManaged var id: UUID?
     @NSManaged var name: String
     @NSManaged var jobs: Set<Job>?
@@ -142,6 +145,7 @@ struct JobDraft: Equatable {
         assign("location", location.trimmingCharacters(in: .whitespacesAndNewlines))
         assign("timeZoneID", timeZoneID)
         assign("notes", notes)
+        guard job.startDay <= job.endDay else { throw ValidationError.invalidDates }
         let clientText = clientName.trimmingCharacters(in: .whitespacesAndNewlines)
         if baseline?.clientName != clientName {
         if clientText.isEmpty {

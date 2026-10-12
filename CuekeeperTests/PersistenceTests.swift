@@ -5,18 +5,26 @@ import XCTest
 @MainActor
 final class PersistenceTests: XCTestCase {
     private var directory: URL!
+    private var openedStores: [PersistenceController] = []
     override func setUpWithError() throws {
         directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
     override func tearDownWithError() throws {
+        for controller in openedStores {
+            controller.container.viewContext.reset()
+            for store in controller.container.persistentStoreCoordinator.persistentStores {
+                try controller.container.persistentStoreCoordinator.remove(store)
+            }
+        }
+        openedStores.removeAll()
         try FileManager.default.removeItem(at: directory)
     }
 
     private func openStore() async throws -> PersistenceController {
         let store = PersistenceController(storeURL: directory.appending(path: "test.sqlite"), cloudEnabled: false)
         for _ in 0..<100 {
-            if store.isLoaded { return store }
+            if store.isLoaded { openedStores.append(store); return store }
             if let error = store.loadError { throw NSError(domain: error, code: 1) }
             try await Task.sleep(for: .milliseconds(50))
         }
@@ -109,6 +117,29 @@ final class PersistenceTests: XCTestCase {
         try local.save(in: context, editing: id, baseline: baseline)
         XCTAssertEqual(job.notes, "Updated elsewhere")
         XCTAssertEqual(job.name, "Local name")
+    }
+
+    func testLibraryRenameUpdatesJobsAndRejectsDuplicateNames() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        var draft = JobDraft(name: "Live show")
+        draft.clientName = "Old client"
+        let id = try draft.save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        let client = try XCTUnwrap(job.client)
+        let baseline = LibraryDraft(record: client)
+        var edit = baseline
+        edit.name = "New client"
+        edit.contact = "Production desk"
+        edit.currency = "EUR"
+        try edit.save(entity: "Client", editing: client.objectID, baseline: baseline, in: context)
+        XCTAssertEqual(job.client?.name, "New client")
+        XCTAssertEqual(job.client?.contact, "Production desk")
+        XCTAssertEqual(job.client?.defaultCurrency, "EUR")
+        var duplicate = LibraryDraft()
+        duplicate.name = "NEW CLIENT"
+        XCTAssertThrowsError(try duplicate.save(entity: "Client", editing: nil, baseline: LibraryDraft(), in: context))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Client>(entityName: "Client")), 1)
     }
 
     func testCombinedFiltersAndClientSearch() async throws {

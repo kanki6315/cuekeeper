@@ -11,7 +11,15 @@ final class PersistenceController: ObservableObject {
     @Published private(set) var loadError: String?
     @Published private(set) var accountStatus = "Checking…"
     @Published private(set) var transferStatus = "Waiting for iCloud activity"
-    @Published private(set) var schemaInitializationStatus: String?
+    @Published private(set) var schemaInitializationStatus: String? {
+        didSet {
+            #if CLOUDKIT_SCHEMA_SETUP
+            if let schemaInitializationStatus {
+                print("Cuekeeper CloudKit setup: \(schemaInitializationStatus)")
+            }
+            #endif
+        }
+    }
     @Published private(set) var lastTransfer: Date?
     private var eventObserver: NSObjectProtocol?
 
@@ -82,13 +90,18 @@ final class PersistenceController: ObservableObject {
                 schemaInitializationStatus = "Sign in to iCloud on this device, then run the initialization scheme again."
                 return
             }
-            try container.initializeCloudKitSchema(options: [])
+            // This API blocks while doing CloudKit work. Keep the UI/main actor free.
+            try await Task.detached { [container] in
+                try container.initializeCloudKitSchema(options: [])
+            }.value
             schemaInitializationStatus = "Development schema initialized. Return to the Cuekeeper scheme, then run ./cloudkit.sh export on your Mac."
         } catch {
-            schemaInitializationStatus = "Schema initialization failed: \(error.localizedDescription)"
+            let failure = error as NSError
+            schemaInitializationStatus = "Schema initialization failed (\(failure.domain) \(failure.code)): \(failure.localizedFailureReason ?? failure.localizedDescription)"
+            if let underlying = failure.userInfo[NSUnderlyingErrorKey] as? NSError {
+                print("Cuekeeper CloudKit underlying error: \(underlying)")
+            }
         }
-        // A stable setup result, separate from transient import/export notifications.
-        print("Cuekeeper CloudKit setup: \(schemaInitializationStatus ?? "No result")")
     }
     #endif
 

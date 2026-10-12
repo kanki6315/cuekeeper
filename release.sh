@@ -12,6 +12,7 @@
 #   ./release.sh --no-upload     archive + export an .ipa, upload nothing
 #   ./release.sh --build 42      pick the build number yourself
 #   ./release.sh --allow-dirty   release with uncommitted changes (no tag)
+#   ./release.sh --no-upload --skip-cloudkit-check  local packaging only; schema unverified
 #
 # Version = MARKETING_VERSION in project.yml. Build = days since 2026-01-01
 # plus UTC hour and minute (e.g. 285.18.30), within Apple’s 4/2/2 digit limits.
@@ -37,12 +38,14 @@ cd "$here"
 run_tests=1
 upload=1
 allow_dirty=0
+skip_cloudkit_check=0
 build=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --skip-tests) run_tests=0 ;;
         --no-upload) upload=0 ;;
         --allow-dirty) allow_dirty=1 ;;
+        --skip-cloudkit-check) skip_cloudkit_check=1 ;;
         --build)
             [ $# -ge 2 ] && [[ "$2" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || {
                 echo "--build requires a numeric build number (e.g. 42)" >&2; exit 2;
@@ -56,6 +59,10 @@ done
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+
+if [ "$skip_cloudkit_check" = 1 ] && [ "$upload" = 1 ]; then
+    die "--skip-cloudkit-check is only allowed with --no-upload; TestFlight uploads require a live Production schema check"
+fi
 
 # --- Preflight -------------------------------------------------------------
 
@@ -133,7 +140,16 @@ if [ "$dirty" = 0 ] && [ -n "$(git status --porcelain -- .)" ]; then
     die "project generation changed tracked files — review and commit them before releasing"
 fi
 
+if [ "$skip_cloudkit_check" = 1 ]; then
+    log "CloudKit check skipped: local packaging only; production readiness is unverified"
+else
+    log "Verify model snapshot and live Production CloudKit schema"
+    python3 scripts/cloudkit_schema.py check --team "$team"
+fi
+
 if [ "$run_tests" = 1 ]; then
+    log "CloudKit tooling and release-gate tests"
+    python3 -m unittest discover -s scripts/tests
     log "Unit and UI tests (simulator)"
     xcodebuild test \
         -project Cuekeeper.xcodeproj -scheme Cuekeeper \

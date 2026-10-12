@@ -1,0 +1,10 @@
+{
+  "container": "iCloud.com.arjunakankipati.cuekeeper",
+  "environment": "development",
+  "format": 1,
+  "model_files": {
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/Cuekeeper.xcdatamodel/contents": "266a5735e7e410299f213394961b3b4cf9670f6b323fb3fb5fc6397193da0dff"
+  },
+  "schema_sha256": "94284e2f2642044d46a899dc956ba1eee83f23bfdfb1a5ffd989d428c76ac160",
+  "team": "TDBAHN96B3"
+}

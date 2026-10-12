@@ -42,32 +42,35 @@ Do not use this build as the only copy of important records.
 
 ## CloudKit setup and verification
 
-The project enables CloudKit, Push Notifications, and Background Modes → Remote
-notifications. Automatic signing configures the app's provisioning. The iCloud
-container must be associated with this bundle ID in the developer portal.
+Select the **Cuekeeper - Initialize CloudKit** scheme in Xcode and run it on a
+device signed into iCloud. This uses a dedicated Development-only build and a
+separate local store. Settings shows a persistent initialization result. Return
+to the ordinary **Cuekeeper** scheme afterward; no launch arguments are needed.
 
-1. Run a Debug build on a device signed into iCloud. In Xcode's scheme editor,
-   optionally add the launch argument `--initialize-cloudkit-schema` for one run.
-   This Debug-only operation initializes all model fields in the Development
-   schema; check Settings for success, then remove the argument.
-2. Create a disposable job and check the private Development database in
-   CloudKit Console. Model schema names are managed by Core Data.
-3. Run Debug on a second iOS/iPadOS 27 device with the same iCloud account.
-   Verify the job arrives, then add jobs offline on both devices and reconnect.
-4. Before using TestFlight, deploy the Development schema to Production in
-   CloudKit Console. Deploying schema does not copy Development records.
-5. Test again with a Release/TestFlight build; production and development data
-   are separate. A completed local archive does not prove live sync.
+Authenticate Apple's schema CLI once using a management token from CloudKit
+Console (separate from your App Store Connect key):
 
-Keep future model migrations compatible with CloudKit. Do not add uniqueness
-constraints. Relationships added later must support CloudKit's optional and
-non-atomic relationship delivery. Financial conflict handling is a separate
-milestone, not supplied by the current job merge policy.
+```sh
+xcrun cktool save-token --type management # secure prompt; token stays in keychain
+./cloudkit.sh export                     # export Development schema + model fingerprint
+```
 
-Settings reports observed operations, not a guarantee that all devices are up to
-date. iCloud sync is asynchronous and is not a backup. Local saving remains
-available when iCloud is unavailable. Visible load failures never replace the
-persistent store with an empty one.
+Review and commit `cloudkit/schema.ckdb` and `cloudkit/schema.json`, deploy the
+reviewed Development schema to Production in CloudKit Console, then run:
+
+```sh
+./cloudkit.sh check
+```
+
+Every normal release runs this check against live Production before building.
+It rejects missing/stale snapshots, authentication failures and schema drift.
+See [the CloudKit workflow](cloudkit/README.md) for initialization, deployment,
+comparison rules, CI authentication, and model-change instructions.
+
+Verify actual record sync separately using two signed-in devices. Debug and
+Release/TestFlight use separate CloudKit environments; deploy copies schema,
+not Development records. Settings reports observed operations, not a guarantee
+that every device is up to date. Sync remains separate from backup.
 
 ## Tests
 
@@ -91,13 +94,12 @@ Private signing keys remain outside this repository. The validated default is
 the Apple Account signed into Xcode. Harbor's API-key authentication failed during
 initial setup, so those optional local settings are commented out.
 
-Before the first upload, create the **Cuekeeper app record in App Store Connect**
-using the existing bundle ID. Registering a bundle ID alone does not create the
-app record. Deploy and verify the CloudKit Production schema as described above.
+The Cuekeeper app record already exists in App Store Connect. Deploy and verify
+the CloudKit Production schema as described above before the first upload.
 
 ```sh
-./release.sh --no-upload              # tests → archive → local IPA export
-./release.sh                          # tests → archive → TestFlight upload → local Git tag
+./release.sh --no-upload              # schema check → tests → archive → local IPA export
+./release.sh                          # schema check → tests → archive → upload → local Git tag
 ./release.sh --skip-tests             # only when the current code already passed tests
 ./release.sh --build 286.10.1          # explicit monotonically increasing build number
 ./release.sh --no-upload --allow-dirty # local verification of uncommitted changes
@@ -116,6 +118,14 @@ API-key mode additionally requires an Apple Distribution certificate/private key
 in the keychain. Its profile helper verifies the team, bundle, CloudKit container,
 production CloudKit environment and production push entitlement, and preserves
 existing profiles when creating a replacement.
+
+For local packaging before schema deployment, use
+`./release.sh --no-upload --skip-cloudkit-check`. This bypass is rejected for
+uploads. `--skip-tests` does not skip the schema check.
+
+Run the CLI and release-gate tests with
+`python3 -m unittest discover -s scripts/tests`; they also run in the release
+script unless tests are explicitly skipped.
 
 `--no-upload` still contacts Apple for signing and may create provisioning
 profiles. It does not publish a build. Successful export proves packaging and

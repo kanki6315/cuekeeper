@@ -114,12 +114,7 @@ final class CalendarController: ObservableObject {
                 for duplicate in matches.dropFirst() { try store.remove(duplicate, span: .thisEvent, commit: false) }
                 if event.calendar == nil { event.calendar = calendar }
                 // Save only actual changes; EventKit notifications must not create a sync loop.
-                if event.title != desired.title || event.startDate != desired.start || event.endDate != desired.end
-                    || event.isAllDay != desired.allDay || event.notes != desired.notes || event.location != desired.location
-                    || event.url != desired.url || event.timeZone?.identifier != desired.timeZoneID {
-                    event.title = desired.title; event.startDate = desired.start; event.endDate = desired.end
-                    event.isAllDay = desired.allDay; event.timeZone = TimeZone(identifier: desired.timeZoneID)
-                    event.notes = desired.notes; event.location = desired.location; event.url = desired.url
+                if Self.update(event, from: desired) {
                     try store.save(event, span: .thisEvent, commit: false)
                 }
                 if let id = event.eventIdentifier { ids[key] = id }
@@ -134,6 +129,35 @@ final class CalendarController: ObservableObject {
             status = "Calendar update pending: \(error.localizedDescription)"
         }
     }
+    /// EventKit represents all-day dates in the device's default time zone.
+    /// Preserve the job's civil dates, rather than its midnight instants, when publishing.
+    static func update(_ event: EKEvent, from desired: CalendarEntry) -> Bool {
+        let timeZone = desired.allDay ? nil : TimeZone(identifier: desired.timeZoneID)
+        func eventDate(_ date: Date) -> Date {
+            guard desired.allDay else { return date }
+            var source = Calendar(identifier: .gregorian)
+            source.timeZone = TimeZone(identifier: desired.timeZoneID) ?? .current
+            var local = Calendar(identifier: .gregorian)
+            local.timeZone = .current
+            return local.date(from: source.dateComponents([.year, .month, .day], from: date))!
+        }
+        let start = eventDate(desired.start)
+        // The plan uses an exclusive next-day boundary; EventKit normalizes all-day
+        // end dates to the final second of the last included day.
+        let end = eventDate(desired.end).addingTimeInterval(desired.allDay ? -1 : 0)
+        guard event.title != desired.title || event.startDate != start || event.endDate != end
+            || event.isAllDay != desired.allDay || (event.notes ?? "") != desired.notes || (event.location ?? "") != desired.location
+            || event.url != desired.url || event.timeZone != timeZone else { return false }
+        event.title = desired.title
+        event.timeZone = timeZone
+        event.startDate = start
+        event.endDate = end
+        // Set this last: changing the time zone can turn an all-day event into a timed event.
+        event.isAllDay = desired.allDay
+        event.notes = desired.notes; event.location = desired.location; event.url = desired.url
+        return true
+    }
+
     private func rememberBounds(_ dates: [Date]) {
         let low = defaults.object(forKey: "calendar.earliest") as? Date ?? Date()
         let high = defaults.object(forKey: "calendar.latest") as? Date ?? Date()

@@ -1,7 +1,11 @@
 # CloudKit schema workflow
 
-The Core Data model is the source of truth. Apple generates its CloudKit schema;
-we do not maintain a hand-written approximation of Core Data's internal records.
+The versioned Core Data model is the source of truth for mirrored entities.
+Apple generates their CloudKit schema; we do not maintain a hand-written
+approximation of Core Data's internal records. The explicit
+`CuekeeperCalendarPublisher` record type is defined by
+`Cuekeeper/CalendarPublisher.swift`, with `ownerID` and `ownerName` fields for
+single-device calendar ownership.
 All commands here operate on `iCloud.com.arjunakankipati.cuekeeper`, team
 `TDBAHN96B3`. `cloudkit.sh` derives that identity from the project configuration.
 
@@ -20,7 +24,7 @@ The Mac must be signed into iCloud in System Settings. Export additionally uses
 the saved cktool management token described below.
 
 The helper shares the exact versioned Core Data model and managed object classes
-with Cuekeeper. It uses Cuekeeper’s existing container-authorized bundle ID
+with Cuekeeper, and initializes the explicit calendar-publisher record type. It uses Cuekeeper’s existing container-authorized bundle ID
 `com.arjunakankipati.cuekeeper` on macOS; its signed CloudKit entitlement is
 always **Development**, even if built with Release. It checks that entitlement
 before accessing CloudKit and requires an explicit initialization argument.
@@ -90,13 +94,30 @@ git diff -- cloudkit/schema.ckdb cloudkit/schema.json
 Commit both files. `schema.ckdb` is the actual Development export, including
 Core Data's supporting record types, fields, indexes and permissions.
 `schema.json` records team/container identity, a checksum of that export, and
-checksums of the Core Data model versions and current-version selector.
+checksums of the Core Data model versions, current-version selector and
+`Cuekeeper/CalendarPublisher.swift`. The snapshot includes
+`CuekeeperCalendarPublisher` alongside Core Data entities.
 
 Export rejects an empty/uninitialized schema or missing model attributes before
 replacing the previous snapshot. The fingerprint catches subsequent local model
 changes; it does not independently prove that Core Data completed initialization
 for every possible model migration. Always run initialization first
-when the model changes. Do not edit the exported schema by hand.
+when the model or publisher schema changes. Publisher source changes also require
+a fresh export because that file is fingerprinted. Do not edit the exported
+schema by hand.
+
+## Current schema status
+
+The V5 Development schema is initialized and exported, including sessions, fees,
+invoice revisions, receipts and calendar ownership. V1–V4-to-V5 local migrations
+and the local snapshot gate passed. A separate real Development check verified
+concurrent publisher claims, second-owner rejection and ownership transfer.
+
+Production remains the schema from the previously shipped V2 release. No
+Production deployment or TestFlight upload occurred during the first-six-step
+implementation. Deploy and verify these additions before a future release;
+Development initialization and a signed Release build do not establish
+Production readiness or physical-device financial sync.
 
 ## Deploy, then check
 

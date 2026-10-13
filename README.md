@@ -1,8 +1,9 @@
 # Cuekeeper
 
 Native iPhone and iPad daybook for broadcast freelancers. Minimum iOS/iPadOS 27.
-The signed app foundation now includes complete nonfinancial job management,
-CloudKit configuration, and a TestFlight release pipeline.
+The first six implementation steps cover job management, sessions and broadcast
+links, EventKit calendar publishing, fees, invoices and payments. The app has
+private CloudKit sync and a TestFlight release pipeline.
 
 ## Open and run
 
@@ -45,10 +46,32 @@ The app uses the approved Icon Composer asset in `design/brand/Cuekeeper.icon`.
 - iCloud account checks and observed transfer/error status in Settings.
 - Isolated local test stores that never write test records to iCloud.
 
-Sessions, EventKit, fees, invoices, payments, conflict-preserving
-financial history, backup/restore and Recently Deleted are still future work.
-Payments is explicitly marked as unavailable in this foundation build.
-Do not use this build as the only copy of important records.
+- Create incomplete or timed sessions with independent schedule and coverage states,
+  timezones, call times, roles, notes and broadcast links.
+- Publish all-day job placeholders and eligible confirmed, covering sessions to
+  a selected calendar; reconcile changes without removing unrelated events.
+- Record unknown or zero fees, agreement status and optional quantity/rate breakdowns.
+  The overall fee changes to the breakdown total only with **Use Breakdown Total**.
+- Track same-client, same-currency grouped invoices, sent/due dates, overdue balances,
+  partial invoice receipts and direct job payments.
+- Preserve immutable fee/invoice revisions and receipt/reversal history. Stale
+  financial edits are rejected; conflicting revisions remain available for explicit
+  resolution. Invoice line amounts are snapshots, independent of later fee edits.
+- Keep USD and EUR summaries separate, with exact integer cents and decimal arithmetic.
+  Partial receipts reduce the grouped invoice balance, rather than implying which
+  individual jobs were paid. Duplicate active billing is rejected locally and flagged
+  for review if concurrent invoices later sync together.
+
+Calendar publishing has one designated device, verified online through CloudKit.
+Other devices can edit records; calendar updates catch up when the publishing
+device opens Cuekeeper in the foreground and receives those changes. To transfer
+publishing, disconnect Calendar on the old device, then connect on the new one.
+Offline job capture remains available; calendar publishing waits for connectivity.
+
+Step 7 (recovery, export and Recently Deleted) and step 8 (broader physical-device
+beta testing, first-run and App Store polish) remain. Invoice tracking does not
+create or send invoice documents, connect to banking, calculate tax or convert
+currencies. Sync is not a backup.
 
 ## CloudKit setup and verification
 
@@ -85,20 +108,39 @@ that every device is up to date. Sync remains separate from backup.
 
 ## Tests
 
+Boot the intended simulator, build/install the app, and grant full Calendar access
+before the suite. Use the same simulator UDID throughout:
+
 ```sh
-xcodebuild test -project Cuekeeper.xcodeproj -scheme Cuekeeper \
-  -destination 'platform=iOS Simulator,name=iPhone 18 Pro,OS=27.0' \
+SIMULATOR_ID='<booted simulator UDID>'
+xcodebuild build-for-testing -project Cuekeeper.xcodeproj -scheme Cuekeeper \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
   -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO
+xcrun simctl install "$SIMULATOR_ID" build/tests/Build/Products/Debug-iphonesimulator/Cuekeeper.app
+xcrun simctl privacy "$SIMULATOR_ID" grant calendar com.arjunakankipati.cuekeeper
+xcodebuild test-without-building -project Cuekeeper.xcodeproj -scheme Cuekeeper \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+  -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO
+python3 -m unittest discover -s scripts/tests
+./cloudkit.sh check --local-only
 ```
 
-Persistence tests cover saving/reopening SQLite, V1-to-V2 migration, validation
-without partial changes, duplication and library reuse, client renaming,
-combined filters, preservation of unchanged editor fields, and civil-date round
-trips across timezones and DST. UI tests cover capture/relaunch, editing booking
-status, confirming duplicate dates, discarding edits, client creation/filter
-navigation, and visible failed-save alerts that preserve the draft. Run the UI suite on
-an iPad too by changing the destination. These tests disable CloudKit; live
-cross-device convergence must be verified separately on signed-in devices.
+Without the Calendar grant, the real EventKit integration test skips; a green
+suite alone does not prove that check ran. Repeat the UI suite on an iPad by
+changing the destination. UI tests use isolated local stores, disable CloudKit
+and calendar publishing, and contain synthetic records. The EventKit test uses
+its own temporary calendar and a test publisher; real CloudKit publisher ownership
+is checked separately in Development.
+
+The current evidence includes 19 passing unit/model/EventKit tests (no skipped
+EventKit integration), 24 passing tooling tests and a passing local schema gate.
+Coverage includes V1–V4 migration into V5, session/DST validation, field-preserving
+edits, immutable financial conflict branches, invoice snapshots, grouped partial
+payments, duplicate billing detection and receipt reversals. All eight UI workflows
+have passing iPhone and iPad evidence after the editor presentation fixes. The full iPhone suite passed; the iPad run passed six
+workflows, followed by passing focused reruns of breakdown and invoice entry
+after correcting keyboard submission in those tests. A signed Release build passed;
+this does not claim a new archive, distribution or upload.
 
 ## Release to TestFlight
 
@@ -108,8 +150,10 @@ Private signing keys remain outside this repository. The validated default is
 the Apple Account signed into Xcode. Harbor's API-key authentication failed during
 initial setup, so those optional local settings are commented out.
 
-The Cuekeeper app record already exists in App Store Connect. Deploy and verify
-the CloudKit Production schema as described above before the first upload.
+The V2 app was released before this implementation milestone. The current V5
+Development schema has been initialized and exported; Production still has the
+previously shipped schema. Deploy and verify the V5 additions before a future
+upload. No Production deployment or TestFlight upload occurred during this work.
 
 ```sh
 ./release.sh --no-upload              # schema check → tests → archive → local IPA export
@@ -145,23 +189,21 @@ script unless tests are explicitly skipped.
 profiles. It does not publish a build. Successful export proves packaging and
 signing, not App Store Connect acceptance or live CloudKit sync.
 
-## Job management validation and next release
+## Data and beta validation
 
-The V2 Core Data model adds clients, roles and job details. The V1 model remains
-bundled for lightweight migration; tests open a V1 SQLite store and verify that
-its jobs survive the upgrade. Each editor saves through an isolated context.
-Unchanged form fields do not overwrite updates saved while the editor was open.
-This does not establish conflict resolution for simultaneous edits to the same field.
+The current V5 Core Data model retains V1–V4 for migration. Tests open stores from
+each older version and verify data preservation. Editors save through isolated
+contexts; unchanged fields do not overwrite updates made while a form was open.
+This is not a general resolution policy for simultaneous edits to the same
+nonfinancial field. Financial history uses explicit immutable revisions instead.
 
-On October 12, 2026, the user verified cross-device sync in the first TestFlight
-build, including capture offline and sync after reconnecting. Cross-device
-conflicts were not tested. The new V2 fields and relationships need their own
-cross-device check after release.
+The user verified original production cross-device sync, including offline
+capture and reconnect, on October 12, 2026. Full new financial workflows and
+conflict handling across two physical devices remain beta validation. Simulator
+coverage and the successful real Development calendar ownership/concurrent-claim/
+transfer check do not establish that broader physical-device result.
 
-The V2 Development schema was initialized and exported with the macOS helper on
-October 12, 2026. The committed snapshot includes clients, roles, and the expanded
-job fields. Before distributing this change, deploy its additions in CloudKit
-Console and run `./cloudkit.sh check`. Production deployment is still pending.
-Client/role renames update related jobs through their shared records. Library
-names are checked case-insensitively on this device; independently created
-records on offline devices are not yet automatically deduplicated.
+Client/role renames update related jobs through shared records. Library names are
+checked case-insensitively on this device; independently created records on offline
+devices are not automatically deduplicated. Settings reports observed iCloud
+operations rather than guaranteeing that every device has received every record.

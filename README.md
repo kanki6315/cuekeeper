@@ -230,3 +230,9 @@ passed, including migrations from V1–V5 into V6. The new project/date and sync
 feedback UI workflows passed on iPhone and iPad; edit/duplicate/discard and session
 capture regression workflows also passed on iPad with dark mode and larger text.
 Sync presentation tests use simulated activity and do not prove live-device delivery.
+
+## License
+
+Cuekeeper is licensed under the [MIT License](LICENSE), except for
+`release.sh` and `asc_profile.py`, which retain their
+[Mozilla Public License 2.0](LICENSE-MPL-2.0) terms. See [NOTICE](NOTICE).

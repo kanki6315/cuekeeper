@@ -50,6 +50,47 @@ final class CalendarTests: XCTestCase {
         XCTAssertEqual(CalendarPlan(jobs: [job]).knownKeys.count, 2)
     }
 
+    func testAllDayEventUsesFloatingCivilDatesAndRepairsTimedEvents() throws {
+        let store = EKEventStore()
+        for zoneID in ["America/New_York", "Asia/Tokyo"] {
+            let zone = try XCTUnwrap(TimeZone(identifier: zoneID))
+            for (first, last) in [("2026-03-08", "2026-03-09"), ("2026-10-14", "2026-10-17"),
+                                  ("2026-11-01", "2026-11-02")] {
+                let entry = CalendarEntry(key: "job/\(UUID())", title: "All-day job",
+                                          start: try XCTUnwrap(Day.date(from: first, timeZone: zone)),
+                                          end: try XCTUnwrap(Day.date(from: last, timeZone: zone)),
+                                          allDay: true, timeZoneID: zone.identifier, notes: "", location: "")
+                let event = EKEvent(eventStore: store)
+                // Reproduce the legacy midnight-to-11:59 timed block.
+                event.startDate = entry.start
+                event.endDate = entry.end.addingTimeInterval(-60)
+                event.timeZone = zone
+                event.isAllDay = false
+                XCTAssertTrue(CalendarController.update(event, from: entry))
+                XCTAssertTrue(event.isAllDay)
+                XCTAssertNil(event.timeZone)
+                XCTAssertEqual(event.startDate, Day.date(from: first, timeZone: .current))
+                XCTAssertEqual(event.endDate, Day.date(from: last, timeZone: .current)?.addingTimeInterval(-1))
+                XCTAssertFalse(CalendarController.update(event, from: entry), "An unchanged event must not trigger another save")
+            }
+        }
+    }
+
+    func testTimedEventPreservesInstantsAndTimeZone() throws {
+        let event = EKEvent(eventStore: EKEventStore())
+        let entry = CalendarEntry(key: "session/\(UUID())", title: "Timed session",
+                                  start: Date(timeIntervalSince1970: 1791982800),
+                                  end: Date(timeIntervalSince1970: 1791986400), allDay: false,
+                                  timeZoneID: "America/New_York", notes: "Session notes", location: "Venue")
+        event.isAllDay = true
+        XCTAssertTrue(CalendarController.update(event, from: entry))
+        XCTAssertFalse(event.isAllDay)
+        XCTAssertEqual(event.startDate, entry.start)
+        XCTAssertEqual(event.endDate, entry.end)
+        XCTAssertEqual(event.timeZone?.identifier, entry.timeZoneID)
+        XCTAssertFalse(CalendarController.update(event, from: entry))
+    }
+
     func testEventKitReconciliationAndSinglePublisher() async throws {
         let eventStore = EKEventStore()
         guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
@@ -67,7 +108,9 @@ final class CalendarTests: XCTestCase {
         for _ in 0..<100 where !persistence.isLoaded { try await Task.sleep(for: .milliseconds(50)) }
         XCTAssertTrue(persistence.isLoaded)
         let context = persistence.container.viewContext
-        let jobID = try JobDraft(name: "Calendar test").save(in: context)
+        var jobDraft = JobDraft(name: "Calendar test")
+        jobDraft.timeZoneID = "Asia/Tokyo"
+        let jobID = try jobDraft.save(in: context)
         let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
         let suite = "calendar-test-\(UUID())"; let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -81,6 +124,24 @@ final class CalendarTests: XCTestCase {
         }
         XCTAssertEqual(events().count, 1, controller.status)
         let originalID = try XCTUnwrap(events().first?.eventIdentifier)
+        XCTAssertEqual(events().first?.isAllDay, true)
+        XCTAssertNil(events().first?.timeZone)
+        XCTAssertEqual(events().first?.startDate, Day.date(from: job.startDay, timeZone: .current))
+        let lastDay = try XCTUnwrap(Day.date(from: job.endDay, timeZone: .current))
+        let exclusiveEnd = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: lastDay))
+        XCTAssertEqual(events().first?.endDate, exclusiveEnd.addingTimeInterval(-1))
+        let desired = try XCTUnwrap(CalendarPlan(jobs: [job]).desired.values.first)
+        XCTAssertFalse(CalendarController.update(try XCTUnwrap(events().first), from: desired))
+        // Existing malformed entries are repaired in place on the next sync.
+        let legacy = try XCTUnwrap(events().first)
+        legacy.isAllDay = false
+        legacy.timeZone = TimeZone(identifier: job.timeZoneID)
+        legacy.endDate = legacy.endDate.addingTimeInterval(-60)
+        try eventStore.save(legacy, span: .thisEvent)
+        await controller.sync()
+        XCTAssertEqual(events().first?.isAllDay, true)
+        XCTAssertNil(events().first?.timeZone)
+        XCTAssertEqual(events().first?.eventIdentifier, originalID)
         await controller.sync(); XCTAssertEqual(events().count, 1)
         var draft = JobDraft(job: job); draft.name = "Updated title"
         try draft.save(in: context, editing: jobID)

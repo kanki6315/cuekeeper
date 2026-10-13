@@ -133,13 +133,16 @@ def profile_entitlements(profile):
 
 def supports_cloudkit(profile, team, bundle_id, container):
     entitlements = profile_entitlements(profile)
+    services = entitlements.get("com.apple.developer.icloud-services", [])
+    if isinstance(services, str):
+        services = [services]
     environment = entitlements.get("com.apple.developer.icloud-container-environment", [])
     if isinstance(environment, str):
         environment = [environment]
     return (entitlements.get("com.apple.developer.team-identifier") == team
             and entitlements.get("application-identifier") == f"{team}.{bundle_id}"
             and container in entitlements.get("com.apple.developer.icloud-container-identifiers", [])
-            and "CloudKit" in entitlements.get("com.apple.developer.icloud-services", [])
+            and ("CloudKit" in services or "*" in services)
             and "Production" in environment
             and entitlements.get("aps-environment") == "production")
 

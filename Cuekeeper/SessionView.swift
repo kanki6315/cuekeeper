@@ -1,0 +1,184 @@
+import CoreData
+import SwiftUI
+
+struct SessionEditorView: View {
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
+    let job: Job
+    let session: WorkSession?
+    @State private var draft: SessionDraft
+    @State private var initial: SessionDraft
+    @State private var error: String?
+    @State private var discard = false
+
+    init(job: Job, session: WorkSession? = nil) {
+        self.job = job; self.session = session
+        let value = session.map(SessionDraft.init(session:)) ?? SessionDraft(job: job)
+        _draft = State(initialValue: value); _initial = State(initialValue: value)
+    }
+    private var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Session name (optional)", text: $draft.name).accessibilityIdentifier("session-name")
+                    Toggle("Date known", isOn: Binding(get: { !draft.day.isEmpty }, set: { draft.day = $0 ? job.startDay : "" }))
+                        .disabled(draft.startTime != nil)
+                    if !draft.day.isEmpty {
+                        DatePicker("Session date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date)
+                            .disabled(draft.startTime != nil)
+                    }
+                    NavigationLink { TimeZonePicker(selection: $draft.timeZoneID) } label: {
+                        LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Choose timezone" : draft.timeZoneID.replacingOccurrences(of: "_", with: " "))
+                    }
+                    optionalTime("Start", value: $draft.startTime)
+                    optionalTime("End", value: $draft.endTime)
+                    optionalTime("Call time", value: $draft.callTime)
+                } header: { Text("Schedule") } footer: {
+                    Text("Times can remain incomplete. For overnight work, set the end on the following date. Times are shown in the selected timezone.")
+                }
+                Section {
+                    Picker("Schedule", selection: $draft.scheduleStatus) {
+                        Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed")
+                    }.accessibilityIdentifier("session-schedule")
+                    Picker("Coverage", selection: $draft.coverage) {
+                        Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering")
+                    }.accessibilityIdentifier("session-coverage")
+                } footer: { Text("Confirming times does not change whether you’re covering this session or whether the job is booked.") }
+                Section("Roles") {
+                    Toggle("Override job roles", isOn: $draft.overridesRoles)
+                    if draft.overridesRoles {
+                        ForEach(Array(Set(roles.map(\.name))).sorted(), id: \.self) { role in
+                            Toggle(role, isOn: Binding(get: { draft.roleNames.contains(role) }, set: { if $0 { draft.roleNames.insert(role) } else { draft.roleNames.remove(role) } }))
+                        }
+                        if roles.isEmpty { Text("Add reusable roles in Settings or in the job editor.").foregroundStyle(.secondary) }
+                    } else { Text(job.roleNames.isEmpty ? "No job roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(.secondary) }
+                }
+                Section("Notes") { TextField("Session notes", text: $draft.notes, axis: .vertical).lineLimit(3...8) }
+                Section {
+                    ForEach($draft.links) { $link in
+                        VStack(alignment: .leading, spacing: 12) {
+                            TextField("Link label (optional)", text: $link.label)
+                            TextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                                .accessibilityIdentifier("broadcast-url")
+                            TextField("Link notes (optional)", text: $link.notes, axis: .vertical)
+                            Button("Remove Link", role: .destructive) { draft.links.removeAll { $0.id == link.id } }
+                        }.padding(.vertical, 4)
+                    }
+                    Button("Add Broadcast Link", systemImage: "link.badge.plus") { draft.links.append(LinkDraft()) }
+                        .accessibilityIdentifier("add-broadcast-link")
+                } header: { Text("Broadcast links") } footer: { Text("Save links when they’re available. They aren’t required to save a session.") }
+            }
+            .environment(\.timeZone, zone)
+            .navigationTitle(session == nil ? "Add Session" : "Edit Session").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if draft != initial { discard = true } else { dismiss() } } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        do { try draft.save(in: context, jobID: job.objectID, editing: session?.objectID, baseline: session == nil ? nil : initial); dismiss() }
+                        catch { self.error = error.localizedDescription }
+                    }.accessibilityIdentifier("save-session")
+                }
+            }
+            .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
+            .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
+                Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
+            }
+        }
+    }
+    @ViewBuilder private func optionalTime(_ label: String, value: Binding<Date?>) -> some View {
+        Toggle("\(label) known", isOn: Binding(get: { value.wrappedValue != nil }, set: { enabled in
+            if enabled {
+                if draft.timeZoneID.isEmpty { draft.timeZoneID = TimeZone.current.identifier }
+                let start = draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date()
+                value.wrappedValue = label == "End" ? start.addingTimeInterval(3600) : start
+            } else { value.wrappedValue = nil }
+        }))
+        if value.wrappedValue != nil {
+            DatePicker(label, selection: Binding(get: { value.wrappedValue ?? Date() }, set: { value.wrappedValue = $0 }))
+        }
+    }
+}
+
+struct SessionsSection: View {
+    @ObservedObject var job: Job
+    @FetchRequest private var sessions: FetchedResults<WorkSession>
+    let onAdd: () -> Void
+    init(job: Job, onAdd: @escaping () -> Void) {
+        self.job = job; self.onAdd = onAdd
+        _sessions = FetchRequest(sortDescriptors: [NSSortDescriptor(key: "day", ascending: true), NSSortDescriptor(key: "startTime", ascending: true)], predicate: NSPredicate(format: "job == %@ AND deletedAt == nil", job))
+    }
+    var body: some View {
+        Section {
+            ForEach(sessions, id: \.objectID) { session in
+                NavigationLink { SessionDetailView(session: session) } label: { SessionRow(session: session) }
+            }
+            Button("Add Session", systemImage: "plus", action: onAdd).accessibilityIdentifier("add-session")
+        } header: { Text("Sessions") } footer: {
+            if sessions.isEmpty { Text("No sessions yet. Placeholder job dates remain useful until the schedule arrives.") }
+            else if sessions.contains(where: { $0.scheduleStatus != "confirmed" }) { Text("Some session times are still tentative.") }
+        }
+    }
+}
+
+struct SessionRow: View {
+    @ObservedObject var session: WorkSession
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(session.title).font(.headline)
+            Text(session.scheduleDescription).font(.subheadline).foregroundStyle(.secondary)
+            Text("\(session.scheduleStatus.capitalized) · \(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized)")
+                .font(.caption).foregroundStyle(.secondary)
+        }.padding(.vertical, 4)
+    }
+}
+
+struct SessionDetailView: View {
+    @ObservedObject var session: WorkSession
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @State private var editing = false
+    @State private var removing = false
+    @State private var error: String?
+    var body: some View {
+        Form {
+            Section("Schedule") {
+                Text(session.scheduleDescription)
+                LabeledContent("Schedule", value: session.scheduleStatus.capitalized)
+                LabeledContent("Coverage", value: session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized)
+                if let call = session.callTime {
+                    Text("Call: \(session.formattedTime(call))")
+                        .environment(\.timeZone, TimeZone(identifier: session.timeZoneID) ?? .current)
+                }
+                LabeledContent("Roles", value: session.roleNames.isEmpty ? "None selected" : session.roleNames.joined(separator: ", "))
+            }
+            if !session.notes.isEmpty { Section("Notes") { Text(session.notes).textSelection(.enabled) } }
+            Section("Broadcast links") {
+                if session.sortedLinks.isEmpty { Text("No links added yet").foregroundStyle(.secondary) }
+                ForEach(session.sortedLinks, id: \.objectID) { link in
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let url = URL(string: link.url), ["https", "http"].contains(url.scheme?.lowercased() ?? "") {
+                            Link(link.label.isEmpty ? link.url : link.label, destination: url)
+                        } else { Text(link.url).textSelection(.enabled) }
+                        if !link.notes.isEmpty { Text(link.notes).font(.subheadline).foregroundStyle(.secondary) }
+                    }
+                }
+            }
+            Section { Button("Remove Session", role: .destructive) { removing = true } }
+        }
+        .navigationTitle(session.title).navigationBarTitleDisplayMode(.inline)
+        .toolbar { Button("Edit") { editing = true }.accessibilityIdentifier("edit-session") }
+        .sheet(isPresented: $editing) { if let job = session.job { SessionEditorView(job: job, session: session) } }
+        .saveErrorAlert($error)
+        .confirmationDialog("Remove this session and its links from the job?", isPresented: $removing, titleVisibility: .visible) {
+            Button("Remove Session", role: .destructive) {
+                do {
+                    let writer = isolatedWriter(context)
+                    let record = try writer.existingObject(with: session.objectID) as! WorkSession
+                    record.deletedAt = Date(); try writer.save(); context.refreshAllObjects(); dismiss()
+                } catch { self.error = error.localizedDescription }
+            }
+        }
+    }
+}

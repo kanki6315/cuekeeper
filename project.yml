@@ -74,6 +74,7 @@ targets:
       - path: CloudKitSetupMac
       - path: Cuekeeper/Storage/Cuekeeper.xcdatamodeld
       - path: Cuekeeper/Storage/Job.swift
+      - path: Cuekeeper/Storage/WorkSession.swift
     entitlements:
       path: CloudKitSetupMac/SchemaHelper.entitlements
       properties:

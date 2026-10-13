@@ -125,7 +125,7 @@ struct JobEditorView: View {
     }
 }
 
-private struct TimeZonePicker: View {
+struct TimeZonePicker: View {
     @Binding var selection: String
     @State private var search = ""
     @Environment(\.dismiss) private var dismiss
@@ -149,6 +149,7 @@ struct JobDetailView: View {
     @ObservedObject var job: Job
     @State private var editing = false
     @State private var duplicating = false
+    @State private var addingSession = false
     var body: some View {
         Form {
             Section("Booking") {
@@ -171,6 +172,7 @@ struct JobDetailView: View {
                 if !job.timeZoneID.isEmpty { LabeledContent("Timezone", value: job.timeZoneID.replacingOccurrences(of: "_", with: " ")) }
             }
             if !job.notes.isEmpty { Section("Notes") { Text(job.notes).textSelection(.enabled) } }
+            SessionsSection(job: job) { addingSession = true }
             Section {
                 Button("Duplicate Job", systemImage: "plus.square.on.square") { duplicating = true }
                     .accessibilityIdentifier("duplicate-job")
@@ -181,6 +183,7 @@ struct JobDetailView: View {
         .toolbar { Button("Edit") { editing = true }.accessibilityIdentifier("edit-job") }
         .sheet(isPresented: $editing) { JobEditorView(job: job) }
         .sheet(isPresented: $duplicating) { JobEditorView(job: job, duplicating: true) }
+        .sheet(isPresented: $addingSession) { SessionEditorView(job: job) }
     }
 }
 

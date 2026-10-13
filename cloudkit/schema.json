@@ -3,10 +3,11 @@
   "environment": "development",
   "format": 1,
   "model_files": {
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "e5683a647d88619674ae58f36f3e36243bc1469d1ddef6e6263f480d159e563c",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "65167be2572dc42e1da6e01668900cd6de6bbfeb162330c654877371c69ccc56",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/Cuekeeper.xcdatamodel/contents": "266a5735e7e410299f213394961b3b4cf9670f6b323fb3fb5fc6397193da0dff",
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV2.xcdatamodel/contents": "428f1d885575311b82db85743d1a064c0b5c93d4f3139ab1ee6196e2f3d59161"
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV2.xcdatamodel/contents": "428f1d885575311b82db85743d1a064c0b5c93d4f3139ab1ee6196e2f3d59161",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV3.xcdatamodel/contents": "f8baeb536b99143aa2181e7d88ce2f0052e57c7f2c1f5d11e72424af57fe8e5b"
   },
-  "schema_sha256": "ad396c578fcdddb19054179769b645700a78757286ff1f7d79565c2dac877092",
+  "schema_sha256": "05daafae75615bf97a4da3f209b09e9ed94b4c0bd69242dc4069ef3885cbf783",
   "team": "TDBAHN96B3"
 }

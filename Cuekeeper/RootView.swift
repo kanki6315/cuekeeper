@@ -58,6 +58,7 @@ private struct JobsView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true),
                                    NSSortDescriptor(keyPath: \Job.createdAt, ascending: true)])
     private var jobs: FetchedResults<Job>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkSession.startTime, ascending: true)], predicate: NSPredicate(format: "deletedAt == nil AND scheduleStatus == %@", "confirmed")) private var sessions: FetchedResults<WorkSession>
     @State private var showingAdd = false
     @State private var query = ""
     @State private var filter = JobFilter()
@@ -71,8 +72,29 @@ private struct JobsView: View {
         }
     }
 
+    private var visibleSessions: [WorkSession] {
+        guard upcomingOnly else { return [] }
+        return sessions.filter { session in
+            guard let job = session.job, let end = session.endTime else { return false }
+            return end >= Date() && job.bookingStatus != "cancelled" && job.bookingStatus != "completed" && filter.includes(job, query: query)
+        }
+    }
+
     var body: some View {
         List {
+            if upcomingOnly && !visibleSessions.isEmpty {
+                Section("Confirmed sessions") {
+                    ForEach(visibleSessions, id: \.objectID) { session in
+                        NavigationLink { SessionDetailView(session: session) } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(session.job?.name ?? "Job").font(.subheadline)
+                                SessionRow(session: session)
+                            }
+                        }
+                    }
+                }
+            }
+            Section(upcomingOnly ? "Job placeholders · All day" : "All jobs") {
             ForEach(visibleJobs, id: \.objectID) { job in
                 NavigationLink {
                     JobDetailView(job: job)
@@ -88,11 +110,12 @@ private struct JobsView: View {
                 .listRowBackground(Color("PageBackground"))
             }
         }
+            }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color("PageBackground"))
         .overlay {
-            if visibleJobs.isEmpty {
+            if visibleJobs.isEmpty && visibleSessions.isEmpty {
                 ContentUnavailableView {
                     Label((query.isEmpty && !filter.isActive) ? "Room for your next gig" : "No matching jobs", systemImage: "calendar")
                 } description: {

@@ -1,6 +1,51 @@
 import XCTest
 
 final class CaptureTests: XCTestCase {
+    func testSessionCaptureLinksAndConfirmationValidation() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store"]
+        app.launch()
+        XCTAssertTrue(app.buttons["add-job"].waitForExistence(timeout: 10))
+        app.buttons["add-job"].tap()
+        let name = app.textFields["job-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Studio finals")
+        app.buttons["save-job"].tap()
+        XCTAssertTrue(app.staticTexts["Studio finals"].waitForExistence(timeout: 5))
+        app.staticTexts["Studio finals"].tap()
+        let addSession = app.buttons["add-session"]
+        for _ in 0..<4 where !addSession.isHittable { app.swipeUp() }
+        addSession.tap()
+        let sessionName = app.textFields["session-name"]
+        XCTAssertTrue(sessionName.waitForExistence(timeout: 5))
+        sessionName.tap(); sessionName.typeText("Final programme")
+        app.buttons["save-session"].tap()
+        XCTAssertTrue(app.buttons["save-session"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Final programme"].waitForExistence(timeout: 5))
+        app.staticTexts["Final programme"].tap()
+        app.buttons["edit-session"].tap()
+        XCTAssertTrue(app.buttons["session-schedule"].waitForExistence(timeout: 5))
+        app.buttons["session-schedule"].tap(); app.buttons["Confirmed"].tap()
+        app.buttons["save-session"].tap()
+        let alert = app.alerts["Couldn’t save changes"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        alert.buttons["OK"].tap()
+        app.buttons["session-schedule"].tap(); app.buttons["Tentative"].tap()
+        let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        editor.name = "Session editor"; editor.lifetime = .keepAlways; add(editor)
+        let addLink = app.buttons["add-broadcast-link"]
+        for _ in 0..<6 where !addLink.isHittable { app.swipeUp() }
+        addLink.tap()
+        let url = app.textFields["broadcast-url"]
+        for _ in 0..<3 where !url.isHittable { app.swipeUp() }
+        url.tap(); url.typeText("https://example.com/finals")
+        app.buttons["save-session"].tap()
+        XCTAssertTrue(app.buttons["save-session"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.links["https://example.com/finals"].waitForExistence(timeout: 5))
+        let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        details.name = "Session details and link"; details.lifetime = .keepAlways; add(details)
+    }
+
     func testCapturePersistsAcrossLaunch() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store"]

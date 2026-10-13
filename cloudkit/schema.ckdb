@@ -15,6 +15,29 @@ DEFINE SCHEMA
         GRANT READ TO "_world"
     );
 
+    RECORD TYPE CD_BroadcastLink (
+        CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_label               STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_label_ckAsset       ASSET,
+        CD_moveReceipt         BYTES QUERYABLE SORTABLE,
+        CD_moveReceipt_ckAsset ASSET,
+        CD_notes               STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_notes_ckAsset       ASSET,
+        CD_session             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_url                 STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_url_ckAsset         ASSET,
+        "___createTime"        TIMESTAMP,
+        "___createdBy"         REFERENCE,
+        "___etag"              STRING,
+        "___modTime"           TIMESTAMP,
+        "___modifiedBy"        REFERENCE,
+        "___recordID"          REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
     RECORD TYPE CD_Client (
         CD_contact                 STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_contact_ckAsset         ASSET,
@@ -86,6 +109,40 @@ DEFINE SCHEMA
         "___modTime"           TIMESTAMP,
         "___modifiedBy"        REFERENCE,
         "___recordID"          REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_WorkSession (
+        CD_callTime               TIMESTAMP QUERYABLE SORTABLE,
+        CD_coverage               STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_coverage_ckAsset       ASSET,
+        CD_day                    STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_day_ckAsset            ASSET,
+        CD_deletedAt              TIMESTAMP QUERYABLE SORTABLE,
+        CD_endTime                TIMESTAMP QUERYABLE SORTABLE,
+        CD_entityName             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                     STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_job                    STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_moveReceipt            BYTES QUERYABLE SORTABLE,
+        CD_moveReceipt_ckAsset    ASSET,
+        CD_name                   STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_name_ckAsset           ASSET,
+        CD_notes                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_notes_ckAsset          ASSET,
+        CD_overridesRoles         INT64 QUERYABLE SORTABLE,
+        CD_scheduleStatus         STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_scheduleStatus_ckAsset ASSET,
+        CD_startTime              TIMESTAMP QUERYABLE SORTABLE,
+        CD_timeZoneID             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_timeZoneID_ckAsset     ASSET,
+        "___createTime"           TIMESTAMP,
+        "___createdBy"            REFERENCE,
+        "___etag"                 STRING,
+        "___modTime"              TIMESTAMP,
+        "___modifiedBy"           REFERENCE,
+        "___recordID"             REFERENCE,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_icloud",
         GRANT READ TO "_world"

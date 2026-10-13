@@ -31,6 +31,75 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testSessionsPersistIncompleteAndOvernightSchedulesWithLinks() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        var jobDraft = JobDraft(name: "Overnight broadcast")
+        jobDraft.roleNames = ["Producer"]
+        let jobID = try jobDraft.save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
+        var draft = SessionDraft(job: job)
+        draft.name = "Late show"
+        let sessionID = try draft.save(in: context, jobID: jobID)
+        let session = try XCTUnwrap(context.existingObject(with: sessionID) as? WorkSession)
+        XCTAssertNil(session.startTime)
+        XCTAssertEqual(session.roleNames, ["Producer"])
+        XCTAssertFalse(session.calendarEligible)
+        draft.timeZoneID = "America/New_York"
+        draft.startTime = ISO8601DateFormatter().date(from: "2026-11-01T03:30:00Z")!
+        draft.endTime = ISO8601DateFormatter().date(from: "2026-11-01T08:00:00Z")!
+        draft.callTime = draft.startTime!.addingTimeInterval(-1800)
+        draft.scheduleStatus = "confirmed"; draft.coverage = "covering"
+        draft.links = [LinkDraft(label: "Replay", url: "https://example.com/replay", notes: "Final segment")]
+        try draft.save(in: context, jobID: jobID, editing: sessionID)
+        XCTAssertTrue(session.calendarEligible)
+        XCTAssertEqual(session.day, "2026-10-31")
+        XCTAssertEqual(session.sortedLinks.first?.notes, "Final segment")
+        XCTAssertEqual(session.endTime!.timeIntervalSince(session.startTime!), 16200)
+        context.reset()
+        let reopened = try XCTUnwrap(context.existingObject(with: sessionID) as? WorkSession)
+        XCTAssertEqual(reopened.sortedLinks.first?.url, "https://example.com/replay")
+        var editedJob = JobDraft(job: try XCTUnwrap(context.existingObject(with: jobID) as? Job))
+        editedJob.roleNames = ["Presenter"]
+        try editedJob.save(in: context, editing: jobID)
+        XCTAssertEqual(reopened.roleNames, ["Presenter"])
+        var override = SessionDraft(session: reopened)
+        override.overridesRoles = true; override.roleNames = ["Commentator"]
+        try override.save(in: context, jobID: jobID, editing: sessionID)
+        XCTAssertEqual(reopened.roleNames, ["Commentator"])
+        editedJob.bookingStatus = .cancelled
+        try editedJob.save(in: context, editing: jobID)
+        XCTAssertFalse(reopened.calendarEligible)
+    }
+
+    func testSessionValidationAndIndependentEditMerging() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let jobID = try JobDraft(name: "Coverage").save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
+        var draft = SessionDraft(job: job)
+        draft.scheduleStatus = "confirmed"
+        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
+        draft.scheduleStatus = "tentative"; draft.startTime = Date()
+        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
+        draft.timeZoneID = "UTC"; draft.endTime = draft.startTime!.addingTimeInterval(-1)
+        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
+        draft.endTime = draft.startTime!.addingTimeInterval(3600)
+        draft.links = [LinkDraft(url: "javascript:alert(1)")]
+        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkSession>(entityName: "WorkSession")), 0)
+        draft.links = []
+        let id = try draft.save(in: context, jobID: jobID)
+        let session = try XCTUnwrap(context.existingObject(with: id) as? WorkSession)
+        let baseline = SessionDraft(session: session)
+        var first = baseline; first.notes = "Incoming notes"
+        try first.save(in: context, jobID: jobID, editing: id, baseline: baseline)
+        var second = baseline; second.name = "New name"
+        try second.save(in: context, jobID: jobID, editing: id, baseline: baseline)
+        XCTAssertEqual(session.notes, "Incoming notes")
+        XCTAssertEqual(session.name, "New name")
+        XCTAssertFalse(context.hasChanges)
+    }
+
     func testJobSurvivesStoreReopenWithoutCloud() async throws {
         let first = try await openStore()
         let start = try XCTUnwrap(Day.date(from: "2026-10-12"))

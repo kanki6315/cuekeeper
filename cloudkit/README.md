@@ -7,6 +7,31 @@ All commands here operate on `iCloud.com.arjunakankipati.cuekeeper`, team
 
 ## Initialize Development
 
+From the terminal:
+
+```sh
+xcrun devicectl list devices
+./cloudkit.sh init --device '<device UDID or name>'
+./cloudkit.sh export
+```
+
+Keep the selected paired device unlocked, with Developer Mode enabled and signed
+into iCloud. The script builds the setup scheme, installs it, and waits up to
+180 seconds for an explicit completion marker. Use `--timeout 300` if needed.
+Logs are saved under `build/cloudkit-initialize/`. A successful app launch alone
+is not treated as successful initialization. This installs the setup build over
+Cuekeeper on that device; its separate setup store leaves the normal local store
+untouched. Return to the ordinary app build or reinstall TestFlight afterward.
+The script does not export or deploy automatically.
+
+This device runner is a convenience for the existing iOS setup scheme, not an
+Apple requirement to initialize inside the shipping app. Core Data initialization
+can also run in an appropriately configured integration-test or helper target.
+`cktool` can import an existing schema but does not generate Core Data's mapping
+from the managed object model.
+
+Alternatively, use Xcode:
+
 1. Run `xcodegen generate` and open `Cuekeeper.xcodeproj`.
 2. Select **Cuekeeper - Initialize CloudKit** and an iCloud-signed-in device.
 3. Run. In Settings, wait for **Development schema initialized**. The result

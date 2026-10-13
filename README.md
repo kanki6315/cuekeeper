@@ -52,6 +52,11 @@ Do not use this build as the only copy of important records.
 
 ## CloudKit setup and verification
 
+To initialize from the terminal, use `./cloudkit.sh init --device '<UDID or name>'`
+with an unlocked, paired, iCloud-signed-in device. This installs the dedicated
+setup build and waits for confirmed completion. See the CloudKit workflow below
+for side effects, logs and the equivalent Xcode steps.
+
 Select the **Cuekeeper - Initialize CloudKit** scheme in Xcode and run it on a
 device signed into iCloud. This uses a dedicated Development-only build and a
 separate local store. Settings shows a persistent initialization result. Return

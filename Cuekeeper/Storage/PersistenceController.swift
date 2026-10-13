@@ -78,6 +78,15 @@ final class PersistenceController: ObservableObject {
 
     #if CLOUDKIT_SCHEMA_SETUP
     private func initializeDevelopmentSchema() async {
+        var succeeded = false
+        defer {
+            // Only the setup configuration contains this CLI handshake or exits on completion.
+            if ProcessInfo.processInfo.arguments.contains("--cloudkit-schema-cli") {
+                let marker = succeeded ? "CUEKEEPER_SCHEMA_INIT_OK" : "CUEKEEPER_SCHEMA_INIT_FAILED"
+                FileHandle.standardOutput.write(Data("\n\(marker)\n".utf8))
+                exit(succeeded ? 0 : 1)
+            }
+        }
         guard cloudEnabled,
               Bundle.main.object(forInfoDictionaryKey: "CuekeeperCloudKitEnvironment") as? String == "Development" else {
             schemaInitializationStatus = "Schema setup refused: a Development CloudKit configuration is required."
@@ -94,6 +103,7 @@ final class PersistenceController: ObservableObject {
             try await Task.detached { [container] in
                 try container.initializeCloudKitSchema(options: [])
             }.value
+            succeeded = true
             schemaInitializationStatus = "Development schema initialized. Return to the Cuekeeper scheme, then run ./cloudkit.sh export on your Mac."
         } catch {
             let failure = error as NSError

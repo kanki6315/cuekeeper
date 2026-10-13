@@ -11,12 +11,15 @@
 		28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
 		29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */; };
 		38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184979F54A69B58764328050 /* PersistenceController.swift */; };
+		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
 		5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */; };
 		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
+		991F28DFD42FDA0529BED47C /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
 		AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */ = {isa = PBXBuildFile; fileRef = BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */; };
 		AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC022135F654D55A6A7311E /* RootView.swift */; };
+		BB6FD0F28A906423BA740890 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 /* End PBXBuildFile section */
@@ -42,12 +45,15 @@
 		06442705EA3E6D3F4031E809 /* CaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureTests.swift; sourceTree = "<group>"; };
 		0AC022135F654D55A6A7311E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		134663AFB643D201DF4E98CF /* SchemaHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SchemaHelper.entitlements; sourceTree = "<group>"; };
 		184979F54A69B58764328050 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
 		242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDraft.swift; sourceTree = "<group>"; };
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
 		40A57E11DA88086857902024 /* Cuekeeper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cuekeeper.entitlements; sourceTree = "<group>"; };
 		46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CuekeeperSchemaHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV2.xcdatamodel; sourceTree = "<group>"; };
+		893F1EA4F4B4BB063F301463 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		91C80D913C2F1C3287CFD3DF /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Cuekeeper.xcdatamodel; sourceTree = "<group>"; };
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -55,6 +61,7 @@
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
+		D32CAA2E3C0D27BDF3B934FD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D682B024A3E281F66B73080A /* JobEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobEditorView.swift; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -68,10 +75,21 @@
 			path = CuekeeperUITests;
 			sourceTree = "<group>";
 		};
+		476CB99C5F3CA8A9334ABC4F /* CloudKitSetupMac */ = {
+			isa = PBXGroup;
+			children = (
+				D32CAA2E3C0D27BDF3B934FD /* Info.plist */,
+				893F1EA4F4B4BB063F301463 /* main.swift */,
+				134663AFB643D201DF4E98CF /* SchemaHelper.entitlements */,
+			);
+			path = CloudKitSetupMac;
+			sourceTree = "<group>";
+		};
 		57319CF8E6BF75448DE02999 = {
 			isa = PBXGroup;
 			children = (
 				BB63A509303213E9C143896F /* brand */,
+				476CB99C5F3CA8A9334ABC4F /* CloudKitSetupMac */,
 				9B745CEBE47DCA88FDCB58A9 /* Cuekeeper */,
 				7B10F434EE90C5483BD6177B /* CuekeeperTests */,
 				27D261610FBDE70E33F6FD27 /* CuekeeperUITests */,
@@ -83,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				AC9EB79EE979555FDF748422 /* Cuekeeper.app */,
+				5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */,
 				46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */,
 				1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */,
 			);
@@ -135,6 +154,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		39D4444CB292F06AEDFEE9F3 /* CuekeeperSchemaHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A436BDC8F2A7F527DE13F22F /* Build configuration list for PBXNativeTarget "CuekeeperSchemaHelper" */;
+			buildPhases = (
+				CEA544537015BDDA3219A393 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CuekeeperSchemaHelper;
+			packageProductDependencies = (
+			);
+			productName = CuekeeperSchemaHelper;
+			productReference = 5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */;
+			productType = "com.apple.product-type.application";
+		};
 		5A212CD0E684CD58B669CF96 /* CuekeeperTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1E4BC5DF25D28570DB1D3BC8 /* Build configuration list for PBXNativeTarget "CuekeeperTests" */;
@@ -198,6 +234,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					39D4444CB292F06AEDFEE9F3 = {
+						DevelopmentTeam = TDBAHN96B3;
+						ProvisioningStyle = Automatic;
+					};
 					5A212CD0E684CD58B669CF96 = {
 						DevelopmentTeam = TDBAHN96B3;
 						ProvisioningStyle = Automatic;
@@ -228,6 +268,7 @@
 			projectRoot = "";
 			targets = (
 				7AD0EA2D4AC35F68DB77E170 /* Cuekeeper */,
+				39D4444CB292F06AEDFEE9F3 /* CuekeeperSchemaHelper */,
 				5A212CD0E684CD58B669CF96 /* CuekeeperTests */,
 				9C7672FB0F82A2EBCBA77A94 /* CuekeeperUITests */,
 			);
@@ -260,6 +301,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CEA544537015BDDA3219A393 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB6FD0F28A906423BA740890 /* Cuekeeper.xcdatamodeld in Sources */,
+				991F28DFD42FDA0529BED47C /* Job.swift in Sources */,
+				53C75F6086D7A02F11282AF7 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,6 +364,27 @@
 			};
 			name = Debug;
 		};
+		2619D712B7BA3AF07EA65BB0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLOUDKIT_ENVIRONMENT = Development;
+				CODE_SIGN_ENTITLEMENTS = CloudKitSetupMac/SchemaHelper.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = CloudKitSetupMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				PRODUCT_NAME = CuekeeperSchemaHelper;
+				SDKROOT = macosx;
+				TARGETED_DEVICE_FAMILY = "";
+			};
+			name = Release;
+		};
 		44F05C58CD448523EF3643F3 /* CloudKitSetup */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -348,6 +420,27 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = CloudKitSetup;
+		};
+		54EFA5DC2A00C9A3FB5F4520 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLOUDKIT_ENVIRONMENT = Development;
+				CODE_SIGN_ENTITLEMENTS = CloudKitSetupMac/SchemaHelper.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = CloudKitSetupMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				PRODUCT_NAME = CuekeeperSchemaHelper;
+				SDKROOT = macosx;
+				TARGETED_DEVICE_FAMILY = "";
+			};
+			name = Debug;
 		};
 		6D9835CC47C12F37FC85398A /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -421,7 +514,6 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -447,6 +539,27 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		9FF5AAA60F78C25C5C6557F9 /* CloudKitSetup */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLOUDKIT_ENVIRONMENT = Development;
+				CODE_SIGN_ENTITLEMENTS = CloudKitSetupMac/SchemaHelper.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = CloudKitSetupMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				PRODUCT_NAME = CuekeeperSchemaHelper;
+				SDKROOT = macosx;
+				TARGETED_DEVICE_FAMILY = "";
+			};
+			name = CloudKitSetup;
 		};
 		B9B2474A6270C0C2565021BD /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -561,7 +674,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -631,7 +743,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG CLOUDKIT_SCHEMA_SETUP";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -685,6 +796,16 @@
 				53FC7BC39177E163AB22C361 /* CloudKitSetup */,
 				231F9572E7AF3117F92EA5B2 /* Debug */,
 				9FAB2B999FAC057C5C6CD694 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CloudKitSetup;
+		};
+		A436BDC8F2A7F527DE13F22F /* Build configuration list for PBXNativeTarget "CuekeeperSchemaHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9FF5AAA60F78C25C5C6557F9 /* CloudKitSetup */,
+				54EFA5DC2A00C9A3FB5F4520 /* Debug */,
+				2619D712B7BA3AF07EA65BB0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = CloudKitSetup;

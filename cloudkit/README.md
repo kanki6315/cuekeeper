@@ -7,28 +7,45 @@ All commands here operate on `iCloud.com.arjunakankipati.cuekeeper`, team
 
 ## Initialize Development
 
-From the terminal:
+From the terminal, using this Mac (no phone required):
 
 ```sh
-xcrun devicectl list devices
-./cloudkit.sh init --device '<device UDID or name>'
-./cloudkit.sh export
+./cloudkit.sh init --export
 ```
 
-Keep the selected paired device unlocked, with Developer Mode enabled and signed
-into iCloud. The script builds the setup scheme, installs it, and waits up to
-180 seconds for an explicit completion marker. Use `--timeout 300` if needed.
-Logs are saved under `build/cloudkit-initialize/`. A successful app launch alone
-is not treated as successful initialization. This installs the setup build over
-Cuekeeper on that device; its separate setup store leaves the normal local store
-untouched. Return to the ordinary app build or reinstall TestFlight afterward.
-The script does not export or deploy automatically.
+Or run `./cloudkit.sh init` and `./cloudkit.sh export` separately. The default
+runner builds a signed native macOS helper with Xcode's signed-in developer
+account, automatically provisioning it and registering this Mac if necessary.
+The Mac must be signed into iCloud in System Settings. Export additionally uses
+the saved cktool management token described below.
 
-This device runner is a convenience for the existing iOS setup scheme, not an
-Apple requirement to initialize inside the shipping app. Core Data initialization
-can also run in an appropriately configured integration-test or helper target.
+The helper shares the exact versioned Core Data model and managed object classes
+with Cuekeeper. It uses Cuekeeper’s existing container-authorized bundle ID
+`com.arjunakankipati.cuekeeper` on macOS; its signed CloudKit entitlement is
+always **Development**, even if built with Release. It checks that entitlement
+before accessing CloudKit and requires an explicit initialization argument.
+It uses a separate SQLite store in its sandbox's Application Support directory.
+It does not install or launch the iOS app. Apple creates and removes
+representative records during initialization; existing schema is never reset.
+
+The runner requires both a zero exit status and an explicit completion marker.
+Initialization times out after 180 seconds; use `--timeout 300` if needed.
+Build/runtime logs are under `build/cloudkit-initialize-mac/`. `--export` runs
+only after confirmed initialization. Production deployment remains manual.
+
+The older device runner remains available:
+
+```sh
+./cloudkit.sh init --device '<device UDID or name>' --export
+```
+
+That option requires an unlocked, paired device with Developer Mode and iCloud.
+It installs the setup build over Cuekeeper, using a separate setup store; return
+to the ordinary build or reinstall TestFlight afterward. Its logs are under
+`build/cloudkit-initialize/`.
+
 `cktool` can import an existing schema but does not generate Core Data's mapping
-from the managed object model.
+from the managed object model. The helper runs Apple's Core Data initializer.
 
 Alternatively, use Xcode:
 
@@ -39,7 +56,7 @@ Alternatively, use Xcode:
    console also receives the result.
 4. Return to the ordinary **Cuekeeper** scheme for app development.
 
-The setup scheme uses the `CloudKitSetup` build configuration. Schema generation
+The iOS setup scheme uses the `CloudKitSetup` build configuration. Schema generation
 is compiled only into that configuration, requires a Development environment,
 and uses a separate local `CloudKitSchemaSetup/Schema.sqlite` store. Neither
 ordinary Debug nor Release contains the initialization code. The setup scheme's
@@ -78,7 +95,7 @@ checksums of the Core Data model versions and current-version selector.
 Export rejects an empty/uninitialized schema or missing model attributes before
 replacing the previous snapshot. The fingerprint catches subsequent local model
 changes; it does not independently prove that Core Data completed initialization
-for every possible model migration. Always run the initialization scheme first
+for every possible model migration. Always run initialization first
 when the model changes. Do not edit the exported schema by hand.
 
 ## Deploy, then check

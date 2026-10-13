@@ -3,8 +3,10 @@
   "environment": "development",
   "format": 1,
   "model_files": {
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/Cuekeeper.xcdatamodel/contents": "266a5735e7e410299f213394961b3b4cf9670f6b323fb3fb5fc6397193da0dff"
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "e5683a647d88619674ae58f36f3e36243bc1469d1ddef6e6263f480d159e563c",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/Cuekeeper.xcdatamodel/contents": "266a5735e7e410299f213394961b3b4cf9670f6b323fb3fb5fc6397193da0dff",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV2.xcdatamodel/contents": "428f1d885575311b82db85743d1a064c0b5c93d4f3139ab1ee6196e2f3d59161"
   },
-  "schema_sha256": "94284e2f2642044d46a899dc956ba1eee83f23bfdfb1a5ffd989d428c76ac160",
+  "schema_sha256": "ad396c578fcdddb19054179769b645700a78757286ff1f7d79565c2dac877092",
   "team": "TDBAHN96B3"
 }

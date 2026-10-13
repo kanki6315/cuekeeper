@@ -52,15 +52,11 @@ Do not use this build as the only copy of important records.
 
 ## CloudKit setup and verification
 
-To initialize from the terminal, use `./cloudkit.sh init --device '<UDID or name>'`
-with an unlocked, paired, iCloud-signed-in device. This installs the dedicated
-setup build and waits for confirmed completion. See the CloudKit workflow below
-for side effects, logs and the equivalent Xcode steps.
-
-Select the **Cuekeeper - Initialize CloudKit** scheme in Xcode and run it on a
-device signed into iCloud. This uses a dedicated Development-only build and a
-separate local store. Settings shows a persistent initialization result. Return
-to the ordinary **Cuekeeper** scheme afterward; no launch arguments are needed.
+Run `./cloudkit.sh init --export` to build the signed macOS setup helper,
+initialize Development, and export the schema. This Mac must be signed into
+iCloud; Xcode handles development signing. No phone is needed. The helper shares
+the app's model and uses its own local store. See the workflow below for logs,
+authentication, and the optional older iOS setup scheme (`--device`).
 
 Authenticate Apple's schema CLI once using a management token from CloudKit
 Console (separate from your App Store Connect key):
@@ -162,11 +158,10 @@ build, including capture offline and sync after reconnecting. Cross-device
 conflicts were not tested. The new V2 fields and relationships need their own
 cross-device check after release.
 
-Before distributing this model change, run the dedicated initialization scheme
-on an iCloud-signed-in device, export and commit the real Development schema,
-and deploy its additions in CloudKit Console. The existing committed CloudKit
-snapshot represents the first released model; the release gate intentionally
-blocks V2 uploads until the new export and Production deployment are complete.
+The V2 Development schema was initialized and exported with the macOS helper on
+October 12, 2026. The committed snapshot includes clients, roles, and the expanded
+job fields. Before distributing this change, deploy its additions in CloudKit
+Console and run `./cloudkit.sh check`. Production deployment is still pending.
 Client/role renames update related jobs through their shared records. Library
 names are checked case-insensitively on this device; independently created
 records on offline devices are not yet automatically deduplicated.

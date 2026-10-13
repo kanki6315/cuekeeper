@@ -126,7 +126,7 @@ def require_model_records(root, source):
         if name not in records or missing:
             raise SchemaError(f"Development schema is not initialized for {name}; missing fields: "
                               f"{', '.join(sorted(missing)) or '(record type)'}. "
-                              "Run the 'Cuekeeper - Initialize CloudKit' scheme on an iCloud-signed-in device first.")
+                              "Run './cloudkit.sh init' on an iCloud-signed-in Mac first.")
 
 
 def run_cktool(arguments):

@@ -3,6 +3,8 @@ import SwiftUI
 @main
 struct CuekeeperApp: App {
     @StateObject private var persistence: PersistenceController
+    @StateObject private var calendar = CalendarController()
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         // Test isolation never changes the user's production store or iCloud records.
@@ -45,8 +47,18 @@ struct CuekeeperApp: App {
                 }
             }
             .environmentObject(persistence)
+            .environmentObject(calendar)
+            .onChange(of: persistence.isLoaded) { _, loaded in
+                if loaded { calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled) }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { calendar.refreshCalendars(); calendar.scheduleSync() }
+            }
             .tint(Color("AccentColor"))
-            .task { await persistence.refreshAccountStatus() }
+            .task {
+                await persistence.refreshAccountStatus()
+                if persistence.isLoaded { calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled) }
+            }
         }
     }
 }

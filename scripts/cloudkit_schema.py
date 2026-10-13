@@ -31,6 +31,9 @@ def model_files(root):
                    if p.is_file() and (p.name == "contents" or p.name == ".xccurrentversion"))
     if not paths:
         raise SchemaError("Core Data model files are missing.")
+    calendar = root / "Cuekeeper/CalendarPublisher.swift"
+    if calendar.is_file():
+        paths.append(calendar)
     return {str(p.relative_to(root)): digest(p.read_bytes()) for p in paths}
 
 
@@ -120,7 +123,10 @@ def required_fields(root):
 
 def require_model_records(root, source):
     records, _ = parse_schema(source)
-    for name, expected in required_fields(root).items():
+    required = required_fields(root)
+    if (root / "Cuekeeper/CalendarPublisher.swift").is_file():
+        required["CuekeeperCalendarPublisher"] = {"ownerID", "ownerName"}
+    for name, expected in required.items():
         actual = {unquote(item[0]) for item in records.get(name, ()) if item and item[0] != "GRANT"}
         missing = expected - actual
         if name not in records or missing:

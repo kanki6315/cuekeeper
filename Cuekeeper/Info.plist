@@ -24,6 +24,8 @@
 	<string>$(CLOUDKIT_ENVIRONMENT)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Cuekeeper reads and updates its own job placeholders and confirmed sessions in your selected calendar.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

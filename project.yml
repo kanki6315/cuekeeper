@@ -47,6 +47,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        NSCalendarsFullAccessUsageDescription: Cuekeeper reads and updates its own job placeholders and confirmed sessions in your selected calendar.
         UIBackgroundModes: [remote-notification]
         UILaunchScreen: {}
         UIApplicationSceneManifest:
@@ -75,6 +76,7 @@ targets:
       - path: Cuekeeper/Storage/Cuekeeper.xcdatamodeld
       - path: Cuekeeper/Storage/Job.swift
       - path: Cuekeeper/Storage/WorkSession.swift
+      - path: Cuekeeper/CalendarPublisher.swift
     entitlements:
       path: CloudKitSetupMac/SchemaHelper.entitlements
       properties:

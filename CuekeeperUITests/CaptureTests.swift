@@ -24,6 +24,7 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Final programme"].waitForExistence(timeout: 5))
         app.staticTexts["Final programme"].tap()
         app.buttons["edit-session"].tap()
+        for _ in 0..<6 where !app.buttons["session-schedule"].isHittable { app.swipeUp() }
         XCTAssertTrue(app.buttons["session-schedule"].waitForExistence(timeout: 5))
         app.buttons["session-schedule"].tap(); app.buttons["Confirmed"].tap()
         app.buttons["save-session"].tap()

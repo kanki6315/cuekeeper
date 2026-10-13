@@ -46,6 +46,11 @@ application.setActivationPolicy(.prohibited)
 Task.detached {
     do {
         try await initializeSchema()
+        try await CalendarPublisher.initializeDevelopmentSchema()
+        if CommandLine.arguments.contains("--verify-calendar-publisher") {
+            try await CalendarPublisher.verifyDevelopmentCoordination()
+            FileHandle.standardOutput.write(Data("CALENDAR_PUBLISHER_VERIFIED\n".utf8))
+        }
         FileHandle.standardOutput.write(Data("CUEKEEPER_SCHEMA_INIT_OK\n".utf8))
         exit(0)
     } catch {

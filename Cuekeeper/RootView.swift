@@ -161,6 +161,7 @@ private struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         Form {
+            Section("Integrations") { NavigationLink("Calendar") { CalendarSettingsView() } }
             Section("People & roles") {
                 NavigationLink("Clients") { LibraryView(kind: .client) }
                 NavigationLink("Roles") { LibraryView(kind: .role) }

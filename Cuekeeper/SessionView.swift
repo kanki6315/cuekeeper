@@ -41,10 +41,10 @@ struct SessionEditorView: View {
                 Section {
                     Picker("Schedule", selection: $draft.scheduleStatus) {
                         Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed")
-                    }.accessibilityIdentifier("session-schedule")
+                    }.pickerStyle(.menu).accessibilityIdentifier("session-schedule")
                     Picker("Coverage", selection: $draft.coverage) {
                         Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering")
-                    }.accessibilityIdentifier("session-coverage")
+                    }.pickerStyle(.menu).accessibilityIdentifier("session-coverage")
                 } footer: { Text("Confirming times does not change whether you’re covering this session or whether the job is booked.") }
                 Section("Roles") {
                     Toggle("Override job roles", isOn: $draft.overridesRoles)
@@ -135,6 +135,7 @@ struct SessionRow: View {
 }
 
 struct SessionDetailView: View {
+    @EnvironmentObject private var calendar: CalendarController
     @ObservedObject var session: WorkSession
     @Environment(\.managedObjectContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -164,6 +165,10 @@ struct SessionDetailView: View {
                         if !link.notes.isEmpty { Text(link.notes).font(.subheadline).foregroundStyle(.secondary) }
                     }
                 }
+            }
+            Section("Calendar") {
+                Text(session.calendarEligible ? "Eligible for a timed entry in your connected calendar." : "A timed entry requires confirmed start and end times and coverage set to Covering.")
+                Text(calendar.status).font(.subheadline).foregroundStyle(.secondary)
             }
             Section { Button("Remove Session", role: .destructive) { removing = true } }
         }

@@ -146,6 +146,7 @@ struct TimeZonePicker: View {
 }
 
 struct JobDetailView: View {
+    @EnvironmentObject private var calendar: CalendarController
     @ObservedObject var job: Job
     @State private var editing = false
     @State private var duplicating = false
@@ -173,6 +174,10 @@ struct JobDetailView: View {
             }
             if !job.notes.isEmpty { Section("Notes") { Text(job.notes).textSelection(.enabled) } }
             SessionsSection(job: job) { addingSession = true }
+            Section("Calendar") {
+                Text(job.bookingStatus == "cancelled" ? "Cancelled jobs have no calendar entries." : "The all-day placeholder stays alongside confirmed sessions you’re covering.")
+                Text(calendar.status).font(.subheadline).foregroundStyle(.secondary)
+            }
             Section {
                 Button("Duplicate Job", systemImage: "plus.square.on.square") { duplicating = true }
                     .accessibilityIdentifier("duplicate-job")

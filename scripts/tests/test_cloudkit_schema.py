@@ -11,16 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("cloudkit_schema", ROOT / "scripts/cloudkit_schema.py")
 ck = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ck)
-SCHEMA = '''DEFINE SCHEMA
-RECORD TYPE CD_Job (
- CD_id STRING, CD_name STRING, CD_startDay STRING, CD_endDay STRING,
- CD_bookingStatus STRING, CD_createdAt TIMESTAMP,
- CD_workArrangement STRING, CD_location STRING, CD_timeZoneID STRING, CD_notes STRING, "___recordID" REFERENCE QUERYABLE,
- GRANT WRITE TO "_creator"
-);
-RECORD TYPE CD_Client (CD_id STRING, CD_name STRING, CD_contact STRING, CD_notes STRING, CD_defaultCurrency STRING);
-RECORD TYPE CD_WorkRole (CD_id STRING, CD_name STRING);
-'''
+SCHEMA = (ROOT / "cloudkit/schema.ckdb").read_text()
 
 
 class SchemaTests(unittest.TestCase):
@@ -31,6 +22,7 @@ class SchemaTests(unittest.TestCase):
         shutil.copytree(ROOT / ck.MODEL, self.root / ck.MODEL)
         shutil.copy(ROOT / "Cuekeeper/Cuekeeper.entitlements", self.root / "Cuekeeper")
         shutil.copy(ROOT / "project.yml", self.root)
+        shutil.copy(ROOT / "Cuekeeper/CalendarPublisher.swift", self.root / "Cuekeeper")
 
     def export(self, source=SCHEMA):
         with patch.object(ck, "remote_export", return_value=source):

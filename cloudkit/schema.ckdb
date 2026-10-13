@@ -141,6 +141,8 @@ DEFINE SCHEMA
         CD_name_ckAsset            ASSET,
         CD_notes                   STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_notes_ckAsset           ASSET,
+        CD_project                 STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_series                  STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_startDay                STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_startDay_ckAsset        ASSET,
         CD_timeZoneID              STRING QUERYABLE SEARCHABLE SORTABLE,
@@ -184,7 +186,43 @@ DEFINE SCHEMA
         GRANT READ TO "_world"
     );
 
+    RECORD TYPE CD_WorkProject (
+        CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_moveReceipt         BYTES QUERYABLE SORTABLE,
+        CD_moveReceipt_ckAsset ASSET,
+        CD_name                STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_name_ckAsset        ASSET,
+        "___createTime"        TIMESTAMP,
+        "___createdBy"         REFERENCE,
+        "___etag"              STRING,
+        "___modTime"           TIMESTAMP,
+        "___modifiedBy"        REFERENCE,
+        "___recordID"          REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
     RECORD TYPE CD_WorkRole (
+        CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_moveReceipt         BYTES QUERYABLE SORTABLE,
+        CD_moveReceipt_ckAsset ASSET,
+        CD_name                STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_name_ckAsset        ASSET,
+        "___createTime"        TIMESTAMP,
+        "___createdBy"         REFERENCE,
+        "___etag"              STRING,
+        "___modTime"           TIMESTAMP,
+        "___modifiedBy"        REFERENCE,
+        "___recordID"          REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_WorkSeries (
         CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_moveReceipt         BYTES QUERYABLE SORTABLE,
@@ -220,8 +258,10 @@ DEFINE SCHEMA
         CD_notes                  STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_notes_ckAsset          ASSET,
         CD_overridesRoles         INT64 QUERYABLE SORTABLE,
+        CD_overridesSeries        INT64 QUERYABLE SORTABLE,
         CD_scheduleStatus         STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_scheduleStatus_ckAsset ASSET,
+        CD_series                 STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_startTime              TIMESTAMP QUERYABLE SORTABLE,
         CD_timeZoneID             STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_timeZoneID_ckAsset     ASSET,

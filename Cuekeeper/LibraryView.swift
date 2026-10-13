@@ -2,10 +2,16 @@ import CoreData
 import SwiftUI
 
 enum LibraryKind {
-    case client, role
-    var entity: String { self == .client ? "Client" : "WorkRole" }
-    var title: String { self == .client ? "Clients" : "Roles" }
-    var singular: String { self == .client ? "Client" : "Role" }
+    case client, role, project, series
+    var entity: String {
+        switch self { case .client: "Client"; case .role: "WorkRole"; case .project: "WorkProject"; case .series: "WorkSeries" }
+    }
+    var title: String {
+        switch self { case .client: "Clients"; case .role: "Roles"; case .project: "Projects"; case .series: "Series" }
+    }
+    var singular: String {
+        switch self { case .client: "Client"; case .role: "Role"; case .project: "Project"; case .series: "Series" }
+    }
 }
 
 struct LibraryView: View {
@@ -20,7 +26,7 @@ struct LibraryView: View {
         _records = FetchRequest(fetchRequest: request)
     }
     var body: some View {
-        List {
+        DaybookList {
             ForEach(records.filter { query.isEmpty || ($0.value(forKey: "name") as? String ?? "").localizedCaseInsensitiveContains(query) }, id: \.objectID) { record in
                 NavigationLink {
                     LibraryDetailView(record: record, kind: kind)
@@ -33,7 +39,7 @@ struct LibraryView: View {
                     description: Text("Add one here or while editing a job."))
             }
         }
-        .navigationTitle(kind.title)
+        .navigationTitle(kind.title).navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query)
         .toolbar { Button("Add \(kind.singular)", systemImage: "plus") { adding = true } }
         .sheet(isPresented: $adding) { LibraryEditor(kind: kind) }
@@ -44,49 +50,61 @@ struct LibraryDetailView: View {
     @ObservedObject var record: NSManagedObject
     let kind: LibraryKind
     @State private var editing = false
+    @State private var year = ""
     private var jobs: [Job] {
         var related = (record.value(forKey: "jobs") as? Set<Job>) ?? []
         if let role = record as? WorkRole {
             related.formUnion((role.sessions ?? []).filter { $0.deletedAt == nil }.compactMap(\.job))
         }
+        if let series = record as? WorkSeries {
+            related.formUnion((series.sessions ?? []).filter { $0.deletedAt == nil && $0.overridesSeries }.compactMap(\.job))
+        }
         return related.sorted { $0.startDay > $1.startDay }
     }
     var body: some View {
-        Form {
+        DaybookForm(title: record.value(forKey: "name") as? String ?? kind.singular) {
             if let client = record as? Client {
                 Section("Client") {
-                    if !client.contact.isEmpty { LabeledContent("Contact", value: client.contact).textSelection(.enabled) }
-                    LabeledContent("Default currency", value: client.defaultCurrency)
+                    if !client.contact.isEmpty { DaybookMetadata(symbol: "envelope", text: client.contact).textSelection(.enabled) }
+                    DaybookMetadata(symbol: "dollarsign.circle", text: "Default currency · \(client.defaultCurrency)")
                     if !client.notes.isEmpty { Text(client.notes).textSelection(.enabled) }
                 }
             }
             if let client = record as? Client {
                 Section("Related invoices") {
-                    if (client.invoices ?? []).isEmpty { Text("No invoices yet").foregroundStyle(.secondary) }
+                    if (client.invoices ?? []).isEmpty { Text("No invoices yet").foregroundStyle(Color("SecondaryText")) }
                     ForEach((client.invoices ?? []).sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }, id: \.objectID) { invoice in
-                        NavigationLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
+                        DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
+                    }
+                }
+            }
+            if kind == .project {
+                Section {
+                    DaybookPicker("Year", selection: $year) {
+                        Text("All years").tag("")
+                        ForEach(Array(Set(jobs.map { String($0.startDay.prefix(4)) })).sorted().reversed(), id: \.self) { Text($0).tag($0) }
                     }
                 }
             }
             Section("Related jobs") {
-                if jobs.isEmpty { Text("No jobs yet").foregroundStyle(.secondary) }
-                ForEach(jobs, id: \.objectID) { job in
-                    NavigationLink { JobDetailView(job: job) } label: {
+                if jobs.isEmpty { Text("No jobs yet").foregroundStyle(Color("SecondaryText")) }
+                ForEach(jobs.filter { year.isEmpty || $0.startDay.hasPrefix(year) }, id: \.objectID) { job in
+                    DaybookLink { JobDetailView(job: job) } label: {
                         VStack(alignment: .leading) {
-                            Text(job.name)
-                            Text(dateRange(job)).font(.subheadline).foregroundStyle(.secondary)
+                            HStack { Text(job.name).font(.headline); Spacer(); BookingBadge(status: job.bookingStatus) }
+                            Text(dateRange(job)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                         }
                     }
                 }
             }
         }
-        .navigationTitle(record.value(forKey: "name") as? String ?? kind.singular)
+        .navigationTitle(kind.singular).navigationBarTitleDisplayMode(.inline)
         .toolbar { Button("Edit") { editing = true } }
         .sheet(isPresented: $editing) { LibraryEditor(kind: kind, record: record) }
     }
 }
 
-private struct LibraryEditor: View {
+struct LibraryEditor: View {
     let kind: LibraryKind
     let record: NSManagedObject?
     @Environment(\.managedObjectContext) private var context
@@ -105,17 +123,17 @@ private struct LibraryEditor: View {
     }
     var body: some View {
         NavigationStack {
-            Form {
+            DaybookForm {
                 Section {
-                    TextField("Name", text: $draft.name).focused($nameFocused)
+                    DaybookTextField("Name", text: $draft.name).focused($nameFocused)
                         .submitLabel(.done).onSubmit { nameFocused = false }
                     if kind == .client {
-                        TextField("Contact details", text: $draft.contact, axis: .vertical).lineLimit(2...6)
-                        Picker("Default currency", selection: $draft.currency) {
+                        DaybookTextField("Contact details", text: $draft.contact, axis: .vertical).lineLimit(2...6)
+                        DaybookPicker("Default currency", selection: $draft.currency) {
                             Text("USD").tag("USD")
                             Text("EUR").tag("EUR")
                         }
-                        TextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...10)
+                        DaybookTextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...10)
                     }
                 } footer: { Text("Renaming updates the name shown on related jobs.") }
             }
@@ -139,5 +157,37 @@ private struct LibraryEditor: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
+        .presentationBackground(Color("PageBackground"))
+    }
+}
+
+/// Reuse and creation share one binding, matching the client editor.
+struct NamedLibraryField: View {
+    let kind: LibraryKind
+    @Binding var name: String
+    @FocusState private var focused: Bool
+    @FetchRequest private var records: FetchedResults<NSManagedObject>
+    init(kind: LibraryKind, name: Binding<String>) {
+        self.kind = kind; _name = name
+        let request = NSFetchRequest<NSManagedObject>(entityName: kind.entity)
+        request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+        _records = FetchRequest(fetchRequest: request)
+    }
+    private var names: [String] { Array(Set(records.compactMap { $0.value(forKey: "name") as? String }).union(name.isEmpty ? [] : [name])).sorted() }
+    var body: some View {
+        if !records.isEmpty {
+            DaybookPicker("Reuse \(kind.singular.lowercased())", selection: $name, identifier: "reuse-\(kind.entity)") {
+                Text("None").tag("")
+                ForEach(names, id: \.self) { Text($0).tag($0) }
+            }
+        }
+        VStack(alignment: .leading, spacing: 6) {
+            Text(kind.singular).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            DaybookTextField("Name (optional)", text: $name)
+                .focused($focused).submitLabel(.done).onSubmit { focused = false }
+                .accessibilityLabel("\(kind.singular) name")
+                .accessibilityIdentifier("library-\(kind.entity)-name")
+        }
+        .padding(.vertical, 4)
     }
 }

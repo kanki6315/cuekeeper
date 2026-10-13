@@ -2,6 +2,7 @@ import CoreData
 import SwiftUI
 
 struct SessionEditorView: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.managedObjectContext) private var context
     @Environment(\.dismiss) private var dismiss
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
@@ -20,17 +21,28 @@ struct SessionEditorView: View {
     private var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
     var body: some View {
         NavigationStack {
-            Form {
+            DaybookForm {
                 Section {
-                    TextField("Session name (optional)", text: $draft.name).accessibilityIdentifier("session-name")
+                    DaybookTextField("Session name (optional)", text: $draft.name).accessibilityIdentifier("session-name")
                     Toggle("Date known", isOn: Binding(get: { !draft.day.isEmpty }, set: { draft.day = $0 ? job.startDay : "" }))
                         .disabled(draft.startTime != nil)
                     if !draft.day.isEmpty {
-                        DatePicker("Session date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date)
-                            .disabled(draft.startTime != nil)
+                        if typeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Session date")
+                                sessionDatePicker.labelsHidden()
+                            }
+                        } else { sessionDatePicker }
                     }
-                    NavigationLink { TimeZonePicker(selection: $draft.timeZoneID) } label: {
-                        LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Choose timezone" : draft.timeZoneID.replacingOccurrences(of: "_", with: " "))
+                    DaybookLink { TimeZonePicker(selection: $draft.timeZoneID) } label: {
+                        if typeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Timezone")
+                                Text(draft.timeZoneID.isEmpty ? "Choose timezone" : draft.timeZoneID.replacingOccurrences(of: "_", with: " ")).foregroundStyle(Color("SecondaryText"))
+                            }
+                        } else {
+                            LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Choose timezone" : draft.timeZoneID.replacingOccurrences(of: "_", with: " "))
+                        }
                     }
                     optionalTime("Start", value: $draft.startTime)
                     optionalTime("End", value: $draft.endTime)
@@ -41,28 +53,37 @@ struct SessionEditorView: View {
                 Section {
                     Picker("Schedule", selection: $draft.scheduleStatus) {
                         Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed")
-                    }.pickerStyle(.menu).accessibilityIdentifier("session-schedule")
+                    }.pickerStyle(.segmented).accessibilityIdentifier("session-schedule")
                     Picker("Coverage", selection: $draft.coverage) {
                         Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering")
-                    }.pickerStyle(.menu).accessibilityIdentifier("session-coverage")
-                } footer: { Text("Confirming times does not change whether you’re covering this session or whether the job is booked.") }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("session-coverage")
+                } header: { Text("Status & coverage") } footer: { Text("Confirming times does not change whether you’re covering this session or whether the job is booked.") }
+                Section("Series") {
+                    Toggle("Use job series", isOn: Binding(get: { !draft.overridesSeries }, set: { draft.overridesSeries = !$0 }))
+                        .accessibilityIdentifier("session-use-job-series")
+                    if draft.overridesSeries {
+                        NamedLibraryField(kind: .series, name: $draft.seriesName)
+                    } else {
+                        Text(job.series?.name ?? "No job series selected").foregroundStyle(Color("SecondaryText"))
+                    }
+                }
                 Section("Roles") {
                     Toggle("Override job roles", isOn: $draft.overridesRoles)
                     if draft.overridesRoles {
                         ForEach(Array(Set(roles.map(\.name))).sorted(), id: \.self) { role in
                             Toggle(role, isOn: Binding(get: { draft.roleNames.contains(role) }, set: { if $0 { draft.roleNames.insert(role) } else { draft.roleNames.remove(role) } }))
                         }
-                        if roles.isEmpty { Text("Add reusable roles in Settings or in the job editor.").foregroundStyle(.secondary) }
-                    } else { Text(job.roleNames.isEmpty ? "No job roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(.secondary) }
+                        if roles.isEmpty { Text("Add reusable roles in Settings or in the job editor.").foregroundStyle(Color("SecondaryText")) }
+                    } else { Text(job.roleNames.isEmpty ? "No job roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(Color("SecondaryText")) }
                 }
-                Section("Notes") { TextField("Session notes", text: $draft.notes, axis: .vertical).lineLimit(3...8) }
+                Section("Notes") { DaybookTextField("Session notes", text: $draft.notes, axis: .vertical).lineLimit(3...8) }
                 Section {
                     ForEach($draft.links) { $link in
                         VStack(alignment: .leading, spacing: 12) {
-                            TextField("Link label (optional)", text: $link.label)
-                            TextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                            DaybookTextField("Link label (optional)", text: $link.label)
+                            DaybookTextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                                 .accessibilityIdentifier("broadcast-url")
-                            TextField("Link notes (optional)", text: $link.notes, axis: .vertical)
+                            DaybookTextField("Link notes (optional)", text: $link.notes, axis: .vertical)
                             Button("Remove Link", role: .destructive) { draft.links.removeAll { $0.id == link.id } }
                         }.padding(.vertical, 4)
                     }
@@ -88,19 +109,37 @@ struct SessionEditorView: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
+        .presentationBackground(Color("PageBackground"))
+    }
+    private var sessionDatePicker: some View {
+        DatePicker("Session date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date)
+            .disabled(draft.startTime != nil)
     }
     @ViewBuilder private func optionalTime(_ label: String, value: Binding<Date?>) -> some View {
-        Toggle("\(label) known", isOn: Binding(get: { value.wrappedValue != nil }, set: { enabled in
-            if enabled {
+        if value.wrappedValue != nil {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(label)
+                    DatePicker(label, selection: Binding(get: { value.wrappedValue ?? Date() }, set: { value.wrappedValue = $0 })).labelsHidden()
+                    Button { value.wrappedValue = nil } label: {
+                        Label("Clear \(label.lowercased())", systemImage: "xmark.circle").frame(minHeight: 44)
+                    }
+                }
+            } else {
+                HStack {
+                    DatePicker(label, selection: Binding(get: { value.wrappedValue ?? Date() }, set: { value.wrappedValue = $0 }))
+                    Button { value.wrappedValue = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Color("SecondaryText")).frame(width: 44, height: 44) }.accessibilityLabel("Clear \(label.lowercased())")
+                }
+            }
+        } else {
+            Button {
                 if draft.timeZoneID.isEmpty { draft.timeZoneID = TimeZone.current.identifier }
                 let start = draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date()
                 value.wrappedValue = label == "End" ? start.addingTimeInterval(3600) : start
-            } else { value.wrappedValue = nil }
-        }))
-        if value.wrappedValue != nil {
-            DatePicker(label, selection: Binding(get: { value.wrappedValue ?? Date() }, set: { value.wrappedValue = $0 }))
+            } label: { HStack { Text(label).foregroundStyle(Color.primary); Spacer(); Text("Add time"); Image(systemName: "plus").font(.caption) } }
         }
     }
+
 }
 
 struct SessionsSection: View {
@@ -113,11 +152,11 @@ struct SessionsSection: View {
     }
     var body: some View {
         Section {
+            if sessions.isEmpty { Text("Schedule to come").foregroundStyle(Color("SecondaryText")) }
             ForEach(sessions, id: \.objectID) { session in
-                NavigationLink { SessionDetailView(session: session) } label: { SessionRow(session: session) }
+                DaybookLink { SessionDetailView(session: session) } label: { SessionRow(session: session) }
             }
-            Button("Add Session", systemImage: "plus", action: onAdd).accessibilityIdentifier("add-session")
-        } header: { Text("Sessions") } footer: {
+        } header: { HStack { Text("Sessions"); Spacer(); Button("Add", systemImage: "plus", action: onAdd).buttonStyle(DaybookSecondaryButton()).accessibilityLabel("Add Session").accessibilityIdentifier("add-session") } } footer: {
             if sessions.isEmpty { Text("No sessions yet. Placeholder job dates remain useful until the schedule arrives.") }
             else if sessions.contains(where: { $0.scheduleStatus != "confirmed" }) { Text("Some session times are still tentative.") }
         }
@@ -129,9 +168,10 @@ struct SessionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(session.title).font(.headline)
-            Text(session.scheduleDescription).font(.subheadline).foregroundStyle(.secondary)
-            Text("\(session.scheduleStatus.capitalized) · \(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized)")
-                .font(.caption).foregroundStyle(.secondary)
+            if let series = session.effectiveSeries { Text(series.name).font(.subheadline) }
+            DaybookMetadata(symbol: "clock", text: session.compactSchedule)
+            HStack { BookingBadge(status: session.scheduleStatus); Text(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized).font(.caption).foregroundStyle(Color("SecondaryText")) }
+            if let call = session.callTime { DaybookMetadata(symbol: "video", text: "Call \(session.shortTime(call))") }
         }.padding(.vertical, 4)
     }
 }
@@ -145,32 +185,33 @@ struct SessionDetailView: View {
     @State private var removing = false
     @State private var error: String?
     var body: some View {
-        Form {
+        DaybookForm(title: session.title, subtitle: session.job?.name ?? "") {
+            Section("Series") { Text(session.effectiveSeries?.name ?? "Not added") }
             Section("Schedule") {
                 Text(session.scheduleDescription)
                 LabeledContent("Schedule", value: session.scheduleStatus.capitalized)
                 LabeledContent("Coverage", value: session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized)
                 if let call = session.callTime {
-                    Text("Call: \(session.formattedTime(call))")
+                    Text("Call: \(session.shortTime(call))")
                         .environment(\.timeZone, TimeZone(identifier: session.timeZoneID) ?? .current)
                 }
                 LabeledContent("Roles", value: session.roleNames.isEmpty ? "None selected" : session.roleNames.joined(separator: ", "))
             }
             if !session.notes.isEmpty { Section("Notes") { Text(session.notes).textSelection(.enabled) } }
             Section("Broadcast links") {
-                if session.sortedLinks.isEmpty { Text("No links added yet").foregroundStyle(.secondary) }
+                if session.sortedLinks.isEmpty { Text("No links added yet").foregroundStyle(Color("SecondaryText")) }
                 ForEach(session.sortedLinks, id: \.objectID) { link in
                     VStack(alignment: .leading, spacing: 6) {
                         if let url = URL(string: link.url), ["https", "http"].contains(url.scheme?.lowercased() ?? "") {
                             Link(link.label.isEmpty ? link.url : link.label, destination: url)
                         } else { Text(link.url).textSelection(.enabled) }
-                        if !link.notes.isEmpty { Text(link.notes).font(.subheadline).foregroundStyle(.secondary) }
+                        if !link.notes.isEmpty { Text(link.notes).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                     }
                 }
             }
             Section("Calendar") {
                 Text(session.calendarEligible ? "Eligible for a timed entry in your connected calendar." : "A timed entry requires confirmed start and end times and coverage set to Covering.")
-                Text(calendar.status).font(.subheadline).foregroundStyle(.secondary)
+                Text(calendar.status).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             }
             Section { Button("Remove Session", role: .destructive) { removing = true } }
         }
@@ -203,13 +244,13 @@ struct BroadcastLinkEditorView: View {
     private var changed: Bool { !link.url.isEmpty || !link.label.isEmpty || !link.notes.isEmpty || !name.isEmpty }
     var body: some View {
         NavigationStack {
-            Form {
+            DaybookForm {
                 Section {
                     if let session { LabeledContent("Session", value: session.title) }
-                    else { TextField("Session name (optional)", text: $name) }
-                    TextField("Label (optional)", text: $link.label)
-                    TextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().focused($focused).accessibilityIdentifier("quick-broadcast-url")
-                    TextField("Notes (optional)", text: $link.notes, axis: .vertical)
+                    else { DaybookTextField("Session name (optional)", text: $name) }
+                    DaybookTextField("Label (optional)", text: $link.label)
+                    DaybookTextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().focused($focused).accessibilityIdentifier("quick-broadcast-url")
+                    DaybookTextField("Notes (optional)", text: $link.notes, axis: .vertical)
                 } footer: {
                     if session == nil { Text("This creates an unscheduled session to keep the link with its broadcast. Add times later if useful.") }
                 }
@@ -229,7 +270,7 @@ struct BroadcastLinkEditorView: View {
                         }.accessibilityIdentifier("save-broadcast-link")
                     }
                 }
-                .task { focused = true }
+                .task { if !ProcessInfo.processInfo.arguments.contains("--design-fixtures") { focused = true } }
                 .saveErrorAlert($error).interactiveDismissDisabled(changed)
                 .confirmationDialog("Discard link?", isPresented: $discard, titleVisibility: .visible) {
                     Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
@@ -237,5 +278,6 @@ struct BroadcastLinkEditorView: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
+        .presentationBackground(Color("PageBackground"))
     }
 }

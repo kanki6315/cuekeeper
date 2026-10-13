@@ -31,6 +31,69 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testProjectsSeriesInheritanceAndIndependentFees() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var first = JobDraft(name: "Daytona")
+        first.projectName = "IMSA"; first.seriesName = "Main championship"; first.clientName = "Production company"
+        first.fee?.amount = "100"
+        let job = try XCTUnwrap(context.existingObject(with: first.save(in: context)) as? Job)
+        var second = first; second.name = "Sebring"; second.projectName = "imsa"; second.fee?.amount = "200"
+        let other = try XCTUnwrap(context.existingObject(with: second.save(in: context)) as? Job)
+        XCTAssertEqual(job.project, other.project); XCTAssertEqual(job.series, other.series)
+        XCTAssertEqual(try job.currentFee().amount, 10000); XCTAssertEqual(try other.currentFee().amount, 20000)
+        let sessionID = try SessionDraft(job: job).save(in: context, jobID: job.objectID)
+        let session = try XCTUnwrap(context.existingObject(with: sessionID) as? WorkSession)
+        XCTAssertEqual(session.effectiveSeries, job.series)
+        var override = SessionDraft(session: session); let baseline = override
+        override.overridesSeries = true; override.seriesName = "AEC"
+        try override.save(in: context, jobID: job.objectID, editing: sessionID, baseline: baseline)
+        XCTAssertEqual(session.effectiveSeries?.name, "AEC")
+        let reopened = SessionDraft(session: session)
+        XCTAssertTrue(reopened.overridesSeries)
+        XCTAssertEqual(reopened.seriesName, "AEC")
+        var notesOnly = reopened; notesOnly.notes = "Updated preparation"
+        try notesOnly.save(in: context, jobID: job.objectID, editing: sessionID, baseline: reopened)
+        XCTAssertEqual(session.effectiveSeries?.name, "AEC")
+        XCTAssertEqual(job.series?.name, "Main championship")
+        var filter = JobFilter(); filter.project = "IMSA"; filter.series = "AEC"
+        XCTAssertTrue(filter.includes(job)); XCTAssertFalse(filter.includes(other))
+        XCTAssertTrue(JobFilter().includes(job, query: "AEC"))
+        let duplicate = JobDraft.duplicate(job)
+        XCTAssertEqual(duplicate.projectName, "IMSA"); XCTAssertEqual(duplicate.seriesName, "Main championship")
+        let original = JobDraft(job: job)
+        var renamed = LibraryDraft(record: job.project); renamed.name = "IMSA coverage"
+        try renamed.save(entity: "WorkProject", editing: job.project?.objectID, baseline: LibraryDraft(record: job.project), in: context)
+        var edit = original; edit.notes = "Unrelated change"
+        try edit.save(in: context, editing: job.objectID, baseline: original)
+        XCTAssertEqual(job.project?.name, "IMSA coverage")
+        XCTAssertEqual(other.project?.name, "IMSA coverage")
+        var cleared = JobDraft(job: job); let beforeClear = cleared; cleared.projectName = ""
+        try cleared.save(in: context, editing: job.objectID, baseline: beforeClear)
+        XCTAssertNil(job.project); XCTAssertNotNil(other.project)
+    }
+
+    func testSyncFeedbackTracksOverlappingTransfersAndFailureRecovery() {
+        var state = SyncActivity()
+        XCTAssertEqual(state.message, "Connecting to iCloud…"); XCTAssertTrue(state.isBusy)
+        state.checkingAccount = false
+        XCTAssertEqual(state.message, "Waiting for iCloud updates"); XCTAssertFalse(state.isBusy)
+        let incoming = UUID(), outgoing = UUID()
+        state.record(id: incoming, kind: .receiving, ended: false, succeeded: false, error: nil)
+        state.record(id: outgoing, kind: .sending, ended: false, succeeded: false, error: nil)
+        XCTAssertTrue(state.isBusy)
+        state.record(id: outgoing, kind: .sending, ended: true, succeeded: true, error: nil)
+        XCTAssertEqual(state.message, "Receiving changes…")
+        state.record(id: incoming, kind: .receiving, ended: true, succeeded: false, error: "Unavailable")
+        XCTAssertTrue(state.needsAttention); XCTAssertFalse(state.receivedImport)
+        state.offline = true; XCTAssertEqual(state.message, "Offline — changes saved on this device")
+        state.offline = false
+        state.record(id: UUID(), kind: .sending, ended: true, succeeded: true, error: nil)
+        XCTAssertTrue(state.needsAttention)
+        state.record(id: UUID(), kind: .receiving, ended: true, succeeded: true, error: nil)
+        XCTAssertNil(state.message); XCTAssertTrue(state.receivedImport)
+        state.enabled = false; state.offline = true; XCTAssertNil(state.message)
+    }
+
     private func billingJob(_ name: String, amount: String, currency: String = "USD", in context: NSManagedObjectContext) throws -> Job {
         var draft = JobDraft(name: name); draft.clientName = "Studio Network"
         draft.fee?.amount = amount; draft.fee?.currency = currency
@@ -61,9 +124,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try first.save(in: context, editing: id))
     }
 
-    func testV2ThroughV4StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV2ThroughV5StoresMigrateWithRelationshipsAndFeeHistory() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...4 {
+        for version in 2...5 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"
@@ -89,6 +152,7 @@ final class PersistenceTests: XCTestCase {
             try oldContext.save(); oldContext.reset(); try coordinator.remove(oldStore)
             let migrated = try await openStore(fileName: fileName)
             let saved = try XCTUnwrap(migrated.container.viewContext.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+            XCTAssertNil(saved.project); XCTAssertNil(saved.series)
             XCTAssertEqual(saved.id, jobID); XCTAssertEqual(saved.client?.name, "Existing client")
             if version >= 3 { XCTAssertEqual(saved.activeSessions.first?.sortedLinks.first?.url, "https://example.com/old") }
             if version >= 4 { XCTAssertEqual(try saved.currentFee().amount, 12345) }
@@ -255,6 +319,10 @@ final class PersistenceTests: XCTestCase {
         try draft.save(in: context, jobID: jobID, editing: sessionID)
         XCTAssertTrue(session.calendarEligible)
         XCTAssertEqual(session.day, "2026-10-31")
+        // Both civil dates use the session zone, even when the device is in another zone.
+        XCTAssertTrue(session.compactSchedule.contains(session.shortDate(draft.startTime!)))
+        XCTAssertTrue(session.compactSchedule.contains(session.shortDate(draft.endTime!)))
+        XCTAssertNotEqual(session.shortDate(draft.startTime!), session.shortDate(draft.endTime!))
         XCTAssertEqual(session.sortedLinks.first?.notes, "Final segment")
         XCTAssertEqual(session.endTime!.timeIntervalSince(session.startTime!), 16200)
         context.reset()

@@ -13,6 +13,8 @@ final class Job: NSManagedObject {
     @NSManaged var location: String
     @NSManaged var timeZoneID: String
     @NSManaged var notes: String
+    @NSManaged var project: WorkProject?
+    @NSManaged var series: WorkSeries?
     @NSManaged var client: Client?
     @NSManaged var roles: Set<WorkRole>?
     @NSManaged var payments: Set<PaymentRecord>?
@@ -62,6 +64,33 @@ final class WorkRole: NSManagedObject {
     @NSManaged var jobs: Set<Job>?
 }
 
+@objc(WorkProject)
+final class WorkProject: NSManagedObject {
+    @NSManaged var id: UUID?
+    @NSManaged var name: String
+    @NSManaged var jobs: Set<Job>?
+}
+
+@objc(WorkSeries)
+final class WorkSeries: NSManagedObject {
+    @NSManaged var id: UUID?
+    @NSManaged var name: String
+    @NSManaged var jobs: Set<Job>?
+    @NSManaged var sessions: Set<WorkSession>?
+}
+
+/// Shared named records are optional; billing remains attached to each job.
+func reusableRecord(entity: String, name: String, in context: NSManagedObjectContext) throws -> NSManagedObject? {
+    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    let request = NSFetchRequest<NSManagedObject>(entityName: entity)
+    request.predicate = NSPredicate(format: "name ==[cd] %@", trimmed)
+    if let existing = try context.fetch(request).first { return existing }
+    let record = NSEntityDescription.insertNewObject(forEntityName: entity, into: context)
+    record.setValue(UUID(), forKey: "id"); record.setValue(trimmed, forKey: "name")
+    return record
+}
+
 enum BookingStatus: String, CaseIterable {
     case tentative, booked, completed, cancelled
     var title: String { rawValue.capitalized }
@@ -78,6 +107,8 @@ struct JobDraft: Equatable {
     var endDate = Date()
     var bookingStatus = BookingStatus.tentative
     var clientName = ""
+    var projectName = ""
+    var seriesName = ""
     var roleNames: Set<String> = []
     var workArrangement = WorkArrangement.unspecified
     var location = ""
@@ -97,6 +128,8 @@ struct JobDraft: Equatable {
         endDate = Day.date(from: job.endDay) ?? startDate
         bookingStatus = BookingStatus(rawValue: job.bookingStatus) ?? .tentative
         clientName = job.client?.name ?? ""
+        projectName = job.project?.name ?? ""
+        seriesName = job.series?.name ?? ""
         roleNames = Set(job.roleNames)
         workArrangement = WorkArrangement(rawValue: job.workArrangement) ?? .unspecified
         location = job.location
@@ -167,6 +200,12 @@ struct JobDraft: Equatable {
                 job.client = client
             }
         }
+        if baseline?.projectName != projectName {
+            job.project = try reusableRecord(entity: "WorkProject", name: projectName, in: writer) as? WorkProject
+        }
+        if baseline?.seriesName != seriesName {
+            job.series = try reusableRecord(entity: "WorkSeries", name: seriesName, in: writer) as? WorkSeries
+        }
         if baseline?.roleNames != roleNames {
             var selectedRoles = Set<WorkRole>()
             for name in roleNames.map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }).filter({ !$0.isEmpty }).sorted() {
@@ -203,17 +242,24 @@ struct JobFilter {
     var status = ""
     var client = ""
     var role = ""
+    var project = ""
+    var series = ""
     var usesDates = false
     var start = Date()
     var end = Date()
-    var isActive: Bool { !status.isEmpty || !client.isEmpty || !role.isEmpty || usesDates }
+    var isActive: Bool { !status.isEmpty || !client.isEmpty || !role.isEmpty || !project.isEmpty || !series.isEmpty || usesDates }
 
     func includes(_ job: Job, query: String = "") -> Bool {
         let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return (search.isEmpty || job.name.localizedCaseInsensitiveContains(search)
-                || (job.client?.name.localizedCaseInsensitiveContains(search) ?? false))
+                || (job.client?.name.localizedCaseInsensitiveContains(search) ?? false)
+                || (job.project?.name.localizedCaseInsensitiveContains(search) ?? false)
+                || (job.series?.name.localizedCaseInsensitiveContains(search) ?? false)
+                || job.activeSessions.contains { $0.effectiveSeries?.name.localizedCaseInsensitiveContains(search) ?? false })
             && (status.isEmpty || job.bookingStatus == status)
             && (client.isEmpty || job.client?.name == client)
+            && (project.isEmpty || job.project?.name == project)
+            && (series.isEmpty || job.series?.name == series || job.activeSessions.contains { $0.effectiveSeries?.name == series })
             && (role.isEmpty || job.roleNames.contains(role) || job.activeSessions.contains { $0.roleNames.contains(role) })
             && (!usesDates || (job.endDay >= Day.string(from: start) && job.startDay <= Day.string(from: end)))
     }

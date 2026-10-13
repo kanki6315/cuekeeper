@@ -108,16 +108,14 @@ schema by hand.
 
 ## Current schema status
 
-The V5 Development schema is initialized and exported, including sessions, fees,
-invoice revisions, receipts and calendar ownership. V1–V4-to-V5 local migrations
-and the local snapshot gate passed. A separate real Development check verified
-concurrent publisher claims, second-owner rejection and ownership transfer.
+As of October 13, 2026, the V6 Development schema has been deployed to
+Production. The live `./cloudkit.sh check` passed against the reviewed snapshot
+for Cuekeeper 0.1.1. This includes the project and series record types, job
+relationships, and session series overrides, as well as the existing financial
+and calendar records.
 
-Production remains the schema from the previously shipped V2 release. No
-Production deployment or TestFlight upload occurred during the first-six-step
-implementation. Deploy and verify these additions before a future release;
-Development initialization and a signed Release build do not establish
-Production readiness or physical-device financial sync.
+Local migration tests passed. Schema agreement is verified; cross-device data
+delivery and conflict behavior still need testing on the user's iPhone and iPad.
 
 ## Deploy, then check
 

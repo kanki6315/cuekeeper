@@ -1,5 +1,6 @@
 import CloudKit
 import Combine
+import Network
 import CoreData
 
 @MainActor
@@ -10,7 +11,10 @@ final class PersistenceController: ObservableObject {
     @Published private(set) var isLoaded = false
     @Published private(set) var loadError: String?
     @Published private(set) var accountStatus = "Checking…"
-    @Published private(set) var transferStatus = "Waiting for iCloud activity"
+    @Published private(set) var syncActivity = SyncActivity()
+    var transferStatus: String { cloudEnabled ? (syncActivity.message ?? "No iCloud transfer in progress") : "Local storage only" }
+    var awaitingInitialImport: Bool { syncActivity.enabled && !syncActivity.receivedImport }
+    private let networkMonitor = NWPathMonitor()
     @Published private(set) var schemaInitializationStatus: String? {
         didSet {
             #if CLOUDKIT_SCHEMA_SETUP
@@ -36,11 +40,17 @@ final class PersistenceController: ObservableObject {
             ? NSPersistentCloudKitContainerOptions(containerIdentifier: Self.containerIdentifier)
             : nil
         container.viewContext.automaticallyMergesChangesFromParent = true
-        // Only nonfinancial job capture exists in this schema. Financial records will
-        // require explicit revision/conflict handling, not this general merge policy.
+        // Nonfinancial fields merge independently. Financial records use immutable
+        // revisions and explicit conflict resolution above this merge policy.
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         container.viewContext.name = "Cuekeeper view context"
+        syncActivity.enabled = cloudEnabled
         if cloudEnabled {
+            networkMonitor.pathUpdateHandler = { [weak self] path in
+                let offline = path.status == .unsatisfied
+                Task { @MainActor [weak self] in self?.syncActivity.offline = offline }
+            }
+            networkMonitor.start(queue: DispatchQueue(label: "Cuekeeper connectivity"))
             eventObserver = NotificationCenter.default.addObserver(
                 forName: NSPersistentCloudKitContainer.eventChangedNotification,
                 object: container, queue: .main
@@ -49,24 +59,43 @@ final class PersistenceController: ObservableObject {
                     as? NSPersistentCloudKitContainer.Event else { return }
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-                    if let error = event.error {
-                        self.transferStatus = "iCloud needs attention: \(error.localizedDescription)"
-                    } else if event.endDate == nil {
-                        self.transferStatus = "iCloud transfer in progress"
-                    } else if event.succeeded {
-                        self.transferStatus = "Last iCloud operation completed"
-                        self.lastTransfer = event.endDate
+                    let kind: SyncActivity.Kind
+                    switch event.type {
+                    case .setup: kind = .setup
+                    case .import: kind = .receiving
+                    case .export: kind = .sending
+                    @unknown default: kind = .setup
                     }
+                    self.syncActivity.record(id: event.identifier, kind: kind, ended: event.endDate != nil,
+                                             succeeded: event.succeeded, error: event.error?.localizedDescription)
+                    if event.succeeded, let date = event.endDate, kind != .setup { self.lastTransfer = date }
                 }
             }
         } else {
             accountStatus = "Off for this test session"
-            transferStatus = "Local storage only"
         }
+        #if DEBUG
+        // Deterministic presentation tests never enable CloudKit or touch real records.
+        let arguments = ProcessInfo.processInfo.arguments
+        if !cloudEnabled && arguments.contains("--ui-testing") {
+            if arguments.contains("--ui-test-sync-receiving") {
+                syncActivity.enabled = true; syncActivity.checkingAccount = false
+                syncActivity.record(id: UUID(), kind: .receiving, ended: false, succeeded: false, error: nil)
+            } else if arguments.contains("--ui-test-sync-offline") {
+                syncActivity.enabled = true; syncActivity.offline = true
+            }
+        }
+        #endif
         container.loadPersistentStores { [weak self] _, error in
             Task { @MainActor [weak self] in
                 self?.loadError = error?.localizedDescription
-                self?.isLoaded = error == nil
+                #if DEBUG
+                if error == nil, let self, DesignFixtures.enabled {
+                    do { try DesignFixtures.seed(self.container.viewContext) }
+                    catch { self.loadError = "Review fixture setup failed: \(error.localizedDescription)" }
+                }
+                #endif
+                self?.isLoaded = self?.loadError == nil
                 #if CLOUDKIT_SCHEMA_SETUP
                 if error == nil, let self {
                     await self.initializeDevelopmentSchema()
@@ -116,6 +145,7 @@ final class PersistenceController: ObservableObject {
     #endif
 
     deinit {
+        networkMonitor.cancel()
         if let eventObserver { NotificationCenter.default.removeObserver(eventObserver) }
     }
 
@@ -123,6 +153,8 @@ final class PersistenceController: ObservableObject {
         guard cloudEnabled else { return }
         do {
             let status = try await CKContainer(identifier: Self.containerIdentifier).accountStatus()
+            syncActivity.checkingAccount = false
+            syncActivity.accountIssue = status == .available ? nil : "iCloud needs attention"
             switch status {
             case .available: accountStatus = "Available"
             case .noAccount: accountStatus = "Sign in to iCloud in device Settings"
@@ -132,7 +164,51 @@ final class PersistenceController: ObservableObject {
             @unknown default: accountStatus = "Unknown account status"
             }
         } catch {
+            syncActivity.checkingAccount = false
+            syncActivity.accountIssue = "Couldn’t connect to iCloud"
             accountStatus = "Could not check iCloud: \(error.localizedDescription)"
         }
+    }
+}
+
+/// Tracks overlapping operations independently: completing an export must not hide an import.
+struct SyncActivity {
+    enum Kind: Hashable { case setup, receiving, sending }
+    var enabled = true
+    var offline = false
+    var checkingAccount = true
+    var accountIssue: String?
+    private(set) var receivedImport = false
+    private(set) var active: [UUID: Kind] = [:]
+    private(set) var failures: [Kind: String] = [:]
+
+    mutating func record(id: UUID, kind: Kind, ended: Bool, succeeded: Bool, error: String?) {
+        if !ended {
+            active[id] = kind
+        } else {
+            active.removeValue(forKey: id)
+            if succeeded {
+                failures[kind] = nil
+                if kind == .receiving { receivedImport = true }
+            } else { failures[kind] = error ?? "The transfer did not complete. iCloud will try again." }
+        }
+    }
+    var needsAttention: Bool { accountIssue != nil || !failures.isEmpty }
+    var isBusy: Bool { enabled && !offline && !needsAttention && (checkingAccount || !active.isEmpty) }
+    var message: String? {
+        guard enabled else { return nil }
+        if offline { return "Offline — changes saved on this device" }
+        if let accountIssue { return accountIssue }
+        if !failures.isEmpty { return "iCloud needs attention" }
+        if active.values.contains(.receiving) && active.values.contains(.sending) { return "Sending and receiving changes…" }
+        if active.values.contains(.receiving) { return "Receiving changes…" }
+        if active.values.contains(.sending) { return "Sending changes…" }
+        if active.values.contains(.setup) || checkingAccount { return "Connecting to iCloud…" }
+        if !receivedImport { return "Waiting for iCloud updates" }
+        return nil
+    }
+    var errorDetails: String? {
+        let messages = Set(failures.values).sorted()
+        return messages.isEmpty ? nil : messages.joined(separator: "\n")
     }
 }

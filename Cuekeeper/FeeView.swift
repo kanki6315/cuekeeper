@@ -4,9 +4,9 @@ import SwiftUI
 struct FeeFields: View {
     @Binding var draft: FeeDraft
     var body: some View {
-        TextField("Overall fee (unknown if blank)", text: $draft.amount).keyboardType(.decimalPad).accessibilityIdentifier("overall-fee")
-        Picker("Currency", selection: $draft.currency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") }
-        Picker("Agreement", selection: $draft.agreement) {
+        DaybookTextField("Overall fee (unknown if blank)", text: $draft.amount).keyboardType(.decimalPad).accessibilityIdentifier("overall-fee")
+        DaybookPicker("Currency", selection: $draft.currency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") }
+        DaybookPicker("Agreement", selection: $draft.agreement) {
             Text("Unknown").tag("unknown"); Text("Estimated").tag("estimated"); Text("Agreed").tag("agreed")
         }
     }
@@ -25,17 +25,20 @@ struct FeeEditorView: View {
     }
     var body: some View {
         NavigationStack {
-            Form {
+            DaybookForm(title: job.name, subtitle: "Fee & breakdown") {
                 Section { FeeFields(draft: $draft) } header: { Text("Overall fee") } footer: {
                     Text("Leave the amount blank if it’s unknown. Enter 0 for explicitly unpaid work. Changing the breakdown never changes this amount automatically.")
                 }
                 Section {
                     ForEach($draft.lines) { $line in
                         VStack(alignment: .leading, spacing: 10) {
-                            TextField("Description", text: $line.description)
-                            TextField("Quantity", text: $line.quantity).keyboardType(.decimalPad)
-                            TextField("Rate (negative for adjustments)", text: $line.rate).keyboardType(.numbersAndPunctuation)
-                            if let total = try? line.total() { Text(Money.format(total, currency: draft.currency)).font(.subheadline).foregroundStyle(.secondary) }
+                            DaybookTextField("Description", text: $line.description)
+                            HStack(alignment: .bottom, spacing: 16) {
+                                VStack(alignment: .leading, spacing: 6) { Text("Quantity").font(.caption).foregroundStyle(Color("SecondaryText")); DaybookTextField("Quantity", text: $line.quantity).keyboardType(.decimalPad) }.frame(maxWidth: 80)
+                                Text("×").foregroundStyle(Color("SecondaryText"))
+                                VStack(alignment: .leading, spacing: 6) { Text("Rate").font(.caption).foregroundStyle(Color("SecondaryText")); DaybookTextField("Rate (negative for adjustments)", text: $line.rate).keyboardType(.numbersAndPunctuation) }
+                                if let total = try? line.total() { Text(Money.format(total, currency: draft.currency)).font(.subheadline.weight(.semibold)).monospacedDigit() }
+                            }
                             Button("Remove Item", role: .destructive) { draft.lines.removeAll { $0.id == line.id } }
                         }.padding(.vertical, 4)
                     }
@@ -43,12 +46,19 @@ struct FeeEditorView: View {
                     if !draft.lines.isEmpty {
                         if let sum = try? FeeValue(lines: draft.lines).total() {
                             LabeledContent("Breakdown total", value: Money.format(sum, currency: draft.currency))
-                            if (try? Money.parse(draft.amount)) != sum { Text("The breakdown differs from the overall fee.").foregroundStyle(.secondary) }
+                            if (try? Money.parse(draft.amount)) != sum {
+                                Label {
+                                    if let amount = try? Money.parse(draft.amount), let delta = try? Money.minorUnits(Decimal(sum) - Decimal(amount)) {
+                                        Text("Breakdown is \(Money.format(abs(delta), currency: draft.currency)) \(delta > 0 ? "above" : "below") the overall fee.")
+                                    } else { Text("The overall fee hasn’t been set.") }
+                                } icon: { Image(systemName: "exclamationmark.circle") }
+                                    .font(.subheadline).foregroundStyle(Color("AmberText"))
+                            }
                             Button("Use Breakdown Total") {
                                 guard sum >= 0 else { error = "The overall fee cannot be negative."; return }
                                 draft.amount = Money.text(sum)
                             }
-                        } else { Text("Complete each quantity and rate to calculate the breakdown.").foregroundStyle(.secondary) }
+                        } else { Text("Complete each quantity and rate to calculate the breakdown.").foregroundStyle(Color("SecondaryText")) }
                     }
                 } header: { Text("Optional breakdown") }
             }
@@ -69,6 +79,7 @@ struct FeeEditorView: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
+        .presentationBackground(Color("PageBackground"))
     }
 }
 
@@ -83,7 +94,7 @@ struct FeeDetailView: View {
     @State private var error: String?
     private var revisions: [FeeRevision] { (job.feeRevisions ?? []).sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) } }
     var body: some View {
-        Form {
+        DaybookForm(title: job.name, subtitle: "Fee & breakdown") {
             Section("Overall fee") {
                 Text(job.feeSummary).font(.title2).monospacedDigit()
                 if let value = try? job.currentFee() {
@@ -92,7 +103,7 @@ struct FeeDetailView: View {
                         ForEach(value.lines) { line in
                             LabeledContent(line.description.isEmpty ? "Breakdown item" : line.description, value: (try? line.total()).map { Money.format($0, currency: value.currency) } ?? "Incomplete")
                         }
-                        if let total = try? value.total(), total != value.amount { Text("Breakdown total: \(Money.format(total, currency: value.currency)). The overall fee remains unchanged.").foregroundStyle(.secondary) }
+                        if let total = try? value.total(), total != value.amount { Text("Breakdown total: \(Money.format(total, currency: value.currency)). The overall fee remains unchanged.").foregroundStyle(Color("SecondaryText")) }
                     }
                     Button("Edit Fee & Breakdown") { openEditor() }.accessibilityIdentifier("edit-fee")
                 } else {
@@ -117,7 +128,7 @@ struct FeeDetailView: View {
                 }
             }
             Section("Fee history") {
-                if revisions.isEmpty { Text("No fee entered yet").foregroundStyle(.secondary) }
+                if revisions.isEmpty { Text("No fee entered yet").foregroundStyle(Color("SecondaryText")) }
                 ForEach(revisions, id: \.objectID) { revision in
                     DisclosureGroup(revision.createdAt?.formatted() ?? "Date unknown") {
                         if let value = revision.value {

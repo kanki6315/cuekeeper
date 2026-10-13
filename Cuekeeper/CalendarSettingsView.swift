@@ -5,7 +5,7 @@ struct CalendarSettingsView: View {
     @State private var selected = ""
     @State private var disconnect = false
     var body: some View {
-        Form {
+        DaybookForm {
             Section {
                 LabeledContent("Permission", value: calendar.permission)
                 Text(calendar.status).accessibilityIdentifier("calendar-status")
@@ -17,11 +17,11 @@ struct CalendarSettingsView: View {
                 Section {
                     Button("Allow Calendar Access") { Task { await calendar.requestAccess() } }
                     Link("Open System Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
-                    Text("Choose full access so Cuekeeper can update its existing entries. If access is already allowed, add a writable calendar in Calendar first.").foregroundStyle(.secondary)
+                    Text("Choose full access so Cuekeeper can update its existing entries. If access is already allowed, add a writable calendar in Calendar first.").foregroundStyle(Color("SecondaryText"))
                 }
             } else {
                 Section("Destination") {
-                    Picker("Calendar", selection: $selected) {
+                    DaybookPicker("Calendar", selection: $selected) {
                         Text("Choose calendar").tag("")
                         ForEach(calendar.calendars, id: \.calendarIdentifier) { Text("\($0.title) · \($0.source.title)").tag($0.calendarIdentifier) }
                     }

@@ -15,6 +15,9 @@ final class WorkSession: NSManagedObject {
     @NSManaged var overridesRoles: Bool
     @NSManaged var notes: String
     @NSManaged var deletedAt: Date?
+    @NSManaged var series: WorkSeries?
+    @NSManaged var overridesSeries: Bool
+    var effectiveSeries: WorkSeries? { overridesSeries ? series : job?.series }
     @NSManaged var job: Job?
     @NSManaged var roles: Set<WorkRole>?
     @NSManaged var links: Set<BroadcastLink>?
@@ -72,6 +75,8 @@ struct SessionDraft: Equatable {
     var timeZoneID = ""
     var scheduleStatus = "tentative"
     var coverage = "undecided"
+    var overridesSeries = false
+    var seriesName = ""
     var overridesRoles = false
     var roleNames: Set<String> = []
     var notes = ""
@@ -82,6 +87,7 @@ struct SessionDraft: Equatable {
         name = session.name; day = session.day; startTime = session.startTime; endTime = session.endTime
         callTime = session.callTime; timeZoneID = session.timeZoneID; scheduleStatus = session.scheduleStatus
         coverage = session.coverage; overridesRoles = session.overridesRoles
+        overridesSeries = session.overridesSeries; seriesName = session.series?.name ?? ""
         roleNames = Set((session.roles ?? []).map(\.name)); notes = session.notes
         links = session.sortedLinks.map { LinkDraft(id: $0.id ?? UUID(), label: $0.label, url: $0.url, notes: $0.notes) }
     }
@@ -120,6 +126,10 @@ struct SessionDraft: Equatable {
         assign("timeZoneID", timeZoneID, baseline?.timeZoneID)
         assign("scheduleStatus", scheduleStatus, baseline?.scheduleStatus)
         assign("coverage", coverage, baseline?.coverage)
+        assign("overridesSeries", overridesSeries, baseline?.overridesSeries)
+        if baseline?.seriesName != seriesName {
+            session.series = try reusableRecord(entity: "WorkSeries", name: seriesName, in: writer) as? WorkSeries
+        }
         assign("overridesRoles", overridesRoles, baseline?.overridesRoles)
         assign("notes", notes, baseline?.notes)
         if baseline?.roleNames != roleNames {

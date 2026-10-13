@@ -30,9 +30,14 @@ The app uses the approved Icon Composer asset in `design/brand/Cuekeeper.icon`.
 ## What works now
 
 - iPhone tabs and iPad sidebar navigation.
+- Shared ivory / warm-charcoal styling across lists, forms, detail screens and
+  sheets, with raised surfaces and consistent navigation backgrounds.
 - Capture a tentative job using a name and inclusive placeholder dates.
 - Edit jobs and set tentative, booked, completed or cancelled status.
-- Add and reuse named clients and roles inline while editing a job.
+- Add and reuse named clients, roles, projects and series inline while editing a job.
+- Link jobs under a project independently of the billing client; browse related jobs by year.
+- Set a default series per job, with optional session overrides for mixed-series weekends.
+- Capture one date by default; enable Multiple days to enter an inclusive date range.
 - Manage clients and roles in Settings, including renaming, client contact details,
   notes and default currency; both libraries link back to related jobs.
 - Save work arrangement, location, optional timezone and notes.
@@ -43,7 +48,8 @@ The app uses the approved Icon Composer asset in `design/brand/Cuekeeper.icon`.
 - Cancel an editor without saving; changed forms require an explicit discard.
 - Failed saves show a native alert and keep the editor draft available to correct.
 - SQLite persistence through Core Data, with CloudKit private-database mirroring.
-- iCloud account checks and observed transfer/error status in Settings.
+- Nonblocking iCloud transfer, waiting, offline and attention feedback above job lists,
+  with account checks and detailed errors in Settings. Concurrent transfers remain visible.
 - Isolated local test stores that never write test records to iCloud.
 
 - Create incomplete or timed sessions with independent schedule and coverage states,
@@ -132,7 +138,7 @@ and calendar publishing, and contain synthetic records. The EventKit test uses
 its own temporary calendar and a test publisher; real CloudKit publisher ownership
 is checked separately in Development.
 
-The current evidence includes 19 passing unit/model/EventKit tests (no skipped
+Earlier V5 validation included 19 passing unit/model/EventKit tests (no skipped
 EventKit integration), 24 passing tooling tests and a passing local schema gate.
 Coverage includes V1–V4 migration into V5, session/DST validation, field-preserving
 edits, immutable financial conflict branches, invoice snapshots, grouped partial
@@ -150,10 +156,9 @@ Private signing keys remain outside this repository. The validated default is
 the Apple Account signed into Xcode. Harbor's API-key authentication failed during
 initial setup, so those optional local settings are commented out.
 
-The V2 app was released before this implementation milestone. The current V5
-Development schema has been initialized and exported; Production still has the
-previously shipped schema. Deploy and verify the V5 additions before a future
-upload. No Production deployment or TestFlight upload occurred during this work.
+The V6 Development schema was deployed to Production on October 13, 2026.
+The live Production check passed for the 0.1.1 release, including project and
+series relationships. Keep this gate enabled for every future upload.
 
 ```sh
 ./release.sh --no-upload              # schema check → tests → archive → local IPA export
@@ -191,7 +196,7 @@ signing, not App Store Connect acceptance or live CloudKit sync.
 
 ## Data and beta validation
 
-The current V5 Core Data model retains V1–V4 for migration. Tests open stores from
+The current V6 Core Data model retains V1–V5 for migration. Tests open stores from
 each older version and verify data preservation. Editors save through isolated
 contexts; unchanged fields do not overwrite updates made while a form was open.
 This is not a general resolution policy for simultaneous edits to the same
@@ -207,3 +212,21 @@ Client/role renames update related jobs through shared records. Library names ar
 checked case-insensitively on this device; independently created records on offline
 devices are not automatically deduplicated. Settings reports observed iCloud
 operations rather than guaranteeing that every device has received every record.
+
+## Project and series update (October 13, 2026)
+
+Projects group jobs without changing their clients, fees or invoices. Series are
+shared named records: a job supplies the default, while a session can override it
+(including choosing no series). Duplicate Job carries both associations. Projects
+and Series are managed in Settings → Libraries; job search and filters include
+both. Existing jobs migrate with no project or series assigned.
+
+The V6 Development CloudKit schema was initialized and exported. Production
+schema deployment and physical-device cross-device validation remain required
+before distributing these additions. No TestFlight upload is part of this change.
+
+Validation for this update: all 21 unit/model/EventKit tests and 25 tooling tests
+passed, including migrations from V1–V5 into V6. The new project/date and sync
+feedback UI workflows passed on iPhone and iPad; edit/duplicate/discard and session
+capture regression workflows also passed on iPad with dark mode and larger text.
+Sync presentation tests use simulated activity and do not prove live-device delivery.

@@ -33,15 +33,15 @@ struct InvoiceEditorView: View {
     private var candidates: [Job] { jobs.filter { $0.client?.id?.uuidString == clientID && (try? $0.currentFee().currency) == draft.value.currency } }
     var body: some View {
         NavigationStack {
-            Form {
+            DaybookForm {
                 Section {
-                    TextField("Invoice reference", text: $draft.value.reference).accessibilityIdentifier("invoice-reference")
-                    Picker("Client", selection: $clientID) {
+                    DaybookTextField("Invoice reference", text: $draft.value.reference).accessibilityIdentifier("invoice-reference")
+                    DaybookPicker("Client", selection: $clientID, identifier: "invoice-client") {
                         Text("Choose client").tag("")
                         ForEach(clients, id: \.objectID) { if let id = $0.id { Text($0.name).tag(id.uuidString) } }
                     }.disabled(invoice != nil).accessibilityIdentifier("invoice-client")
-                    Picker("Currency", selection: $draft.value.currency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") }.disabled(locked)
-                    if clients.isEmpty { Text("Add a client in Settings or on a job before creating an invoice.").foregroundStyle(.secondary) }
+                    DaybookPicker("Currency", selection: $draft.value.currency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") }.disabled(locked)
+                    if clients.isEmpty { Text("Add a client in Settings or on a job before creating an invoice.").foregroundStyle(Color("SecondaryText")) }
                 } header: { Text("Invoice") } footer: { Text("Track an invoice you create elsewhere. Cuekeeper does not send documents.") }
                 Section {
                     if !locked {
@@ -56,7 +56,7 @@ struct InvoiceEditorView: View {
                                 .disabled(!draft.value.lines.contains { $0.jobID == id } && !eligible(job))
                                 .accessibilityIdentifier("invoice-job-\(job.name)")
                                 if !eligible(job) && !draft.value.lines.contains(where: { $0.jobID == id }) {
-                                    Text(job.billingSummary(in: context)).font(.caption).foregroundStyle(.secondary)
+                                    Text(job.billingSummary(in: context)).font(.caption).foregroundStyle(Color("SecondaryText"))
                                 }
                             }
                         }
@@ -64,15 +64,15 @@ struct InvoiceEditorView: View {
                     ForEach(draft.value.lines) { line in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(line.jobName)
-                            TextField("Billed amount", text: Binding(get: { amounts[line.jobID] ?? "" }, set: { amounts[line.jobID] = $0 }))
+                            DaybookTextField("Billed amount", text: Binding(get: { amounts[line.jobID] ?? "" }, set: { amounts[line.jobID] = $0 }))
                                 .keyboardType(.decimalPad).disabled(locked).accessibilityIdentifier("billed-\(line.jobName)")
                         }
                     }
-                    if draft.value.lines.isEmpty { Text("Select jobs for this client and currency.").foregroundStyle(.secondary) }
+                    if draft.value.lines.isEmpty { Text("Select jobs for this client and currency.").foregroundStyle(Color("SecondaryText")) }
                     if let value = try? preparedValue(), let total = try? value.total() { LabeledContent("Total", value: Money.format(total, currency: value.currency)) }
                 } header: { Text("Included jobs") } footer: { Text(locked ? "Billed amounts and jobs are preserved on sent invoices, independently of later fee changes." : "Each job can belong to one active invoice. Unknown fees need an explicit billed amount, including 0 for unpaid work.") }
                 Section {
-                    Picker("Status", selection: $draft.value.status) {
+                    DaybookPicker("Status", selection: $draft.value.status, identifier: "invoice-status") {
                         if !locked { Text("Draft").tag("draft") }
                         Text("Sent").tag("sent")
                         if invoice != nil { Text("Void").tag("void") }
@@ -82,9 +82,9 @@ struct InvoiceEditorView: View {
                     }
                     Toggle("Due date", isOn: Binding(get: { !draft.value.dueDay.isEmpty }, set: { draft.value.dueDay = $0 ? Day.string(from: Date()) : "" }))
                     if !draft.value.dueDay.isEmpty { DatePicker("Due", selection: dayBinding($draft.value.dueDay), displayedComponents: .date) }
-                    if draft.value.status == "void" { Text("Voiding keeps the history and releases jobs for rebilling. Reverse any payments first.").foregroundStyle(.secondary) }
+                    if draft.value.status == "void" { Text("Voiding keeps the history and releases jobs for rebilling. Reverse any payments first.").foregroundStyle(Color("SecondaryText")) }
                 }
-                Section("Notes") { TextField("Invoice notes", text: $draft.value.notes, axis: .vertical).lineLimit(3...8) }
+                Section("Notes") { DaybookTextField("Invoice notes", text: $draft.value.notes, axis: .vertical).lineLimit(3...8) }
             }
             .navigationTitle(invoice == nil ? "Add Invoice" : "Edit Invoice").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -112,6 +112,7 @@ struct InvoiceEditorView: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
+        .presentationBackground(Color("PageBackground"))
     }
     private func eligible(_ job: Job) -> Bool {
         guard let invoices = try? job.activeInvoices(in: context, excluding: invoice?.objectID), invoices.isEmpty,

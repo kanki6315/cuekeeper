@@ -40,19 +40,29 @@ struct CuekeeperApp: App {
                         Text("Your saved data has not been replaced. Close and reopen Cuekeeper to try again.\n\n\(error)")
                     }
                 } else if persistence.isLoaded {
-                    RootView()
-                        .environment(\.managedObjectContext, persistence.container.viewContext)
+                    Group {
+                        #if DEBUG
+                        if DesignFixtures.enabled { DesignFixtureScreen().preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--design-dark") ? .dark : .light) } else { RootView() }
+                        #else
+                        RootView()
+                        #endif
+                    }.environment(\.managedObjectContext, persistence.container.viewContext)
                 } else {
                     ProgressView("Opening your daybook…")
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color("PageBackground"))
             .environmentObject(persistence)
             .environmentObject(calendar)
             .onChange(of: persistence.isLoaded) { _, loaded in
                 if loaded { calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled) }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { calendar.refreshCalendars(); calendar.scheduleSync() }
+                if phase == .active {
+                    calendar.refreshCalendars(); calendar.scheduleSync()
+                    Task { await persistence.refreshAccountStatus() }
+                }
             }
             .tint(Color("AccentColor"))
             .task {

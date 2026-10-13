@@ -1,0 +1,257 @@
+import SwiftUI
+
+/// The approved daybook layout: quiet paper, compact ruled panels, and native controls.
+struct DaybookForm<Content: View>: View {
+    var title: String = ""
+    var subtitle: String = ""
+    @ViewBuilder var content: Content
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                if !title.isEmpty { DaybookPageHeading(title: title, subtitle: subtitle) }
+                DaybookSections { content }
+            }
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20).padding(.vertical, 20)
+        }
+        .accessibilityIdentifier("daybook-form")
+        .scrollDismissesKeyboard(.interactively)
+        .daybookSurface()
+    }
+}
+
+struct DaybookSections<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            ForEach(sections: content) { section in
+                VStack(alignment: .leading, spacing: 9) {
+                    if !section.header.isEmpty {
+                        section.header.font(.headline).foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityAddTraits(.isHeader)
+                    }
+                    VStack(spacing: 0) {
+                        ForEach(Array(section.content.enumerated()), id: \.element.id) { index, row in
+                            if index > 0 && !section.containerValues.daybookUnframed { Divider().padding(.horizontal, 16) }
+                            row.frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, section.containerValues.daybookUnframed ? 0 : 16).padding(.vertical, section.containerValues.daybookUnframed ? 5 : 12)
+                        }
+                    }
+                    .background(section.containerValues.daybookUnframed ? Color.clear : Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(section.containerValues.daybookUnframed ? 0 : 0.09), lineWidth: 0.5) }
+                    if !section.footer.isEmpty {
+                        section.footer.font(.footnote).foregroundStyle(Color("SecondaryText"))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        }
+        .buttonStyle(.borderless)
+        .textFieldStyle(.plain)
+    }
+}
+
+struct DaybookList<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        List { content.listRowBackground(Color("SurfaceBackground")) }
+            .listSectionSpacing(18)
+            .daybookSurface()
+    }
+}
+
+struct DaybookPageHeading: View {
+    let title: String
+    var subtitle: String = ""
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+            if !subtitle.isEmpty { Text(subtitle).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct BookingBadge: View {
+    let status: String
+    private var tentative: Bool { status == "tentative" || status == "draft" || status == "estimated" }
+    var body: some View {
+        Text(status == "notCovering" ? "Not covering" : status.capitalized)
+            .font(.caption.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            .foregroundStyle(tentative ? Color("AmberText") : Color.accentColor)
+            .padding(.horizontal, 9).padding(.vertical, 5)
+            .background(tentative ? Color.orange.opacity(0.13) : Color.accentColor.opacity(0.1), in: Capsule())
+    }
+}
+
+struct DaybookMetadata: View {
+    @ScaledMetric(relativeTo: .subheadline) private var iconWidth = 21
+    let symbol: String
+    let text: String
+    var body: some View {
+        Label { Text(text).foregroundStyle(Color.primary) } icon: { Image(systemName: symbol).foregroundStyle(Color("SecondaryText")).frame(width: iconWidth) }
+            .font(.subheadline)
+    }
+}
+
+/// Let the system own refraction, press behavior and accessibility adaptations.
+struct DaybookPrimaryButton: PrimitiveButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button(role: configuration.role, action: configuration.trigger) {
+            configuration.label.foregroundStyle(Color("PrimaryButtonText"))
+        }
+            .font(.subheadline.weight(.semibold))
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+    }
+}
+
+struct DaybookSecondaryButton: PrimitiveButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button(role: configuration.role, action: configuration.trigger) {
+            configuration.label.foregroundStyle(Color.accentColor)
+        }
+            .font(.subheadline.weight(.semibold))
+            .buttonStyle(.glass)
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+    }
+}
+
+/// One glass navigation layer; the agenda and financial content stay opaque.
+struct DaybookSidebarSurface: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        if reduceTransparency || contrast == .increased {
+            content.background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 26))
+        } else {
+            content.glassEffect(.regular.tint(Color.accentColor.opacity(0.08)), in: .rect(cornerRadius: 26))
+        }
+    }
+}
+
+struct DaybookDateRail: View {
+    @ScaledMetric(relativeTo: .body) private var railWidth = 47
+    let day: String
+    var body: some View {
+        if let date = Day.date(from: day) {
+            VStack(spacing: 2) {
+                Text(date.formatted(.dateTime.weekday(.abbreviated))).font(.caption)
+                Text(date.formatted(.dateTime.day())).font(.title.weight(.semibold)).monospacedDigit()
+                Text(date.formatted(.dateTime.month(.abbreviated))).font(.caption)
+            }.foregroundStyle(Color.accentColor).frame(width: railWidth).accessibilityElement(children: .combine)
+        }
+    }
+}
+
+struct BrandLockup: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            CuekeeperMark().fill(Color.accentColor, style: FillStyle(eoFill: true)).frame(width: 27, height: 31)
+                .accessibilityHidden(true)
+            Text("Cuekeeper").font(.title3.weight(.bold)).tracking(-0.5)
+        }.foregroundStyle(Color.accentColor).accessibilityElement(children: .combine)
+    }
+}
+
+/// Exact outlines from design/brand/source/cuekeeper-mark-forest.svg, without its export padding.
+private struct CuekeeperMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x:66,y:351)); p.addCurve(to: CGPoint(x:47,y:320), control1: CGPoint(x:54,y:348), control2: CGPoint(x:49,y:337))
+        p.addLine(to: CGPoint(x:0,y:93)); p.addCurve(to: CGPoint(x:32,y:42), control1: CGPoint(x:-6,y:67), control2: CGPoint(x:7,y:49))
+        p.addLine(to: CGPoint(x:209,y:1)); p.addCurve(to: CGPoint(x:267,y:37), control1: CGPoint(x:237,y:-6), control2: CGPoint(x:260,y:10))
+        p.addLine(to: CGPoint(x:274,y:65)); p.addLine(to: CGPoint(x:137,y:65)); p.addCurve(to: CGPoint(x:66,y:135), control1: CGPoint(x:95,y:65), control2: CGPoint(x:66,y:94)); p.closeSubpath()
+        p.move(to: CGPoint(x:137,y:85)); p.addLine(to: CGPoint(x:333,y:85)); p.addCurve(to: CGPoint(x:383,y:135), control1: CGPoint(x:362,y:85), control2: CGPoint(x:383,y:106)); p.addLine(to: CGPoint(x:383,y:419)); p.addCurve(to: CGPoint(x:355,y:437), control1: CGPoint(x:383,y:439), control2: CGPoint(x:370,y:448)); p.addLine(to: CGPoint(x:243,y:355)); p.addQuadCurve(to: CGPoint(x:227,y:355), control: CGPoint(x:235,y:349)); p.addLine(to: CGPoint(x:113,y:437)); p.addCurve(to: CGPoint(x:86,y:421), control1: CGPoint(x:97,y:449), control2: CGPoint(x:86,y:438)); p.addLine(to: CGPoint(x:86,y:136)); p.addCurve(to: CGPoint(x:137,y:85), control1: CGPoint(x:86,y:106), control2: CGPoint(x:107,y:85)); p.closeSubpath()
+        p.addRoundedRect(in: CGRect(x:144,y:200,width:183,height:40), cornerSize: CGSize(width:20,height:20))
+        return p.applying(CGAffineTransform(scaleX: rect.width / 383, y: rect.height / 448))
+    }
+}
+
+extension View {
+    func daybookSurface() -> some View {
+        toolbar(.visible, for: .navigationBar)
+            .scrollContentBackground(.hidden)
+            .background(Color("PageBackground"))
+            .toolbarBackground(.automatic, for: .navigationBar, .tabBar)
+    }
+}
+
+/// Explicit field labels remain visible outside the system Form container.
+struct DaybookPicker<Selection: Hashable, Content: View>: View {
+    let title: String
+    @Binding var selection: Selection
+    var identifier: String = ""
+    @ViewBuilder var content: Content
+    init(_ title: String, selection: Binding<Selection>, identifier: String = "", @ViewBuilder content: () -> Content) {
+        self.title = title; _selection = selection; self.identifier = identifier; self.content = content()
+    }
+    var body: some View {
+        LabeledContent {
+            Picker(title, selection: $selection) { content }.labelsHidden().accessibilityIdentifier(identifier)
+        } label: { Text(title) }
+    }
+}
+
+struct DaybookLink<Destination: View, Label: View>: View {
+    @ViewBuilder var destination: Destination
+    @ViewBuilder var label: Label
+    var body: some View {
+        NavigationLink { destination } label: {
+            HStack(spacing: 10) {
+                label.foregroundStyle(Color.primary).frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+            }.contentShape(Rectangle())
+        }
+    }
+}
+extension DaybookLink where Label == Text {
+    init(_ title: String, @ViewBuilder destination: () -> Destination) {
+        self.destination = destination(); self.label = Text(title)
+    }
+}
+
+extension ContainerValues {
+    @Entry var daybookUnframed = false
+}
+
+extension WorkSession {
+    var compactSchedule: String {
+        guard let startTime else { return day.isEmpty ? "Schedule to come" : "Time to come · \(day)" }
+        var result = "\(shortDate(startTime)) · \(shortTime(startTime))"
+        if let endTime {
+            let zone = TimeZone(identifier: timeZoneID) ?? .current
+            let overnight = Day.string(from: startTime, timeZone: zone) != Day.string(from: endTime, timeZone: zone)
+            result += " – \(overnight ? shortDate(endTime) + " " : "")\(shortTime(endTime))"
+        }
+        let zone = TimeZone(identifier: timeZoneID) ?? .current
+        return result + " " + (zone.abbreviation(for: startTime) ?? timeZoneID)
+    }
+    func shortDate(_ date: Date) -> String {
+        let formatter = DateFormatter(); formatter.timeZone = TimeZone(identifier: timeZoneID) ?? .current
+        formatter.dateStyle = .medium; formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+    func shortTime(_ date: Date) -> String {
+        let formatter = DateFormatter(); formatter.timeZone = TimeZone(identifier: timeZoneID) ?? .current
+        formatter.dateStyle = .none; formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+/// Keeps placeholder copy readable on both approved page surfaces.
+struct DaybookTextField: View {
+    let title: String
+    @Binding var text: String
+    var axis: Axis
+    init(_ title: String, text: Binding<String>, axis: Axis = .horizontal) {
+        self.title = title; self._text = text; self.axis = axis
+    }
+    var body: some View {
+        TextField(title, text: $text, prompt: Text(title).foregroundStyle(Color("SecondaryText")), axis: axis)
+    }
+}

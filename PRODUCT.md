@@ -51,4 +51,92 @@ Step 7 remains recovery/export and Recently Deleted. Step 8 remains broader phys
 
 The user verified the original production sync and offline/reconnect flow. New financial workflows and conflicts across two physical devices still need beta validation. Nineteen unit/model/EventKit tests, including migrations from V1–V4 into V5, and 24 tooling tests passed. All eight UI workflows have passing iPhone and iPad evidence after the editor presentation fixes: the full iPhone suite, six iPad workflows plus successful focused reruns of breakdown and invoice entry after test keyboard corrections. A real Development CloudKit check verified concurrent calendar-owner claims, rejection and transfer. A signed Release build passed.
 
-The V2 release predates this milestone. The current V5 Development schema was initialized and exported; its Production deployment and live release gate remain prerequisites to a future distribution. No Production deployment, archive upload or TestFlight push occurred during this work.
+The V2 release predates this milestone. At that milestone, the V5 Development schema was initialized and exported; its Production deployment and live release gate remain prerequisites to a future distribution. No Production deployment, archive upload or TestFlight push occurred during this work.
+
+## Project and series refinement — October 13, 2026
+
+Projects optionally group jobs independently of clients and payment. Each job
+retains its own booking, fee and invoices. A reusable job series supplies the
+session default; a session can inherit it or explicitly override it, including
+choosing no series. Libraries support creation, renaming and related jobs;
+projects include a year filter. Search and job filters include project and series.
+Duplication carries both associations. Existing jobs migrate into V6 without
+invented groupings.
+
+New jobs default to one Date. Multiple days reveals Start and End; stored dates
+remain inclusive, and existing multiday jobs open with the toggle enabled.
+Upcoming and Jobs show nonblocking iCloud activity, waiting, offline and attention
+feedback with a link to Settings. Overlapping imports/exports remain tracked
+independently. Empty-device copy explains that jobs may still arrive, while local
+capture remains available. Completed operations do not claim all devices are current.
+
+The V6 Development schema is initialized and exported. Production deployment and
+physical-device validation of the new relationships remain release prerequisites.
+
+Validation for this refinement includes 21 passing unit/model/EventKit tests,
+25 passing tooling tests, new project/date and sync-feedback UI workflows on
+both iPhone and iPad, and passing iPad edit/duplicate/session regression checks
+in dark mode with larger text. Sync UI states are simulated; physical-device
+validation of delivery remains outstanding.
+
+## Shared app surfaces — October 13, 2026
+
+The existing app screens now implement the approved Daybook composition with
+Call Sheet warmth. Upcoming and Jobs use a date-led agenda, booking badges,
+search/filters and a focused add action. Job details put status and icon-led
+metadata before sessions, broadcast links, fees and billing. Quick capture keeps
+optional detail available; Payments separates USD/EUR summaries, review items,
+invoices and balances. Settings and libraries use titled, icon-led groups.
+
+DaybookForm is a custom scrolling composition with page headings and ruled
+section panels; DaybookList supplies the corresponding native list treatment.
+Shared surfaces cover fees, invoices, receipts, payment entry, libraries,
+calendar settings and general Settings. Native navigation, tabs, sheets, date
+pickers, menus and other controls remain intact. Regular-width Upcoming and
+Jobs use sidebar, agenda and selected detail columns with native collapse;
+compact width and accessibility text sizes use tabs and navigation stacks.
+Session editors stack date/time and timezone fields at accessibility sizes, with
+separate clear-action rows.
+
+The shipped system is recorded in DESIGN.md and .impeccable/design.json.
+Appearance-aware secondary text also colors field prompts; metadata icons and
+date rails scale with Dynamic Type. Compact session schedules show dates and
+times in the session timezone, including the end date for overnight sessions.
+The implementation follows the approved boards' hierarchy and composition;
+it does not claim pixel equality with their conceptual operating-system chrome.
+
+This pass covers existing functionality. Reminders, recovery/export, Recently
+Deleted and onboarding remain outside this design implementation. Earlier
+milestone evidence above remains historical; current visual and workflow
+verification is recorded separately in the review artifacts.
+
+## 0.1.1 upload — October 13, 2026
+
+Build 286.15.2 was signed and uploaded to App Store Connect for iPhone and iPad.
+The user deployed the V6 schema to Production, and the live schema gate passed
+before upload. This supersedes the earlier milestone notes about pending
+Production deployment. Release evidence is in
+`design/verification/release-0.1.1.md`; physical-device testing remains the next
+validation step.
+
+## Combined Glass refinement — October 13, 2026
+
+The approved native direction combines a Quiet Glass base with an expressive
+floating iPad sidebar and rounded glass actions. Agenda rows, form panels,
+status badges and financial content retain the Daybook reading surfaces.
+Primary and secondary capsules use native glass styles and explicit
+appearance-aware labels; navigation materials remain automatic. The sidebar
+uses an opaque fallback for Reduce Transparency or Increase Contrast. Job
+completion actions use the native bottom safe-area bar, and Upcoming scope
+uses a menu picker. Existing app functions, independent workflow states and
+stored data remain intact.
+
+DESIGN.md and .impeccable/design.json record the implemented system. The
+comparison boards are conceptual multi-device images; native system glass
+and SF typography are authoritative. Earlier verification and upload evidence
+remains historical. Simulator verification of this refinement passed on iPhone and iPad, including workflow, light/dark, large-text and portrait checks. The independent visual review ended with `ship` after correcting sidebar icon contrast. Evidence and physical-device validation limits are recorded in `design/liquid-glass/verification/README.md`.
+
+
+## 0.1.2 TestFlight release — October 13, 2026
+
+Combined Glass shipped to internal TestFlight as version 0.1.2, build 286.16.21. Apple processing is VALID and internal status is IN_BETA_TESTING. The existing Test group has automatic distribution. The live Production schema gate passed without schema changes. Release evidence: `design/verification/release-0.1.2.md`.

@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-13T15:53:17.489688+00:00",
+  "title": "Design System: Cuekeeper",
+  "extensions": {
+    "colorMeta": {
+      "AccentColor-light": {
+        "role": "primary",
+        "displayName": "AccentColor · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.06851 159.76)",
+          "oklch(26.43% 0.06851 159.76)",
+          "oklch(37.86% 0.06851 159.76)",
+          "oklch(49.29% 0.06851 159.76)",
+          "oklch(60.71% 0.06851 159.76)",
+          "oklch(72.14% 0.06851 159.76)",
+          "oklch(83.57% 0.06851 159.76)",
+          "oklch(95.00% 0.06851 159.76)"
+        ]
+      },
+      "AccentColor-dark": {
+        "role": "primary",
+        "displayName": "AccentColor · dark",
+        "tonalRamp": [
+          "oklch(15.00% 0.07794 152.03)",
+          "oklch(26.43% 0.07794 152.03)",
+          "oklch(37.86% 0.07794 152.03)",
+          "oklch(49.29% 0.07794 152.03)",
+          "oklch(60.71% 0.07794 152.03)",
+          "oklch(72.14% 0.07794 152.03)",
+          "oklch(83.57% 0.07794 152.03)",
+          "oklch(95.00% 0.07794 152.03)"
+        ]
+      },
+      "PageBackground-light": {
+        "role": "neutral",
+        "displayName": "PageBackground · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.00821 91.48)",
+          "oklch(26.43% 0.00821 91.48)",
+          "oklch(37.86% 0.00821 91.48)",
+          "oklch(49.29% 0.00821 91.48)",
+          "oklch(60.71% 0.00821 91.48)",
+          "oklch(72.14% 0.00821 91.48)",
+          "oklch(83.57% 0.00821 91.48)",
+          "oklch(95.00% 0.00821 91.48)"
+        ]
+      },
+      "PageBackground-dark": {
+        "role": "neutral",
+        "displayName": "PageBackground · dark",
+        "tonalRamp": [
+          "oklch(15.00% 0.01408 154.08)",
+          "oklch(26.43% 0.01408 154.08)",
+          "oklch(37.86% 0.01408 154.08)",
+          "oklch(49.29% 0.01408 154.08)",
+          "oklch(60.71% 0.01408 154.08)",
+          "oklch(72.14% 0.01408 154.08)",
+          "oklch(83.57% 0.01408 154.08)",
+          "oklch(95.00% 0.01408 154.08)"
+        ]
+      },
+      "SurfaceBackground-light": {
+        "role": "neutral",
+        "displayName": "SurfaceBackground · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "SurfaceBackground-dark": {
+        "role": "neutral",
+        "displayName": "SurfaceBackground · dark",
+        "tonalRamp": [
+          "oklch(15.00% 0.01884 154.52)",
+          "oklch(26.43% 0.01884 154.52)",
+          "oklch(37.86% 0.01884 154.52)",
+          "oklch(49.29% 0.01884 154.52)",
+          "oklch(60.71% 0.01884 154.52)",
+          "oklch(72.14% 0.01884 154.52)",
+          "oklch(83.57% 0.01884 154.52)",
+          "oklch(95.00% 0.01884 154.52)"
+        ]
+      },
+      "SecondaryText-light": {
+        "role": "neutral",
+        "displayName": "SecondaryText · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.01444 137.81)",
+          "oklch(26.43% 0.01444 137.81)",
+          "oklch(37.86% 0.01444 137.81)",
+          "oklch(49.29% 0.01444 137.81)",
+          "oklch(60.71% 0.01444 137.81)",
+          "oklch(72.14% 0.01444 137.81)",
+          "oklch(83.57% 0.01444 137.81)",
+          "oklch(95.00% 0.01444 137.81)"
+        ]
+      },
+      "SecondaryText-dark": {
+        "role": "neutral",
+        "displayName": "SecondaryText · dark",
+        "tonalRamp": [
+          "oklch(15.00% 0.01314 149.21)",
+          "oklch(26.43% 0.01314 149.21)",
+          "oklch(37.86% 0.01314 149.21)",
+          "oklch(49.29% 0.01314 149.21)",
+          "oklch(60.71% 0.01314 149.21)",
+          "oklch(72.14% 0.01314 149.21)",
+          "oklch(83.57% 0.01314 149.21)",
+          "oklch(95.00% 0.01314 149.21)"
+        ]
+      },
+      "PrimaryButtonText-light": {
+        "role": "neutral",
+        "displayName": "PrimaryButtonText · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "PrimaryButtonText-dark": {
+        "role": "neutral",
+        "displayName": "PrimaryButtonText · dark",
+        "tonalRamp": [
+          "oklch(15.00% 0.06851 159.76)",
+          "oklch(26.43% 0.06851 159.76)",
+          "oklch(37.86% 0.06851 159.76)",
+          "oklch(49.29% 0.06851 159.76)",
+          "oklch(60.71% 0.06851 159.76)",
+          "oklch(72.14% 0.06851 159.76)",
+          "oklch(83.57% 0.06851 159.76)",
+          "oklch(95.00% 0.06851 159.76)"
+        ]
+      },
+      "AmberText-light": {
+        "role": "secondary",
+        "displayName": "AmberText · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.10362 70.17)",
+          "oklch(26.43% 0.10362 70.17)",
+          "oklch(37.86% 0.10362 70.17)",
+          "oklch(49.29% 0.10362 70.17)",
+          "oklch(60.71% 0.10362 70.17)",
+          "oklch(72.14% 0.10362 70.17)",
+          "oklch(83.57% 0.10362 70.17)",
+          "oklch(95.00% 0.10362 70.17)"
+        ]
+      },
+      "AmberText-dark": {
+        "role": "secondary",
+        "displayName": "AmberText · dark",
+        "tonalRamp": [
+          "oklch(15.00% 0.13026 81.27)",
+          "oklch(26.43% 0.13026 81.27)",
+          "oklch(37.86% 0.13026 81.27)",
+          "oklch(49.29% 0.13026 81.27)",
+          "oklch(60.71% 0.13026 81.27)",
+          "oklch(72.14% 0.13026 81.27)",
+          "oklch(83.57% 0.13026 81.27)",
+          "oklch(95.00% 0.13026 81.27)"
+        ]
+      },
+      "SidebarSelection-light": {
+        "role": "neutral",
+        "displayName": "SidebarSelection · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.06851 159.76)",
+          "oklch(26.43% 0.06851 159.76)",
+          "oklch(37.86% 0.06851 159.76)",
+          "oklch(49.29% 0.06851 159.76)",
+          "oklch(60.71% 0.06851 159.76)",
+          "oklch(72.14% 0.06851 159.76)",
+          "oklch(83.57% 0.06851 159.76)",
+          "oklch(95.00% 0.06851 159.76)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Page heading",
+        "purpose": "SwiftUI largeTitle.bold; sizes adapt with Dynamic Type."
+      },
+      "body": {
+        "displayName": "Native body",
+        "purpose": "SwiftUI semantic text styles; no fixed pixel size."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "wide-navigation",
+        "value": "horizontalSizeClass == regular && !dynamicTypeSize.isAccessibilitySize"
+      }
+    ],
+    "native": {
+      "sources": [
+        "Cuekeeper/DaybookStyle.swift",
+        "Cuekeeper/RootView.swift",
+        "Cuekeeper/Assets.xcassets",
+        "Cuekeeper/JobEditorView.swift",
+        "Cuekeeper/SessionView.swift"
+      ],
+      "previewCaveat": "HTML previews are illustrative light-mode shape and color translations, not native Liquid Glass simulations or pixel-exact iOS rendering. Browser focus and hover rules support the preview only. SwiftUI, native glass optics and SF typography remain authoritative. Comparison boards are conceptual multi-device images.",
+      "rampCaveat": "Tonal ramps are synthesized OKLCH panel previews, not implemented application color scales.",
+      "units": "Geometry uses native points; semantic type sizes resolve at runtime.",
+      "panelStroke": "0.5pt primary at 0.09 opacity",
+      "accessibilitySessionEditor": "At accessibility text sizes, date/time labels stack above controls, clear actions have independent rows with 44pt minimum height, and timezone labels and values stack.",
+      "primaryButton": "PrimitiveButtonStyle wrapping .glassProminent; .capsule; .large; semibold subheadline; explicit PrimaryButtonText foreground. Native sizing and states.",
+      "secondaryButton": "PrimitiveButtonStyle wrapping .glass; .capsule; .large; semibold subheadline; explicit AccentColor foreground.",
+      "sidebarMaterial": "Regular glass with AccentColor at 0.08 opacity, 26pt rounded rectangle and 10pt outer inset; opaque SurfaceBackground when Reduce Transparency or Increase Contrast is active.",
+      "navigationMaterial": "Automatic system navigation and tab bar backgrounds.",
+      "completionActions": "Job detail uses native bottom safeAreaBar with 20pt horizontal and 10pt vertical padding; primary completion action and circular glass More menu.",
+      "scopeControls": "Upcoming uses native menu picker; Jobs status retains native segmented picker.",
+      "sidebarSymbols": "Unselected sidebar symbols explicitly use appearance-aware AccentColor; selected symbols use Color.white. Native selection tint remains forest SidebarSelection."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Native glassProminent capsule with appearance-aware foreground; browser preview illustrates shape and color only.",
+      "html": "<button class=\"ds-primary\">Add Job</button>",
+      "css": ".ds-primary{font:600 15px system-ui;background:#073E27;color:#fff;border:0;border-radius:999px;padding:0 15px;min-height:44px}.ds-primary:hover{cursor:pointer}.ds-primary:focus-visible{outline:2px solid #073E27;outline-offset:3px}.ds-primary:active{filter:brightness(.9)}"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Native glass capsule with explicit accent foreground; browser preview illustrates shape and color only.",
+      "html": "<button class=\"ds-secondary\">Add Session</button>",
+      "css": ".ds-secondary{font:600 15px system-ui;background:#faf8f2;color:#073E27;border:1px solid rgba(7,62,39,.15);border-radius:999px;padding:0 15px;min-height:44px}.ds-secondary:hover{cursor:pointer}.ds-secondary:focus-visible{outline:2px solid #073E27;outline-offset:3px}.ds-secondary:active{filter:brightness(.95)}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "text-field-prompt",
+      "description": "Illustrative light-mode browser translation; native SwiftUI is authoritative.",
+      "html": "<input class=\"ds-field\" aria-label=\"Job name\" placeholder=\"Job name\">",
+      "css": ".ds-field{font:17px system-ui;color:CanvasText;background:transparent;border:0;padding:12px 16px}.ds-field::placeholder{color:#626860;opacity:1}.ds-field:hover{cursor:text}.ds-field:focus-visible{outline:2px solid #073E27;outline-offset:2px}"
+    },
+    {
+      "name": "Ruled panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Illustrative light-mode browser translation; native SwiftUI is authoritative.",
+      "html": "<div class=\"ds-panel\"><div>Session details</div><div>Schedule to come</div></div>",
+      "css": ".ds-panel{font:17px system-ui;background:#fff;color:#171E19;border:.5px solid rgba(0,0,0,.09);border-radius:12px}.ds-panel>div{padding:12px 16px}.ds-panel>div+div{border-top:.5px solid rgba(0,0,0,.15)}"
+    },
+    {
+      "name": "Booking badge",
+      "kind": "chip",
+      "description": "Illustrative light-mode browser translation; native SwiftUI is authoritative.",
+      "html": "<span class=\"ds-badge\">Booked</span>",
+      "css": ".ds-badge{display:inline-block;font:600 12px system-ui;color:#073E27;background:rgba(7,62,39,.1);border-radius:999px;padding:5px 9px}"
+    },
+    {
+      "name": "Navigation row",
+      "kind": "nav",
+      "description": "Illustrative light-mode browser translation; native SwiftUI is authoritative.",
+      "html": "<a class=\"ds-link\" href=\"#settings\">Settings <svg aria-hidden=\"true\" width=\"12\" height=\"12\" viewBox=\"0 0 12 12\"><path d=\"m4 2 4 4-4 4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg></a>",
+      "css": ".ds-link{display:flex;justify-content:space-between;gap:10px;font:17px system-ui;color:#171E19;text-decoration:none;padding:12px 16px}.ds-link svg{color:#626860}.ds-link:hover{cursor:pointer}.ds-link:focus-visible{outline:2px solid #073E27}.ds-link:active{opacity:.75}"
+    },
+    {
+      "name": "Date rail",
+      "kind": "custom",
+      "description": "Illustrative light-mode browser translation; native SwiftUI is authoritative.",
+      "html": "<div class=\"ds-date\"><span>Tue</span><strong>13</strong><span>Oct</span></div>",
+      "css": ".ds-date{display:flex;flex-direction:column;align-items:center;gap:2px;width:47px;color:#073E27;font:12px system-ui}.ds-date strong{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Floating sidebar",
+      "kind": "nav",
+      "refersTo": "sidebar-fallback",
+      "description": "Illustrates the opaque accessibility fallback. Native regular glass, selection and adaptive split-view behavior are authoritative.",
+      "html": "<nav class=\"ds-sidebar\" aria-label=\"Main\"><strong>Cuekeeper</strong><a href=\"#upcoming\" aria-current=\"page\">Upcoming</a><a href=\"#jobs\">Jobs</a><a href=\"#payments\">Payments</a><a href=\"#settings\">Settings</a></nav>",
+      "css": ".ds-sidebar{display:flex;flex-direction:column;gap:8px;margin:10px;padding:20px;background:#fff;color:#073E27;border-radius:26px;font:17px system-ui}.ds-sidebar strong{padding-bottom:12px}.ds-sidebar a{color:inherit;padding:10px;text-decoration:none;border-radius:10px}.ds-sidebar a[aria-current]{background:#073E27;color:#fff}.ds-sidebar a:hover{cursor:pointer}.ds-sidebar a:focus-visible{outline:2px solid #073E27;outline-offset:2px}.ds-sidebar a:active{opacity:.8}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Combined Glass with Daybook warmth",
+    "overview": "Cuekeeper pairs a date-led working agenda with quiet paper surfaces, forest accents and a warm charcoal night palette. The approved Combined Glass direction uses Quiet Glass as its base, an expressive floating iPad sidebar and rounded native glass actions. Its hierarchy supports quick capture, incomplete schedules and independent booking, coverage and payment states. The stacked cue-card mark and native SF typography retain the identity.\n\nThis records the implemented SwiftUI system, grounded in `Cuekeeper/DaybookStyle.swift`, the color assets and the existing screen implementations. The approved boards in `design/branded/` supply the composition and hierarchy direction; `design/liquid-glass/implementation-brief.md` records the combined material direction. The multi-device comparison boards are conceptual images. Native system glass optics, SF typography, navigation, tabs, sheets, pickers and menus remain authoritative; this is not a claim of pixel equality with the boards.",
+    "keyCharacteristics": [
+      "Date-led agenda rows with clear booking badges.",
+      "Titled detail pages and compact ruled panels.",
+      "Forest and mint accents on ivory and warm charcoal.",
+      "Native glass actions and a floating iPad navigation surface.",
+      "Native controls and Dynamic Type throughout."
+    ],
+    "rules": [
+      {
+        "name": "The Appearance Pair Rule",
+        "body": "Use the named color assets so light and dark roles change together.",
+        "section": "colors"
+      },
+      {
+        "name": "The Native Type Rule",
+        "body": "Preserve semantic text styles and scalable supporting geometry instead of freezing the reference board's text size.",
+        "section": "typography"
+      },
+      {
+        "name": "The Quiet Reading Rule",
+        "body": "Keep agenda rows, forms, status badges and financial panels matte; reserve expressive glass for navigation and actions.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** preserve the date-led hierarchy and sessions-before-billing detail order.",
+      "**Do** use named appearance-aware color assets and semantic text styles.",
+      "**Do** keep USD and EUR separate and show real partial balances and pending schedules.",
+      "**Do** retain native controls, navigation and accessibility adaptation.",
+      "**Do** keep reading surfaces matte and let native glass define action and navigation depth."
+    ],
+    "donts": [
+      "**Don't** flatten the implementation into a palette-only treatment of generic forms.",
+      "**Don't** substitute sample board data for financial or calendar truth.",
+      "**Don't** force three columns at accessibility text sizes.",
+      "**Don't** treat conceptual system chrome as a pixel-exact native requirement."
+    ]
+  }
+}

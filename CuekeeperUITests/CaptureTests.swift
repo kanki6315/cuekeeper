@@ -1,6 +1,35 @@
 import XCTest
 
 final class CaptureTests: XCTestCase {
+    func testOverallFeeCanBeSavedWithoutBreakdown() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store"]
+        app.launch()
+        XCTAssertTrue(app.buttons["add-job"].waitForExistence(timeout: 10))
+        app.buttons["add-job"].tap()
+        let name = app.textFields["job-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Paid broadcast")
+        app.buttons["save-job"].tap()
+        XCTAssertTrue(app.staticTexts["Paid broadcast"].waitForExistence(timeout: 5))
+        app.staticTexts["Paid broadcast"].tap()
+        let fee = app.buttons["job-fee"]
+        for _ in 0..<5 where !fee.isHittable { app.swipeUp() }
+        fee.tap()
+        XCTAssertTrue(app.buttons["edit-fee"].waitForExistence(timeout: 5))
+        app.buttons["edit-fee"].tap()
+        let amount = app.textFields["overall-fee"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 5))
+        amount.tap(); amount.typeText("1234.56")
+        let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        editor.name = "Fee editor"; editor.lifetime = .keepAlways; add(editor)
+        app.buttons["save-fee"].tap()
+        XCTAssertTrue(app.buttons["save-fee"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["$1,234.56"].firstMatch.waitForExistence(timeout: 5))
+        let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        details.name = "Fee and history"; details.lifetime = .keepAlways; add(details)
+    }
+
     func testSessionCaptureLinksAndConfirmationValidation() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store"]

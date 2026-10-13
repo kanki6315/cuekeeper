@@ -104,6 +104,7 @@ private struct JobsView: View {
                         if let client = job.client { Text(client.name).font(.subheadline) }
                         Text(dateRange(job)).font(.subheadline).foregroundStyle(.secondary)
                         Text(job.bookingStatus.capitalized).font(.caption).foregroundStyle(.secondary)
+                        Text(job.feeSummary).font(.subheadline).monospacedDigit()
                     }
                     .padding(.vertical, 8)
                 }
@@ -157,10 +158,12 @@ func dateRange(_ job: Job) -> String {
 }
 
 private struct SettingsView: View {
+    @AppStorage("defaultCurrency") private var defaultCurrency = "USD"
     @EnvironmentObject private var persistence: PersistenceController
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         Form {
+            Section("Defaults") { Picker("Currency", selection: $defaultCurrency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") } }
             Section("Integrations") { NavigationLink("Calendar") { CalendarSettingsView() } }
             Section("People & roles") {
                 NavigationLink("Clients") { LibraryView(kind: .client) }

@@ -70,6 +70,13 @@ struct JobEditorView: View {
                             .accessibilityLabel("Add role")
                     }
                 } header: { Text("Roles") } footer: { Text("Clients and roles are saved for reuse when you save the job.") }
+                Section {
+                    if draft.fee != nil {
+                        DisclosureGroup("Optional fee") {
+                            FeeFields(draft: Binding(get: { draft.fee ?? FeeDraft() }, set: { draft.fee = $0 }))
+                        }
+                    } else { Text("This fee needs review. Resolve it from the job’s Fee screen.").foregroundStyle(.secondary) }
+                }
                 Section("Where you’ll work") {
                     Picker("Arrangement", selection: $draft.workArrangement) {
                         ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -109,6 +116,9 @@ struct JobEditorView: View {
             .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
                 Button("Keep Editing", role: .cancel) {}
+            }
+            .onChange(of: draft.clientName) { _, name in
+                if job == nil, draft.fee?.amount.isEmpty == true, let client = clients.first(where: { $0.name == name }) { draft.fee?.currency = client.defaultCurrency }
             }
             .onChange(of: draft.startDate) { _, start in if draft.endDate < start { draft.endDate = start } }
             .task { if job == nil { nameFocused = true } }
@@ -173,6 +183,7 @@ struct JobDetailView: View {
                 if !job.timeZoneID.isEmpty { LabeledContent("Timezone", value: job.timeZoneID.replacingOccurrences(of: "_", with: " ")) }
             }
             if !job.notes.isEmpty { Section("Notes") { Text(job.notes).textSelection(.enabled) } }
+            Section("Fee") { NavigationLink { FeeDetailView(job: job) } label: { LabeledContent("Overall fee", value: job.feeSummary) }.accessibilityIdentifier("job-fee") }
             SessionsSection(job: job) { addingSession = true }
             Section("Calendar") {
                 Text(job.bookingStatus == "cancelled" ? "Cancelled jobs have no calendar entries." : "The all-day placeholder stays alongside confirmed sessions you’re covering.")

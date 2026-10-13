@@ -31,6 +31,56 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testFeesKeepUnknownZeroBreakdownAndHistoryDistinct() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let id = try JobDraft(name: "Fee test").save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        XCTAssertNil(try job.currentFee().amount)
+        var draft = try FeeDraft(job: job); draft.amount = "0"; draft.currency = "EUR"; draft.agreement = "agreed"
+        draft.lines = [FeeLine(description: "Days", quantity: "2.5", rate: "100.01"), FeeLine(description: "Adjustment", quantity: "1", rate: "-0.03")]
+        try draft.save(in: context, jobID: id)
+        XCTAssertEqual(try job.currentFee().amount, 0)
+        XCTAssertEqual(try job.currentFee().total(), 25000)
+        XCTAssertEqual(try job.currentFee().currency, "EUR")
+        XCTAssertEqual(job.feeRevisions?.count, 2)
+        let stale = draft
+        draft = try FeeDraft(job: job); draft.amount = "300.12"
+        try draft.save(in: context, jobID: id)
+        XCTAssertThrowsError(try stale.save(in: context, jobID: id))
+        XCTAssertEqual(try job.currentFee().amount, 30012)
+        let duplicateID = try JobDraft.duplicate(job).save(in: context)
+        let duplicate = try XCTUnwrap(context.existingObject(with: duplicateID) as? Job)
+        XCTAssertEqual(try duplicate.currentFee().amount, 30012)
+        XCTAssertEqual(duplicate.feeRevisions?.count, 1)
+        XCTAssertNotEqual(try duplicate.feeHeads().first?.id, try job.feeHeads().first?.id)
+        XCTAssertEqual(try Money.parse("0.10"), 10)
+        XCTAssertThrowsError(try Money.parse("1.001"))
+        XCTAssertThrowsError(try Money.parse("NaN"))
+        XCTAssertThrowsError(try Money.parse("999999999999999999999"))
+    }
+
+    func testConcurrentFeeVersionsRequireExplicitResolution() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let id = try JobDraft(name: "Concurrent fee").save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        let ancestor = try XCTUnwrap(try job.feeHeads().first?.id)
+        // Two immutable revisions arriving independently through sync share an ancestor.
+        for amount: Int64 in [10000, 20000] {
+            let revision = FeeRevision(entity: NSEntityDescription.entity(forEntityName: "FeeRevision", in: context)!, insertInto: context)
+            revision.id = UUID(); revision.createdAt = Date(); revision.job = job
+            revision.parentsJSON = String(decoding: try JSONEncoder().encode([ancestor]), as: UTF8.self)
+            revision.valueJSON = String(decoding: try JSONEncoder().encode(FeeValue(amount: amount)), as: UTF8.self)
+        }
+        try context.save()
+        XCTAssertEqual(try job.feeHeads().count, 2)
+        XCTAssertThrowsError(try job.currentFee())
+        let resolution = FeeDraft(value: FeeValue(amount: 15000), parents: Set(try job.feeHeads().compactMap(\.id)))
+        try resolution.save(in: context, jobID: id)
+        XCTAssertEqual(try job.currentFee().amount, 15000)
+        XCTAssertEqual(job.feeRevisions?.count, 4)
+        XCTAssertEqual(try job.feeHeads().count, 1)
+    }
+
     func testSessionsPersistIncompleteAndOvernightSchedulesWithLinks() async throws {
         let store = try await openStore()
         let context = store.container.viewContext

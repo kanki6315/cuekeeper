@@ -15,6 +15,7 @@ final class Job: NSManagedObject {
     @NSManaged var notes: String
     @NSManaged var client: Client?
     @NSManaged var roles: Set<WorkRole>?
+    @NSManaged var feeRevisions: Set<FeeRevision>?
     @NSManaged var sessions: Set<WorkSession>?
     var activeSessions: [WorkSession] { (sessions ?? []).filter { $0.deletedAt == nil }.sorted { ($0.day, $0.startTime ?? .distantFuture, $0.name) < ($1.day, $1.startTime ?? .distantFuture, $1.name) } }
     var roleNames: [String] { (roles ?? []).map(\.name).sorted() }
@@ -80,6 +81,7 @@ struct JobDraft: Equatable {
     var location = ""
     var timeZoneID = ""
     var notes = ""
+    var fee: FeeDraft? = FeeDraft()
 
     init(name: String = "", startDate: Date = Date(), endDate: Date = Date()) {
         self.name = name
@@ -98,6 +100,7 @@ struct JobDraft: Equatable {
         location = job.location
         timeZoneID = job.timeZoneID
         notes = job.notes
+        fee = try? FeeDraft(job: job)
     }
 
     /// Reuse descriptive details only. New engagements always begin tentative.
@@ -107,6 +110,7 @@ struct JobDraft: Equatable {
         draft.startDate = Date()
         draft.endDate = draft.startDate
         draft.notes = ""
+        draft.fee?.parentIDs = []
         return draft
     }
 
@@ -171,6 +175,10 @@ struct JobDraft: Equatable {
                 selectedRoles.insert(role)
             }
             job.roles = selectedRoles
+        }
+        if let fee, baseline?.fee != fee {
+            let changed = try fee.value() != (try? job.currentFee())
+            if objectID == nil || changed { try fee.apply(to: job, in: writer) }
         }
         try writer.save()
         context.performAndWait { context.refreshAllObjects() }

@@ -117,6 +117,42 @@ final class CaptureTests: XCTestCase {
         details.name = "Fee and history"; details.lifetime = .keepAlways; add(details)
     }
 
+    func testBreakdownChangesOverallFeeOnlyWhenExplicitlyApplied() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store"]
+        app.launch()
+        XCTAssertTrue(app.buttons["add-job"].waitForExistence(timeout: 10))
+        app.buttons["add-job"].tap()
+        let name = app.textFields["job-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Breakdown broadcast\n")
+        app.buttons["save-job"].tap()
+        XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
+        app.staticTexts["Breakdown broadcast"].firstMatch.tap()
+        let fee = app.buttons["job-fee"]
+        for _ in 0..<6 where !fee.isHittable { app.swipeUp() }
+        fee.tap(); app.buttons["edit-fee"].tap()
+        let overall = app.textFields["overall-fee"]
+        XCTAssertTrue(overall.waitForExistence(timeout: 5))
+        overall.tap(); overall.typeText("150")
+        let add = app.buttons["add-fee-item"]
+        for _ in 0..<6 where !add.isHittable { app.swipeUp() }
+        add.tap()
+        let rate = app.textFields["Rate (negative for adjustments)"]
+        for _ in 0..<6 where !rate.isHittable { app.swipeUp() }
+        rate.tap(); rate.typeText("100\n")
+        app.buttons["save-fee"].tap()
+        XCTAssertTrue(app.buttons["save-fee"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["$150.00"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Breakdown total: $100.00. The overall fee remains unchanged."].exists)
+        app.buttons["edit-fee"].tap()
+        let useTotal = app.buttons["Use Breakdown Total"]
+        for _ in 0..<8 where !useTotal.isHittable { app.swipeUp() }
+        useTotal.tap(); app.buttons["save-fee"].tap()
+        XCTAssertTrue(app.buttons["save-fee"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["$100.00"].firstMatch.waitForExistence(timeout: 5))
+    }
+
     func testSessionCaptureLinksAndConfirmationValidation() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store"]

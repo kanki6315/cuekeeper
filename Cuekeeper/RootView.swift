@@ -26,6 +26,8 @@ struct RootView: View {
                         .foregroundStyle(.primary)
                         .tag(section)
                 }
+                // Keep white labels legible when the native sidebar colors its selection.
+                .tint(Color("SidebarSelection"))
                 .navigationTitle("Cuekeeper")
             } detail: {
                 NavigationStack { content(selection ?? .upcoming) }

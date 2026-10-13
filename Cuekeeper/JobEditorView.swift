@@ -123,6 +123,8 @@ struct JobEditorView: View {
             .onChange(of: draft.startDate) { _, start in if draft.endDate < start { draft.endDate = start } }
             .task { if job == nil { nameFocused = true } }
         }
+        .presentationSizing(.page)
+        .presentationDetents([.large])
     }
 
     private func addRole() {

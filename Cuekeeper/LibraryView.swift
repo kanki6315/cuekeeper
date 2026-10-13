@@ -137,5 +137,7 @@ private struct LibraryEditor: View {
                 Button("Keep Editing", role: .cancel) {}
             }
         }
+        .presentationSizing(.page)
+        .presentationDetents([.large])
     }
 }

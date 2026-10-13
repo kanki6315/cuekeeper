@@ -86,6 +86,8 @@ struct SessionEditorView: View {
                 Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
             }
         }
+        .presentationSizing(.page)
+        .presentationDetents([.large])
     }
     @ViewBuilder private func optionalTime(_ label: String, value: Binding<Date?>) -> some View {
         Toggle("\(label) known", isOn: Binding(get: { value.wrappedValue != nil }, set: { enabled in
@@ -233,5 +235,7 @@ struct BroadcastLinkEditorView: View {
                     Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
                 }
         }
+        .presentationSizing(.page)
+        .presentationDetents([.large])
     }
 }

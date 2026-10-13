@@ -43,7 +43,12 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Invoiced show\n")
         let client = app.textFields["job-client"]
-        for _ in 0..<4 where !client.isHittable { app.swipeUp() }
+        for _ in 0..<8 where !client.isHittable {
+            // Scroll within the form sheet; a whole-window swipe can skip a field on iPad.
+            let form = app.collectionViews.element(boundBy: app.collectionViews.count - 1)
+            form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)))
+        }
         client.tap(); client.typeText("Studio Network")
         app.buttons["save-job"].tap()
         if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
@@ -57,6 +62,7 @@ final class CaptureTests: XCTestCase {
         let billed = app.textFields["billed-Invoiced show"]
         for _ in 0..<5 where !billed.isHittable { app.swipeUp() }
         billed.tap(); billed.typeText("200")
+        if app.keyboards.buttons["Return"].exists { billed.typeText("\n") }
         let status = app.buttons["invoice-status"]
         for _ in 0..<5 where !status.isHittable { app.swipeUp() }
         status.tap(); app.buttons["Sent"].tap()
@@ -135,6 +141,8 @@ final class CaptureTests: XCTestCase {
         let overall = app.textFields["overall-fee"]
         XCTAssertTrue(overall.waitForExistence(timeout: 5))
         overall.tap(); overall.typeText("150")
+        // Finish iPad keyboard entry before interacting with another Form row.
+        if app.keyboards.buttons["Return"].exists { overall.typeText("\n") }
         let add = app.buttons["add-fee-item"]
         for _ in 0..<6 where !add.isHittable { app.swipeUp() }
         add.tap()

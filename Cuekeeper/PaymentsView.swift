@@ -253,6 +253,8 @@ struct PaymentEditorView: View {
                 Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
             }
         }
+        .presentationSizing(.page)
+        .presentationDetents([.large])
     }
 }
 

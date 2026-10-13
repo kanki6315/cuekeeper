@@ -110,6 +110,8 @@ struct InvoiceEditorView: View {
                 Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
             }
         }
+        .presentationSizing(.page)
+        .presentationDetents([.large])
     }
     private func eligible(_ job: Job) -> Bool {
         guard let invoices = try? job.activeInvoices(in: context, excluding: invoice?.objectID), invoices.isEmpty,

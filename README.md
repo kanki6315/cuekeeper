@@ -1,8 +1,8 @@
 # Cuekeeper
 
 Native iPhone and iPad daybook for broadcast freelancers. Minimum iOS/iPadOS 27.
-This is the first implementation milestone: signed app foundation, local job
-capture, CloudKit configuration, and a TestFlight release pipeline.
+The signed app foundation now includes complete nonfinancial job management,
+CloudKit configuration, and a TestFlight release pipeline.
 
 ## Open and run
 
@@ -30,12 +30,22 @@ The app uses the approved Icon Composer asset in `design/brand/Cuekeeper.icon`.
 
 - iPhone tabs and iPad sidebar navigation.
 - Capture a tentative job using a name and inclusive placeholder dates.
-- Browse, search and view captured jobs; Upcoming excludes past dates.
+- Edit jobs and set tentative, booked, completed or cancelled status.
+- Add and reuse named clients and roles inline while editing a job.
+- Manage clients and roles in Settings, including renaming, client contact details,
+  notes and default currency; both libraries link back to related jobs.
+- Save work arrangement, location, optional timezone and notes.
+- Duplicate descriptive details into a tentative job with explicitly confirmed dates;
+  notes are excluded and the original stays in history.
+- Search job names or clients and combine status, client, role and overlapping-date filters.
+  Upcoming excludes past, completed and cancelled jobs.
+- Cancel an editor without saving; changed forms require an explicit discard.
+- Failed saves show a native alert and keep the editor draft available to correct.
 - SQLite persistence through Core Data, with CloudKit private-database mirroring.
 - iCloud account checks and observed transfer/error status in Settings.
 - Isolated local test stores that never write test records to iCloud.
 
-Job editing, sessions, EventKit, fees, invoices, payments, conflict-preserving
+Sessions, EventKit, fees, invoices, payments, conflict-preserving
 financial history, backup/restore and Recently Deleted are still future work.
 Payments is explicitly marked as unavailable in this foundation build.
 Do not use this build as the only copy of important records.
@@ -80,9 +90,12 @@ xcodebuild test -project Cuekeeper.xcodeproj -scheme Cuekeeper \
   -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO
 ```
 
-Persistence tests cover saving/reopening a real SQLite store, validation without
-partial inserts, and civil-date round trips across timezones and DST. UI tests
-capture a job, restart the app and verify its booking state. Run the UI suite on
+Persistence tests cover saving/reopening SQLite, V1-to-V2 migration, validation
+without partial changes, duplication and library reuse, client renaming,
+combined filters, preservation of unchanged editor fields, and civil-date round
+trips across timezones and DST. UI tests cover capture/relaunch, editing booking
+status, confirming duplicate dates, discarding edits, client creation/filter
+navigation, and visible failed-save alerts that preserve the draft. Run the UI suite on
 an iPad too by changing the destination. These tests disable CloudKit; live
 cross-device convergence must be verified separately on signed-in devices.
 
@@ -130,3 +143,25 @@ script unless tests are explicitly skipped.
 `--no-upload` still contacts Apple for signing and may create provisioning
 profiles. It does not publish a build. Successful export proves packaging and
 signing, not App Store Connect acceptance or live CloudKit sync.
+
+## Job management validation and next release
+
+The V2 Core Data model adds clients, roles and job details. The V1 model remains
+bundled for lightweight migration; tests open a V1 SQLite store and verify that
+its jobs survive the upgrade. Each editor saves through an isolated context.
+Unchanged form fields do not overwrite updates saved while the editor was open.
+This does not establish conflict resolution for simultaneous edits to the same field.
+
+On October 12, 2026, the user verified cross-device sync in the first TestFlight
+build, including capture offline and sync after reconnecting. Cross-device
+conflicts were not tested. The new V2 fields and relationships need their own
+cross-device check after release.
+
+Before distributing this model change, run the dedicated initialization scheme
+on an iCloud-signed-in device, export and commit the real Development schema,
+and deploy its additions in CloudKit Console. The existing committed CloudKit
+snapshot represents the first released model; the release gate intentionally
+blocks V2 uploads until the new export and Production deployment are complete.
+Client/role renames update related jobs through their shared records. Library
+names are checked case-insensitively on this device; independently created
+records on offline devices are not yet automatically deduplicated.

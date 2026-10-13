@@ -81,6 +81,7 @@ private struct LibraryEditor: View {
     @State private var initial: LibraryDraft
     @State private var error: String?
     @State private var discard = false
+    @FocusState private var nameFocused: Bool
     init(kind: LibraryKind, record: NSManagedObject? = nil) {
         self.kind = kind
         self.record = record
@@ -92,7 +93,8 @@ private struct LibraryEditor: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Name", text: $draft.name)
+                    TextField("Name", text: $draft.name).focused($nameFocused)
+                        .submitLabel(.done).onSubmit { nameFocused = false }
                     if kind == .client {
                         TextField("Contact details", text: $draft.contact, axis: .vertical).lineLimit(2...6)
                         Picker("Default currency", selection: $draft.currency) {
@@ -102,7 +104,6 @@ private struct LibraryEditor: View {
                         TextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...10)
                     }
                 } footer: { Text("Renaming updates the name shown on related jobs.") }
-                if let error { Text(error).foregroundStyle(.red) }
             }
             .navigationTitle("\(record == nil ? "Add" : "Edit") \(kind.singular)")
             .navigationBarTitleDisplayMode(.inline)
@@ -115,6 +116,7 @@ private struct LibraryEditor: View {
                     }.disabled(draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .saveErrorAlert($error)
             .interactiveDismissDisabled(draft != initial)
             .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }

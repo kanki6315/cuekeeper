@@ -148,26 +148,26 @@ struct JobDraft: Equatable {
         guard job.startDay <= job.endDay else { throw ValidationError.invalidDates }
         let clientText = clientName.trimmingCharacters(in: .whitespacesAndNewlines)
         if baseline?.clientName != clientName {
-        if clientText.isEmpty {
-            job.client = nil
-        } else {
-            let request = NSFetchRequest<Client>(entityName: "Client")
-            request.predicate = NSPredicate(format: "name ==[cd] %@", clientText)
-            let client = try writer.fetch(request).first ?? Client(entity: NSEntityDescription.entity(forEntityName: "Client", in: writer)!, insertInto: writer)
-            if client.id == nil { client.id = UUID(); client.name = clientText }
-            job.client = client
-        }
+            if clientText.isEmpty {
+                job.client = nil
+            } else {
+                let request = NSFetchRequest<Client>(entityName: "Client")
+                request.predicate = NSPredicate(format: "name ==[cd] %@", clientText)
+                let client = try writer.fetch(request).first ?? Client(entity: NSEntityDescription.entity(forEntityName: "Client", in: writer)!, insertInto: writer)
+                if client.id == nil { client.id = UUID(); client.name = clientText }
+                job.client = client
+            }
         }
         if baseline?.roleNames != roleNames {
-        var selectedRoles = Set<WorkRole>()
-        for name in roleNames.map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }).filter({ !$0.isEmpty }).sorted() {
-            let request = NSFetchRequest<WorkRole>(entityName: "WorkRole")
-            request.predicate = NSPredicate(format: "name ==[cd] %@", name)
-            let role = try writer.fetch(request).first ?? WorkRole(entity: NSEntityDescription.entity(forEntityName: "WorkRole", in: writer)!, insertInto: writer)
-            if role.id == nil { role.id = UUID(); role.name = name }
-            selectedRoles.insert(role)
-        }
-        job.roles = selectedRoles
+            var selectedRoles = Set<WorkRole>()
+            for name in roleNames.map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }).filter({ !$0.isEmpty }).sorted() {
+                let request = NSFetchRequest<WorkRole>(entityName: "WorkRole")
+                request.predicate = NSPredicate(format: "name ==[cd] %@", name)
+                let role = try writer.fetch(request).first ?? WorkRole(entity: NSEntityDescription.entity(forEntityName: "WorkRole", in: writer)!, insertInto: writer)
+                if role.id == nil { role.id = UUID(); role.name = name }
+                selectedRoles.insert(role)
+            }
+            job.roles = selectedRoles
         }
         try writer.save()
         context.performAndWait { context.refreshAllObjects() }

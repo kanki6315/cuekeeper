@@ -85,7 +85,6 @@ struct JobEditorView: View {
                     TextField("Preparation, travel, or other details", text: $draft.notes, axis: .vertical)
                         .lineLimit(4...12).accessibilityIdentifier("job-notes")
                 }
-                if let error { Section { Text(error).foregroundStyle(.red).accessibilityIdentifier("job-error") } }
             }
             .navigationTitle(duplicating ? "Duplicate Job" : job == nil ? "Add Job" : "Edit Job")
             .navigationBarTitleDisplayMode(.inline)
@@ -105,6 +104,7 @@ struct JobEditorView: View {
                     .accessibilityIdentifier("save-job")
                 }
             }
+            .saveErrorAlert($error)
             .interactiveDismissDisabled(draft != initial || !newRole.isEmpty)
             .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
@@ -217,6 +217,20 @@ struct JobFiltersView: View {
             }.navigationTitle("Filter Jobs").navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button("Done") { dismiss() } }
                 .onChange(of: filter.start) { _, start in if filter.end < start { filter.end = start } }
+        }
+    }
+}
+
+/// Shared by both editors so a failed save is visible even when a long form is scrolled.
+extension View {
+    func saveErrorAlert(_ error: Binding<String?>) -> some View {
+        alert("Couldn’t save changes", isPresented: Binding(
+            get: { error.wrappedValue != nil },
+            set: { if !$0 { error.wrappedValue = nil } }
+        )) {
+            Button("OK", role: .cancel) { error.wrappedValue = nil }
+        } message: {
+            Text(error.wrappedValue ?? "Please try again.")
         }
     }
 }

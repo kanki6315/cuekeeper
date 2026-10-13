@@ -23,7 +23,7 @@ struct RootView: View {
             NavigationSplitView {
                 List(AppSection.allCases, selection: $selection) { section in
                     Label(section.rawValue, systemImage: section.symbol)
-                        .foregroundStyle(selection == section ? Color("SidebarSelectionText") : Color.primary)
+                        .foregroundStyle(.primary)
                         .tag(section)
                 }
                 .navigationTitle("Cuekeeper")

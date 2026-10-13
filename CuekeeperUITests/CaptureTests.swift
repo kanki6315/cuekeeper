@@ -1,6 +1,93 @@
 import XCTest
 
 final class CaptureTests: XCTestCase {
+    func testBroadcastLinkCanBeCapturedBeforeScheduling() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store"]
+        app.launch()
+        XCTAssertTrue(app.buttons["add-job"].waitForExistence(timeout: 10))
+        app.buttons["add-job"].tap()
+        let name = app.textFields["job-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Archive broadcast\n")
+        app.buttons["save-job"].tap()
+        XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
+        app.staticTexts["Archive broadcast"].firstMatch.tap()
+        let addLink = app.buttons["job-add-link"]
+        for _ in 0..<8 where !addLink.isHittable { app.swipeUp() }
+        addLink.tap()
+        let url = app.textFields["quick-broadcast-url"]
+        XCTAssertTrue(url.waitForExistence(timeout: 5))
+        url.tap(); url.typeText("https://example.com/archive")
+        app.buttons["save-broadcast-link"].tap()
+        XCTAssertTrue(app.buttons["save-broadcast-link"].waitForNonExistence(timeout: 5))
+        // Open the newly created session: no date/time or fee was required.
+        let session = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Session")).firstMatch
+        for _ in 0..<6 where !session.isHittable { app.swipeDown() }
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        session.tap()
+        let link = app.links["https://example.com/archive"]
+        if !link.exists {
+            for _ in 0..<6 where !link.isHittable { app.swipeUp() }
+        }
+        XCTAssertTrue(link.waitForExistence(timeout: 5))
+    }
+
+    func testInvoiceAndPartialPaymentWorkflow() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store"]
+        app.launch()
+        XCTAssertTrue(app.buttons["add-job"].waitForExistence(timeout: 10))
+        app.buttons["add-job"].tap()
+        let name = app.textFields["job-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Invoiced show\n")
+        let client = app.textFields["job-client"]
+        for _ in 0..<4 where !client.isHittable { app.swipeUp() }
+        client.tap(); client.typeText("Studio Network")
+        app.buttons["save-job"].tap()
+        if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
+        app.staticTexts["Invoiced show"].firstMatch.tap()
+        let addInvoice = app.buttons["add-job-invoice"]
+        for _ in 0..<7 where !addInvoice.isHittable { app.swipeUp() }
+        addInvoice.tap()
+        let reference = app.textFields["invoice-reference"]
+        XCTAssertTrue(reference.waitForExistence(timeout: 5))
+        reference.tap(); reference.typeText("INV-200")
+        let billed = app.textFields["billed-Invoiced show"]
+        for _ in 0..<5 where !billed.isHittable { app.swipeUp() }
+        billed.tap(); billed.typeText("200")
+        let status = app.buttons["invoice-status"]
+        for _ in 0..<5 where !status.isHittable { app.swipeUp() }
+        status.tap(); app.buttons["Sent"].tap()
+        let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        editor.name = "Invoice editor"; editor.lifetime = .keepAlways; add(editor)
+        app.buttons["save-invoice"].tap()
+        XCTAssertTrue(app.buttons["save-invoice"].waitForNonExistence(timeout: 5))
+        let invoice = app.staticTexts["INV-200"].firstMatch
+        for _ in 0..<4 where !invoice.isHittable { app.swipeUp() }
+        XCTAssertTrue(invoice.waitForExistence(timeout: 5)); invoice.tap()
+        let record = app.buttons["record-payment"]
+        for _ in 0..<6 where !record.isHittable { app.swipeUp() }
+        record.tap()
+        let amount = app.textFields["payment-amount"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 5))
+        amount.tap(); amount.typeText("75")
+        app.buttons["save-payment"].tap()
+        XCTAssertTrue(app.buttons["save-payment"].waitForNonExistence(timeout: 5))
+        let balance = app.descendants(matching: .any)["invoice-balance"].firstMatch
+        for _ in 0..<6 where !balance.isHittable { app.swipeDown() }
+        XCTAssertTrue(balance.waitForExistence(timeout: 5))
+        XCTAssertEqual(balance.value as? String, "$125.00")
+        let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        details.name = "Invoice partial balance"; details.lifetime = .keepAlways; add(details)
+        let payments = app.buttons["Payments"].firstMatch
+        if payments.exists { payments.tap() } else { app.staticTexts["Payments"].firstMatch.tap() }
+        XCTAssertTrue(app.staticTexts["Invoiced outstanding"].firstMatch.waitForExistence(timeout: 5))
+        let overview = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        overview.name = "Payments overview"; overview.lifetime = .keepAlways; add(overview)
+    }
+
     func testOverallFeeCanBeSavedWithoutBreakdown() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store"]
@@ -24,7 +111,7 @@ final class CaptureTests: XCTestCase {
         let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         editor.name = "Fee editor"; editor.lifetime = .keepAlways; add(editor)
         app.buttons["save-fee"].tap()
-        XCTAssertTrue(app.buttons["save-fee"].waitForNonExistence(timeout: 5))
+        if !app.buttons["save-fee"].waitForNonExistence(timeout: 5) { print("SAVE_FEE_FAILURE\n" + app.debugDescription); XCTFail("Fee save did not dismiss") }
         XCTAssertTrue(app.staticTexts["$1,234.56"].firstMatch.waitForExistence(timeout: 5))
         let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         details.name = "Fee and history"; details.lifetime = .keepAlways; add(details)
@@ -49,7 +136,7 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(sessionName.waitForExistence(timeout: 5))
         sessionName.tap(); sessionName.typeText("Final programme")
         app.buttons["save-session"].tap()
-        XCTAssertTrue(app.buttons["save-session"].waitForNonExistence(timeout: 5))
+        if !app.buttons["save-session"].waitForNonExistence(timeout: 5) { print("SAVE_SESSION_FAILURE\n" + app.debugDescription); XCTFail("Session save did not dismiss") }
         XCTAssertTrue(app.staticTexts["Final programme"].waitForExistence(timeout: 5))
         app.staticTexts["Final programme"].tap()
         app.buttons["edit-session"].tap()
@@ -70,7 +157,7 @@ final class CaptureTests: XCTestCase {
         for _ in 0..<3 where !url.isHittable { app.swipeUp() }
         url.tap(); url.typeText("https://example.com/finals")
         app.buttons["save-session"].tap()
-        XCTAssertTrue(app.buttons["save-session"].waitForNonExistence(timeout: 5))
+        if !app.buttons["save-session"].waitForNonExistence(timeout: 5) { print("SAVE_SESSION_FAILURE\n" + app.debugDescription); XCTFail("Session save did not dismiss") }
         XCTAssertTrue(app.links["https://example.com/finals"].waitForExistence(timeout: 5))
         let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         details.name = "Session details and link"; details.lifetime = .keepAlways; add(details)
@@ -88,7 +175,7 @@ final class CaptureTests: XCTestCase {
         name.tap()
         name.typeText("Test broadcast")
         app.buttons["save-job"].tap()
-        XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
+        if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         XCTAssertTrue(app.staticTexts["Test broadcast"].waitForExistence(timeout: 5))
         app.terminate()
         app.launchArguments = ["--ui-testing"]
@@ -110,7 +197,7 @@ final class CaptureTests: XCTestCase {
         name.tap()
         name.typeText("Weekend coverage")
         app.buttons["save-job"].tap()
-        XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
+        if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         XCTAssertTrue(app.staticTexts["Weekend coverage"].waitForExistence(timeout: 5))
         app.staticTexts["Weekend coverage"].tap()
         app.buttons["edit-job"].tap()
@@ -125,7 +212,7 @@ final class CaptureTests: XCTestCase {
         editor.lifetime = .keepAlways
         add(editor)
         app.buttons["save-job"].tap()
-        XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
+        if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         let status = app.descendants(matching: .any)["booking-status"].firstMatch
         XCTAssertTrue(status.waitForExistence(timeout: 5))
         XCTAssertEqual(status.value as? String, "Booked")
@@ -134,6 +221,7 @@ final class CaptureTests: XCTestCase {
         detail.name = "Job details"
         detail.lifetime = .keepAlways
         add(detail)
+        for _ in 0..<7 where !app.buttons["duplicate-job"].isHittable { app.swipeUp() }
         app.buttons["duplicate-job"].tap()
         XCTAssertTrue(app.buttons["save-job"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["save-job"].isEnabled)
@@ -142,7 +230,7 @@ final class CaptureTests: XCTestCase {
         let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: app.buttons["save-job"])
         XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 5), .completed)
         app.buttons["save-job"].tap()
-        XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
+        if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         XCTAssertTrue(app.buttons["edit-job"].waitForExistence(timeout: 5))
         app.buttons["edit-job"].tap()
         XCTAssertTrue(name.waitForExistence(timeout: 5))

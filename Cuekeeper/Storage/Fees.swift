@@ -119,6 +119,9 @@ struct FeeDraft: Equatable {
         let heads = Set(try job.feeHeads().compactMap(\.id))
         guard heads == parentIDs else { throw RecordError.invalid("The fee changed while this editor was open. Cancel and review the latest fee; your unsaved values remain here until you close it.") }
         let value = try value()
+        if let prior = job.payments?.first, prior.currency != value.currency {
+            throw RecordError.invalid("This job has payment history in \(prior.currency). Its currency must stay the same.")
+        }
         let revision = FeeRevision(entity: NSEntityDescription.entity(forEntityName: "FeeRevision", in: writer)!, insertInto: writer)
         revision.id = UUID(); revision.createdAt = Date(); revision.job = job
         revision.parentsJSON = String(decoding: try JSONEncoder().encode(parentIDs.sorted { $0.uuidString < $1.uuidString }), as: UTF8.self)

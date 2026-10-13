@@ -21,14 +21,165 @@ final class PersistenceTests: XCTestCase {
         try FileManager.default.removeItem(at: directory)
     }
 
-    private func openStore() async throws -> PersistenceController {
-        let store = PersistenceController(storeURL: directory.appending(path: "test.sqlite"), cloudEnabled: false)
+    private func openStore(fileName: String = "test.sqlite") async throws -> PersistenceController {
+        let store = PersistenceController(storeURL: directory.appending(path: fileName), cloudEnabled: false)
         for _ in 0..<100 {
             if store.isLoaded { openedStores.append(store); return store }
             if let error = store.loadError { throw NSError(domain: error, code: 1) }
             try await Task.sleep(for: .milliseconds(50))
         }
         throw NSError(domain: "Store timed out", code: 2)
+    }
+
+    private func billingJob(_ name: String, amount: String, currency: String = "USD", in context: NSManagedObjectContext) throws -> Job {
+        var draft = JobDraft(name: name); draft.clientName = "Studio Network"
+        draft.fee?.amount = amount; draft.fee?.currency = currency
+        return try XCTUnwrap(context.existingObject(with: draft.save(in: context)) as? Job)
+    }
+
+    func testInvoiceConcurrentEditsPreserveBothVersionsAndRejectStaleSave() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let job = try billingJob("Conflict invoice", amount: "100", in: context)
+        var initial = InvoiceDraft(clientID: job.client!.id!, currency: "USD")
+        initial.value.lines = [BilledLine(jobID: job.id!, jobName: job.name, amount: 10000)]
+        let id = try initial.save(in: context)
+        let invoice = try XCTUnwrap(context.existingObject(with: id) as? Invoice)
+        let ancestor = try XCTUnwrap(try invoice.heads().first?.id)
+        var first = try InvoiceDraft(invoice: invoice); first.value.notes = "First edit"
+        try first.save(in: context, editing: id)
+        let second = InvoiceRevision(entity: NSEntityDescription.entity(forEntityName: "InvoiceRevision", in: context)!, insertInto: context)
+        second.id = UUID(); second.createdAt = Date(); second.invoice = invoice
+        var alternate = initial.value; alternate.notes = "Second edit"
+        second.parentsJSON = String(decoding: try JSONEncoder().encode([ancestor]), as: UTF8.self)
+        second.valueJSON = String(decoding: try JSONEncoder().encode(alternate), as: UTF8.self)
+        try context.save()
+        XCTAssertEqual(try invoice.heads().count, 2); XCTAssertThrowsError(try invoice.currentValue())
+        let resolved = InvoiceDraft(value: alternate, parents: Set(try invoice.heads().compactMap(\.id)))
+        try resolved.save(in: context, editing: id)
+        XCTAssertEqual(try invoice.currentValue().notes, "Second edit")
+        XCTAssertEqual(invoice.revisions?.count, 4)
+        XCTAssertThrowsError(try first.save(in: context, editing: id))
+    }
+
+    func testV2ThroughV4StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+        let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
+        for version in 2...4 {
+            let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
+            let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
+            let fileName = "migration-\(version).sqlite"
+            let oldStore = try coordinator.addPersistentStore(type: .sqlite, at: directory.appending(path: fileName))
+            let oldContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+            oldContext.persistentStoreCoordinator = coordinator
+            let job = NSEntityDescription.insertNewObject(forEntityName: "Job", into: oldContext)
+            let jobID = UUID(); job.setValue(jobID, forKey: "id"); job.setValue("Existing job", forKey: "name")
+            job.setValue("2026-10-12", forKey: "startDay"); job.setValue("2026-10-13", forKey: "endDay")
+            let client = NSEntityDescription.insertNewObject(forEntityName: "Client", into: oldContext)
+            client.setValue(UUID(), forKey: "id"); client.setValue("Existing client", forKey: "name"); job.setValue(client, forKey: "client")
+            if version >= 3 {
+                let session = NSEntityDescription.insertNewObject(forEntityName: "WorkSession", into: oldContext)
+                session.setValue(UUID(), forKey: "id"); session.setValue("Existing session", forKey: "name"); session.setValue(job, forKey: "job")
+                let link = NSEntityDescription.insertNewObject(forEntityName: "BroadcastLink", into: oldContext)
+                link.setValue(UUID(), forKey: "id"); link.setValue("https://example.com/old", forKey: "url"); link.setValue(session, forKey: "session")
+            }
+            if version >= 4 {
+                let fee = NSEntityDescription.insertNewObject(forEntityName: "FeeRevision", into: oldContext)
+                fee.setValue(UUID(), forKey: "id"); fee.setValue(Date(), forKey: "createdAt"); fee.setValue(job, forKey: "job")
+                fee.setValue(String(decoding: try JSONEncoder().encode(FeeValue(amount: 12345)), as: UTF8.self), forKey: "valueJSON")
+            }
+            try oldContext.save(); oldContext.reset(); try coordinator.remove(oldStore)
+            let migrated = try await openStore(fileName: fileName)
+            let saved = try XCTUnwrap(migrated.container.viewContext.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+            XCTAssertEqual(saved.id, jobID); XCTAssertEqual(saved.client?.name, "Existing client")
+            if version >= 3 { XCTAssertEqual(saved.activeSessions.first?.sortedLinks.first?.url, "https://example.com/old") }
+            if version >= 4 { XCTAssertEqual(try saved.currentFee().amount, 12345) }
+            XCTAssertEqual(try saved.directPaid(), 0)
+        }
+    }
+
+    func testGroupedInvoiceSnapshotsAndPartialPayments() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let first = try billingJob("First", amount: "500", in: context)
+        let second = try billingJob("Second", amount: "300", in: context)
+        let euro = try billingJob("Euro", amount: "100", currency: "EUR", in: context)
+        var draft = InvoiceDraft(clientID: first.client!.id!, currency: "USD")
+        draft.value.reference = "INV-100"; draft.value.status = "sent"; draft.value.sentDay = "2026-01-01"; draft.value.dueDay = "2026-01-31"
+        draft.value.lines = [BilledLine(jobID: first.id!, jobName: first.name, amount: 50000), BilledLine(jobID: second.id!, jobName: second.name, amount: 30000)]
+        var mixed = draft; mixed.value.lines.append(BilledLine(jobID: euro.id!, jobName: euro.name, amount: 10000))
+        XCTAssertThrowsError(try mixed.save(in: context))
+        let id = try draft.save(in: context)
+        let invoice = try XCTUnwrap(context.existingObject(with: id) as? Invoice)
+        XCTAssertEqual(try invoice.currentValue().total(), 80000)
+        try PaymentDraft(amount: "200", note: "Part one").save(in: context, invoiceID: id)
+        try PaymentDraft(amount: "100", note: "Part two").save(in: context, invoiceID: id)
+        XCTAssertEqual(try invoice.paid(), 30000); XCTAssertEqual(try invoice.balance(), 50000)
+        XCTAssertTrue(invoice.overdue)
+        XCTAssertEqual(try first.directPaid(), 0); XCTAssertEqual(try second.directPaid(), 0)
+        XCTAssertEqual(first.billingSummary(in: context), second.billingSummary(in: context))
+        var fee = try FeeDraft(job: first); fee.amount = "900"
+        try fee.save(in: context, jobID: first.objectID)
+        XCTAssertEqual(try invoice.currentValue().total(), 80000)
+        var edit = try InvoiceDraft(invoice: invoice); edit.value.lines[0].amount = 90000
+        XCTAssertThrowsError(try edit.save(in: context, editing: id))
+        edit = try InvoiceDraft(invoice: invoice); edit.value.notes = "Follow up next week"
+        try edit.save(in: context, editing: id)
+        XCTAssertEqual(invoice.revisions?.count, 2)
+        XCTAssertThrowsError(try PaymentDraft(amount: "10").save(in: context, jobID: first.objectID))
+        XCTAssertThrowsError(try draft.save(in: context))
+        var void = try InvoiceDraft(invoice: invoice); void.value.status = "void"
+        XCTAssertThrowsError(try void.save(in: context, editing: id))
+        XCTAssertEqual(try invoice.balance(), 50000)
+    }
+
+    func testDirectPaymentsCorrectionsAndCurrencyHistory() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let job = try billingJob("Direct", amount: "", currency: "EUR", in: context)
+        try PaymentDraft(amount: "25.55", note: "Deposit").save(in: context, jobID: job.objectID)
+        XCTAssertEqual(try job.directPaid(), 2555)
+        let payment = try XCTUnwrap(job.payments?.first)
+        var fee = try FeeDraft(job: job); fee.currency = "USD"
+        XCTAssertThrowsError(try fee.save(in: context, jobID: job.objectID))
+        try PaymentLedger.reverse(payment, in: context)
+        XCTAssertEqual(try job.directPaid(), 0); XCTAssertEqual(job.payments?.count, 2)
+        XCTAssertThrowsError(try PaymentLedger.reverse(payment, in: context))
+        // Two devices can reverse the same receipt offline; it counts only once.
+        let duplicate = PaymentRecord(entity: NSEntityDescription.entity(forEntityName: "PaymentRecord", in: context)!, insertInto: context)
+        duplicate.id = UUID(); duplicate.reversesID = payment.id; duplicate.amount = -payment.amount
+        duplicate.currency = payment.currency; duplicate.job = job; duplicate.createdAt = Date(); duplicate.receivedAt = Date()
+        try context.save()
+        XCTAssertEqual(try job.directPaid(), 0)
+        try PaymentDraft(amount: "30.10").save(in: context, jobID: job.objectID)
+        XCTAssertEqual(try job.directPaid(), 3010)
+        XCTAssertEqual(job.payments?.count, 4)
+        XCTAssertThrowsError(try PaymentDraft(amount: "-10").save(in: context, jobID: job.objectID))
+    }
+
+    func testSyncedDuplicateBillingCanBeDetectedAndVoided() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let job = try billingJob("Shared job", amount: "100", in: context)
+        var draft = InvoiceDraft(clientID: job.client!.id!, currency: "USD")
+        draft.value.reference = "A"; draft.value.status = "sent"; draft.value.sentDay = "2026-01-01"
+        draft.value.lines = [BilledLine(jobID: job.id!, jobName: job.name, amount: 10000)]
+        let firstID = try draft.save(in: context)
+        let first = try XCTUnwrap(context.existingObject(with: firstID) as? Invoice)
+        // Simulate an independently created invoice arriving through CloudKit.
+        let other = Invoice(entity: NSEntityDescription.entity(forEntityName: "Invoice", in: context)!, insertInto: context)
+        other.id = UUID(); other.createdAt = Date(); other.client = job.client
+        let revision = InvoiceRevision(entity: NSEntityDescription.entity(forEntityName: "InvoiceRevision", in: context)!, insertInto: context)
+        var value = draft.value; value.reference = "B"
+        revision.id = UUID(); revision.createdAt = Date(); revision.invoice = other
+        revision.parentsJSON = "[]"; revision.valueJSON = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        try context.save()
+        XCTAssertEqual(try job.activeInvoices(in: context).count, 2)
+        XCTAssertNotNil(first.issue(in: context))
+        XCTAssertThrowsError(try PaymentDraft(amount: "10").save(in: context, invoiceID: firstID))
+        var void = try InvoiceDraft(invoice: other); void.value.status = "void"
+        try void.save(in: context, editing: other.objectID)
+        XCTAssertEqual(other.revisions?.count, 2)
+        XCTAssertEqual(try other.balance(), 0)
+        XCTAssertNil(first.issue(in: context))
+        XCTAssertEqual(try job.activeInvoices(in: context).count, 1)
+        try PaymentDraft(amount: "10").save(in: context, invoiceID: firstID)
+        XCTAssertEqual(try first.balance(), 9000)
     }
 
     func testFeesKeepUnknownZeroBreakdownAndHistoryDistinct() async throws {

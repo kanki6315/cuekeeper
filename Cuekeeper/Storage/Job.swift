@@ -15,6 +15,7 @@ final class Job: NSManagedObject {
     @NSManaged var notes: String
     @NSManaged var client: Client?
     @NSManaged var roles: Set<WorkRole>?
+    @NSManaged var payments: Set<PaymentRecord>?
     @NSManaged var feeRevisions: Set<FeeRevision>?
     @NSManaged var sessions: Set<WorkSession>?
     var activeSessions: [WorkSession] { (sessions ?? []).filter { $0.deletedAt == nil }.sorted { ($0.day, $0.startTime ?? .distantFuture, $0.name) < ($1.day, $1.startTime ?? .distantFuture, $1.name) } }
@@ -44,6 +45,7 @@ enum Day {
 
 @objc(Client)
 final class Client: NSManagedObject {
+    @NSManaged var invoices: Set<Invoice>?
     @NSManaged var contact: String
     @NSManaged var notes: String
     @NSManaged var defaultCurrency: String
@@ -212,7 +214,7 @@ struct JobFilter {
                 || (job.client?.name.localizedCaseInsensitiveContains(search) ?? false))
             && (status.isEmpty || job.bookingStatus == status)
             && (client.isEmpty || job.client?.name == client)
-            && (role.isEmpty || job.roleNames.contains(role))
+            && (role.isEmpty || job.roleNames.contains(role) || job.activeSessions.contains { $0.roleNames.contains(role) })
             && (!usesDates || (job.endDay >= Day.string(from: start) && job.startDay <= Day.string(from: end)))
     }
 }

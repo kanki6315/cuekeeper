@@ -117,9 +117,15 @@ struct FeeDetailView: View {
             Section("Fee history") {
                 if revisions.isEmpty { Text("No fee entered yet").foregroundStyle(.secondary) }
                 ForEach(revisions, id: \.objectID) { revision in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(revision.value?.amount.map { Money.format($0, currency: revision.value!.currency) } ?? "Unknown fee")
-                        Text(revision.createdAt?.formatted() ?? "Date unknown").font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup(revision.createdAt?.formatted() ?? "Date unknown") {
+                        if let value = revision.value {
+                            Text(value.amount.map { Money.format($0, currency: value.currency) } ?? "Unknown fee")
+                            Text(value.agreement.capitalized)
+                            ForEach(value.lines) { line in
+                                LabeledContent(line.description.isEmpty ? "Breakdown item" : line.description, value: (try? line.total()).map { Money.format($0, currency: value.currency) } ?? "Incomplete")
+                                Text("\(line.quantity) × \(line.rate)").font(.caption)
+                            }
+                        } else { Text("This revision is incomplete or unreadable.") }
                     }
                 }
             }

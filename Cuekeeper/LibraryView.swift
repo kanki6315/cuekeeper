@@ -44,7 +44,13 @@ struct LibraryDetailView: View {
     @ObservedObject var record: NSManagedObject
     let kind: LibraryKind
     @State private var editing = false
-    private var jobs: [Job] { ((record.value(forKey: "jobs") as? Set<Job>) ?? []).sorted { $0.startDay > $1.startDay } }
+    private var jobs: [Job] {
+        var related = (record.value(forKey: "jobs") as? Set<Job>) ?? []
+        if let role = record as? WorkRole {
+            related.formUnion((role.sessions ?? []).filter { $0.deletedAt == nil }.compactMap(\.job))
+        }
+        return related.sorted { $0.startDay > $1.startDay }
+    }
     var body: some View {
         Form {
             if let client = record as? Client {
@@ -52,6 +58,14 @@ struct LibraryDetailView: View {
                     if !client.contact.isEmpty { LabeledContent("Contact", value: client.contact).textSelection(.enabled) }
                     LabeledContent("Default currency", value: client.defaultCurrency)
                     if !client.notes.isEmpty { Text(client.notes).textSelection(.enabled) }
+                }
+            }
+            if let client = record as? Client {
+                Section("Related invoices") {
+                    if (client.invoices ?? []).isEmpty { Text("No invoices yet").foregroundStyle(.secondary) }
+                    ForEach((client.invoices ?? []).sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }, id: \.objectID) { invoice in
+                        NavigationLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
+                    }
                 }
             }
             Section("Related jobs") {

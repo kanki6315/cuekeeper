@@ -155,12 +155,18 @@ struct TimeZonePicker: View {
     }
 }
 
+private struct LinkPresentation: Identifiable { let id = UUID(); let session: WorkSession? }
+
 struct JobDetailView: View {
     @EnvironmentObject private var calendar: CalendarController
     @ObservedObject var job: Job
     @State private var editing = false
     @State private var duplicating = false
     @State private var addingSession = false
+    @State private var addingInvoice = false
+    @State private var addingPayment = false
+    @State private var choosingLinkSession = false
+    @State private var linkEditor: LinkPresentation?
     var body: some View {
         Form {
             Section("Booking") {
@@ -184,7 +190,23 @@ struct JobDetailView: View {
             }
             if !job.notes.isEmpty { Section("Notes") { Text(job.notes).textSelection(.enabled) } }
             Section("Fee") { NavigationLink { FeeDetailView(job: job) } label: { LabeledContent("Overall fee", value: job.feeSummary) }.accessibilityIdentifier("job-fee") }
+            JobBillingSection(job: job, onInvoice: { addingInvoice = true }, onPayment: { addingPayment = true })
             SessionsSection(job: job) { addingSession = true }
+            Section("Broadcast links") {
+                ForEach(job.activeSessions.filter { !$0.sortedLinks.isEmpty }, id: \.objectID) { session in
+                    DisclosureGroup(session.title) {
+                        ForEach(session.sortedLinks, id: \.objectID) { link in
+                            if let url = LinkDraft(url: link.url).validURL {
+                                Link(link.label.isEmpty ? link.url : link.label, destination: url)
+                                if !link.notes.isEmpty { Text(link.notes).font(.subheadline).foregroundStyle(.secondary) }
+                            }
+                        }
+                    }
+                }
+                Button("Add Broadcast Link", systemImage: "link.badge.plus") {
+                    if job.activeSessions.isEmpty { linkEditor = LinkPresentation(session: nil) } else { choosingLinkSession = true }
+                }.accessibilityIdentifier("job-add-link")
+            }
             Section("Calendar") {
                 Text(job.bookingStatus == "cancelled" ? "Cancelled jobs have no calendar entries." : "The all-day placeholder stays alongside confirmed sessions you’re covering.")
                 Text(calendar.status).font(.subheadline).foregroundStyle(.secondary)
@@ -200,6 +222,15 @@ struct JobDetailView: View {
         .sheet(isPresented: $editing) { JobEditorView(job: job) }
         .sheet(isPresented: $duplicating) { JobEditorView(job: job, duplicating: true) }
         .sheet(isPresented: $addingSession) { SessionEditorView(job: job) }
+        .sheet(isPresented: $addingInvoice) { InvoiceEditorView(job: job) }
+         .sheet(isPresented: $addingPayment) { PaymentEditorView(job: job) }
+        .sheet(item: $linkEditor) { BroadcastLinkEditorView(job: job, session: $0.session) }
+        .confirmationDialog("Choose a session for this link", isPresented: $choosingLinkSession, titleVisibility: .visible) {
+            ForEach(job.activeSessions, id: \.objectID) { session in
+                Button(session.title) { linkEditor = LinkPresentation(session: session) }
+            }
+            Button("New Session") { linkEditor = LinkPresentation(session: nil) }
+        }
     }
 }
 

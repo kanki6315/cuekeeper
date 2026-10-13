@@ -187,3 +187,51 @@ struct SessionDetailView: View {
         }
     }
 }
+
+struct BroadcastLinkEditorView: View {
+    let job: Job
+    let session: WorkSession?
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @State private var link = LinkDraft()
+    @State private var name = ""
+    @State private var error: String?
+    @State private var discard = false
+    @FocusState private var focused: Bool
+    private var changed: Bool { !link.url.isEmpty || !link.label.isEmpty || !link.notes.isEmpty || !name.isEmpty }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    if let session { LabeledContent("Session", value: session.title) }
+                    else { TextField("Session name (optional)", text: $name) }
+                    TextField("Label (optional)", text: $link.label)
+                    TextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().focused($focused).accessibilityIdentifier("quick-broadcast-url")
+                    TextField("Notes (optional)", text: $link.notes, axis: .vertical)
+                } footer: {
+                    if session == nil { Text("This creates an unscheduled session to keep the link with its broadcast. Add times later if useful.") }
+                }
+            }.navigationTitle("Add Broadcast Link").navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if changed { discard = true } else { dismiss() } } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            do {
+                                let original = session.map(SessionDraft.init(session:))
+                                var draft = original ?? SessionDraft(job: job)
+                                if session == nil { draft.name = name }
+                                draft.links.append(link)
+                                try draft.save(in: context, jobID: job.objectID, editing: session?.objectID, baseline: original)
+                                dismiss()
+                            } catch { self.error = error.localizedDescription }
+                        }.accessibilityIdentifier("save-broadcast-link")
+                    }
+                }
+                .task { focused = true }
+                .saveErrorAlert($error).interactiveDismissDisabled(changed)
+                .confirmationDialog("Discard link?", isPresented: $discard, titleVisibility: .visible) {
+                    Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
+                }
+        }
+    }
+}

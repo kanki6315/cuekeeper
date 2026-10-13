@@ -77,6 +77,7 @@ targets:
       - path: Cuekeeper/Storage/Job.swift
       - path: Cuekeeper/Storage/WorkSession.swift
       - path: Cuekeeper/Storage/Fees.swift
+      - path: Cuekeeper/Storage/Billing.swift
       - path: Cuekeeper/CalendarPublisher.swift
     entitlements:
       path: CloudKitSetupMac/SchemaHelper.entitlements

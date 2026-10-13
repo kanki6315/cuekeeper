@@ -19,13 +19,16 @@
 		4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC535FB730F3A6A7FE4A398 /* SessionView.swift */; };
 		4EA1FBAF120B261072530418 /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
+		5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */; };
 		5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */; };
 		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
 		991F28DFD42FDA0529BED47C /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
+		A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
 		AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */ = {isa = PBXBuildFile; fileRef = BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */; };
 		AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
+		B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */; };
 		B3245E99179AC51EDC4D2AE3 /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
 		B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC022135F654D55A6A7311E /* RootView.swift */; };
 		BB6FD0F28A906423BA740890 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
@@ -33,6 +36,7 @@
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		C98339F7FD17877747472285 /* CalendarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71531F3273F27F2929AC0EE9 /* CalendarTests.swift */; };
 		D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC25F847FFB2944BBBC0D0D /* FeeView.swift */; };
+		DAA665273A525BD7459E740C /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -64,10 +68,13 @@
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
 		2CC25F847FFB2944BBBC0D0D /* FeeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeView.swift; sourceTree = "<group>"; };
 		346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV4.xcdatamodel; sourceTree = "<group>"; };
+		3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV5.xcdatamodel; sourceTree = "<group>"; };
 		40A57E11DA88086857902024 /* Cuekeeper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cuekeeper.entitlements; sourceTree = "<group>"; };
 		46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPublisher.swift; sourceTree = "<group>"; };
+		575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceEditorView.swift; sourceTree = "<group>"; };
 		5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CuekeeperSchemaHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		618C864D7A24CC9C62D1E183 /* Billing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Billing.swift; sourceTree = "<group>"; };
 		66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV2.xcdatamodel; sourceTree = "<group>"; };
 		71531F3273F27F2929AC0EE9 /* CalendarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTests.swift; sourceTree = "<group>"; };
 		893F1EA4F4B4BB063F301463 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -76,6 +83,7 @@
 		A5BA01886803FB21C0F4DAD4 /* Fees.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fees.swift; sourceTree = "<group>"; };
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsView.swift; sourceTree = "<group>"; };
 		BBC535FB730F3A6A7FE4A398 /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -152,8 +160,10 @@
 				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
 				2CC25F847FFB2944BBBC0D0D /* FeeView.swift */,
 				C31D03E096ABF3A6E23F885D /* Info.plist */,
+				575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */,
 				D682B024A3E281F66B73080A /* JobEditorView.swift */,
 				91C80D913C2F1C3287CFD3DF /* LibraryView.swift */,
+				B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */,
 				0AC022135F654D55A6A7311E /* RootView.swift */,
 				BBC535FB730F3A6A7FE4A398 /* SessionView.swift */,
 				CE6FEAC4E23C39120396EE12 /* Storage */,
@@ -173,6 +183,7 @@
 		CE6FEAC4E23C39120396EE12 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
+				618C864D7A24CC9C62D1E183 /* Billing.swift */,
 				A5BA01886803FB21C0F4DAD4 /* Fees.swift */,
 				252FA8AA4804BAF13CE8E06B /* Job.swift */,
 				242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */,
@@ -341,6 +352,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */,
 				B3245E99179AC51EDC4D2AE3 /* CalendarPublisher.swift in Sources */,
 				BB6FD0F28A906423BA740890 /* Cuekeeper.xcdatamodeld in Sources */,
 				4931AA30BA71C6966D2D1CDB /* Fees.swift in Sources */,
@@ -354,6 +366,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DAA665273A525BD7459E740C /* Billing.swift in Sources */,
 				BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */,
 				338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */,
 				2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */,
@@ -362,10 +375,12 @@
 				64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */,
 				D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */,
 				4EA1FBAF120B261072530418 /* Fees.swift in Sources */,
+				B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */,
 				AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */,
 				9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */,
 				5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */,
 				C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */,
+				5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */,
 				38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */,
 				B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */,
 				4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */,
@@ -874,8 +889,9 @@
 				66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */,
 				C4ECFB76E1416305BD27E80B /* CuekeeperV3.xcdatamodel */,
 				346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */,
+				3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */,
 			);
-			currentVersion = 346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */;
+			currentVersion = 3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */;
 			path = Cuekeeper.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

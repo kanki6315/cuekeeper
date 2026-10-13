@@ -44,16 +44,14 @@ struct RootView: View {
         switch section {
         case .upcoming: JobsView(upcomingOnly: true)
         case .jobs: JobsView(upcomingOnly: false)
-        case .payments:
-            ContentUnavailableView("Payments are coming next", systemImage: "creditcard",
-                description: Text("This first build saves your jobs. Fees, invoices and payment tracking will follow."))
-                .navigationTitle("Payments")
+        case .payments: PaymentsView()
         case .settings: SettingsView()
         }
     }
 }
 
 private struct JobsView: View {
+    @Environment(\.managedObjectContext) private var context
     let upcomingOnly: Bool
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true),
                                    NSSortDescriptor(keyPath: \Job.createdAt, ascending: true)])
@@ -80,43 +78,63 @@ private struct JobsView: View {
         }
     }
 
+    @AppStorage("upcoming.dismissedAttention") private var dismissedAttention = ""
+    private func jobDay(_ job: Job) -> String { max(today, job.startDay) }
+    private func sessionDay(_ session: WorkSession) -> String { max(today, session.day) }
+    private var agendaDays: [String] { Array(Set(visibleJobs.map(jobDay) + visibleSessions.map(sessionDay))).sorted() }
+    private var attention: [Job] {
+        let dismissed = Set(dismissedAttention.split(separator: "\n").map(String.init))
+        let soon = Day.string(from: Date().addingTimeInterval(14 * 86400))
+        return jobs.filter { job in
+            guard job.bookingStatus != "cancelled", job.bookingStatus != "completed", filter.includes(job, query: query), !dismissed.contains(attentionKey(job)) else { return false }
+            return job.endDay < today || (job.startDay <= soon && (job.activeSessions.isEmpty || job.activeSessions.contains { $0.scheduleStatus != "confirmed" }))
+        }
+    }
+    private func attentionKey(_ job: Job) -> String { "\(job.id?.uuidString ?? "")/\(job.startDay)/\(job.bookingStatus)/\(job.endDay < today ? "past" : "schedule")" }
+
     var body: some View {
         List {
-            if upcomingOnly && !visibleSessions.isEmpty {
-                Section("Confirmed sessions") {
-                    ForEach(visibleSessions, id: \.objectID) { session in
-                        NavigationLink { SessionDetailView(session: session) } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(session.job?.name ?? "Job").font(.subheadline)
-                                SessionRow(session: session)
+            if upcomingOnly {
+                if !attention.isEmpty {
+                    Section {
+                        ForEach(Array(attention.prefix(3)), id: \.objectID) { job in
+                            NavigationLink { JobDetailView(job: job) } label: {
+                                Text("\(job.name): \(job.endDay < today ? "ready to mark complete?" : "schedule still to come")")
+                                    .font(.subheadline)
+                            }
+                        }
+                    } header: {
+                        HStack {
+                            Text("Needs attention")
+                            Spacer()
+                            Button("Dismiss") {
+                                dismissedAttention = Set(dismissedAttention.split(separator: "\n").map(String.init) + attention.map(attentionKey)).sorted().joined(separator: "\n")
+                            }.textCase(nil).accessibilityLabel("Dismiss current attention items")
+                        }
+                    }
+                }
+                ForEach(agendaDays, id: \.self) { day in
+                    Section(Day.date(from: day)?.formatted(date: .complete, time: .omitted) ?? day) {
+                        ForEach(visibleJobs.filter { jobDay($0) == day }, id: \.objectID) { job in jobRow(job) }
+                        ForEach(visibleSessions.filter { sessionDay($0) == day }, id: \.objectID) { session in
+                            NavigationLink { SessionDetailView(session: session) } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(session.job?.name ?? "Job").font(.subheadline)
+                                    SessionRow(session: session)
+                                }
                             }
                         }
                     }
                 }
-            }
-            Section(upcomingOnly ? "Job placeholders · All day" : "All jobs") {
-            ForEach(visibleJobs, id: \.objectID) { job in
-                NavigationLink {
-                    JobDetailView(job: job)
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(job.name).font(.headline)
-                        if let client = job.client { Text(client.name).font(.subheadline) }
-                        Text(dateRange(job)).font(.subheadline).foregroundStyle(.secondary)
-                        Text(job.bookingStatus.capitalized).font(.caption).foregroundStyle(.secondary)
-                        Text(job.feeSummary).font(.subheadline).monospacedDigit()
-                    }
-                    .padding(.vertical, 8)
-                }
-                .listRowBackground(Color("PageBackground"))
+            } else {
+                ForEach(visibleJobs, id: \.objectID) { job in jobRow(job) }
             }
         }
-            }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color("PageBackground"))
         .overlay {
-            if visibleJobs.isEmpty && visibleSessions.isEmpty {
+            if visibleJobs.isEmpty && visibleSessions.isEmpty && (!upcomingOnly || attention.isEmpty) {
                 ContentUnavailableView {
                     Label((query.isEmpty && !filter.isActive) ? "Room for your next gig" : "No matching jobs", systemImage: "calendar")
                 } description: {
@@ -147,6 +165,19 @@ private struct JobsView: View {
             if phase == .active { today = Day.string(from: Date()) }
         }
     }
+    private func jobRow(_ job: Job) -> some View {
+        NavigationLink { JobDetailView(job: job) } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(job.name).font(.headline)
+                if let client = job.client { Text(client.name).font(.subheadline) }
+                Text("\(upcomingOnly ? "All day · " : "")\(dateRange(job))").font(.subheadline).foregroundStyle(.secondary)
+                Text(job.bookingStatus.capitalized).font(.caption).foregroundStyle(.secondary)
+                Text(job.feeSummary).font(.subheadline).monospacedDigit()
+                if !upcomingOnly { Text(job.billingSummary(in: context)).font(.caption).foregroundStyle(.secondary) }
+            }.padding(.vertical, 8)
+        }.listRowBackground(Color("PageBackground"))
+    }
+
 }
 
 func dateRange(_ job: Job) -> String {
@@ -187,7 +218,7 @@ private struct SettingsView: View {
             }
             Section("About") {
                 LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"))")
-                Text("Personal beta · Job management").foregroundStyle(.secondary)
+                Text("Personal beta").foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Settings")

@@ -4,12 +4,13 @@
   "format": 1,
   "model_files": {
     "Cuekeeper/CalendarPublisher.swift": "9896206112dee4a506513dc9b6c590602e9c2856defb379af94af22a54110d2e",
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "21e60edcc53553d0132e955c3daf492d7e95cc00c0a7330a0b1a49383245c7c5",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "026bb8cf0fd0b6447a2d2b47e7f58c6d0643c47e2dbd799374b8b1b7afa854ad",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/Cuekeeper.xcdatamodel/contents": "266a5735e7e410299f213394961b3b4cf9670f6b323fb3fb5fc6397193da0dff",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV2.xcdatamodel/contents": "428f1d885575311b82db85743d1a064c0b5c93d4f3139ab1ee6196e2f3d59161",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV3.xcdatamodel/contents": "f8baeb536b99143aa2181e7d88ce2f0052e57c7f2c1f5d11e72424af57fe8e5b",
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV4.xcdatamodel/contents": "832e05a7018450e88e6fdf915fa7489efd87423b21ab1d6eb4cff60831eaae36"
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV4.xcdatamodel/contents": "832e05a7018450e88e6fdf915fa7489efd87423b21ab1d6eb4cff60831eaae36",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV5.xcdatamodel/contents": "a1bd3c6d52bfbeed2a7a41d111eccc370f4bf59e9e76873aa9747c2a43dd82d6"
   },
-  "schema_sha256": "8c5ba3f59162071f1239102247892fa88a078ca0afe08db1b11ca879414a1411",
+  "schema_sha256": "395ae1c76b4ef280f8cadff0875bac00f811c0ee9ff790a6ae0b9d8e519dffd8",
   "team": "TDBAHN96B3"
 }

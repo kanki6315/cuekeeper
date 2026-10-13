@@ -84,6 +84,46 @@ DEFINE SCHEMA
         GRANT READ TO "_world"
     );
 
+    RECORD TYPE CD_Invoice (
+        CD_client              STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_createdAt           TIMESTAMP QUERYABLE SORTABLE,
+        CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_moveReceipt         BYTES QUERYABLE SORTABLE,
+        CD_moveReceipt_ckAsset ASSET,
+        "___createTime"        TIMESTAMP,
+        "___createdBy"         REFERENCE,
+        "___etag"              STRING,
+        "___modTime"           TIMESTAMP,
+        "___modifiedBy"        REFERENCE,
+        "___recordID"          REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_InvoiceRevision (
+        CD_createdAt           TIMESTAMP QUERYABLE SORTABLE,
+        CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_invoice             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_moveReceipt         BYTES QUERYABLE SORTABLE,
+        CD_moveReceipt_ckAsset ASSET,
+        CD_parentsJSON         STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_parentsJSON_ckAsset ASSET,
+        CD_valueJSON           STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_valueJSON_ckAsset   ASSET,
+        "___createTime"        TIMESTAMP,
+        "___createdBy"         REFERENCE,
+        "___etag"              STRING,
+        "___modTime"           TIMESTAMP,
+        "___modifiedBy"        REFERENCE,
+        "___recordID"          REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
     RECORD TYPE CD_Job (
         CD_bookingStatus           STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_bookingStatus_ckAsset   ASSET,
@@ -113,6 +153,32 @@ DEFINE SCHEMA
         "___modTime"               TIMESTAMP,
         "___modifiedBy"            REFERENCE,
         "___recordID"              REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_PaymentRecord (
+        CD_amount              INT64 QUERYABLE SORTABLE,
+        CD_createdAt           TIMESTAMP QUERYABLE SORTABLE,
+        CD_currency            STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_currency_ckAsset    ASSET,
+        CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_invoice             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_job                 STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_moveReceipt         BYTES QUERYABLE SORTABLE,
+        CD_moveReceipt_ckAsset ASSET,
+        CD_note                STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_note_ckAsset        ASSET,
+        CD_receivedAt          TIMESTAMP QUERYABLE SORTABLE,
+        CD_reversesID          STRING QUERYABLE SEARCHABLE SORTABLE,
+        "___createTime"        TIMESTAMP,
+        "___createdBy"         REFERENCE,
+        "___etag"              STRING,
+        "___modTime"           TIMESTAMP,
+        "___modifiedBy"        REFERENCE,
+        "___recordID"          REFERENCE,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_icloud",
         GRANT READ TO "_world"

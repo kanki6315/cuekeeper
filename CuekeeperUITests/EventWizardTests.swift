@@ -1,6 +1,40 @@
 import XCTest
 
 final class EventWizardTests: XCTestCase {
+    func testEventAndWorkTimezonesFollowArrangement() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-event"]
+        app.launch()
+        XCTAssertTrue(app.buttons["event-timezone"].waitForExistence(timeout: 10))
+        let arrangement = app.buttons["work-arrangement"]
+        for _ in 0..<8 where !arrangement.isHittable { app.swipeUp() }
+        XCTAssertTrue(arrangement.isHittable)
+        XCTAssertTrue(app.buttons["work-timezone"].exists)
+        capture("timezone-remote")
+        arrangement.tap(); app.buttons["On-site"].tap()
+        XCTAssertFalse(app.buttons["work-timezone"].exists)
+        capture("timezone-onsite")
+        arrangement.tap(); app.buttons["Hybrid"].tap()
+        XCTAssertTrue(app.buttons["work-timezone"].exists)
+        capture("timezone-hybrid")
+        app.buttons["Cancel"].tap(); app.buttons["Discard Changes"].tap()
+        app.terminate()
+        for large in [false, true] {
+            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-session", "--design-dark"]
+                + (large ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
+            app.launch()
+            XCTAssertTrue(app.buttons["save-session"].waitForExistence(timeout: 10))
+            let zone = app.staticTexts["Event timezone"]
+            for _ in 0..<5 where !zone.isHittable { app.swipeUp() }
+            XCTAssertTrue(zone.isHittable)
+            XCTAssertFalse(app.buttons["event-timezone"].exists)
+            XCTAssertFalse(app.buttons["work-timezone"].exists)
+            capture(large ? "session-inherited-timezone-large" : "session-inherited-timezone")
+            app.terminate()
+        }
+    }
+
     func testUnifiedEditorShowsBookingFieldsAndDiscardsChanges() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -271,7 +305,7 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(date.debugDescription.contains("Jan 15") || date.debugDescription.contains("January 15"), "Session should display January 15 in Tokyo, not January 14 in New York: \(date.debugDescription)")
         capture("wizard-foreign-session-date")
         app.buttons["wizard-continue"].tap()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UTC−05:00")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["work-timezone"].exists)
         capture("wizard-winter-work-timezone")
     }
 

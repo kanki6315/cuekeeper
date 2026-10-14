@@ -50,9 +50,8 @@ struct EventEditorView: View {
                         if !draft.trackPlaceID.isEmpty { SavedTrackView(placeID: draft.trackPlaceID) }
                         Button(draft.trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }.accessibilityIdentifier("choose-track")
                         if !draft.trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { draft.trackPlaceID = "" }.accessibilityIdentifier("remove-track") }
-                        DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startDate) } label: {
-                            LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Choose timezone" : zoneLabel(draft.timeZoneID, date: draft.startDate))
-                        }
+                        EventTimeZoneField(selection: $draft.timeZoneID, date: draft.startDate)
+                        Text("All sessions use this timezone. Changing it preserves existing scheduled instants.").font(.caption).foregroundStyle(.secondary)
                     }.id("event-details")
                     Section {
                         DatePicker(multipleDays ? "Start" : "Date", selection: $draft.startDate, displayedComponents: .date)
@@ -149,9 +148,10 @@ private struct EventBookingFields: View {
                 DaybookPicker("Status", selection: $draft.bookingStatus, identifier: "edit-booking-status") {
                     ForEach(BookingStatus.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                DaybookPicker("Arrangement", selection: $draft.workArrangement) {
+                DaybookPicker("Arrangement", selection: $draft.workArrangement, identifier: "work-arrangement") {
                     ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
+                WorkTimeZoneField(draft: $draft, date: draft.startDate)
                 DisclosureGroup {
                     ForEach(Array(Set(roles.map(\.name)).union(draft.roleNames)).sorted(), id: \.self) { role in
                         Toggle(role, isOn: Binding(get: { draft.roleNames.contains(role) }, set: { if $0 { draft.roleNames.insert(role) } else { draft.roleNames.remove(role) } }))
@@ -209,12 +209,12 @@ struct EventDetailView: View {
 struct EventScheduleRow: View {
     @ObservedObject var session: WorkSession
     private func scheduleDates(_ start: Date) -> String {
-        let zone = TimeZone(identifier: session.timeZoneID) ?? .current
+        let zone = TimeZone(identifier: session.eventTimeZoneID) ?? .current
         var dates = session.shortDate(start)
         if let end = session.endTime, Day.string(from: start, timeZone: zone) != Day.string(from: end, timeZone: zone) {
             dates += " – " + session.shortDate(end)
         }
-        return dates + " · " + (zone.abbreviation(for: start) ?? session.timeZoneID)
+        return dates + " · " + (zone.abbreviation(for: start) ?? session.eventTimeZoneID)
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -233,6 +233,7 @@ struct EventScheduleRow: View {
                     if !session.day.isEmpty { Text(session.day).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                 }
             }.fixedSize(horizontal: false, vertical: true)
+            if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
             if let call = session.callTime {
                 Divider()
                 ViewThatFits(in: .horizontal) {

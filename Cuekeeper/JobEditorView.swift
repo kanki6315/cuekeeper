@@ -158,6 +158,7 @@ struct JobDetailView: View {
                 } label: { HStack { BookingBadge(status: job.bookingStatus); Text("Change status"); Spacer(); Image(systemName: "chevron.down") } }
                 .accessibilityIdentifier("booking-status")
                 Button { editing = true } label: { DaybookMetadata(symbol: "calendar", text: dateRange(job)) }.accessibilityIdentifier("edit-event-dates")
+                if !job.eventTimeZoneID.isEmpty { DaybookMetadata(symbol: "globe", text: "Event timezone: " + zoneLabel(job.eventTimeZoneID, date: Day.date(from: job.eventStartDay) ?? Date())) }
                 if !job.eventLocation.isEmpty { DaybookMetadata(symbol: "mappin", text: job.eventLocation) }
             }.containerValue(\.daybookUnframed, true)
             SessionsSection(job: job) { addingSession = true }
@@ -173,7 +174,7 @@ struct JobDetailView: View {
                     DaybookLink { LibraryDetailView(record: client, kind: .client) } label: { DaybookMetadata(symbol: "person", text: client.name) }
                 }
                 DaybookMetadata(symbol: job.workArrangement == "remote" ? "video" : "mappin.and.ellipse", text: (job.roleNames + [WorkArrangement(rawValue: job.workArrangement)?.title ?? "Unspecified"]).joined(separator: " · "))
-                if !job.eventTimeZoneID.isEmpty { DaybookMetadata(symbol: "globe", text: job.eventTimeZoneID.replacingOccurrences(of: "_", with: " ")) }
+                if job.hasWorkTimeZone { DaybookMetadata(symbol: "globe", text: "Your timezone: " + zoneLabel(job.workTimeZoneID, date: Day.date(from: job.eventStartDay) ?? Date())) }
                 if !["completed", "cancelled"].contains(job.bookingStatus) {
                     Button(job.bookingStatus == "tentative" ? "Mark as booked" : "Mark completed") { updateBookingStatus(job.bookingStatus == "tentative" ? .booked : .completed) }.accessibilityIdentifier("advance-booking-status")
                 }

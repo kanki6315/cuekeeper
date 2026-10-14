@@ -40,7 +40,7 @@ The app uses the approved Icon Composer asset in `design/brand/Cuekeeper.icon`.
 - Capture one date by default; enable Multiple days to enter an inclusive date range.
 - Manage clients and roles in Settings, including renaming, client contact details,
   notes and default currency; both libraries link back to related jobs.
-- Save work arrangement, location, optional timezone and notes.
+- Save work arrangement, location, event timezone and notes. Remote and hybrid work can also store your timezone.
 - Duplicate descriptive details into a tentative job with explicitly confirmed dates;
   notes are excluded and the original stays in history.
 - Search job names or clients and combine status, client, role and overlapping-date filters.
@@ -53,7 +53,7 @@ The app uses the approved Icon Composer asset in `design/brand/Cuekeeper.icon`.
 - Isolated local test stores that never write test records to iCloud.
 
 - Create incomplete or timed sessions with independent schedule and coverage states,
-  timezones, call times, roles, notes and broadcast links.
+  the event timezone, call times, roles, notes and broadcast links.
 - Publish all-day job placeholders and eligible confirmed, covering sessions to
   a selected calendar; reconcile changes without removing unrelated events.
 - Record unknown or zero fees, agreement status and optional quantity/rate breakdowns.
@@ -379,3 +379,14 @@ or receipts. There is no eager CloudKit backfill or schema change. Use the updat
 app on all devices; older versions retain their previous grouping behaviour.
 Calendar reconciliation retires known grouped placeholders and publishes one
 placeholder per active client event, retaining eligible session entries.
+
+### Event and work timezones
+
+Every session uses its event’s timezone; there is no session timezone override.
+Remote and hybrid work can set “Your timezone” for an additional local-time display.
+On-site work inherits the event timezone. Changing a timezone preserves the saved
+start, end and call instants. Copying sessions between events preserves local clock
+times in the destination event timezone and rejects nonexistent daylight-saving times.
+Existing session timezone fields remain for storage compatibility; an older event
+without a timezone can recover a common zone from its sessions. Conflicting legacy
+zones require choosing an event timezone.

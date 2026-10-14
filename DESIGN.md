@@ -223,6 +223,14 @@ wizard sequence is unchanged; it creates independent one-client events.
 
 Verification and native screenshots: [single-client events](design/verification/single-client-events/README.md).
 
+## Event timezone ownership — October 14, 2026
+
+The event owns the timezone for every session. The wizard exposes it in event
+setup and once above the session list; the session editor shows it read-only.
+Remote and hybrid work expose “Your timezone” in Work for secondary local-time
+readouts, including call time. On-site work inherits the event zone. Event-zone
+changes preserve scheduled instants and update the displayed civil dates.
+
 ## Event capture fields — October 14, 2026
 
 The new-event wizard keeps Back on the leading side and Cancel on the trailing

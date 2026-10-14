@@ -149,23 +149,23 @@ struct LocationSearchField: View {
 
 struct WizardSessionFields: View {
     @Binding var draft: SessionDraft
-    var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
+    let eventTimeZoneID: String
+    var zone: TimeZone { TimeZone(identifier: eventTimeZoneID) ?? .current }
     var body: some View {
         DaybookTextField("Session title", text: $draft.name)
-        DatePicker("Date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date).environment(\.timeZone, zone).disabled(draft.startTime != nil).accessibilityIdentifier("wizard-session-date").accessibilityLabel("Session date")
-        DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date()) } label: { LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date())) }
-        if draft.timeZoneID.isEmpty { Text("Choose a timezone to add times.").font(.caption).foregroundStyle(.secondary) }
+        DatePicker("Date", selection: Binding(get: { draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date).environment(\.timeZone, zone).disabled(draft.startTime != nil).accessibilityIdentifier("wizard-session-date").accessibilityLabel("Session date")
+        if eventTimeZoneID.isEmpty { Text("Choose the event timezone above to add times.").font(.caption).foregroundStyle(.secondary) }
         optionalTime("Start", value: $draft.startTime)
         optionalTime("End", value: $draft.endTime)
         optionalTime("Call time", value: $draft.callTime)
         DaybookChoicePicker("Schedule", selection: $draft.scheduleStatus, identifier: "wizard-session-schedule") { Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed") }
         DaybookChoicePicker("Coverage", selection: $draft.coverage, identifier: "wizard-session-coverage") { Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering") }
         Group {}.onChange(of: draft.startTime) { _, value in if let value { draft.day = Day.string(from: value, timeZone: zone) } }
-            .onChange(of: draft.timeZoneID) { _, _ in if let value = draft.startTime { draft.day = Day.string(from: value, timeZone: zone) } }
+            .onChange(of: eventTimeZoneID) { _, _ in if let value = draft.startTime { draft.day = Day.string(from: value, timeZone: zone) } }
     }
     @ViewBuilder private func optionalTime(_ title: String, value: Binding<Date?>) -> some View {
         Toggle(title, isOn: Binding(get: { value.wrappedValue != nil }, set: { value.wrappedValue = $0 ? Day.date(from: draft.day, timeZone: zone) ?? Date() : nil }))
-            .disabled(draft.timeZoneID.isEmpty)
+            .disabled(eventTimeZoneID.isEmpty)
         if value.wrappedValue != nil {
             DatePicker(title, selection: Binding(get: { value.wrappedValue ?? Date() }, set: { value.wrappedValue = $0 }))
                 .environment(\.timeZone, zone)
@@ -179,4 +179,41 @@ func zoneLabel(_ identifier: String, date: Date = Date()) -> String {
     let seconds = zone.secondsFromGMT(for: date)
     let offset = String(format: "UTC%@%02d:%02d", seconds < 0 ? "−" : "+", abs(seconds) / 3600, abs(seconds) % 3600 / 60)
     return "\(name) · \(offset)"
+}
+
+struct EventTimeZoneField: View {
+    @Binding var selection: String
+    var date: Date
+    var body: some View {
+        DaybookLink { TimeZonePicker(selection: $selection, date: date) } label: {
+            TimeZoneValueLabel(title: "Event timezone", value: zoneLabel(selection, date: date))
+        }.accessibilityIdentifier("event-timezone")
+    }
+}
+
+struct WorkTimeZoneField: View {
+    @Binding var draft: JobDraft
+    var date: Date
+    var body: some View {
+        if draft.workArrangement == .remote || draft.workArrangement == .hybrid {
+            DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: date) } label: {
+                TimeZoneValueLabel(title: "Your timezone", value: zoneLabel(draft.timeZoneID, date: date))
+            }.accessibilityIdentifier("work-timezone")
+            Text("Session schedules use the event timezone. Your timezone shows the corresponding local times.").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct TimeZoneValueLabel: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let title: String
+    let value: String
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                Text(value).foregroundStyle(Color("SecondaryText"))
+            }
+        } else { LabeledContent(title, value: value) }
+    }
 }

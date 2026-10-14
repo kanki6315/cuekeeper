@@ -20,7 +20,7 @@ struct SiriEventDraft {
         draft.events[0].details.endDate = Day.date(from: Day.string(from: last, timeZone: timeZone))!
         draft.events[0].notes = notes
         draft.shared.location = location
-        draft.shared.timeZoneID = timeZone.identifier
+        draft.events[0].timeZoneID = timeZone.identifier
         if !allDay {
             var session = SessionDraft(day: Day.string(from: start, timeZone: timeZone), timeZoneID: timeZone.identifier)
             session.name = title; session.startTime = start; session.endTime = end

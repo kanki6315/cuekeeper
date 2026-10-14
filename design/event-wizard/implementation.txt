@@ -1,11 +1,27 @@
 Native event wizard implementation
 Branch: feature/event-creation-wizard
 
-242f313 adds the V7 model, multiple event series and an atomic creation
-transaction. f86c732 adds the native wizard and reusable fields; 1421f41 adds
-review repairs and regression coverage. Main sources:
-Cuekeeper/EventWizardView.swift, EventWizardFields.swift and
-Storage/EventCreation.swift; JobEditorView routes new jobs into the wizard.
+Integration in progress
+Main's event grouping, track weather and release-verification work was preserved
+as 80c437b, then integrated in merge eaa0ea8 on this branch.
+The working integration builds. Existing wizard commits 242f313, f86c732 and
+1421f41 remain historical implementation/repair checkpoints. The earlier
+wizard-only V7 model description is superseded by the V9 integration below.
+Main sources: EventWizardView.swift, EventWizardFields.swift,
+Storage/EventCreation.swift, Storage/WorkEvent.swift and Storage/Job.swift.
+
+Model compatibility
+Released V7 trackPlaceID and V8 WorkEvent model files match 80c437b byte-for-byte
+(checked during this documentation pass). V9 adds Job.additionalSeries and
+WorkSeries.additionalJobs as an inverse while retaining the legacy singular
+series relationship. Do not rewrite already released model versions.
+
+Grouped event integration
+Wizard creation stages a WorkEvent and its initial client booking in one
+transaction, with sessions and eligible payment. A season creates separate
+grouped events. Event championships aggregate booking series. Client booking
+editing offers explicit add/reuse of multiple championships. Main's grouped
+billing, weather/track-place data and session batch UI are retained.
 
 Implemented behavior
 - One event or season, required dates and optional multi-day range, suggested
@@ -24,9 +40,9 @@ Implemented behavior
   roll back the transaction and retain the editable draft.
 
 Series semantics
-V7 extends the event relationship while preserving legacy series membership.
+V9 extends booking series while preserving legacy singular membership.
 Sessions still have a singular override. An unoverridden session inherits only
-when its event has exactly one series; multiple event series do not silently
+when its booking has exactly one series; multiple booking series do not silently
 choose one or assign all championships to every session.
 
 Design extension
@@ -35,7 +51,33 @@ controls, glass actions and appearance-aware assets. It extends the incumbent
 world. DESIGN.md and the sidecar remain unchanged; the prior quick-editor
 narrative and known sidecar drift are recorded here rather than repaired.
 
-Checked evidence
+Current integration verification
+- /tmp/cuekeeper-integration-iphone.log: TEST SUCCEEDED; 39 unit tests,
+  all 10 CaptureTests, 6 EventWizardTests and 2 WeatherTests passed.
+- /tmp/cuekeeper-integration-ipad.log: TEST EXECUTE SUCCEEDED; 2 grouped
+  booking/batch CaptureTests, all 6 wizard tests and 2 weather tests passed.
+- Both device runs passed live Apple suggestions without a skip. The current
+  integration also passed 27 Python tests.
+- Screenshot inspection found championship DisclosureGroup collapse with a
+  focused keyboard overlapping content. The control now uses an explicit
+  Add championship button, conditional entry rows and focus clearing.
+- /tmp/cuekeeper-integration-series-ipad-final.log: targeted final iPad check
+  passed. /tmp/cuekeeper-integration-series-iphone-final.log also reports
+  TEST EXECUTE SUCCEEDED for the targeted iPhone rerun.
+- Fresh simulator captures are local, ignored files in
+  .impeccable/review/wizard-v9/. iphone-wizard-multiple-series.png and
+  ipad-wizard-multiple-series.png show the repaired selector after settling.
+  These captures do not establish physical-device behavior.
+Merge eaa0ea8 contains the integration. wizard_v9_finish_reviewer returned
+ship for the scoped merge integration: all six reviewed captures were valid
+and no material fixes remained. Review used incumbent DESIGN.md and native
+guidance; no QUALITY BAR card was supplied. The verdict does not establish
+release readiness, physical-device sync or VoiceOver verification. DESIGN.md
+and the sidecar remain preserved.
+This doc pass inspected the combined result logs and made no code changes or
+new test runs; final targeted status was supplied by the implementing agent.
+
+Historical wizard evidence (before grouping/weather integration)
 - /tmp/cuekeeper-wizard-repair-verification.log: all 26 unit tests passed, plus
   the corrected populated accessibility review, Tokyo January 15 session-date
   and winter work timezone UTC−05:00 runtime check on iPhone.
@@ -49,27 +91,29 @@ Checked evidence
   that locator was corrected and the separate iPhone/iPad reruns above passed.
 - /tmp/cuekeeper-wizard-location-tests.log: championship reuse/new selection
   and live Apple suggestions passed on iPhone without a service skip.
-- Current simulator captures are local, ignored files under
+- Historical simulator captures are local, ignored files under
   .impeccable/review/event-wizard/. Populated accessibility review captures use
   iphone-wizard-populated-accessible-review*.png and ipad equivalents;
   iphone-wizard-foreign-session-date.png and
-  iphone-wizard-winter-work-timezone.png show the latest timezone checks.
+  iphone-wizard-winter-work-timezone.png show the earlier timezone checks.
   Captures are simulator evidence, not physical-device validation.
 
-Finish review
+Historical four-repair review (before integration)
 native_finish_reviewer marked all four repairs RESOLVED: session Date uses its
 own timezone; work offsets use the earliest event date with season explanation;
 configured role/arrangement/location have a concise editable Work summary;
 summary labels/values stack at accessibility sizes. Disposition: ship, limited
-to these four repairs. This is not a blanket app or release approval. Repairs
+to these four repairs. This is not approval of the new integration, the whole app or a release. Repairs
 and regression tests are committed in 1421f41; documentation is maintained
 separately. This documentation pass inspected source, repair diffs and result
 logs and made no code changes or new test runs.
 
 Release limits
-Production CloudKit V7 deployment has not occurred. Normal release gating must
-initialize/export/deploy and verify the V7 schema before a TestFlight upload.
-No upload or release readiness is claimed. Physical-device sync, multi-device
-V7 behavior and real-device accessibility validation remain separate checks.
-HTML browser verification is still policy-blocked; native simulator evidence
-is independent. The HTML and historical storyboard remain concept artifacts.
+No Production schema deployment or upload is authorized or performed for this
+integration. V9 must pass normal schema initialization/export/deployment and
+live release gating before upload. Earlier V8 release records remain valid
+historical records, not evidence that V9 is deployed. No release readiness is
+claimed. Physical-device sync, multi-device V9 behavior and real-device
+accessibility remain separate checks. HTML browser verification remains
+policy-blocked; simulator evidence is independent. The HTML and historical
+storyboard remain concept artifacts. DESIGN.md and the sidecar are preserved.

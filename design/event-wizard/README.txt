@@ -1,25 +1,33 @@
 Cuekeeper event wizard — native implementation and revision 6 concept
 
-The approved wizard is now implemented in the native iPhone/iPad app on
-feature/event-creation-wizard. New-event creation opens a dynamic wizard for
-one event or a season. Required dates, optional titles, multiple championships,
-per-event sessions and copying, live Apple location suggestions, independent
-fees/breakdowns and the complete review calendar extend Combined Glass /
-Daybook. See implementation.txt for source, verification and release limits.
+The native iPhone/iPad wizard is being integrated with main's event grouping,
+track weather, grouped billing and session batch UI on
+feature/event-creation-wizard. Main's previously uncommitted work was preserved
+as 80c437b. The integration builds and is committed as merge eaa0ea8.
 
-Native verification includes 26 unit tests, four wizard UI tests on each of
-iPhone and iPad, ten CaptureTests regressions, and a passing iPhone championship
-add/reuse and live Apple suggestion check without a skip. Corrected populated
-accessibility, Tokyo session-date and winter work-offset checks passed on both
-devices. The combined regression run failed in the new test's old Date locator;
-that locator was corrected and the targeted test rerun successfully. Independent
-review marked all four requested repairs RESOLVED, with ship limited to those
-repairs, not the whole app. Captures are in the ignored local directory
-.impeccable/review/event-wizard/.
+The wizard creates a WorkEvent and initial client booking atomically; a season
+creates separate grouped events. Event championships aggregate booking series,
+and client bookings support explicit add/reuse of multiple championships.
+Existing sessions retain a singular championship. Required dates, optional
+titles, session copying, independent fees and the full review calendar remain.
 
-These results do not establish physical-device sync behavior or readiness for
-release. V7 CloudKit initialization/export/deployment must pass the normal
-release gate before upload; Production deployment has not been performed.
+Released V7 (trackPlaceID) and V8 (WorkEvent) models are preserved byte-for-byte.
+New V9 adds Job.additionalSeries and its WorkSeries.additionalJobs inverse while
+retaining the legacy singular relationship. Current integration verification:
+39 unit tests and 27 Python tests passed. iPhone passed all 10 CaptureTests,
+6 wizard tests and 2 weather tests; iPad passed 2 grouped booking/batch tests,
+all 6 wizard tests and 2 weather tests. Live Apple suggestion tests passed on
+both devices without skips. Screenshot inspection prompted a championship
+entry fix for focused-keyboard overlap; final targeted checks passed on both
+iPhone and iPad. Fresh captures are in the ignored local
+.impeccable/review/wizard-v9/ directory. Independent review returned ship for the scoped merge integration, accepted
+all six reviewed captures and found no material fixes. This is not a release,
+physical-device sync or VoiceOver approval. See implementation.txt.
+
+No Production schema deployment or upload is authorized or performed for this
+integration. V9 must pass the normal schema initialization/export/deployment
+and release gate before upload. Older V8 release records remain historical.
+Physical-device sync and multi-device V9 behavior remain unverified here.
 
 The standalone HTML remains a discussion prototype. Open index.html directly
 without a build or server. Its revision 6 flow places selected championships

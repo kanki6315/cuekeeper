@@ -325,3 +325,29 @@ was refreshed after successful V9 Development initialization on October 14, 2026
 The exported schema is unchanged from V8 and the live Production comparison
 passes; no Production promotion is needed for this model. The normal release
 gate still runs before upload. No TestFlight upload was performed in this step.
+
+## Siri event creation
+
+Say “Create an event in Cuekeeper” or choose **Cuekeeper → Create Event** in
+Shortcuts. Siri requests a start date when omitted. End date is optional and
+inclusive; omitting it creates a one-day event. Title, client, project,
+championships, roles, booking status, work arrangement, location, and an IANA
+timezone are available as parameters. Booking defaults to tentative; an empty
+title uses the wizard's generated title. Free-text library names use the same
+case-insensitive reuse/create behavior as the wizard.
+
+The intent requires authentication and always asks for confirmation with the
+resolved title, dates, status, and supplied context before saving. Cancelling
+that prompt creates no event, job, library entries, or fee revisions. Reversed
+date ranges and invalid timezone identifiers prompt for a replacement value.
+The same `EventCreationDraft.save` transaction creates the event and first job;
+there is no separate Calendar write. Existing calendar-manager/foreground rules
+still apply. Sessions, track selection, fees, payments, and season creation are
+available in the app, not this initial intent.
+
+On a physical device, verify Siri and Shortcuts after installing and opening the
+app: invoke without a date, supply a range, decline confirmation and check no
+record appears, then repeat and accept. Also check a custom title/client/role,
+an invalid end date, a cold launch, and cancellation while the store opens.
+Simulator tests verify the draft mapping and confirmation/save boundary; they do
+not establish Siri speech recognition or its conversation behavior on device.

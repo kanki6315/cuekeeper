@@ -27,6 +27,15 @@ final class PersistenceController: ObservableObject {
     @Published private(set) var lastTransfer: Date?
     private var eventObserver: NSObjectProtocol?
 
+    func waitUntilLoaded() async throws {
+        for _ in 0..<200 {
+            if let loadError { throw RecordError.invalid("Couldn’t open your daybook: \(loadError)") }
+            if isLoaded { return }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        throw RecordError.invalid("Your daybook is still opening. Please try again.")
+    }
+
     init(storeURL: URL? = nil, cloudEnabled: Bool = true) {
         self.cloudEnabled = cloudEnabled
         container = NSPersistentCloudKitContainer(name: "Cuekeeper")

@@ -50,6 +50,7 @@
 		C98339F7FD17877747472285 /* CalendarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71531F3273F27F2929AC0EE9 /* CalendarTests.swift */; };
 		D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC25F847FFB2944BBBC0D0D /* FeeView.swift */; };
 		DAA665273A525BD7459E740C /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
+		DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 		F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919618A957BA6EC5BAA77600 /* EventWeather.swift */; };
 		F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */; };
@@ -105,6 +106,7 @@
 		69DFC518A6A7190800E88CDF /* EventWizardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardTests.swift; sourceTree = "<group>"; };
 		6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeatherView.swift; sourceTree = "<group>"; };
 		6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherTests.swift; sourceTree = "<group>"; };
+		6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateEventIntent.swift; sourceTree = "<group>"; };
 		71531F3273F27F2929AC0EE9 /* CalendarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTests.swift; sourceTree = "<group>"; };
 		7AEB83E7804374638D4D0136 /* DesignFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignFixtures.swift; sourceTree = "<group>"; };
 		7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignCaptureTests.swift; sourceTree = "<group>"; };
@@ -148,6 +150,14 @@
 				6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */,
 			);
 			path = CuekeeperUITests;
+			sourceTree = "<group>";
+		};
+		285E6E4929F5CD01A13F37D3 /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */,
+			);
+			path = Intents;
 			sourceTree = "<group>";
 		};
 		476CB99C5F3CA8A9334ABC4F /* CloudKitSetupMac */ = {
@@ -220,6 +230,7 @@
 				994C44392560A52DE055B755 /* SessionBatchEditorView.swift */,
 				BBC535FB730F3A6A7FE4A398 /* SessionView.swift */,
 				25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */,
+				285E6E4929F5CD01A13F37D3 /* Intents */,
 				CE6FEAC4E23C39120396EE12 /* Storage */,
 			);
 			path = Cuekeeper;
@@ -434,6 +445,7 @@
 				338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */,
 				2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */,
 				471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */,
+				DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */,
 				28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */,
 				64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */,
 				062400846722C32FFC23825F /* DaybookStyle.swift in Sources */,

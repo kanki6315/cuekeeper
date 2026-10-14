@@ -1,4 +1,5 @@
 import SwiftUI
+import AppIntents
 
 @main
 struct CuekeeperApp: App {
@@ -27,7 +28,9 @@ struct CuekeeperApp: App {
         try? FileManager.default.createDirectory(at: setupDirectory, withIntermediateDirectories: true)
         storeURL = setupDirectory.appending(path: "Schema.sqlite")
         #endif
-        _persistence = StateObject(wrappedValue: PersistenceController(storeURL: storeURL, cloudEnabled: !testing))
+        let controller = PersistenceController(storeURL: storeURL, cloudEnabled: !testing)
+        _persistence = StateObject(wrappedValue: controller)
+        AppDependencyManager.shared.add(dependency: controller)
     }
 
     var body: some Scene {

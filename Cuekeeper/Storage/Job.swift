@@ -97,12 +97,12 @@ func reusableRecord(entity: String, name: String, in context: NSManagedObjectCon
     return record
 }
 
-enum BookingStatus: String, CaseIterable {
+enum BookingStatus: String, CaseIterable, Sendable {
     case tentative, booked, completed, cancelled
     var title: String { rawValue.capitalized }
 }
 
-enum WorkArrangement: String, CaseIterable {
+enum WorkArrangement: String, CaseIterable, Sendable {
     case unspecified, remote, onSite, hybrid
     var title: String { self == .onSite ? "On-site" : rawValue.capitalized }
 }

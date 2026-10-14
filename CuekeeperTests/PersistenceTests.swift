@@ -31,6 +31,71 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testSiriCreationDefaultsAndConfirmationBeforePersistence() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        let intent = CreateEventIntent()
+        intent.startDate = Day.date(from: "2026-11-06")!
+        intent.client = "  ESPN  "
+        intent.location = "Interlagos"
+        intent.roles = ["Camera operator"]
+        intent.championships = ["Formula 1", "Formula 2"]
+        intent.bookingStatus = .tentative
+        intent.workArrangement = .onSite
+        let draft = intent.makeDraft()
+        XCTAssertEqual(draft.events[0].details.endDate, intent.startDate)
+        XCTAssertEqual(draft.shared.clientName, "ESPN")
+        XCTAssertNil(try draft.shared.fee?.value().amount)
+        var asked = false
+        try await draft.confirmAndSave(in: context) { summary in
+            asked = true
+            XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+            XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
+            XCTAssertTrue(summary.contains("Interlagos"))
+            XCTAssertTrue(summary.contains("ESPN"))
+            XCTAssertTrue(summary.contains("Formula 2"))
+            XCTAssertTrue(summary.contains("Tentative"))
+        }
+        XCTAssertTrue(asked)
+        let job = try XCTUnwrap(context.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        XCTAssertNotNil(job.event)
+        XCTAssertEqual(job.eventTitle, draft.resolvedEvents()[0].displayTitle)
+        XCTAssertEqual(job.startDay, "2026-11-06")
+        XCTAssertEqual(job.endDay, job.startDay)
+        XCTAssertEqual(job.client?.name, "ESPN")
+        XCTAssertEqual(job.roleNames, ["Camera operator"])
+    }
+
+    func testSiriInvalidParametersRequestCorrectionBeforeAccessingStore() async throws {
+        let intent = CreateEventIntent()
+        intent.startDate = Day.date(from: "2026-11-08")!
+        intent.endDate = Day.date(from: "2026-11-06")!
+        do {
+            _ = try await intent.perform()
+            XCTFail("A reversed date range must request a replacement end date")
+        } catch { }
+        intent.endDate = nil
+        intent.timeZoneID = "Not/A_Timezone"
+        do {
+            _ = try await intent.perform()
+            XCTFail("An invalid timezone must request a replacement")
+        } catch { }
+    }
+
+    func testSiriDeclinedConfirmationDoesNotCreateRecords() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        var draft = EventCreationDraft()
+        draft.shared.clientName = "Must not be created"
+        do {
+            try await draft.confirmAndSave(in: context) { _ in throw CancellationError() }
+            XCTFail("Declined confirmation must cancel creation")
+        } catch is CancellationError { }
+        for entity in ["Job", "WorkEvent", "Client", "FeeRevision"] {
+            XCTAssertEqual(try context.count(for: NSFetchRequest<NSManagedObject>(entityName: entity)), 0)
+        }
+    }
+
     func testEventClientsKeepIndependentBillingAndSurviveReopen() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var event = EventDraft(); event.location = "Silverstone"; event.timeZoneID = "Europe/London"

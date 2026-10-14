@@ -86,7 +86,7 @@ struct EventDraft: Equatable {
     }
     @discardableResult
     func save(in context: NSManagedObjectContext, anchorID: NSManagedObjectID? = nil,
-              baseline: EventDraft? = nil, firstBooking: JobDraft? = nil, bookings: [EventBookingDraft] = []) throws -> NSManagedObjectID {
+              baseline: EventDraft? = nil, firstBooking: JobDraft? = nil, bookings: [EventBookingDraft] = [], newBookings: [JobDraft] = []) throws -> NSManagedObjectID {
         guard startDate <= endDate || Day.string(from: startDate) == Day.string(from: endDate) else { throw JobDraft.ValidationError.invalidDates }
         guard timeZoneID.isEmpty || TimeZone(identifier: timeZoneID) != nil else { throw JobDraft.ValidationError.invalidTimeZone }
         let writer = isolatedWriter(context)
@@ -114,6 +114,12 @@ struct EventDraft: Equatable {
             let role = entry.newRole.trimmingCharacters(in: .whitespacesAndNewlines)
             if !role.isEmpty { updated.roleNames.insert(role) }
             _ = try updated.stage(in: writer, editing: entry.id, baseline: entry.baseline)
+        }
+        for var booking in newBookings {
+            guard !booking.clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RecordError.invalid("Choose a client for each new booking.") }
+            booking.startDate = startDate; booking.endDate = endDate
+            let added = try booking.stage(in: writer)
+            added.event = event
         }
         try writer.save(); context.refreshAllObjects()
         return anchor.objectID

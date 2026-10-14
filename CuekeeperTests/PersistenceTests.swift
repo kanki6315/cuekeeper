@@ -31,6 +31,28 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testNewBookingsCommitWithEventOrLeaveEverythingUnchanged() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        var first = JobDraft(); first.clientName = "Original"
+        let id = try EventDraft().save(in: context, firstBooking: first)
+        let anchor = try context.existingObject(with: id) as! Job
+        let baseline = EventDraft(anchor: anchor)
+        var edited = baseline; edited.title = "Updated event"
+        var added = JobDraft(); added.clientName = "New client"; added.fee?.amount = "300"
+        var invalid = JobDraft(); invalid.clientName = "Invalid"; invalid.fee?.amount = "invalid"
+        XCTAssertThrowsError(try edited.save(in: context, anchorID: id, baseline: baseline, newBookings: [added, invalid]))
+        context.refreshAllObjects()
+        XCTAssertEqual(anchor.eventBookings.count, 1)
+        XCTAssertEqual(anchor.event?.title, baseline.title)
+        try edited.save(in: context, anchorID: id, baseline: baseline, newBookings: [added])
+        XCTAssertEqual(anchor.event?.title, "Updated event")
+        XCTAssertEqual(anchor.eventBookings.count, 2)
+        let newBooking = try XCTUnwrap(anchor.eventBookings.first { $0.client?.name == "New client" })
+        XCTAssertEqual(try newBooking.currentFee().amount, 30000)
+        XCTAssertEqual(newBooking.event, anchor.event)
+    }
+
     func testUnifiedEventEditSavesBookingsProjectsAndFeeHistoryAtomically() async throws {
         let store = try await openStore()
         let context = store.container.viewContext

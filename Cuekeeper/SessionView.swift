@@ -64,12 +64,12 @@ struct SessionEditorView: View {
                     Text("Times can remain incomplete. For overnight work, set the end on the following date. Times are shown in the selected timezone.")
                 }
                 Section {
-                    Picker("Schedule", selection: $draft.scheduleStatus) {
+                    DaybookChoicePicker("Schedule", selection: $draft.scheduleStatus, identifier: "session-schedule") {
                         Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed")
-                    }.pickerStyle(.segmented).accessibilityIdentifier("session-schedule")
-                    Picker("Coverage", selection: $draft.coverage) {
+                    }
+                    DaybookChoicePicker("Coverage", selection: $draft.coverage, identifier: "session-coverage") {
                         Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering")
-                    }.pickerStyle(.segmented).accessibilityIdentifier("session-coverage")
+                    }
                 } header: { Text("Status & coverage") } footer: { Text("Confirming times does not change whether you’re covering this session or whether the client booking is confirmed.") }
                 Section { Button(details ? "Fewer details" : "Roles, notes & links", systemImage: "slider.horizontal.3") { details.toggle() } }
                 if details {

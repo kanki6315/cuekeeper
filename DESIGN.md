@@ -7,7 +7,7 @@ colors:
   PageBackground-light: "#FAF8F2"
   PageBackground-dark: "#171E19"
   SurfaceBackground-light: "#FFFFFF"
-  SurfaceBackground-dark: "#222C25"
+  SurfaceBackground-dark: "#2C352F"
   SecondaryText-light: "#626860"
   SecondaryText-dark: "#B7BFB8"
   PrimaryButtonText-light: "#FFFFFF"
@@ -173,3 +173,36 @@ Upcoming, Jobs, Payments and Settings form the tab/sidebar destinations. The reg
 - **Don't** substitute sample board data for financial or calendar truth.
 - **Don't** force three columns at accessibility text sizes.
 - **Don't** treat conceptual system chrome as a pixel-exact native requirement.
+
+
+## Unified event hierarchy — October 14, 2026
+
+The event overview leads with sessions, separating prominent local times from dates
+and timezone context. Client bookings are compact client/status/fee disclosures
+into the unified Event editor. A separate Payments section retains access to each
+booking’s billing history. Add-client actions sit outside existing booking rows.
+
+Edit Event keeps event details, dates and event notes visible, followed by expandable
+client bookings grouped into Client, Work, Fee and Booking notes. A single booking
+opens expanded; multi-client events start with concise status/fee summaries. Direct
+booking and fee entry points scroll within this same editor. New client bookings
+remain drafts, can be removed, and commit atomically with existing edits on Save.
+Cancellation discards all pending changes. No schema change is required.
+
+Saved-library selection is integrated with the field label using Choose saved or
+Change, preserving direct typing. The wizard reuses this control and retains its
+existing optional-step sequence. Dark reading surfaces are #2C352F, and dividers
+and panel boundaries strengthen with Increase Contrast. Main navigation labels and
+booking names use primary text; action tint is reserved for controls and statuses.
+
+Verification evidence is recorded in design/verification/event-hierarchy/README.md.
+
+### Short choice fields
+
+Schedule (Tentative / Confirmed) and Coverage (Undecided / Covering / Not covering)
+use the shared DaybookChoicePicker in session editing, wizard session entry and
+bulk coverage editing. The field label remains visible above the native segmented
+control. When the scaled minimum width cannot fit, or Dynamic Type exceeds xLarge,
+the same binding uses a labelled native menu. Booking status and arrangement retain
+menus because both currently have four choices. Library and multi-selection fields
+remain unchanged.

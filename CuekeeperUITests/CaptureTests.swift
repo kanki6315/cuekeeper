@@ -46,7 +46,7 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(next.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["edit-event"].waitForExistence(timeout: 5))
         if openBooking {
-            let details = app.buttons["Booking details & payments"].firstMatch
+            let details = app.buttons["\(client) · booking & payments"].firstMatch
             reveal(details, in: app); details.tap()
             XCTAssertTrue(app.buttons["edit-job"].waitForExistence(timeout: 5))
         }
@@ -290,9 +290,11 @@ final class CaptureTests: XCTestCase {
         let add = app.buttons["event-add-client"]; reveal(add, in: app); add.tap()
         let client = app.textFields["library-Client-name"]
         XCTAssertTrue(client.waitForExistence(timeout: 5)); client.tap(); client.typeText("Client B\n")
+        let feeSection = app.buttons["editor-fee-section"].firstMatch
+        reveal(feeSection, in: app); feeSection.tap()
         let fee = app.textFields["overall-fee"]; reveal(fee, in: app); fee.tap(); fee.typeText("300")
-        app.buttons["save-booking"].tap()
-        XCTAssertTrue(app.buttons["save-booking"].waitForNonExistence(timeout: 5))
+        app.buttons["save-event"].tap()
+        XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["event-booking-Client A"].exists)
         XCTAssertTrue(app.buttons["event-booking-Client B"].exists)
         XCTAssertTrue(app.staticTexts["$300.00"].exists)

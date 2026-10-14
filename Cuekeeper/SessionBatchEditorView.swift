@@ -87,7 +87,7 @@ struct SessionBatchEditorView: View {
                     Toggle("Change series", isOn: $changeSeries)
                     if changeSeries { NamedLibraryField(kind: .series, name: $series) }
                     Toggle("Change coverage", isOn: $changeCoverage)
-                    if changeCoverage { Picker("Coverage", selection: $coverage) { Text("Covering").tag("covering"); Text("Not covering").tag("notCovering"); Text("Undecided").tag("undecided") } }
+                    if changeCoverage { DaybookChoicePicker("Coverage", selection: $coverage, identifier: "batch-session-coverage") { Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering") } }
                     Toggle("Change client booking", isOn: $changeClient)
                     if changeClient {
                         Picker("Client booking", selection: $bookingID) {

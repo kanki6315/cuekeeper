@@ -22,6 +22,7 @@ struct DaybookForm<Content: View>: View {
 }
 
 struct DaybookSections<Content: View>: View {
+    @Environment(\.colorSchemeContrast) private var contrast
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -34,13 +35,13 @@ struct DaybookSections<Content: View>: View {
                     }
                     VStack(spacing: 0) {
                         ForEach(Array(section.content.enumerated()), id: \.element.id) { index, row in
-                            if index > 0 && !section.containerValues.daybookUnframed { Divider().padding(.horizontal, 16) }
+                            if index > 0 && !section.containerValues.daybookUnframed { Rectangle().fill(Color.primary.opacity(contrast == .increased ? 0.45 : 0.16)).frame(height: 0.5).padding(.horizontal, 16) }
                             row.frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, section.containerValues.daybookUnframed ? 0 : 16).padding(.vertical, section.containerValues.daybookUnframed ? 5 : 12)
                         }
                     }
                     .background(section.containerValues.daybookUnframed ? Color.clear : Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 12))
-                    .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(section.containerValues.daybookUnframed ? 0 : 0.09), lineWidth: 0.5) }
+                    .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(section.containerValues.daybookUnframed ? 0 : (contrast == .increased ? 0.45 : 0.16)), lineWidth: 0.5) }
                     if !section.footer.isEmpty {
                         section.footer.font(.footnote).foregroundStyle(Color("SecondaryText"))
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,6 +204,48 @@ struct DaybookPicker<Selection: Hashable, Content: View>: View {
                 Picker(title, selection: $selection) { content }.labelsHidden().accessibilityIdentifier(identifier)
             } label: { Text(title) }
         }
+    }
+}
+
+/// Short, mutually exclusive choices stay visible when they fit comfortably.
+/// Keep the same selection binding and label when Dynamic Type needs a menu.
+struct DaybookChoicePicker<Selection: Hashable, Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var minimumSegmentWidth = 300
+    let title: String
+    @Binding var selection: Selection
+    var identifier: String
+    @ViewBuilder var content: Content
+
+    init(_ title: String, selection: Binding<Selection>, identifier: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        _selection = selection
+        self.identifier = identifier
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).foregroundStyle(Color.primary)
+            if typeSize > .xLarge {
+                menu
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    Picker(title, selection: $selection) { content }
+                        .pickerStyle(.segmented).labelsHidden()
+                        .frame(minWidth: minimumSegmentWidth, minHeight: 44)
+                        .accessibilityIdentifier(identifier)
+                    menu
+                }
+            }
+        }
+    }
+
+    private var menu: some View {
+        Picker(title, selection: $selection) { content }
+            .pickerStyle(.menu).labelsHidden()
+            .frame(minHeight: 44, alignment: .leading)
+            .accessibilityIdentifier(identifier)
     }
 }
 

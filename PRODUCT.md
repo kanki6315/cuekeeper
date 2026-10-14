@@ -172,3 +172,11 @@ to each booking, with their union shown on the event. Sessions retain one series
 V9 adds the optional additional-series relationship over the unchanged released
 V7/V8 models. Existing grouped billing, track weather and batch-session editing
 remain part of the same flow.
+
+
+## Event editing refinement — October 14, 2026
+
+Event details and client bookings share one editor and one Save. Adding bookings
+from the overview opens that editor with a pending new booking; new and edited
+bookings commit with event changes in one isolated writer transaction. Schedule
+and payment states remain independent. The wizard’s guided sequence is unchanged.

@@ -120,8 +120,8 @@ struct WizardSessionFields: View {
         optionalTime("Start", value: $draft.startTime)
         optionalTime("End", value: $draft.endTime)
         optionalTime("Call time", value: $draft.callTime)
-        DaybookPicker("Schedule", selection: $draft.scheduleStatus) { Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed") }
-        DaybookPicker("Coverage", selection: $draft.coverage) { Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering") }
+        DaybookChoicePicker("Schedule", selection: $draft.scheduleStatus, identifier: "wizard-session-schedule") { Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed") }
+        DaybookChoicePicker("Coverage", selection: $draft.coverage, identifier: "wizard-session-coverage") { Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering") }
         Group {}.onChange(of: draft.startTime) { _, value in if let value { draft.day = Day.string(from: value, timeZone: zone) } }
             .onChange(of: draft.timeZoneID) { _, _ in if let value = draft.startTime { draft.day = Day.string(from: value, timeZone: zone) } }
     }

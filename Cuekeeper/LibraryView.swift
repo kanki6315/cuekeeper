@@ -176,19 +176,21 @@ struct NamedLibraryField: View {
     }
     private var names: [String] { Array(Set(records.compactMap { $0.value(forKey: "name") as? String }).union(name.isEmpty ? [] : [name])).sorted() }
     var body: some View {
-        if !records.isEmpty {
-            Menu {
-                Button("Clear selection") { name = "" }
-                ForEach(names, id: \.self) { value in Button(value) { name = value } }
-            } label: {
-                HStack {
-                    Text("Choose saved \(kind.singular.lowercased())").multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                    Spacer(); Image(systemName: "chevron.down")
-                }.frame(minHeight: 44)
-            }.accessibilityIdentifier("reuse-\(kind.entity)")
-        }
         VStack(alignment: .leading, spacing: 6) {
-            Text(kind.singular).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            HStack {
+                Text(kind.singular).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Spacer()
+                if !records.isEmpty {
+                    Menu {
+                        Button("Clear selection") { name = "" }
+                        ForEach(names, id: \.self) { value in Button(value) { name = value } }
+                    } label: {
+                        Text(name.isEmpty ? "Choose saved" : "Change").font(.subheadline)
+                            .frame(minHeight: 44)
+                    }.accessibilityIdentifier("reuse-\(kind.entity)")
+                        .accessibilityLabel("Choose saved \(kind.singular.lowercased())")
+                }
+            }
             DaybookTextField(kind == .client ? "Client name" : "Name (optional)", text: $name)
                 .focused($focused).submitLabel(.done).onSubmit { focused = false }
                 .accessibilityLabel("\(kind.singular) name")

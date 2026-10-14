@@ -38,11 +38,11 @@ final class EventWizardTests: XCTestCase {
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-event"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 10))
-        let event = app.buttons["editor-event-section"]
-        event.tap()
-        XCTAssertFalse(app.textFields["job-location"].exists)
+        XCTAssertTrue(app.textFields["job-location"].exists)
         let booking = app.buttons["editor-booking-section"].firstMatch
+        for _ in 0..<8 where !booking.isHittable { app.swipeUp() }
         XCTAssertTrue(booking.waitForExistence(timeout: 3))
+        if app.textFields["library-WorkProject-name"].exists { booking.tap() }
         XCTAssertTrue(booking.label.contains("$1,200.00"))
         capture("collapsed-editor-sections")
         booking.tap()

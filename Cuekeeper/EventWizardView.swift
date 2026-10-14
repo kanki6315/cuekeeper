@@ -42,7 +42,7 @@ struct EventWizardView: View {
             value.shared = JobDraft.duplicate(template)
             value.shared.location = template.eventLocation
             value.shared.trackPlaceID = template.eventTrackPlaceID
-            value.shared.timeZoneID = template.eventTimeZoneID
+            value.events[0].timeZoneID = template.eventTimeZoneID
             value.events[0].details.name = template.eventTitle
             _draft = State(initialValue: value)
             _selected = State(initialValue: [.context, .work, .payment])
@@ -56,7 +56,7 @@ struct EventWizardView: View {
             sample.shared.roleNames = ["Commentator"]
             sample.shared.workArrangement = .onSite
             sample.shared.location = "Silverstone Circuit"
-            sample.shared.timeZoneID = "America/New_York"
+            sample.events[0].timeZoneID = "Asia/Tokyo"
             sample.shared.fee?.amount = "1200"
             sample.events[0].details.startDate = Day.date(from: "2026-01-15")!
             sample.events[0].details.endDate = sample.events[0].details.startDate
@@ -94,7 +94,7 @@ struct EventWizardView: View {
             if let index = draft.events.firstIndex(where: { $0.id == item.id }) {
                 NavigationStack {
                     DaybookForm {
-                        Section("Event") { DaybookTextField("Title (optional)", text: $draft.events[index].details.name); EventDateFields(draft: $draft.events[index].details) }
+                        Section("Event") { DaybookTextField("Title (optional)", text: $draft.events[index].details.name); EventDateFields(draft: $draft.events[index].details); EventTimeZoneField(selection: $draft.events[index].timeZoneID, date: draft.events[index].details.startDate) }
                         if season { Section("Series") {
                             Toggle("Use shared series", isOn: Binding(get: { draft.events[index].usesSharedSeries }, set: { shared in
                                 if !shared && !draft.events[index].seriesOverrideInitialized {
@@ -154,6 +154,7 @@ struct EventWizardView: View {
             if !season {
                 DaybookTextField("Title (optional)", text: $draft.events[0].details.name).accessibilityIdentifier("job-name")
                 EventDateFields(draft: $draft.events[0].details)
+                EventTimeZoneField(selection: $draft.events[0].timeZoneID, date: draft.events[0].details.startDate)
             }
         }
         Section("Add details") {
@@ -205,6 +206,9 @@ struct EventWizardView: View {
                 }.onChange(of: sessionEvent) { _, _ in activeSession = nil; copyTargets = []; copyExpanded = false; copyNotice = "" }
             }
         }
+        Section {
+            EventTimeZoneField(selection: $draft.events[sessionEvent].timeZoneID, date: draft.events[sessionEvent].details.startDate)
+        } footer: { Text("All sessions use this event timezone. Changing it preserves existing scheduled instants.") }
         ForEach(draft.events[sessionEvent].sessions.indices, id: \.self) { index in
             Section {
                 Button {
@@ -213,14 +217,14 @@ struct EventWizardView: View {
                     HStack { Text(draft.events[sessionEvent].sessions[index].name.isEmpty ? "Session \(index + 1)" : draft.events[sessionEvent].sessions[index].name); Spacer(); Image(systemName: activeSession == index ? "chevron.up" : "chevron.down") }
                 }
                 if activeSession == index {
-                    WizardSessionFields(draft: $draft.events[sessionEvent].sessions[index])
+                    WizardSessionFields(draft: $draft.events[sessionEvent].sessions[index], eventTimeZoneID: draft.events[sessionEvent].timeZoneID)
                     Button("Remove session", role: .destructive) { draft.events[sessionEvent].sessions.remove(at: index); activeSession = nil }
                 }
             }
         }
         Section {
             Button("Add session", systemImage: "plus") {
-                draft.events[sessionEvent].sessions.append(SessionDraft(day: Day.string(from: draft.events[sessionEvent].details.startDate), timeZoneID: draft.shared.timeZoneID))
+                draft.events[sessionEvent].sessions.append(SessionDraft(day: Day.string(from: draft.events[sessionEvent].details.startDate), timeZoneID: draft.events[sessionEvent].timeZoneID))
                 activeSession = draft.events[sessionEvent].sessions.count - 1
             }
             if season && draft.events.count > 1 {
@@ -229,7 +233,7 @@ struct EventWizardView: View {
                         Toggle(event.displayTitle, isOn: Binding(get: { copyTargets.contains(event.id) }, set: { if $0 { copyTargets.insert(event.id) } else { copyTargets.remove(event.id) } }))
                     }
                     Toggle("Include session times", isOn: $copyTimes)
-                    Text("Copies are added to existing sessions as tentative, with coverage undecided.").font(.caption).foregroundStyle(.secondary)
+                    Text("Copies use each destination event’s timezone and retain local clock times. They are added as tentative, with coverage undecided.").font(.caption).foregroundStyle(.secondary)
                     Button("Copy sessions") {
                         do {
                             try draft.copySessions(from: draft.events[sessionEvent].id, to: copyTargets, includingTimes: copyTimes)
@@ -252,14 +256,14 @@ struct EventWizardView: View {
             }
         }
         Section {
-            DaybookPicker("Arrangement", selection: $draft.shared.workArrangement) { ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) } }
+            DaybookPicker("Arrangement", selection: $draft.shared.workArrangement, identifier: "work-arrangement") { ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) } }
             LocationSearchField(text: $draft.shared.location)
             if !draft.shared.trackPlaceID.isEmpty { SavedTrackView(placeID: draft.shared.trackPlaceID) }
             Button(draft.shared.trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }.accessibilityIdentifier("choose-track")
             if !draft.shared.trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { draft.shared.trackPlaceID = "" } }
-            DaybookLink { TimeZonePicker(selection: $draft.shared.timeZoneID, date: workDate) } label: { WizardSummaryRow("Timezone", value: zoneLabel(draft.shared.timeZoneID, date: workDate)) }
+            WorkTimeZoneField(draft: $draft.shared, date: workDate)
         } header: { Text("Where you’ll work") } footer: {
-            if season { Text("Timezone offsets are shown for the first event, \(workDate.formatted(date: .abbreviated, time: .omitted)). Each session uses its own date and timezone.") }
+            if season { Text("Timezone offsets are shown for the first event, \(workDate.formatted(date: .abbreviated, time: .omitted)). Sessions use their event’s timezone.") }
         }
     }
     @ViewBuilder private var paymentPage: some View {
@@ -292,6 +296,7 @@ struct EventWizardView: View {
                     WizardSummaryRow("Work", value: (draft.shared.roleNames.sorted() + (draft.shared.workArrangement == .unspecified ? [] : [draft.shared.workArrangement.title]) + (draft.shared.location.isEmpty ? [] : [draft.shared.location])).joined(separator: " · "))
                 }.buttonStyle(.plain).accessibilityHint("Edit role and location")
             }
+            if draft.shared.workArrangement == .remote || draft.shared.workArrangement == .hybrid { WizardSummaryRow("Your timezone", value: zoneLabel(draft.shared.timeZoneID, date: workDate)) }
             let count = draft.events.reduce(0) { $0 + $1.sessions.count }
             if count > 0 { WizardSummaryRow("Sessions", value: "\(count)") }
             WizardSummaryRow(season ? "Fee per event" : "Fee", value: (try? fee.wrappedValue.value().amount).map { Money.format($0, currency: fee.wrappedValue.currency) } ?? "Unknown")
@@ -314,6 +319,7 @@ struct EventWizardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(event.displayTitle).font(.headline).foregroundStyle(.primary)
                     Text(event.details.startDate.formatted(date: .abbreviated, time: .omitted) + (Day.string(from: event.details.startDate) == Day.string(from: event.details.endDate) ? "" : " – " + event.details.endDate.formatted(date: .abbreviated, time: .omitted))).foregroundStyle(.secondary)
+                    Text("Event timezone: " + zoneLabel(event.timeZoneID, date: event.details.startDate)).font(.caption).foregroundStyle(.secondary)
                     if !event.details.seriesNames.isEmpty { Text(event.details.seriesNames.sorted().joined(separator: ", ")).font(.caption).foregroundStyle(.secondary) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.plain).accessibilityHint("Edit event")
@@ -323,7 +329,7 @@ struct EventWizardView: View {
         guard let index = route.firstIndex(of: current), index + 1 < route.count else { return }
         do {
             if current == .sessions {
-                for event in draft.events { for session in event.sessions { try session.validate() } }
+                for event in draft.resolvedEvents() { for session in event.sessions { try session.validate() } }
             }
             if current == .payment {
                 _ = try fee.wrappedValue.value()
@@ -336,7 +342,7 @@ struct EventWizardView: View {
     }
     private func save() {
         do {
-            for (eventIndex, event) in draft.events.enumerated() {
+            for (eventIndex, event) in draft.resolvedEvents().enumerated() {
                 for (sessionIndex, session) in event.sessions.enumerated() {
                     do { try session.validate() } catch {
                         selected.insert(.sessions); sessionEvent = eventIndex; activeSession = sessionIndex

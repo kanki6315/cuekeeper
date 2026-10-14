@@ -31,6 +31,96 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testEventTimezoneControlsSessionsAndRemoteDisplayWithoutMovingInstants() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var creation = EventCreationDraft()
+        creation.events[0].timeZoneID = "Europe/London"
+        creation.shared.clientName = "Broadcast"
+        creation.shared.workArrangement = .remote
+        creation.shared.timeZoneID = "America/New_York"
+        let formatter = ISO8601DateFormatter()
+        let start = try XCTUnwrap(formatter.date(from: "2026-10-15T00:30:00Z"))
+        var draft = SessionDraft(day: "2026-10-15", timeZoneID: "Asia/Tokyo")
+        draft.startTime = start; draft.endTime = start.addingTimeInterval(3600)
+        draft.callTime = start.addingTimeInterval(-1800)
+        draft.scheduleStatus = "confirmed"; draft.coverage = "covering"
+        creation.events[0].sessions = [draft]
+        let id = try XCTUnwrap(creation.save(in: context).first)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        let session = try XCTUnwrap(job.activeSessions.first)
+        XCTAssertEqual(session.eventTimeZoneID, "Europe/London")
+        XCTAssertEqual(job.workTimeZoneID, "America/New_York")
+        XCTAssertTrue(session.localScheduleDescription?.contains("America/New York") == true)
+        XCTAssertEqual(session.startTime, start)
+        // A stale session editor cannot reinstate a per-session timezone.
+        let baseline = SessionDraft(session: session)
+        var changed = baseline; changed.timeZoneID = "Asia/Tokyo"; changed.notes = "Updated"
+        try changed.save(in: context, jobID: id, editing: session.objectID, baseline: baseline)
+        XCTAssertEqual(session.timeZoneID, "Europe/London")
+        let original = EventDraft(anchor: job)
+        var event = original; event.timeZoneID = "America/Los_Angeles"
+        try event.save(in: context, anchorID: id, baseline: original)
+        XCTAssertEqual(session.startTime, start)
+        XCTAssertEqual(session.endTime, draft.endTime)
+        XCTAssertEqual(session.callTime, draft.callTime)
+        XCTAssertEqual(session.day, "2026-10-14")
+        XCTAssertEqual(session.eventTimeZoneID, "America/Los_Angeles")
+        let entry = try XCTUnwrap(CalendarPlan(jobs: [job]).desired.values.first { !$0.allDay })
+        XCTAssertEqual(entry.timeZoneID, "America/Los_Angeles"); XCTAssertEqual(entry.start, start)
+        var cleared = EventDraft(anchor: job); cleared.timeZoneID = ""
+        XCTAssertThrowsError(try cleared.save(in: context, anchorID: id))
+        for arrangement in [WorkArrangement.hybrid, .onSite, .remote] {
+            let before = JobDraft(job: job); var work = before; work.workArrangement = arrangement
+            try work.save(in: context, editing: id, baseline: before)
+            XCTAssertEqual(job.workTimeZoneID, arrangement == .onSite ? "America/Los_Angeles" : "America/New_York")
+            XCTAssertEqual(session.localScheduleDescription == nil, arrangement == .onSite)
+            XCTAssertEqual(session.startTime, start)
+        }
+        let reopened = try await openStore()
+        let restored = try XCTUnwrap(reopened.container.viewContext.existingObject(with: id) as? Job)
+        XCTAssertEqual(restored.eventTimeZoneID, "America/Los_Angeles")
+        XCTAssertEqual(restored.activeSessions.first?.startTime, start)
+    }
+
+    func testLegacyCommonTimezoneBecomesEventDefaultAndMissingZoneRejectsTimes() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var booking = JobDraft(); booking.clientName = "Legacy"
+        let id = try booking.save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        let legacy = WorkSession(entity: NSEntityDescription.entity(forEntityName: "WorkSession", in: context)!, insertInto: context)
+        legacy.id = UUID(); legacy.job = job; legacy.timeZoneID = "Europe/London"
+        try context.save()
+        XCTAssertEqual(job.eventTimeZoneID, "Europe/London")
+        XCTAssertEqual(SessionDraft(job: job).timeZoneID, "Europe/London")
+        let event = EventDraft(anchor: job)
+        try event.save(in: context, anchorID: id)
+        XCTAssertEqual(job.event?.timeZoneID, "Europe/London")
+        var creation = EventCreationDraft(); creation.shared.clientName = "No zone"
+        var session = SessionDraft(day: "2026-10-14", timeZoneID: "Asia/Tokyo")
+        session.startTime = Date(); creation.events[0].sessions = [session]
+        XCTAssertThrowsError(try creation.save(in: context))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+    }
+
+    func testCopiesUseDestinationEventTimezoneAndRejectDSTGapAtomically() throws {
+        var draft = EventCreationDraft()
+        draft.events[0].timeZoneID = "Europe/London"
+        draft.events[0].details.startDate = Day.date(from: "2026-03-01")!
+        var session = SessionDraft(day: "2026-03-01", timeZoneID: "Europe/London")
+        session.startTime = ISO8601DateFormatter().date(from: "2026-03-01T02:30:00Z")
+        session.endTime = session.startTime!.addingTimeInterval(3600)
+        draft.events[0].sessions = [session]
+        var target = EventOutline(); target.timeZoneID = "America/New_York"
+        target.details.startDate = Day.date(from: "2026-03-08")!
+        draft.events.append(target)
+        XCTAssertThrowsError(try draft.copySessions(from: draft.events[0].id, to: [target.id], includingTimes: true))
+        XCTAssertTrue(draft.events[1].sessions.isEmpty)
+        draft.events[1].details.startDate = Day.date(from: "2026-03-15")!
+        try draft.copySessions(from: draft.events[0].id, to: [target.id], includingTimes: true)
+        XCTAssertEqual(draft.events[1].sessions[0].timeZoneID, "America/New_York")
+        XCTAssertEqual(draft.events[1].sessions[0].startTime, ISO8601DateFormatter().date(from: "2026-03-15T06:30:00Z"))
+    }
+
     func testSingleClientEventRejectsAdditionalClientsAndLinksAtomically() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var first = JobDraft(); first.clientName = "Original"
@@ -294,7 +384,8 @@ final class PersistenceTests: XCTestCase {
     func testSessionBatchMovesAcrossDSTAndRejectsOtherClientEvents() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var booking = JobDraft(); booking.clientName = "A"; booking.fee?.amount = "100"; booking.seriesName = "Inherited series"
-        let aID = try EventDraft().save(in: context, firstBooking: booking)
+        var event = EventDraft(); event.timeZoneID = "America/New_York"
+        let aID = try event.save(in: context, firstBooking: booking)
         let a = try XCTUnwrap(context.existingObject(with: aID) as? Job)
         booking.clientName = "B"; booking.fee?.amount = "200"; booking.seriesName = "Other series"
         let bID = try EventDraft().save(in: context, firstBooking: booking)
@@ -423,6 +514,7 @@ final class PersistenceTests: XCTestCase {
         let sourceDate = try XCTUnwrap(Day.date(from: "2026-03-01"))
         let destinationDate = try XCTUnwrap(Day.date(from: "2026-03-15"))
         draft.events[0].details.startDate = sourceDate
+        draft.events[0].timeZoneID = "America/New_York"
         var session = SessionDraft(day: "2026-03-01", timeZoneID: "America/New_York")
         let formatter = ISO8601DateFormatter()
         session.startTime = formatter.date(from: "2026-03-01T15:00:00Z")
@@ -430,6 +522,7 @@ final class PersistenceTests: XCTestCase {
         session.scheduleStatus = "confirmed"; session.coverage = "covering"
         draft.events[0].sessions = [session]
         var destination = EventOutline(); destination.details.startDate = destinationDate
+        destination.timeZoneID = "America/New_York"
         destination.sessions = [SessionDraft(day: "2026-03-15")]
         draft.events.append(destination)
         try draft.copySessions(from: draft.events[0].id, to: [destination.id], includingTimes: true)

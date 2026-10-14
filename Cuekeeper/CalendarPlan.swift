@@ -49,7 +49,7 @@ struct CalendarPlan {
                 if let end = session.endTime { bounds.append(end) }
                 if session.calendarEligible, let start = session.startTime, let end = session.endTime {
                     desired[key] = CalendarEntry(key: key, title: "\(job.displayName) · \(session.title)", start: start, end: end, allDay: false,
-                                                 timeZoneID: session.timeZoneID, notes: session.notes, location: job.eventLocation)
+                                                 timeZoneID: session.eventTimeZoneID, notes: session.notes, location: job.eventLocation)
                 }
             }
         }

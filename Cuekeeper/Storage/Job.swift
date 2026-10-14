@@ -25,7 +25,7 @@ final class Job: NSManagedObject {
     @NSManaged var payments: Set<PaymentRecord>?
     @NSManaged var feeRevisions: Set<FeeRevision>?
     @NSManaged var sessions: Set<WorkSession>?
-    var activeSessions: [WorkSession] { (sessions ?? []).filter { $0.deletedAt == nil }.sorted { ($0.day, $0.startTime ?? .distantFuture, $0.name) < ($1.day, $1.startTime ?? .distantFuture, $1.name) } }
+    var activeSessions: [WorkSession] { (sessions ?? []).filter { $0.deletedAt == nil }.sorted { ($0.eventDay, $0.startTime ?? .distantFuture, $0.name) < ($1.eventDay, $1.startTime ?? .distantFuture, $1.name) } }
     var roleNames: [String] { (roles ?? []).map(\.name).sorted() }
 }
 

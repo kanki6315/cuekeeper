@@ -11,27 +11,125 @@ struct JobEditorView: View {
     }
 }
 
+/// A single-tap choice backed by an IANA zone, never a fixed UTC offset.
+struct TimeZoneChoice: Identifiable {
+    let label: String
+    let identifiers: [String]
+    var id: String { identifiers[0] }
+
+    static func grouped(date: Date, identifiers: [String] = TimeZone.knownTimeZoneIdentifiers) -> [Self] {
+        let groups = Dictionary(grouping: identifiers) { identifier in
+            zoneLabel(identifier, date: date) + "|" + (futureRules(identifier, date: date) ?? identifier)
+        }.values.map { $0.sorted() }
+        let labels = Dictionary(grouping: groups, by: { zoneLabel($0[0], date: date) })
+        return groups.map { zones in
+            let label = zoneLabel(zones[0], date: date)
+            // Equal names/offsets can still have different transition dates.
+            let region = zones[0].split(separator: "/").last.map(String.init) ?? zones[0]
+            let suffix = labels[label, default: []].count > 1
+                ? " (\(region.replacingOccurrences(of: "_", with: " ")))" : ""
+            return Self(label: label + suffix, identifiers: zones)
+        }.sorted {
+            let lhsOffset = TimeZone(identifier: $0.id)?.secondsFromGMT(for: date) ?? 0
+            let rhsOffset = TimeZone(identifier: $1.id)?.secondsFromGMT(for: date) ?? 0
+            if lhsOffset != rhsOffset { return lhsOffset < rhsOffset }
+            return $0.label.localizedStandardCompare($1.label) == .orderedAscending
+        }
+    }
+
+    func identifier(selection: String, search: String, current: String = TimeZone.current.identifier) -> String {
+        let matches = matching(search)
+        if matches.contains(selection) { return selection }
+        if matches.contains(current) { return current }
+        return matches.first ?? identifiers[0]
+    }
+
+    // Compare all stored future transitions and the recurring TZif footer, rather
+    // than sampling a few dates. Historical differences before the event do not
+    // create duplicate choices. Unknown formats conservatively remain separate.
+    // Format: https://www.rfc-editor.org/rfc/rfc9636.html
+    private static func futureRules(_ identifier: String, date: Date) -> String? {
+        guard let zone = NSTimeZone(name: identifier) else { return nil }
+        let bytes = Array(zone.data)
+        func uint(_ offset: Int, _ size: Int) -> UInt64 {
+            bytes[offset..<(offset + size)].reduce(0) { ($0 << 8) | UInt64($1) }
+        }
+        func header(_ offset: Int) -> [Int]? {
+            guard offset >= 0, offset + 44 <= bytes.count,
+                  Array(bytes[offset..<(offset + 4)]) == [84, 90, 105, 102] else { return nil }
+            return (0..<6).map { Int(uint(offset + 20 + $0 * 4, 4)) }
+        }
+        func blockSize(_ counts: [Int], width: Int) -> Int {
+            counts[3] * (width + 1) + counts[4] * 6 + counts[5]
+                + counts[2] * (width + 4) + counts[0] + counts[1]
+        }
+        guard let first = header(0), [50, 51, 52].contains(bytes[4]) else { return nil }
+        let second = 44 + blockSize(first, width: 4)
+        guard let counts = header(second), counts[4] > 0, counts[2] == 0 else { return nil }
+        let start = second + 44
+        let end = start + blockSize(counts, width: 8)
+        guard end < bytes.count else { return nil }
+        let types = start + counts[3] * 9
+        var rules = ["\(zone.secondsFromGMT(for: date)):\(zone.isDaylightSavingTime(for: date))"]
+        var previous = rules[0]
+        for index in 0..<counts[3] {
+            let instant = Int64(bitPattern: uint(start + index * 8, 8))
+            guard Double(instant) > date.timeIntervalSince1970 else { continue }
+            let type = Int(bytes[start + counts[3] * 8 + index])
+            guard type < counts[4] else { return nil }
+            let offset = Int32(bitPattern: UInt32(uint(types + type * 6, 4)))
+            let rule = "\(offset):\(bytes[types + type * 6 + 4] != 0)"
+            if rule != previous { rules.append("\(instant):\(rule)"); previous = rule }
+        }
+        rules.append(String(decoding: bytes[end...], as: UTF8.self))
+        return rules.joined(separator: "|")
+    }
+
+    func matching(_ search: String) -> [String] {
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.isEmpty || label.localizedCaseInsensitiveContains(query) { return identifiers }
+        return identifiers.filter {
+            $0.replacingOccurrences(of: "_", with: " ").localizedCaseInsensitiveContains(query)
+                || $0.localizedCaseInsensitiveContains(query)
+        }
+    }
+}
+
 struct TimeZonePicker: View {
     @Binding var selection: String
     var date = Date()
     @State private var search = ""
+    @State private var choices: [TimeZoneChoice] = []
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         DaybookList {
             Button("Unspecified") { selection = ""; dismiss() }
-            ForEach(TimeZone.knownTimeZoneIdentifiers.filter { search.isEmpty || zoneLabel($0, date: date).localizedCaseInsensitiveContains(search) || $0.localizedCaseInsensitiveContains(search) }, id: \.self) { zone in
-                Button { selection = zone; dismiss() } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(zoneLabel(zone, date: date)).foregroundStyle(.primary)
-                            Text(zone).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if selection == zone { Image(systemName: "checkmark").accessibilityLabel("Selected") }
+            ForEach(choices) { choice in
+                let matches = choice.matching(search)
+                if !matches.isEmpty {
+                    Button { select(choice.identifier(selection: selection, search: search)) } label: {
+                        choiceLabel(choice.label, selected: choice.identifiers.contains(selection))
                     }
                 }
             }
-        }.searchable(text: $search, prompt: "Search timezones").navigationTitle("Timezone").navigationBarTitleDisplayMode(.inline)
+        }
+        .searchable(text: $search, prompt: "Search timezones or cities")
+        .navigationTitle("Timezone")
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: date) { choices = TimeZoneChoice.grouped(date: date) }
+    }
+
+    private func select(_ zone: String) {
+        selection = zone
+        dismiss()
+    }
+
+    private func choiceLabel(_ title: String, selected: Bool) -> some View {
+        HStack {
+            Text(title).foregroundStyle(.primary)
+            Spacer()
+            if selected { Image(systemName: "checkmark").accessibilityLabel("Selected") }
+        }
     }
 }
 

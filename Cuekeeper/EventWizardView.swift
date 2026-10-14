@@ -133,7 +133,7 @@ struct EventWizardView: View {
             }
         }
         .navigationTitle(season ? "New events" : "New event").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { discard = true } } }
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { discard = true } } }
         .safeAreaInset(edge: .bottom) {
             HStack {
                 Spacer()
@@ -183,18 +183,16 @@ struct EventWizardView: View {
     }
     @ViewBuilder private var contextPage: some View {
         Section("Client & project") {
-            if !clients.isEmpty {
-                DaybookPicker("Reuse client", selection: $draft.shared.clientName) {
-                    Text("No client").tag("")
-                    ForEach(Array(Set(clients.map(\.name)).union([draft.shared.clientName])).sorted(), id: \.self) { if !$0.isEmpty { Text($0).tag($0) } }
-                }
-            }
-            DaybookTextField("Client name", text: $draft.shared.clientName).accessibilityIdentifier("job-client")
+            LibraryTypeaheadField(title: "Client", prompt: "Search or enter client", text: $draft.shared.clientName,
+                                  savedNames: clients.map(\.name), identifier: "job-client")
             NamedLibraryField(kind: .project, name: $draft.shared.projectName)
         }
         Section(season ? "Shared series" : "Series") { SeriesSelectionFields(names: $draft.shared.seriesNames) }
         Section {
-            DaybookPicker("Booking", selection: $draft.shared.bookingStatus) { ForEach(BookingStatus.allCases, id: \.self) { Text($0.title).tag($0) } }
+            DaybookChoicePicker("Booking", selection: $draft.shared.bookingStatus, identifier: "wizard-booking") {
+                Text("Tentative").tag(BookingStatus.tentative)
+                Text("Booked").tag(BookingStatus.booked)
+            }
             if !season { LabeledContent("Event title", value: draft.resolvedEvents()[0].displayTitle) }
         }
     }

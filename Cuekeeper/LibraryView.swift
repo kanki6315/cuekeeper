@@ -57,6 +57,7 @@ struct LibraryDetailView: View {
             related.formUnion((role.sessions ?? []).filter { $0.deletedAt == nil }.compactMap(\.job))
         }
         if let series = record as? WorkSeries {
+            related.formUnion(series.additionalJobs ?? [])
             related.formUnion((series.sessions ?? []).filter { $0.deletedAt == nil && $0.overridesSeries }.compactMap(\.job))
         }
         return related.sorted { $0.startDay > $1.startDay }

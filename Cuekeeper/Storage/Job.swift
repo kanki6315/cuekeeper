@@ -15,6 +15,9 @@ final class Job: NSManagedObject {
     @NSManaged var notes: String
     @NSManaged var project: WorkProject?
     @NSManaged var series: WorkSeries?
+    @NSManaged var additionalSeries: Set<WorkSeries>?
+    var allSeries: Set<WorkSeries> { (additionalSeries ?? []).union(series.map { [$0] } ?? []) }
+    var seriesNames: [String] { allSeries.map(\.name).sorted() }
     @NSManaged var client: Client?
     @NSManaged var roles: Set<WorkRole>?
     @NSManaged var payments: Set<PaymentRecord>?
@@ -73,6 +76,7 @@ final class WorkProject: NSManagedObject {
 
 @objc(WorkSeries)
 final class WorkSeries: NSManagedObject {
+    @NSManaged var additionalJobs: Set<Job>?
     @NSManaged var id: UUID?
     @NSManaged var name: String
     @NSManaged var jobs: Set<Job>?
@@ -109,6 +113,11 @@ struct JobDraft: Equatable {
     var clientName = ""
     var projectName = ""
     var seriesName = ""
+    var additionalSeriesNames: Set<String> = []
+    var seriesNames: Set<String> {
+        get { additionalSeriesNames.union(seriesName.isEmpty ? [] : [seriesName]) }
+        set { let names = newValue.sorted(); seriesName = names.first ?? ""; additionalSeriesNames = Set(names.dropFirst()) }
+    }
     var roleNames: Set<String> = []
     var workArrangement = WorkArrangement.unspecified
     var location = ""
@@ -130,6 +139,7 @@ struct JobDraft: Equatable {
         clientName = job.client?.name ?? ""
         projectName = job.project?.name ?? ""
         seriesName = job.series?.name ?? ""
+        additionalSeriesNames = Set((job.additionalSeries ?? []).map(\.name))
         roleNames = Set(job.roleNames)
         workArrangement = WorkArrangement(rawValue: job.workArrangement) ?? .unspecified
         location = job.location
@@ -150,7 +160,7 @@ struct JobDraft: Equatable {
     }
 
     @discardableResult
-    func save(in context: NSManagedObjectContext, editing objectID: NSManagedObjectID? = nil, baseline: JobDraft? = nil) throws -> NSManagedObjectID {
+    func save(in context: NSManagedObjectContext, editing objectID: NSManagedObjectID? = nil, baseline: JobDraft? = nil, transaction: NSManagedObjectContext? = nil) throws -> NSManagedObjectID {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw ValidationError.nameRequired }
         let start = Day.string(from: startDate)
@@ -158,7 +168,7 @@ struct JobDraft: Equatable {
         guard start <= end else { throw ValidationError.invalidDates }
         guard timeZoneID.isEmpty || TimeZone(identifier: timeZoneID) != nil else { throw ValidationError.invalidTimeZone }
         // Isolate each save: a failed edit cannot leak partial changes into the UI context.
-        let writer = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        let writer = transaction ?? NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
         writer.persistentStoreCoordinator = context.persistentStoreCoordinator
         writer.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         let job: Job
@@ -206,6 +216,9 @@ struct JobDraft: Equatable {
         if baseline?.seriesName != seriesName {
             job.series = try reusableRecord(entity: "WorkSeries", name: seriesName, in: writer) as? WorkSeries
         }
+        if baseline?.additionalSeriesNames != additionalSeriesNames {
+            job.additionalSeries = Set(try additionalSeriesNames.compactMap { try reusableRecord(entity: "WorkSeries", name: $0, in: writer) as? WorkSeries })
+        }
         if baseline?.roleNames != roleNames {
             var selectedRoles = Set<WorkRole>()
             for name in roleNames.map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }).filter({ !$0.isEmpty }).sorted() {
@@ -221,8 +234,10 @@ struct JobDraft: Equatable {
             let changed = try fee.value() != (try? job.currentFee())
             if objectID == nil || changed { try fee.apply(to: job, in: writer) }
         }
-        try writer.save()
-        context.performAndWait { context.refreshAllObjects() }
+        if transaction == nil {
+            try writer.save()
+            context.performAndWait { context.refreshAllObjects() }
+        } else { try writer.obtainPermanentIDs(for: [job]) }
         return job.objectID
     }
 
@@ -254,12 +269,12 @@ struct JobFilter {
         return (search.isEmpty || job.name.localizedCaseInsensitiveContains(search)
                 || (job.client?.name.localizedCaseInsensitiveContains(search) ?? false)
                 || (job.project?.name.localizedCaseInsensitiveContains(search) ?? false)
-                || (job.series?.name.localizedCaseInsensitiveContains(search) ?? false)
-                || job.activeSessions.contains { $0.effectiveSeries?.name.localizedCaseInsensitiveContains(search) ?? false })
+                || job.seriesNames.contains { $0.localizedCaseInsensitiveContains(search) }
+                || job.activeSessions.contains { $0.effectiveSeriesNames.contains { $0.localizedCaseInsensitiveContains(search) } })
             && (status.isEmpty || job.bookingStatus == status)
             && (client.isEmpty || job.client?.name == client)
             && (project.isEmpty || job.project?.name == project)
-            && (series.isEmpty || job.series?.name == series || job.activeSessions.contains { $0.effectiveSeries?.name == series })
+            && (series.isEmpty || job.seriesNames.contains(series) || job.activeSessions.contains { $0.effectiveSeriesNames.contains(series) })
             && (role.isEmpty || job.roleNames.contains(role) || job.activeSessions.contains { $0.roleNames.contains(role) })
             && (!usesDates || (job.endDay >= Day.string(from: start) && job.startDay <= Day.string(from: end)))
     }

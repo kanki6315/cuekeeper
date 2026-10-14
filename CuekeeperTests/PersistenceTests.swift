@@ -31,6 +31,65 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testSeasonCreationIsAtomicAndReusesMultipleSeries() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var draft = EventCreationDraft()
+        draft.shared.projectName = "Championship season"
+        draft.shared.seriesNames = ["Main", "Support"]
+        draft.shared.fee?.amount = "150"
+        draft.events.append(EventOutline())
+        draft.events[0].sessions = [SessionDraft(day: "2026-10-14")]
+        var invalid = SessionDraft(day: "2026-10-15")
+        invalid.scheduleStatus = "confirmed"
+        draft.events[1].sessions = [invalid]
+        XCTAssertThrowsError(try draft.save(in: context))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkSeries>(entityName: "WorkSeries")), 0)
+        draft.events[1].sessions = []
+        let ids = try draft.save(in: context)
+        let first = try XCTUnwrap(context.existingObject(with: ids[0]) as? Job)
+        let second = try XCTUnwrap(context.existingObject(with: ids[1]) as? Job)
+        XCTAssertEqual(Set(first.seriesNames), ["Main", "Support"])
+        XCTAssertEqual(first.allSeries, second.allSeries)
+        XCTAssertEqual(try first.currentFee().amount, 15000)
+        XCTAssertEqual(first.activeSessions.count, 1)
+        XCTAssertNil(first.activeSessions.first?.effectiveSeries)
+        XCTAssertTrue(first.name.hasPrefix("Championship season"))
+        var filter = JobFilter(); filter.series = "Support"
+        XCTAssertTrue(filter.includes(first))
+        var edit = JobDraft(job: first); let baseline = edit
+        edit.seriesNames = ["Support"]
+        try edit.save(in: context, editing: first.objectID, baseline: baseline)
+        XCTAssertEqual(first.seriesNames, ["Support"])
+        XCTAssertEqual(second.seriesNames.count, 2)
+    }
+
+    func testSessionCopyPreservesWallTimeAcrossDSTAndAppends() throws {
+        var draft = EventCreationDraft()
+        let sourceDate = try XCTUnwrap(Day.date(from: "2026-03-01"))
+        let destinationDate = try XCTUnwrap(Day.date(from: "2026-03-15"))
+        draft.events[0].details.startDate = sourceDate
+        var session = SessionDraft(day: "2026-03-01", timeZoneID: "America/New_York")
+        let formatter = ISO8601DateFormatter()
+        session.startTime = formatter.date(from: "2026-03-01T15:00:00Z")
+        session.endTime = formatter.date(from: "2026-03-01T16:00:00Z")
+        session.scheduleStatus = "confirmed"; session.coverage = "covering"
+        draft.events[0].sessions = [session]
+        var destination = EventOutline(); destination.details.startDate = destinationDate
+        destination.sessions = [SessionDraft(day: "2026-03-15")]
+        draft.events.append(destination)
+        try draft.copySessions(from: draft.events[0].id, to: [destination.id], includingTimes: true)
+        XCTAssertEqual(draft.events[1].sessions.count, 2)
+        let copy = draft.events[1].sessions[1]
+        XCTAssertEqual(copy.startTime, formatter.date(from: "2026-03-15T14:00:00Z"))
+        XCTAssertEqual(copy.scheduleStatus, "tentative")
+        XCTAssertEqual(copy.coverage, "undecided")
+        XCTAssertEqual(draft.events[0].sessions[0], session)
+        try draft.copySessions(from: draft.events[0].id, to: [destination.id], includingTimes: false)
+        XCTAssertNil(draft.events[1].sessions[2].startTime)
+        XCTAssertEqual(draft.events[1].sessions[2].day, "2026-03-15")
+    }
+
     func testProjectsSeriesInheritanceAndIndependentFees() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var first = JobDraft(name: "Daytona")

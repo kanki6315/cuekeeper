@@ -41,6 +41,7 @@
 		D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC25F847FFB2944BBBC0D0D /* FeeView.swift */; };
 		DAA665273A525BD7459E740C /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
+		F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */; };
 		FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -94,10 +95,12 @@
 		B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsView.swift; sourceTree = "<group>"; };
 		BBC535FB730F3A6A7FE4A398 /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
+		BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV7.xcdatamodel; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C42AD7432BF268805135A824 /* CalendarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSettingsView.swift; sourceTree = "<group>"; };
 		C4ECFB76E1416305BD27E80B /* CuekeeperV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV3.xcdatamodel; sourceTree = "<group>"; };
 		CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
+		CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCreation.swift; sourceTree = "<group>"; };
 		D32CAA2E3C0D27BDF3B934FD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D682B024A3E281F66B73080A /* JobEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobEditorView.swift; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
@@ -197,6 +200,7 @@
 			isa = PBXGroup;
 			children = (
 				618C864D7A24CC9C62D1E183 /* Billing.swift */,
+				CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */,
 				A5BA01886803FB21C0F4DAD4 /* Fees.swift */,
 				252FA8AA4804BAF13CE8E06B /* Job.swift */,
 				242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */,
@@ -390,6 +394,7 @@
 				64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */,
 				062400846722C32FFC23825F /* DaybookStyle.swift in Sources */,
 				41B304D19B61465775986906 /* DesignFixtures.swift in Sources */,
+				F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */,
 				D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */,
 				4EA1FBAF120B261072530418 /* Fees.swift in Sources */,
 				B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */,
@@ -908,8 +913,9 @@
 				346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */,
 				3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */,
 				49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */,
+				BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */,
 			);
-			currentVersion = 49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */;
+			currentVersion = BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */;
 			path = Cuekeeper.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

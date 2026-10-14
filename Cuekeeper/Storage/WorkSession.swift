@@ -17,7 +17,8 @@ final class WorkSession: NSManagedObject {
     @NSManaged var deletedAt: Date?
     @NSManaged var series: WorkSeries?
     @NSManaged var overridesSeries: Bool
-    var effectiveSeries: WorkSeries? { overridesSeries ? series : job?.series }
+    var effectiveSeries: WorkSeries? { overridesSeries ? series : (job?.allSeries.count == 1 ? job?.allSeries.first : nil) }
+    var effectiveSeriesNames: [String] { effectiveSeries.map { [$0.name] } ?? [] }
     @NSManaged var job: Job?
     @NSManaged var roles: Set<WorkRole>?
     @NSManaged var links: Set<BroadcastLink>?
@@ -82,6 +83,7 @@ struct SessionDraft: Equatable {
     var notes = ""
     var links: [LinkDraft] = []
 
+    init(day: String, timeZoneID: String = "") { self.day = day; self.timeZoneID = timeZoneID }
     init(job: Job) { day = job.startDay; timeZoneID = job.timeZoneID }
     init(session: WorkSession) {
         name = session.name; day = session.day; startTime = session.startTime; endTime = session.endTime
@@ -107,9 +109,9 @@ struct SessionDraft: Equatable {
         for link in links where link.validURL == nil { throw RecordError.invalid("Enter a complete http or https address for each broadcast link.") }
     }
     @discardableResult
-    func save(in context: NSManagedObjectContext, jobID: NSManagedObjectID, editing id: NSManagedObjectID? = nil, baseline: SessionDraft? = nil) throws -> NSManagedObjectID {
+    func save(in context: NSManagedObjectContext, jobID: NSManagedObjectID, editing id: NSManagedObjectID? = nil, baseline: SessionDraft? = nil, transaction: NSManagedObjectContext? = nil) throws -> NSManagedObjectID {
         try validate()
-        let writer = isolatedWriter(context)
+        let writer = transaction ?? isolatedWriter(context)
         let job = try writer.existingObject(with: jobID) as! Job
         let session = try id.map { try writer.existingObject(with: $0) as! WorkSession }
             ?? WorkSession(entity: NSEntityDescription.entity(forEntityName: "WorkSession", in: writer)!, insertInto: writer)
@@ -162,7 +164,8 @@ struct SessionDraft: Equatable {
             merged.day = Day.string(from: start, timeZone: zone); session.day = merged.day
         }
         try merged.validate()
-        try writer.save(); context.refreshAllObjects()
+        if transaction == nil { try writer.save(); context.refreshAllObjects() }
+        else { try writer.obtainPermanentIDs(for: [session]) }
         return session.objectID
     }
 }

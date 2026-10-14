@@ -215,9 +215,9 @@ struct PaymentDraft: Equatable {
     var amount = ""
     var date = Date()
     var note = ""
-    func save(in context: NSManagedObjectContext, invoiceID: NSManagedObjectID? = nil, jobID: NSManagedObjectID? = nil) throws {
+    func save(in context: NSManagedObjectContext, invoiceID: NSManagedObjectID? = nil, jobID: NSManagedObjectID? = nil, transaction: NSManagedObjectContext? = nil) throws {
         guard let amount = try Money.parse(amount), amount > 0, (invoiceID == nil) != (jobID == nil) else { throw RecordError.invalid("Enter a positive payment amount and choose one invoice or direct-payment job.") }
-        let writer = isolatedWriter(context)
+        let writer = transaction ?? isolatedWriter(context)
         var invoice: Invoice?; var job: Job?; let currency: String
         if let invoiceID {
             invoice = try writer.existingObject(with: invoiceID) as? Invoice
@@ -237,6 +237,6 @@ struct PaymentDraft: Equatable {
         payment.id = UUID(); payment.createdAt = Date(); payment.receivedAt = date; payment.amount = amount
         payment.currency = currency; payment.note = note; payment.invoice = invoice; payment.job = job
         _ = try PaymentLedger.net(Array(invoice?.payments ?? job?.payments ?? []))
-        try writer.save(); context.refreshAllObjects()
+        if transaction == nil { try writer.save(); context.refreshAllObjects() }
     }
 }

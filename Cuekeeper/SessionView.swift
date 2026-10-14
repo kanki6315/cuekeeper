@@ -64,7 +64,7 @@ struct SessionEditorView: View {
                     if draft.overridesSeries {
                         NamedLibraryField(kind: .series, name: $draft.seriesName)
                     } else {
-                        Text(job.series?.name ?? "No job series selected").foregroundStyle(Color("SecondaryText"))
+                        Text(job.seriesNames.isEmpty ? "No event series selected" : job.seriesNames.joined(separator: ", ")).foregroundStyle(Color("SecondaryText"))
                     }
                 }
                 Section("Roles") {
@@ -168,7 +168,7 @@ struct SessionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(session.title).font(.headline)
-            if let series = session.effectiveSeries { Text(series.name).font(.subheadline) }
+            if !session.effectiveSeriesNames.isEmpty { Text(session.effectiveSeriesNames.joined(separator: ", ")).font(.subheadline) }
             DaybookMetadata(symbol: "clock", text: session.compactSchedule)
             HStack { BookingBadge(status: session.scheduleStatus); Text(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized).font(.caption).foregroundStyle(Color("SecondaryText")) }
             if let call = session.callTime { DaybookMetadata(symbol: "video", text: "Call \(session.shortTime(call))") }
@@ -186,7 +186,7 @@ struct SessionDetailView: View {
     @State private var error: String?
     var body: some View {
         DaybookForm(title: session.title, subtitle: session.job?.name ?? "") {
-            Section("Series") { Text(session.effectiveSeries?.name ?? "Not added") }
+            Section("Series") { Text(session.effectiveSeriesNames.isEmpty ? "Not added" : session.effectiveSeriesNames.joined(separator: ", ")) }
             Section("Schedule") {
                 Text(session.scheduleDescription)
                 LabeledContent("Schedule", value: session.scheduleStatus.capitalized)

@@ -232,7 +232,7 @@ private struct JobsView: View {
                 }
                 Text(([job.client?.name] + job.roleNames.map { Optional($0) }).compactMap { $0 }.joined(separator: " · ")).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                 if job.project != nil || job.series != nil {
-                    Text([job.project?.name, job.series?.name].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Color("SecondaryText"))
+                    Text(([job.project?.name].compactMap { $0 } + job.seriesNames).joined(separator: " · ")).font(.caption).foregroundStyle(Color("SecondaryText"))
                 }
                 if upcomingOnly {
                     if let session = job.activeSessions.first(where: { $0.scheduleStatus == "confirmed" && ($0.endTime ?? .distantPast) >= Date() }) {

@@ -18,12 +18,12 @@ extension WorkArrangement: AppEnum {
 
 struct CreateEventIntent: AppIntent {
     static var title: LocalizedStringResource = "Create Event"
-    static var description = IntentDescription("Create one event and its first job in Cuekeeper. Dates are inclusive. Continue in Cuekeeper to review and save.")
+    static var description = IntentDescription("Create one event and its first job in Cuekeeper. Dates are inclusive. Creates the basic event, then opens it in Cuekeeper for additional details.")
     static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
-    static let supportedModes: IntentModes = .foreground
+    static let supportedModes: IntentModes = .foreground(.deferred)
     static var isDiscoverable: Bool = false
-    @Dependency private var handoff: EventWizardHandoff
+    @Dependency private var handoff: EventEditorHandoff
     @Dependency private var persistence: PersistenceController
     @Parameter(title: "Start date", kind: .date, requestValueDialog: "What date does the event start?")
     var startDate: Date
@@ -73,7 +73,7 @@ struct CreateEventIntent: AppIntent {
             throw $timeZoneID.needsValueError("Which timezone? Use a timezone such as Europe/London or America/New_York.")
         }
         try await persistence.waitUntilLoaded()
-        try handoff.stage(draft)
-        return .result(dialog: "Review your event in Cuekeeper. It hasn’t been saved yet.")
+        _ = try handoff.create(draft, in: persistence.container.viewContext)
+        return .result(dialog: "Created your event. Add the remaining details in Cuekeeper.")
     }
 }

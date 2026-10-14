@@ -1,38 +1,42 @@
 import XCTest
 
 final class EventWizardTests: XCTestCase {
-    func testSiriDraftReviewAndSave() {
+    func testSiriSavedEventEditsInPlace() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--siri-wizard-test", "--siri-import-notice"]
         app.launch()
-        let title = app.textFields["job-name"]
-        XCTAssertTrue(title.waitForExistence(timeout: 10))
-        XCTAssertEqual(title.value as? String, "IMSA esports")
-        let notice = app.otherElements["siri-import-notice"].firstMatch
-        let noticeText = app.staticTexts["Recurrence wasn’t imported. This draft creates one event."]
-        XCTAssertTrue(notice.exists || noticeText.exists)
-        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: noticeText)
-        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 9), .completed)
-        let next = app.buttons["wizard-continue"]
-        next.tap()
-        XCTAssertTrue(app.staticTexts["Review"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["siri-event-done"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["IMSA esports"].exists)
-        next.tap()
-        XCTAssertFalse(next.waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["IMSA esports"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["wizard-continue"].exists)
+        let notice = app.staticTexts["Recurrence wasn’t imported. Only one event was created."]
+        XCTAssertTrue(notice.exists)
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: notice)
+        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 9), .completed)
+        app.navigationBars.containing(.button, identifier: "siri-event-done").buttons["edit-event"].tap()
+        let location = app.textFields["job-location"]
+        XCTAssertTrue(location.waitForExistence(timeout: 5))
+        location.tap(); location.typeText("Studio")
+        app.buttons["save-event"].tap()
+        XCTAssertTrue(app.staticTexts["Studio"].firstMatch.waitForExistence(timeout: 5))
+        app.buttons["siri-event-done"].tap()
+        XCTAssertFalse(app.buttons["siri-event-done"].exists)
+        XCTAssertTrue(app.staticTexts["IMSA esports"].firstMatch.exists)
     }
 
-    func testSiriDraftDiscardDoesNotSave() {
+    func testSiriClosingWithoutEditsKeepsEvent() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--siri-wizard-test"]
         app.launch()
-        XCTAssertTrue(app.textFields["job-name"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["siri-event-done"].waitForExistence(timeout: 10))
+        app.navigationBars.containing(.button, identifier: "siri-event-done").buttons["edit-event"].tap()
+        XCTAssertTrue(app.buttons["save-event"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()
-        app.buttons["Discard Draft"].tap()
-        XCTAssertFalse(app.buttons["wizard-continue"].waitForExistence(timeout: 2))
-        XCTAssertFalse(app.staticTexts["IMSA esports"].exists)
+        app.buttons["siri-event-done"].tap()
+        XCTAssertTrue(app.staticTexts["IMSA esports"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["siri-event-done"].exists)
+        XCTAssertTrue(app.staticTexts["IMSA esports"].firstMatch.exists)
     }
 
     func testCreateEventWithSuggestedTitle() {

@@ -1,6 +1,5 @@
 import CoreData
 import SwiftUI
-import UIKit
 
 private enum EventWizardStep: String, CaseIterable, Hashable {
     case setup = "New event", events = "Events", context = "Client, project & series", sessions = "Session times", work = "Role & location", payment = "Fee & payment", review = "Review"
@@ -14,8 +13,6 @@ struct EventWizardView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Client.name, ascending: true)]) private var clients: FetchedResults<Client>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
     let onSave: ((NSManagedObjectID) -> Void)?
-    @State private var importNotice: String?
-    @State private var showsNotes = false
     @State private var choosingTrack = false
     @State private var draft = EventCreationDraft()
     @State private var inactiveDraft = EventCreationDraft()
@@ -38,9 +35,8 @@ struct EventWizardView: View {
     private var workDate: Date { draft.events.map(\.details.startDate).min() ?? Date() }
     private var fee: Binding<FeeDraft> { Binding(get: { draft.shared.fee ?? FeeDraft() }, set: { draft.shared.fee = $0 }) }
 
-    init(template: Job? = nil, initialDraft: EventCreationDraft? = nil, importNotices: [String] = [], onSave: ((NSManagedObjectID) -> Void)? = nil) {
+    init(template: Job? = nil, onSave: ((NSManagedObjectID) -> Void)? = nil) {
         self.onSave = onSave
-        _importNotice = State(initialValue: importNotices.isEmpty ? nil : importNotices.joined(separator: "\n"))
         if let template {
             var value = EventCreationDraft()
             value.shared = JobDraft.duplicate(template)
@@ -50,14 +46,6 @@ struct EventWizardView: View {
             value.events[0].details.name = template.eventTitle
             _draft = State(initialValue: value)
             _selected = State(initialValue: [.context, .work, .payment])
-        }
-        if let initialDraft {
-            _draft = State(initialValue: initialDraft)
-            _showsNotes = State(initialValue: !initialDraft.events[0].notes.isEmpty)
-            var steps: Set<EventWizardStep> = []
-            if !initialDraft.events[0].sessions.isEmpty { steps.insert(.sessions) }
-            if !initialDraft.shared.location.isEmpty { steps.insert(.work) }
-            _selected = State(initialValue: steps)
         }
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -85,24 +73,6 @@ struct EventWizardView: View {
         NavigationStack(path: $path) {
             page(.setup)
                 .navigationDestination(for: EventWizardStep.self) { page($0) }
-        }
-        .overlay(alignment: .top) {
-            if let importNotice {
-                Label(importNotice, systemImage: "exclamationmark.circle")
-                    .font(.subheadline).padding()
-                    .foregroundStyle(.primary)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-                    .frame(maxWidth: 520)
-                    .padding().padding(.top, 56).allowsHitTesting(false)
-                    .accessibilityIdentifier("siri-import-notice")
-                    .transition(.opacity)
-            }
-        }
-        .task {
-            guard let importNotice else { return }
-            UIAccessibility.post(notification: .announcement, argument: importNotice)
-            do { try await Task.sleep(for: .seconds(6)) } catch { return }
-            withAnimation { self.importNotice = nil }
         }
         .presentationSizing(.page).presentationDetents([.large])
         .presentationBackground(Color("PageBackground"))
@@ -185,9 +155,6 @@ struct EventWizardView: View {
                 DaybookTextField("Title (optional)", text: $draft.events[0].details.name).accessibilityIdentifier("job-name")
                 EventDateFields(draft: $draft.events[0].details)
             }
-        }
-        if !season && showsNotes {
-            Section("Notes") { DaybookTextField("Event notes", text: $draft.events[0].notes, axis: .vertical) }
         }
         Section("Add details") {
             ForEach(EventWizardStep.optional, id: \.self) { item in

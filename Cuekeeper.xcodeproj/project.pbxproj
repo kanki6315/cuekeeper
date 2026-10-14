@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A6C890CABAF4353CE145B9D8 /* Assets.xcassets */; };
 		062400846722C32FFC23825F /* DaybookStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */; };
+		2349E476E2580C0A2FBC71C1 /* SiriCreatedEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */; };
 		28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
 		29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */; };
 		2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
@@ -140,6 +141,7 @@
 		E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaybookStyle.swift; sourceTree = "<group>"; };
 		EDE600824A3A4DC39439FDF0 /* CalendarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarController.swift; sourceTree = "<group>"; };
 		F26B1DE5EBB870F41896D3CC /* WorkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSession.swift; sourceTree = "<group>"; };
+		FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriCreatedEventView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -162,6 +164,7 @@
 				3D728490D92E5AF2A632031C /* CalendarEventIntent.swift */,
 				6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */,
 				1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */,
+				FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */,
 			);
 			path = Intents;
 			sourceTree = "<group>";
@@ -476,6 +479,7 @@
 				B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */,
 				5EA2B0F8414CAB369A9845D7 /* SessionBatchEditorView.swift in Sources */,
 				4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */,
+				2349E476E2580C0A2FBC71C1 /* SiriCreatedEventView.swift in Sources */,
 				33C82DB863203C00DEF8E78C /* TrackLocationView.swift in Sources */,
 				60EDF0591C09FDC165CE7ABB /* WorkEvent.swift in Sources */,
 				AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */,

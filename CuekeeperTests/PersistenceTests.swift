@@ -31,52 +31,61 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
-    func testSiriDraftHandoffIsUnsavedUntilWizardCreates() async throws {
+    func testSiriCreatesOnceAndEnrichmentEditsSameEvent() async throws {
         let store = try await openStore()
         let context = store.container.viewContext
         let start = Day.date(from: "2026-11-06")!
         let draft = try SiriEventDraft.make(title: "IMSA esports", start: start, end: nil, allDay: true,
                                            location: "Remote", notes: "Production briefing")
-        let handoff = EventWizardHandoff()
-        let task = Task { try await handoff.review(draft) }
-        for _ in 0..<100 where handoff.pending == nil { await Task.yield() }
+        let handoff = EventEditorHandoff()
+        let id = try handoff.create(draft, in: context)
         let request = try XCTUnwrap(handoff.pending)
-        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
-        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
-        XCTAssertThrowsError(try handoff.stage(EventCreationDraft()))
-        XCTAssertEqual(handoff.pending?.id, request.id)
-        var reviewed = request.draft
-        reviewed.shared.clientName = "ESPN"
-        let id = try XCTUnwrap(reviewed.save(in: context).first)
-        handoff.saved(id, requestID: request.id)
-        let returnedID = try await task.value
-        XCTAssertEqual(returnedID, id)
-        XCTAssertNil(handoff.pending)
+        XCTAssertEqual(request.jobID, id)
         let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        let eventID = try XCTUnwrap(job.event?.objectID)
         XCTAssertEqual(job.eventTitle, "IMSA esports")
         XCTAssertEqual(job.eventNotes, "Production briefing")
-        XCTAssertEqual(job.startDay, "2026-11-06")
-        XCTAssertEqual(job.endDay, job.startDay)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
+        XCTAssertThrowsError(try handoff.create(draft, in: context))
+        XCTAssertEqual(handoff.pending?.id, request.id)
+
+        let original = JobDraft(job: job)
+        var enriched = original
+        enriched.clientName = "ESPN"; enriched.roleNames = ["Commentator"]
+        let updated = try enriched.saveBooking(in: context, anchorID: id, editing: id, baseline: original)
+        XCTAssertEqual(updated, id)
+        let originalEvent = EventDraft(anchor: job)
+        var eventEdit = originalEvent; eventEdit.location = "Studio"
+        try eventEdit.save(in: context, anchorID: id, baseline: originalEvent)
+        XCTAssertEqual(job.event?.objectID, eventID)
         XCTAssertEqual(job.client?.name, "ESPN")
-        XCTAssertNil(try job.currentFee().amount)
+        XCTAssertEqual(job.eventLocation, "Studio")
+        handoff.close(id: request.id)
+        XCTAssertNil(handoff.pending)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
+        let reopened = try await openStore()
+        XCTAssertEqual(try reopened.container.viewContext.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
     }
 
-    func testSiriDiscardAndTaskCancellationLeaveNoRecords() async throws {
+    func testSiriClosingEditorKeepsBasicEventAndFailedSaveDoesNotRoute() async throws {
         let store = try await openStore()
         let context = store.container.viewContext
-        let handoff = EventWizardHandoff()
-        for cancelTask in [false, true] {
-            let task = Task { try await handoff.review(EventCreationDraft()) }
-            for _ in 0..<100 where handoff.pending == nil { await Task.yield() }
-            let id = try XCTUnwrap(handoff.pending?.id)
-            if cancelTask { task.cancel() } else { handoff.cancel(id: id) }
-            do { _ = try await task.value; XCTFail("Discard should cancel the request") }
-            catch is CancellationError { }
-            XCTAssertNil(handoff.pending)
-        }
-        for entity in ["Job", "WorkEvent", "Client", "FeeRevision"] {
-            XCTAssertEqual(try context.count(for: NSFetchRequest<NSManagedObject>(entityName: entity)), 0)
-        }
+        let handoff = EventEditorHandoff()
+        var invalid = EventCreationDraft()
+        invalid.events[0].details.startDate = Day.date(from: "2026-11-08")!
+        invalid.events[0].details.endDate = Day.date(from: "2026-11-06")!
+        XCTAssertThrowsError(try handoff.create(invalid, in: context))
+        XCTAssertNil(handoff.pending)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
+        let id = try handoff.create(EventCreationDraft(), in: context)
+        let request = try XCTUnwrap(handoff.pending)
+        handoff.close(id: request.id)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        XCTAssertNotNil(job.event)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
     }
 
     func testSiriDateMappingAcrossDSTAndTimedSessions() throws {

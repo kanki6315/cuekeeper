@@ -31,44 +31,28 @@ struct SiriEventDraft {
 }
 
 @MainActor
-final class EventWizardHandoff: ObservableObject {
+final class EventEditorHandoff: ObservableObject {
     struct Request: Identifiable {
-        let id: UUID
-        let draft: EventCreationDraft
+        let id = UUID()
+        let jobID: NSManagedObjectID
         let notices: [String]
     }
     @Published private(set) var pending: Request?
-    private var completion: CheckedContinuation<NSManagedObjectID, Error>?
 
-    func stage(_ draft: EventCreationDraft, notices: [String] = [], id: UUID = UUID()) throws {
-        guard pending == nil else { throw RecordError.invalid("Finish or discard the open Siri event draft before creating another.") }
-        pending = Request(id: id, draft: draft, notices: notices)
+    /// Save exactly once before routing. The editor receives only a permanent ID,
+    /// never a creation draft or a continuation tied to Siri's execution lifetime.
+    func create(_ draft: EventCreationDraft, in context: NSManagedObjectContext, notices: [String] = []) throws -> NSManagedObjectID {
+        guard pending == nil else { throw RecordError.invalid("Close the current event before creating another with Siri.") }
+        guard draft.events.count == 1 else { throw RecordError.invalid("Create one event at a time with Siri.") }
+        try Task.checkCancellation()
+        let ids = try draft.save(in: context)
+        let id = ids[0]
+        pending = Request(jobID: id, notices: notices)
+        return id
     }
 
-    func review(_ draft: EventCreationDraft, notices: [String] = []) async throws -> NSManagedObjectID {
-        let requestID = UUID()
-        return try await withTaskCancellationHandler {
-            try Task.checkCancellation()
-            return try await withCheckedThrowingContinuation { continuation in
-                do {
-                    try stage(draft, notices: notices, id: requestID)
-                    completion = continuation
-                } catch { continuation.resume(throwing: error) }
-            }
-        } onCancel: {
-            Task { @MainActor in self.cancel(id: requestID) }
-        }
-    }
-
-    func saved(_ objectID: NSManagedObjectID, requestID: UUID) {
-        guard pending?.id == requestID else { return }
-        let callback = completion; completion = nil; pending = nil
-        callback?.resume(returning: objectID)
-    }
-
-    func cancel(id: UUID) {
+    func close(id: UUID) {
         guard pending?.id == id else { return }
-        let callback = completion; completion = nil; pending = nil
-        callback?.resume(throwing: CancellationError())
+        pending = nil
     }
 }

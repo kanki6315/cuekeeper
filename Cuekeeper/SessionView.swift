@@ -174,9 +174,9 @@ struct SessionsSection: View {
         Section {
             if sessions.isEmpty { Text("Schedule to come").foregroundStyle(Color("SecondaryText")) }
             ForEach(sessions, id: \.objectID) { session in
-                DaybookLink { SessionDetailView(session: session) } label: { SessionRow(session: session) }
+                DaybookLink { SessionDetailView(session: session) } label: { EventScheduleRow(session: session) }
             }
-        } header: { HStack { Text("Sessions"); Spacer(); Button("Add", systemImage: "plus", action: onAdd).buttonStyle(DaybookSecondaryButton()).accessibilityLabel("Add Session").accessibilityIdentifier("add-session") } } footer: {
+        } header: { HStack { Text("Schedule"); Spacer(); Button("Add", systemImage: "plus", action: onAdd).buttonStyle(DaybookSecondaryButton()).accessibilityLabel("Add Session").accessibilityIdentifier("add-session") } } footer: {
             if sessions.isEmpty { Text("No sessions yet. Event dates remain useful until the schedule arrives.") }
             else if sessions.contains(where: { $0.scheduleStatus != "confirmed" }) { Text("Some session times are still tentative.") }
         }

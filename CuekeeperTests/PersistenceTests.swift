@@ -31,26 +31,33 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
-    func testNewBookingsCommitWithEventOrLeaveEverythingUnchanged() async throws {
-        let store = try await openStore()
-        let context = store.container.viewContext
+    func testSingleClientEventRejectsAdditionalClientsAndLinksAtomically() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
         var first = JobDraft(); first.clientName = "Original"
         let id = try EventDraft().save(in: context, firstBooking: first)
         let anchor = try context.existingObject(with: id) as! Job
         let baseline = EventDraft(anchor: anchor)
-        var edited = baseline; edited.title = "Updated event"
-        var added = JobDraft(); added.clientName = "New client"; added.fee?.amount = "300"
-        var invalid = JobDraft(); invalid.clientName = "Invalid"; invalid.fee?.amount = "invalid"
-        XCTAssertThrowsError(try edited.save(in: context, anchorID: id, baseline: baseline, newBookings: [added, invalid]))
+        var edited = baseline; edited.title = "Must not save"
+        var added = JobDraft(); added.clientName = "New client"
+        XCTAssertThrowsError(try edited.save(in: context, anchorID: id, baseline: baseline, newBookings: [added]))
+        XCTAssertThrowsError(try added.saveBooking(in: context, anchorID: id))
+        let otherID = try EventDraft().save(in: context, firstBooking: added)
+        XCTAssertThrowsError(try EventDraft.attach(otherID, to: id, in: context))
         context.refreshAllObjects()
-        XCTAssertEqual(anchor.eventBookings.count, 1)
         XCTAssertEqual(anchor.event?.title, baseline.title)
-        try edited.save(in: context, anchorID: id, baseline: baseline, newBookings: [added])
-        XCTAssertEqual(anchor.event?.title, "Updated event")
-        XCTAssertEqual(anchor.eventBookings.count, 2)
-        let newBooking = try XCTUnwrap(anchor.eventBookings.first { $0.client?.name == "New client" })
-        XCTAssertEqual(try newBooking.currentFee().amount, 30000)
-        XCTAssertEqual(newBooking.event, anchor.event)
+        XCTAssertEqual(anchor.eventBookings.count, 1)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 2)
+    }
+
+    /// Build a pre-existing grouped record without calling production creation APIs.
+    private func legacyClient(_ draft: JobDraft, anchor: Job, in context: NSManagedObjectContext) throws -> NSManagedObjectID {
+        let id = try draft.save(in: context)
+        let job = try context.existingObject(with: id) as! Job
+        if anchor.event == nil { try EventDraft(anchor: anchor).save(in: context, anchorID: anchor.objectID) }
+        anchor.event!.id = UUID() // historical groups did not use a job-owned ID
+        job.event = anchor.event
+        try context.save()
+        return id
     }
 
     func testUnifiedEventEditSavesBookingsProjectsAndFeeHistoryAtomically() async throws {
@@ -59,31 +66,28 @@ final class PersistenceTests: XCTestCase {
         var first = JobDraft(); first.clientName = "First client"
         let id = try EventDraft().save(in: context, firstBooking: first)
         let anchor = try context.existingObject(with: id) as! Job
-        var second = JobDraft(); second.clientName = "Second client"
-        let secondID = try second.saveBooking(in: context, anchorID: id)
         let baseline = EventDraft(anchor: anchor)
         var event = baseline; event.location = "New venue"
         var entries = anchor.eventBookings.map(EventBookingDraft.init(job:))
         let index = try XCTUnwrap(entries.firstIndex { $0.id == id })
-        let other = try XCTUnwrap(entries.firstIndex { $0.id == secondID })
         let priorRevisions = anchor.feeRevisions?.count ?? 0
         entries[index].draft.projectName = "New project"
         entries[index].draft.fee?.amount = "1250"
         entries[index].newRole = "Producer"
-        entries[other].draft.fee?.amount = "invalid"
+        entries[index].draft.fee?.amount = "invalid"
         XCTAssertThrowsError(try event.save(in: context, anchorID: id, baseline: baseline, bookings: entries))
         context.refreshAllObjects()
         XCTAssertEqual(anchor.eventLocation, baseline.location)
         XCTAssertNil(anchor.project)
         XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions)
-        entries[other].draft.fee?.amount = "500"
+        entries[index].draft.fee?.amount = "1250"
         try event.save(in: context, anchorID: id, baseline: baseline, bookings: entries)
         XCTAssertEqual(anchor.eventLocation, "New venue")
         XCTAssertEqual(anchor.project?.name, "New project")
         XCTAssertTrue(anchor.roleNames.contains("Producer"))
         XCTAssertEqual(try anchor.currentFee().amount, 125000)
         XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions + 1)
-        XCTAssertEqual(anchor.eventBookings.count, 2)
+        XCTAssertEqual(anchor.eventBookings.count, 1)
         let fresh = EventDraft(anchor: anchor)
         let unchanged = anchor.eventBookings.map(EventBookingDraft.init(job:))
         try fresh.save(in: context, anchorID: id, baseline: fresh, bookings: unchanged)
@@ -177,18 +181,19 @@ final class PersistenceTests: XCTestCase {
         let a = try XCTUnwrap(context.existingObject(with: firstID) as? Job)
         XCTAssertTrue(a.name.isEmpty); XCTAssertTrue(a.eventTitle.contains("Silverstone"))
         var second = JobDraft(); second.clientName = "Client B"; second.fee?.amount = "300"; second.fee?.currency = "EUR"
-        let secondID = try second.saveBooking(in: context, anchorID: firstID)
+        let secondID = try legacyClient(second, anchor: a, in: context)
         let b = try XCTUnwrap(context.existingObject(with: secondID) as? Job)
-        XCTAssertEqual(a.event, b.event); XCTAssertEqual(a.eventBookings.count, 2)
+        XCTAssertEqual(a.event, b.event); XCTAssertEqual(a.eventBookings.count, 1)
         XCTAssertEqual(try a.currentFee().amount, 50000); XCTAssertEqual(try b.currentFee().amount, 30000)
         XCTAssertEqual(try b.currentFee().currency, "EUR")
         var session = SessionDraft(job: a); session.name = "Qualifying"; session.overridesSeries = true; session.seriesName = "Series A"
         try session.save(in: context, jobID: firstID)
         session.name = "Race"; session.seriesName = "Series B"
         try session.save(in: context, jobID: secondID)
-        XCTAssertEqual(a.eventSessions.count, 2)
+        XCTAssertEqual(a.eventSessions.count, 1)
+        XCTAssertNotEqual(a.eventKey, b.eventKey)
         let plan = CalendarPlan(jobs: [a, b])
-        XCTAssertEqual(plan.desired.values.filter(\.allDay).count, 1)
+        XCTAssertEqual(plan.desired.values.filter(\.allDay).count, 2)
         XCTAssertTrue(plan.knownKeys.contains("job/\(a.id!.uuidString)"))
         XCTAssertTrue(plan.knownKeys.contains("job/\(b.id!.uuidString)"))
         var invoice = InvoiceDraft(clientID: a.client!.id!, currency: "USD")
@@ -199,30 +204,73 @@ final class PersistenceTests: XCTestCase {
         let feeCount = a.feeRevisions?.count
         let before = EventDraft(anchor: a); var edited = before; edited.location = "Brands Hatch"
         try edited.save(in: context, anchorID: firstID, baseline: before)
-        XCTAssertEqual(b.eventLocation, "Brands Hatch"); XCTAssertEqual(a.feeRevisions?.count, feeCount)
+        XCTAssertEqual(b.eventLocation, "Silverstone")
+        XCTAssertNotEqual(a.event, b.event); XCTAssertEqual(a.feeRevisions?.count, feeCount)
         let savedInvoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
         XCTAssertEqual(try savedInvoice.currentValue().lines.first?.jobID, a.id)
         XCTAssertTrue(try savedInvoice.currentValue().lines.first!.jobName.contains("Silverstone"))
         let reopened = try await openStore()
         let all = try reopened.container.viewContext.fetch(NSFetchRequest<Job>(entityName: "Job"))
-        XCTAssertEqual(all.count, 2); XCTAssertEqual(all.first?.eventBookings.count, 2)
-        XCTAssertEqual(all.first?.eventLocation, "Brands Hatch")
+        XCTAssertEqual(all.count, 2); XCTAssertEqual(all.first?.eventBookings.count, 1)
+        XCTAssertEqual(all.first(where: { $0.client?.name == "Client A" })?.eventLocation, "Brands Hatch")
+        XCTAssertEqual(all.first(where: { $0.client?.name == "Client B" })?.eventLocation, "Silverstone")
     }
 
-    func testGroupingLegacyRecordsPreservesIdentityAndHistory() async throws {
+    func testSplittingLegacyRecordsPreservesIdentityHistoryAndCalendarCleanup() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         let a = try billingJob("Original A", amount: "100", in: context)
-        let b = try billingJob("Original B", amount: "200", in: context)
+        var other = JobDraft(); other.clientName = "B"; other.fee?.amount = "200"
+        let id = try legacyClient(other, anchor: a, in: context)
+        let b = try context.existingObject(with: id) as! Job
+        let historicalID = try XCTUnwrap(a.event?.id)
         let originalID = b.id; let feeIDs = Set((b.feeRevisions ?? []).compactMap(\.id))
         let sessionID = try SessionDraft(job: b).save(in: context, jobID: b.objectID)
         try PaymentDraft(amount: "50").save(in: context, jobID: b.objectID)
-        XCTAssertNil(a.event); XCTAssertEqual(a.eventTitle, "Original A")
-        try EventDraft.attach(b.objectID, to: a.objectID, in: context)
-        XCTAssertEqual(a.event, b.event); XCTAssertEqual(b.id, originalID); XCTAssertEqual(b.name, "Original B")
+        let baseline = EventDraft(anchor: b)
+        var edit = baseline; edit.title = "Independent B"; edit.notes = "B notes"
+        try edit.save(in: context, anchorID: b.objectID, baseline: baseline)
+        XCTAssertNotEqual(a.event, b.event)
+        XCTAssertEqual(b.id, originalID)
         XCTAssertEqual(Set((b.feeRevisions ?? []).compactMap(\.id)), feeIDs)
-        XCTAssertEqual(b.activeSessions.first?.objectID, sessionID); XCTAssertEqual(try b.directPaid(), 5000)
-        XCTAssertThrowsError(try EventDraft.attach(b.objectID, to: a.objectID, in: context))
-        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
+        XCTAssertEqual(b.activeSessions.first?.objectID, sessionID)
+        XCTAssertEqual(try b.directPaid(), 5000)
+        XCTAssertEqual(b.eventTitle, "Independent B")
+        XCTAssertNotEqual(a.eventNotes, "B notes")
+        try EventDraft(anchor: a).save(in: context, anchorID: a.objectID)
+        let historical = try context.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent")).compactMap(\.id)
+        let plan = CalendarPlan(jobs: [a, b], historicalEventIDs: historical)
+        XCTAssertTrue(plan.knownKeys.contains("event/\(historicalID.uuidString)"))
+        XCTAssertNil(plan.desired["event/\(historicalID.uuidString)"])
+        XCTAssertEqual(plan.desired.values.filter(\.allDay).count, 2)
+        // Reopening an old draft changes only edited fields on this client's record.
+        var stale = baseline; stale.location = "B venue"
+        try stale.save(in: context, anchorID: b.objectID, baseline: baseline)
+        XCTAssertEqual(b.eventTitle, "Independent B")
+        XCTAssertEqual(b.eventLocation, "B venue")
+    }
+
+    func testLegacyMetadataIsIsolatedEvenBeforeOtherClientsDownload() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var first = JobDraft(); first.clientName = "A"
+        var details = EventDraft(); details.title = "Old weekend"; details.notes = "Shared briefing"
+        let id = try details.save(in: context, firstBooking: first)
+        let a = try context.existingObject(with: id) as! Job
+        let historical = try XCTUnwrap(a.event)
+        historical.id = UUID(); try context.save()
+        // Only A has arrived on this device; cardinality alone cannot identify an old group.
+        let baseline = EventDraft(anchor: a)
+        var edited = baseline; edited.title = "A only"
+        try edited.save(in: context, anchorID: id, baseline: baseline)
+        XCTAssertNotEqual(a.event, historical)
+        XCTAssertEqual(historical.title, "Old weekend")
+        var next = JobDraft(); next.clientName = "B"
+        let bID = try next.save(in: context)
+        let b = try context.existingObject(with: bID) as! Job
+        b.event = historical; try context.save()
+        XCTAssertEqual(b.eventTitle, "Old weekend")
+        XCTAssertEqual(b.eventNotes, "Shared briefing")
+        XCTAssertEqual(a.eventTitle, "A only")
+        XCTAssertEqual(a.eventNotes, "Shared briefing")
     }
 
     func testEventSaveIsAtomicAndConcurrentUnrelatedEditsSurvive() async throws {
@@ -243,26 +291,27 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(job.eventLocation, "New location"); XCTAssertEqual(job.eventNotes, "New shared notes")
     }
 
-    func testSessionBatchMovesAcrossDSTAndClientsWithoutMovingFees() async throws {
+    func testSessionBatchMovesAcrossDSTAndRejectsOtherClientEvents() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var booking = JobDraft(); booking.clientName = "A"; booking.fee?.amount = "100"; booking.seriesName = "Inherited series"
         let aID = try EventDraft().save(in: context, firstBooking: booking)
         let a = try XCTUnwrap(context.existingObject(with: aID) as? Job)
         booking.clientName = "B"; booking.fee?.amount = "200"; booking.seriesName = "Other series"
-        let bID = try booking.saveBooking(in: context, anchorID: aID)
+        let bID = try EventDraft().save(in: context, firstBooking: booking)
         var draft = SessionDraft(job: a); draft.timeZoneID = "America/New_York"
         let zone = TimeZone(identifier: draft.timeZoneID)!
         draft.day = "2026-10-31"; draft.startTime = Day.date(from: draft.day, timeZone: zone)!.addingTimeInterval(12 * 3600)
         draft.endTime = draft.startTime!.addingTimeInterval(3600); draft.callTime = draft.startTime!.addingTimeInterval(-1800)
         draft.scheduleStatus = "confirmed"; draft.coverage = "covering"; draft.links = [LinkDraft(url: "https://example.com/feed")]
         let id = try draft.save(in: context, jobID: aID)
-        try SessionBatchChange(day: "2026-11-01", bookingID: bID).save(ids: [id], anchorID: aID, in: context)
+        XCTAssertThrowsError(try SessionBatchChange(day: "2026-11-01", bookingID: bID).save(ids: [id], anchorID: aID, in: context))
+        try SessionBatchChange(day: "2026-11-01").save(ids: [id], anchorID: aID, in: context)
         let session = try XCTUnwrap(context.existingObject(with: id) as? WorkSession)
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
         XCTAssertEqual(calendar.component(.hour, from: session.startTime!), 12)
-        XCTAssertEqual(session.day, "2026-11-01"); XCTAssertEqual(session.job?.objectID, bID)
+        XCTAssertEqual(session.day, "2026-11-01"); XCTAssertEqual(session.job?.objectID, aID)
         XCTAssertEqual(session.effectiveSeries?.name, "Inherited series"); XCTAssertEqual(session.sortedLinks.count, 1)
-        XCTAssertEqual(try a.currentFee().amount, 10000); XCTAssertEqual(try session.job?.currentFee().amount, 20000)
+        XCTAssertEqual(try a.currentFee().amount, 10000); XCTAssertEqual(try session.job?.currentFee().amount, 10000)
         let outsider = try billingJob("Elsewhere", amount: "1", in: context)
         XCTAssertThrowsError(try SessionBatchChange(series: "Changed", bookingID: outsider.objectID).save(ids: [id], anchorID: aID, in: context))
         XCTAssertEqual(session.effectiveSeries?.name, "Inherited series")
@@ -308,7 +357,7 @@ final class PersistenceTests: XCTestCase {
         let jobs = try context.fetch(NSFetchRequest<Job>(entityName: "Job"))
         let first = try XCTUnwrap(jobs.first)
         XCTAssertEqual(jobs.count, 2); XCTAssertEqual(first.event?.id, eventID)
-        XCTAssertEqual(first.eventBookings.count, 2); XCTAssertEqual(first.eventTrackPlaceID, "track-123")
+        XCTAssertEqual(first.eventBookings.count, 1); XCTAssertEqual(first.eventTrackPlaceID, "track-123")
         XCTAssertEqual(first.eventStartDay, "2026-11-01"); XCTAssertTrue(first.allSeries.isEmpty)
         var edit = JobDraft(job: first); let baseline = edit; edit.seriesNames = ["Main", "Support"]
         try edit.save(in: context, editing: first.objectID, baseline: baseline)

@@ -180,3 +180,20 @@ Event details and client bookings share one editor and one Save. Adding bookings
 from the overview opens that editor with a pending new booking; new and edited
 bookings commit with event changes in one isolated writer transaction. Schedule
 and payment states remain independent. The wizard’s guided sequence is unchanged.
+
+## Single-client events — October 14, 2026
+
+This supersedes the grouped-client workflow above. Each event represents at most
+one client, with its own status, series, roles, sessions, fee and payment history.
+Incomplete events may still have no client yet. There is no event linking or
+add-client-to-event workflow. The wizard retains optional steps and season capture;
+each created event gets one independent client record.
+
+Historical grouped records display as separate client events immediately, using
+their existing Job identities. Shared historical metadata remains readable until
+that client's event is edited, when it is copied to an owned WorkEvent record.
+This works even when only one member of an old group has downloaded. Session IDs,
+financial revisions, invoice snapshots and receipts remain unchanged. New-event
+metadata uses its Job UUID; older group metadata is retained for calendar cleanup.
+No schema migration is required. Older builds still understand the historical
+group records, so all devices should use the new behaviour for consistent editing.

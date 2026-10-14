@@ -45,11 +45,6 @@ final class CaptureTests: XCTestCase {
         next.tap(); next.tap()
         XCTAssertTrue(next.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["edit-event"].waitForExistence(timeout: 5))
-        if openBooking {
-            let details = app.buttons["\(client) · booking & payments"].firstMatch
-            reveal(details, in: app); details.tap()
-            XCTAssertTrue(app.buttons["edit-job"].waitForExistence(timeout: 5))
-        }
         return app
     }
 
@@ -285,23 +280,21 @@ final class CaptureTests: XCTestCase {
         app.buttons["Done"].tap()
     }
 
-    func testEventClientsAndDirectFeeEditing() {
+    func testSingleClientEventHasDirectFeesAndNoGroupingActions() {
         let app = createEvent("Silverstone weekend", client: "Client A", openBooking: false)
-        let add = app.buttons["event-add-client"]; reveal(add, in: app); add.tap()
-        let client = app.textFields["library-Client-name"]
-        XCTAssertTrue(client.waitForExistence(timeout: 5)); client.tap(); client.typeText("Client B\n")
-        let feeSection = app.buttons["editor-fee-section"].firstMatch
-        reveal(feeSection, in: app); feeSection.tap()
-        let fee = app.textFields["overall-fee"]; reveal(fee, in: app); fee.tap(); fee.typeText("300")
+        XCTAssertTrue(app.staticTexts["Client A"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["event-add-client"].exists)
+        XCTAssertFalse(app.buttons["Include Existing Booking"].exists)
+        let fee = app.buttons["job-fee"]; reveal(fee, in: app); fee.tap()
+        XCTAssertTrue(app.buttons["edit-fee"].waitForExistence(timeout: 5))
+        app.buttons["edit-fee"].tap()
+        XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["editor-add-client"].exists)
+        let amount = app.textFields["overall-fee"]
+        XCTAssertTrue(amount.isHittable); amount.tap(); amount.typeText("300")
         app.buttons["save-event"].tap()
-        XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["event-booking-Client A"].exists)
-        XCTAssertTrue(app.buttons["event-booking-Client B"].exists)
-        XCTAssertTrue(app.staticTexts["$300.00"].exists)
-        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); screenshot.name = "Event with two client bookings"; screenshot.lifetime = .keepAlways; self.add(screenshot)
-        app.terminate(); app.launchArguments = ["--ui-testing"]; app.launch()
-        XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Client A"].firstMatch.exists); XCTAssertTrue(app.staticTexts["Client B"].firstMatch.exists)
+        XCTAssertTrue(app.navigationBars["Edit Event"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["$300.00"].firstMatch.exists)
     }
 
     func testRepeatedSessionEntryAndBulkSeries() {

@@ -15,23 +15,19 @@ final class WorkEvent: NSManagedObject {
 }
 
 extension Job {
-    // Legacy jobs remain virtual single-booking events until explicitly edited/grouped.
-    // No startup backfill: simultaneous iCloud upgrades cannot create duplicate events.
+    // Each Job is one client event. Historical shared metadata remains readable;
+    // editing promotes only this job to its own metadata record.
     var eventStartDay: String { event?.startDay ?? startDay }
     var eventEndDay: String { event?.endDay ?? endDay }
     var eventLocation: String { event?.location ?? location }
     var eventTrackPlaceID: String { event?.trackPlaceID ?? trackPlaceID }
     var eventTimeZoneID: String { event?.timeZoneID ?? timeZoneID }
     var eventNotes: String { event?.notes ?? "" }
-    var eventKey: NSManagedObjectID { event?.objectID ?? objectID }
-    var eventBookings: [Job] {
-        (event.map { Array($0.bookings ?? []) } ?? [self]).sorted {
-            ($0.client?.name ?? "", $0.id?.uuidString ?? "") < ($1.client?.name ?? "", $1.id?.uuidString ?? "")
-        }
-    }
-    var eventSeriesNames: [String] { Array(Set(eventBookings.flatMap(\.seriesNames))).sorted() }
+    var eventKey: NSManagedObjectID { objectID }
+    var eventBookings: [Job] { [self] }
+    var eventSeriesNames: [String] { seriesNames.sorted() }
     var eventSessions: [WorkSession] {
-        eventBookings.flatMap(\.activeSessions).sorted { ($0.day, $0.startTime ?? .distantFuture, $0.title) < ($1.day, $1.startTime ?? .distantFuture, $1.title) }
+        activeSessions.sorted { ($0.day, $0.startTime ?? .distantFuture, $0.title) < ($1.day, $1.startTime ?? .distantFuture, $1.title) }
     }
     var eventTitle: String {
         let custom = event?.title ?? name
@@ -87,6 +83,9 @@ struct EventDraft: Equatable {
     @discardableResult
     func save(in context: NSManagedObjectContext, anchorID: NSManagedObjectID? = nil,
               baseline: EventDraft? = nil, firstBooking: JobDraft? = nil, bookings: [EventBookingDraft] = [], newBookings: [JobDraft] = []) throws -> NSManagedObjectID {
+        guard newBookings.isEmpty, bookings.allSatisfy({ $0.id == anchorID }) else {
+            throw RecordError.invalid("Each event has one client. Create a separate event for another client.")
+        }
         guard startDate <= endDate || Day.string(from: startDate) == Day.string(from: endDate) else { throw JobDraft.ValidationError.invalidDates }
         guard timeZoneID.isEmpty || TimeZone(identifier: timeZoneID) != nil else { throw JobDraft.ValidationError.invalidTimeZone }
         let writer = isolatedWriter(context)
@@ -99,11 +98,18 @@ struct EventDraft: Equatable {
             booking.startDate = startDate; booking.endDate = endDate
             anchor = try booking.stage(in: writer)
         }
-        let event = anchor.event ?? WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer)
-        let isNew = event.id == nil
-        if isNew { event.id = UUID() }
+        // An owned metadata record uses the job UUID. This also detaches old
+        // grouped records when the other clients have not yet downloaded.
+        let prior = EventDraft(anchor: anchor)
+        let isNew = anchor.event == nil || anchor.event?.id != anchor.id || (anchor.event?.bookings?.count ?? 0) > 1
+        let event: WorkEvent
+        if isNew {
+            event = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer)
+            event.id = anchor.id
+            for (key, value) in prior.values { event.setValue(value, forKey: key) }
+        } else { event = anchor.event! }
         // A concurrent promotion must not silently merge a different event.
-        for (key, value) in values where isNew || baseline?.values[key] != value { event.setValue(value, forKey: key) }
+        for (key, value) in values where baseline == nil || baseline?.values[key] != value { event.setValue(value, forKey: key) }
         guard event.startDay <= event.endDay else { throw JobDraft.ValidationError.invalidDates }
         anchor.event = event
         for entry in bookings where entry.changed {
@@ -115,31 +121,13 @@ struct EventDraft: Equatable {
             if !role.isEmpty { updated.roleNames.insert(role) }
             _ = try updated.stage(in: writer, editing: entry.id, baseline: entry.baseline)
         }
-        for var booking in newBookings {
-            guard !booking.clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RecordError.invalid("Choose a client for each new booking.") }
-            booking.startDate = startDate; booking.endDate = endDate
-            let added = try booking.stage(in: writer)
-            added.event = event
-        }
         try writer.save(); context.refreshAllObjects()
         return anchor.objectID
     }
 
     /// Attach an existing booking without replacing IDs, sessions or financial revisions.
     static func attach(_ bookingID: NSManagedObjectID, to anchorID: NSManagedObjectID, in context: NSManagedObjectContext) throws {
-        let writer = isolatedWriter(context)
-        let anchor = try writer.existingObject(with: anchorID) as! Job
-        let booking = try writer.existingObject(with: bookingID) as! Job
-        guard anchor != booking, booking.event == nil else { throw RecordError.invalid("This booking is already part of an event.") }
-        let event: WorkEvent
-        if let existing = anchor.event { event = existing }
-        else {
-            event = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer); event.id = UUID()
-            for (key, value) in EventDraft(anchor: anchor).values { event.setValue(value, forKey: key) }
-            anchor.event = event
-        }
-        booking.event = event
-        try writer.save(); context.refreshAllObjects()
+        throw RecordError.invalid("Events cannot be linked. Keep each client in a separate event.")
     }
 }
 
@@ -147,21 +135,8 @@ extension JobDraft {
     @discardableResult
     func saveBooking(in context: NSManagedObjectContext, anchorID: NSManagedObjectID,
                      editing: NSManagedObjectID? = nil, baseline: JobDraft? = nil) throws -> NSManagedObjectID {
+        guard editing == anchorID else { throw RecordError.invalid("Each event has one client. Create a separate event for another client.") }
         guard !clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RecordError.invalid("Choose a client.") }
-        let writer = isolatedWriter(context)
-        let anchor = try writer.existingObject(with: anchorID) as! Job
-        let booking = try stage(in: writer, editing: editing, baseline: baseline)
-        if editing == nil {
-            if anchor.event == nil {
-                let event = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer); event.id = UUID()
-                event.title = anchor.name; event.startDay = anchor.startDay; event.endDay = anchor.endDay
-                event.location = anchor.location; event.trackPlaceID = anchor.trackPlaceID
-                event.timeZoneID = anchor.timeZoneID; event.notes = ""
-                anchor.event = event
-            }
-            booking.event = anchor.event
-        }
-        try writer.save(); context.refreshAllObjects()
-        return booking.objectID
+        return try save(in: context, editing: anchorID, baseline: baseline)
     }
 }

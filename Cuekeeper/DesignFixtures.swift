@@ -68,7 +68,7 @@ enum DesignFixtures {
             var event = EventDraft(anchor: created[0]); event.title = "Silverstone weekend"; event.location = "Silverstone"
             try event.save(in: context, anchorID: created[0].objectID)
             var booking = JobDraft(); booking.clientName = "Apex Media"; booking.fee?.amount = "600"
-            let id = try booking.saveBooking(in: context, anchorID: created[0].objectID)
+            let id = try event.save(in: context, firstBooking: booking)
             let added = try context.existingObject(with: id) as! Job
             var race = SessionDraft(job: added); race.name = "Race coverage"; race.overridesSeries = true; race.seriesName = "Support championship"
             try race.save(in: context, jobID: id)

@@ -63,11 +63,9 @@ struct SessionBatchEditorView: View {
     @State private var series = ""
     @State private var changeCoverage = false
     @State private var coverage = "covering"
-    @State private var changeClient = false
-    @State private var bookingID: NSManagedObjectID?
     @State private var error: String?
     @State private var discard = false
-    private var changed: Bool { changeDate || changeSeries || changeCoverage || changeClient }
+    private var changed: Bool { changeDate || changeSeries || changeCoverage }
     var body: some View {
         NavigationStack {
             DaybookForm {
@@ -88,23 +86,17 @@ struct SessionBatchEditorView: View {
                     if changeSeries { NamedLibraryField(kind: .series, name: $series) }
                     Toggle("Change coverage", isOn: $changeCoverage)
                     if changeCoverage { DaybookChoicePicker("Coverage", selection: $coverage, identifier: "batch-session-coverage") { Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering") } }
-                    Toggle("Change client booking", isOn: $changeClient)
-                    if changeClient {
-                        Picker("Client booking", selection: $bookingID) {
-                            Text("Choose client").tag(nil as NSManagedObjectID?)
-                            ForEach(anchor.eventBookings, id: \.objectID) { job in Text(job.client?.name ?? "Client to add").tag(Optional(job.objectID)) }
-                        }
-                    }
-                } header: { Text("Apply to selected sessions") } footer: { Text("Only enabled changes apply. Moving dates keeps each session’s local times. Changing client booking does not move fees or payments.") }
+
+                } header: { Text("Apply to selected sessions") } footer: { Text("Only enabled changes apply. Moving dates keeps each session’s local times.") }
             }.navigationTitle("Edit Sessions").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if changed { discard = true } else { dismiss() } } }
                     ToolbarItem(placement: .confirmationAction) { Button("Apply") {
                         do {
-                            try SessionBatchChange(day: changeDate ? Day.string(from: date) : nil, series: changeSeries ? series : nil, coverage: changeCoverage ? coverage : nil, bookingID: changeClient ? bookingID : nil).save(ids: selected, anchorID: anchor.objectID, in: context)
+                            try SessionBatchChange(day: changeDate ? Day.string(from: date) : nil, series: changeSeries ? series : nil, coverage: changeCoverage ? coverage : nil).save(ids: selected, anchorID: anchor.objectID, in: context)
                             dismiss()
                         } catch { self.error = error.localizedDescription }
-                    }.disabled(selected.isEmpty || !changed || (changeClient && bookingID == nil)).accessibilityIdentifier("apply-session-changes") }
+                    }.disabled(selected.isEmpty || !changed).accessibilityIdentifier("apply-session-changes") }
                 }
                 .saveErrorAlert($error).interactiveDismissDisabled(changed)
                 .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) { Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {} }

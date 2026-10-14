@@ -57,8 +57,7 @@ struct SessionEditorView: View {
                             LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()))
                         }
                     }
-                    optionalTime("Start", value: $draft.startTime)
-                    optionalTime("End", value: $draft.endTime)
+                    SessionScheduleField(draft: $draft)
                     optionalTime("Call time", value: $draft.callTime)
                 } header: { Text("Schedule") } footer: {
                     Text("Times can remain incomplete. For overnight work, set the end on the following date. Times are shown in the selected timezone.")
@@ -136,28 +135,12 @@ struct SessionEditorView: View {
             .disabled(draft.startTime != nil)
     }
     @ViewBuilder private func optionalTime(_ label: String, value: Binding<Date?>) -> some View {
-        if value.wrappedValue != nil {
-            if typeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(label)
-                    DatePicker(label, selection: Binding(get: { value.wrappedValue ?? Date() }, set: { value.wrappedValue = $0 })).labelsHidden()
-                    Button { value.wrappedValue = nil } label: {
-                        Label("Clear \(label.lowercased())", systemImage: "xmark.circle").frame(minHeight: 44)
-                    }
-                }
-            } else {
-                HStack {
-                    DatePicker(label, selection: Binding(get: { value.wrappedValue ?? Date() }, set: { value.wrappedValue = $0 }))
-                    Button { value.wrappedValue = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Color("SecondaryText")).frame(width: 44, height: 44) }.accessibilityLabel("Clear \(label.lowercased())")
-                }
+        OptionalSessionTimeField(title: label, value: value,
+            defaultDate: (draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date())
+                .addingTimeInterval(label == "End" ? 3600 : 0), zone: zone)
+            .onChange(of: value.wrappedValue) { _, date in
+                if date != nil && draft.timeZoneID.isEmpty { draft.timeZoneID = zone.identifier }
             }
-        } else {
-            Button {
-                if draft.timeZoneID.isEmpty { draft.timeZoneID = TimeZone.current.identifier }
-                let start = draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date()
-                value.wrappedValue = label == "End" ? start.addingTimeInterval(3600) : start
-            } label: { HStack { Text(label).foregroundStyle(Color.primary); Spacer(); Text("Add time"); Image(systemName: "plus").font(.caption) } }
-        }
     }
 
 }

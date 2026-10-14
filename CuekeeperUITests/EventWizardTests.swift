@@ -1,6 +1,64 @@
 import XCTest
 
 final class EventWizardTests: XCTestCase {
+    func testEventCreationUsesMultiDateCalendar() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job", "--design-dark"]
+        app.launch()
+        XCTAssertTrue(app.buttons["wizard-continue"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.switches["job-multiple-days"].exists)
+        capture("event-creation-calendar")
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateFormat = "MMMM d"
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let day = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", formatter.string(from: tomorrow))).firstMatch
+        XCTAssertTrue(day.exists)
+        day.tap()
+        capture("event-creation-range")
+        for _ in 0..<3 where !app.descendants(matching: .any)["event-end-summary"].exists { app.swipeUp() }
+        XCTAssertTrue(app.descendants(matching: .any)["event-end-summary"].exists, app.debugDescription)
+    }
+
+    func testOptionalSessionTimeTypingAndClear() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job", "--wizard-foreign-session", "--design-dark"]
+        app.launch()
+        let schedule = app.buttons["session-schedule-times"]
+        XCTAssertTrue(schedule.waitForExistence(timeout: 10))
+        XCTAssertTrue(schedule.label.contains("Not set"))
+        schedule.tap()
+        let bar = app.navigationBars["Start & end"]
+        XCTAssertEqual(app.datePickers.allElementsBoundByIndex.filter { $0.isHittable }.count, 1)
+        for _ in 0..<4 where !app.textFields["schedule-time-Start"].isHittable { app.swipeUp() }
+        app.textFields["schedule-time-Start"].tap()
+        app.textFields["schedule-time-Start"].typeText("21:30")
+        app.textFields["schedule-time-End"].tap()
+        app.textFields["schedule-time-End"].typeText("22:30")
+        capture("combined-session-times")
+        bar.buttons["Cancel"].tap()
+        XCTAssertTrue(schedule.label.contains("Not set"))
+        schedule.tap()
+        for _ in 0..<4 where !app.textFields["schedule-time-Start"].isHittable { app.swipeUp() }
+        app.textFields["schedule-time-Start"].tap()
+        app.textFields["schedule-time-Start"].typeText("21:30")
+        app.textFields["schedule-time-End"].tap()
+        app.textFields["schedule-time-End"].typeText("22:30")
+        bar.buttons["Set"].tap()
+        XCTAssertFalse(schedule.label.contains("Not set"))
+        schedule.tap()
+        app.buttons["Clear start"].tap()
+        bar.buttons["Set"].tap()
+        XCTAssertTrue(schedule.label.contains("Start not set"))
+        schedule.tap()
+        for _ in 0..<4 where !app.buttons["Clear start & end"].isHittable { app.swipeUp() }
+        app.buttons["Clear start & end"].tap()
+        bar.buttons["Set"].tap()
+        XCTAssertTrue(schedule.label.contains("Not set"))
+    }
+
     func testUnifiedEditorShowsBookingFieldsAndDiscardsChanges() {
         continueAfterFailure = false
         let app = XCUIApplication()

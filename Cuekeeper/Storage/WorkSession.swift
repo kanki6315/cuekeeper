@@ -181,3 +181,32 @@ func isolatedWriter(_ context: NSManagedObjectContext) -> NSManagedObjectContext
     writer.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     return writer
 }
+
+/// Explicit clock input, resolved on the selected day in the session timezone.
+enum SessionTimeInput {
+    static func date(_ text: String, on day: Date, zone: TimeZone) -> Date? {
+        let input = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let pattern = #"^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: input, range: NSRange(input.startIndex..., in: input)) else { return nil }
+        func group(_ index: Int) -> String? {
+            guard let range = Range(match.range(at: index), in: input) else { return nil }
+            return String(input[range])
+        }
+        guard var hour = group(1).flatMap(Int.init) else { return nil }
+        let minute = group(2).flatMap(Int.init) ?? 0
+        guard minute < 60 else { return nil }
+        if let period = group(3) {
+            guard (1...12).contains(hour) else { return nil }
+            hour = hour % 12 + (period == "pm" ? 12 : 0)
+        } else if hour > 23 { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        var components = calendar.dateComponents([.year, .month, .day], from: day)
+        components.hour = hour; components.minute = minute; components.second = 0
+        guard let date = calendar.date(from: components),
+              calendar.component(.hour, from: date) == hour,
+              calendar.component(.minute, from: date) == minute else { return nil }
+        return date
+    }
+}

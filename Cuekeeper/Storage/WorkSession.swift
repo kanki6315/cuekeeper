@@ -82,7 +82,7 @@ struct SessionDraft: Equatable {
     var notes = ""
     var links: [LinkDraft] = []
 
-    init(job: Job) { day = job.startDay; timeZoneID = job.timeZoneID }
+    init(job: Job) { day = job.eventStartDay; timeZoneID = job.eventTimeZoneID }
     init(session: WorkSession) {
         name = session.name; day = session.day; startTime = session.startTime; endTime = session.endTime
         callTime = session.callTime; timeZoneID = session.timeZoneID; scheduleStatus = session.scheduleStatus

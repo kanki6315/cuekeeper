@@ -9,16 +9,16 @@ ios
 Broadcast freelancers: commentators, presenters, producers, and crew. iPhone and iPad are both target devices.
 
 ## Product Purpose
-Track freelance engagements from tentative booking through completed work and payment, with very little upkeep. Capture a job name and placeholder dates now; enrich the record later.
+Track freelance engagements from tentative booking through completed work and payment, with very little upkeep. Capture event dates and a client now; enrich the record later.
 
 ## Capabilities and Constraints
-- Jobs, sessions, clients, fees, invoices, payments, and broadcast links.
+- Events, client bookings, sessions, clients, fees, invoices, payments, and broadcast links.
 - Booking confirmation, session schedule confirmation, coverage, invoicing, and payment are independent states.
-- Jobs can have no sessions; unknown fees differ from zero fees.
+- Client bookings can have no sessions; unknown fees differ from zero fees.
 - Calendar placeholders remain alongside eligible confirmed, covering sessions.
 - Local offline storage and iCloud sync; recovery and export remain separate from sync.
 - USD and EUR balances stay separate. Invoice balances are authoritative for grouped jobs and partial payments.
-- Primary navigation: Upcoming, Jobs, Payments, Settings. iPad uses a sidebar.
+- Primary navigation: Upcoming, Events, Payments, Settings. iPad uses a sidebar.
 - Invoice tracking only; no document generation, sending, banking, tax calculations, or currency conversion.
 
 ## Product Principles
@@ -140,3 +140,24 @@ remains historical. Simulator verification of this refinement passed on iPhone a
 ## 0.1.2 TestFlight release — October 13, 2026
 
 Combined Glass shipped to internal TestFlight as version 0.1.2, build 286.16.21. Apple processing is VALID and internal status is IN_BETA_TESTING. The existing Test group has automatic distribution. The live Production schema gate passed without schema changes. Release evidence: `design/verification/release-0.1.2.md`.
+
+## Event and client-booking structure — October 13, 2026
+
+Events/weekends are the agenda container, with shared dates, location, timezone,
+and notes. Each event has one or more client bookings, each retaining independent
+status, fees, invoices and payments. Sessions belong to a client booking and carry
+a series; new records need no job or project name. Event titles derive from
+location/dates unless customized. Existing names and grouping metadata remain
+available without being required during normal capture.
+
+Focused event, client-booking and fee editors replace the combined job form.
+The event shows all client bookings and a chronological schedule. Sessions support
+consecutive capture with shared defaults, duplication, and explicit selected-field
+batch editing. Session moves retain links and inherited series/roles and do not
+move fees. Event date edits do not silently reschedule sessions.
+
+V8 uses an additive optional event relationship. Old jobs stay intact as single
+virtual events until edited or explicitly grouped. Shared grouping never replaces
+financial records or invoice labels. V8 cloud schema initialization, export and
+Production deployment remain release prerequisites; physical-device sync still
+requires validation.

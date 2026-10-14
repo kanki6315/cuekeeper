@@ -31,6 +31,126 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testEventClientsKeepIndependentBillingAndSurviveReopen() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var event = EventDraft(); event.location = "Silverstone"; event.timeZoneID = "Europe/London"
+        var first = JobDraft(); first.clientName = "Client A"; first.fee?.amount = "500"
+        let firstID = try event.save(in: context, firstBooking: first)
+        let a = try XCTUnwrap(context.existingObject(with: firstID) as? Job)
+        XCTAssertTrue(a.name.isEmpty); XCTAssertTrue(a.eventTitle.contains("Silverstone"))
+        var second = JobDraft(); second.clientName = "Client B"; second.fee?.amount = "300"; second.fee?.currency = "EUR"
+        let secondID = try second.saveBooking(in: context, anchorID: firstID)
+        let b = try XCTUnwrap(context.existingObject(with: secondID) as? Job)
+        XCTAssertEqual(a.event, b.event); XCTAssertEqual(a.eventBookings.count, 2)
+        XCTAssertEqual(try a.currentFee().amount, 50000); XCTAssertEqual(try b.currentFee().amount, 30000)
+        XCTAssertEqual(try b.currentFee().currency, "EUR")
+        var session = SessionDraft(job: a); session.name = "Qualifying"; session.overridesSeries = true; session.seriesName = "Series A"
+        try session.save(in: context, jobID: firstID)
+        session.name = "Race"; session.seriesName = "Series B"
+        try session.save(in: context, jobID: secondID)
+        XCTAssertEqual(a.eventSessions.count, 2)
+        let plan = CalendarPlan(jobs: [a, b])
+        XCTAssertEqual(plan.desired.values.filter(\.allDay).count, 1)
+        XCTAssertTrue(plan.knownKeys.contains("job/\(a.id!.uuidString)"))
+        XCTAssertTrue(plan.knownKeys.contains("job/\(b.id!.uuidString)"))
+        var invoice = InvoiceDraft(clientID: a.client!.id!, currency: "USD")
+        invoice.value.status = "sent"; invoice.value.reference = "EVENT-1"; invoice.value.sentDay = Day.string(from: Date())
+        invoice.value.lines = [BilledLine(jobID: a.id!, jobName: a.displayName, amount: 50000)]
+        let invoiceID = try invoice.save(in: context)
+        try PaymentDraft(amount: "100").save(in: context, invoiceID: invoiceID)
+        let feeCount = a.feeRevisions?.count
+        let before = EventDraft(anchor: a); var edited = before; edited.location = "Brands Hatch"
+        try edited.save(in: context, anchorID: firstID, baseline: before)
+        XCTAssertEqual(b.eventLocation, "Brands Hatch"); XCTAssertEqual(a.feeRevisions?.count, feeCount)
+        let savedInvoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
+        XCTAssertEqual(try savedInvoice.currentValue().lines.first?.jobID, a.id)
+        XCTAssertTrue(try savedInvoice.currentValue().lines.first!.jobName.contains("Silverstone"))
+        let reopened = try await openStore()
+        let all = try reopened.container.viewContext.fetch(NSFetchRequest<Job>(entityName: "Job"))
+        XCTAssertEqual(all.count, 2); XCTAssertEqual(all.first?.eventBookings.count, 2)
+        XCTAssertEqual(all.first?.eventLocation, "Brands Hatch")
+    }
+
+    func testGroupingLegacyRecordsPreservesIdentityAndHistory() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let a = try billingJob("Original A", amount: "100", in: context)
+        let b = try billingJob("Original B", amount: "200", in: context)
+        let originalID = b.id; let feeIDs = Set((b.feeRevisions ?? []).compactMap(\.id))
+        let sessionID = try SessionDraft(job: b).save(in: context, jobID: b.objectID)
+        try PaymentDraft(amount: "50").save(in: context, jobID: b.objectID)
+        XCTAssertNil(a.event); XCTAssertEqual(a.eventTitle, "Original A")
+        try EventDraft.attach(b.objectID, to: a.objectID, in: context)
+        XCTAssertEqual(a.event, b.event); XCTAssertEqual(b.id, originalID); XCTAssertEqual(b.name, "Original B")
+        XCTAssertEqual(Set((b.feeRevisions ?? []).compactMap(\.id)), feeIDs)
+        XCTAssertEqual(b.activeSessions.first?.objectID, sessionID); XCTAssertEqual(try b.directPaid(), 5000)
+        XCTAssertThrowsError(try EventDraft.attach(b.objectID, to: a.objectID, in: context))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
+    }
+
+    func testEventSaveIsAtomicAndConcurrentUnrelatedEditsSurvive() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var booking = JobDraft(); booking.clientName = "Client"; booking.fee?.amount = "invalid"
+        XCTAssertThrowsError(try EventDraft().save(in: context, firstBooking: booking))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Client>(entityName: "Client")), 0)
+        booking.fee?.amount = "100"
+        let id = try EventDraft().save(in: context, firstBooking: booking)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        let initial = EventDraft(anchor: job)
+        var first = initial; first.location = "New location"
+        try first.save(in: context, anchorID: id, baseline: initial)
+        var second = initial; second.notes = "New shared notes"
+        try second.save(in: context, anchorID: id, baseline: initial)
+        XCTAssertEqual(job.eventLocation, "New location"); XCTAssertEqual(job.eventNotes, "New shared notes")
+    }
+
+    func testSessionBatchMovesAcrossDSTAndClientsWithoutMovingFees() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var booking = JobDraft(); booking.clientName = "A"; booking.fee?.amount = "100"; booking.seriesName = "Inherited series"
+        let aID = try EventDraft().save(in: context, firstBooking: booking)
+        let a = try XCTUnwrap(context.existingObject(with: aID) as? Job)
+        booking.clientName = "B"; booking.fee?.amount = "200"; booking.seriesName = "Other series"
+        let bID = try booking.saveBooking(in: context, anchorID: aID)
+        var draft = SessionDraft(job: a); draft.timeZoneID = "America/New_York"
+        let zone = TimeZone(identifier: draft.timeZoneID)!
+        draft.day = "2026-10-31"; draft.startTime = Day.date(from: draft.day, timeZone: zone)!.addingTimeInterval(12 * 3600)
+        draft.endTime = draft.startTime!.addingTimeInterval(3600); draft.callTime = draft.startTime!.addingTimeInterval(-1800)
+        draft.scheduleStatus = "confirmed"; draft.coverage = "covering"; draft.links = [LinkDraft(url: "https://example.com/feed")]
+        let id = try draft.save(in: context, jobID: aID)
+        try SessionBatchChange(day: "2026-11-01", bookingID: bID).save(ids: [id], anchorID: aID, in: context)
+        let session = try XCTUnwrap(context.existingObject(with: id) as? WorkSession)
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
+        XCTAssertEqual(calendar.component(.hour, from: session.startTime!), 12)
+        XCTAssertEqual(session.day, "2026-11-01"); XCTAssertEqual(session.job?.objectID, bID)
+        XCTAssertEqual(session.effectiveSeries?.name, "Inherited series"); XCTAssertEqual(session.sortedLinks.count, 1)
+        XCTAssertEqual(try a.currentFee().amount, 10000); XCTAssertEqual(try session.job?.currentFee().amount, 20000)
+        let outsider = try billingJob("Elsewhere", amount: "1", in: context)
+        XCTAssertThrowsError(try SessionBatchChange(series: "Changed", bookingID: outsider.objectID).save(ids: [id], anchorID: aID, in: context))
+        XCTAssertEqual(session.effectiveSeries?.name, "Inherited series")
+        XCTAssertEqual(CalendarPlan(jobs: [a, session.job!]).desired["session/\(session.id!.uuidString)"]?.location, a.eventLocation)
+    }
+
+    func testTrackSelectionSavesDuplicatesAndPreservesConcurrentChanges() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var draft = JobDraft(name: "Race weekend")
+        draft.location = "Enter at gate 4"; draft.trackPlaceID = "track-one"
+        let job = try XCTUnwrap(context.existingObject(with: draft.save(in: context)) as? Job)
+        XCTAssertEqual(JobDraft(job: job).trackPlaceID, "track-one")
+        XCTAssertEqual(JobDraft.duplicate(job).trackPlaceID, "track-one")
+        let baseline = JobDraft(job: job)
+        var trackEdit = baseline; trackEdit.trackPlaceID = "track-two"
+        try trackEdit.save(in: context, editing: job.objectID, baseline: baseline)
+        var notesEdit = baseline; notesEdit.notes = "New preparation"
+        try notesEdit.save(in: context, editing: job.objectID, baseline: baseline)
+        XCTAssertEqual(job.trackPlaceID, "track-two")
+        XCTAssertEqual(job.location, "Enter at gate 4")
+        let beforeClear = JobDraft(job: job)
+        var cleared = beforeClear; cleared.trackPlaceID = ""
+        try cleared.save(in: context, editing: job.objectID, baseline: beforeClear)
+        XCTAssertEqual(job.trackPlaceID, "")
+    }
+
     func testProjectsSeriesInheritanceAndIndependentFees() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var first = JobDraft(name: "Daytona")
@@ -124,9 +244,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try first.save(in: context, editing: id))
     }
 
-    func testV2ThroughV5StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV2ThroughV7StoresMigrateWithRelationshipsAndFeeHistory() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...5 {
+        for version in 2...7 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"
@@ -149,14 +269,42 @@ final class PersistenceTests: XCTestCase {
                 fee.setValue(UUID(), forKey: "id"); fee.setValue(Date(), forKey: "createdAt"); fee.setValue(job, forKey: "job")
                 fee.setValue(String(decoding: try JSONEncoder().encode(FeeValue(amount: 12345)), as: UTF8.self), forKey: "valueJSON")
             }
+            if version >= 6 {
+                let project = NSEntityDescription.insertNewObject(forEntityName: "WorkProject", into: oldContext)
+                project.setValue(UUID(), forKey: "id"); project.setValue("Existing project", forKey: "name"); job.setValue(project, forKey: "project")
+                let series = NSEntityDescription.insertNewObject(forEntityName: "WorkSeries", into: oldContext)
+                series.setValue(UUID(), forKey: "id"); series.setValue("Existing series", forKey: "name"); job.setValue(series, forKey: "series")
+            }
+            if version >= 7 { job.setValue("existing-track", forKey: "trackPlaceID") }
+            if version >= 5 {
+                let invoice = NSEntityDescription.insertNewObject(forEntityName: "Invoice", into: oldContext)
+                invoice.setValue(UUID(), forKey: "id"); invoice.setValue(client, forKey: "client")
+                var value = InvoiceValue(clientID: client.value(forKey: "id") as! UUID)
+                value.lines = [BilledLine(jobID: jobID, jobName: "Historical invoice label", amount: 12345)]
+                let revision = NSEntityDescription.insertNewObject(forEntityName: "InvoiceRevision", into: oldContext)
+                revision.setValue(UUID(), forKey: "id"); revision.setValue(invoice, forKey: "invoice")
+                revision.setValue(String(decoding: try JSONEncoder().encode(value), as: UTF8.self), forKey: "valueJSON")
+                let payment = NSEntityDescription.insertNewObject(forEntityName: "PaymentRecord", into: oldContext)
+                payment.setValue(UUID(), forKey: "id"); payment.setValue(1000, forKey: "amount")
+                payment.setValue(invoice, forKey: "invoice"); payment.setValue(Date(), forKey: "receivedAt"); payment.setValue(Date(), forKey: "createdAt")
+            }
             try oldContext.save(); oldContext.reset(); try coordinator.remove(oldStore)
             let migrated = try await openStore(fileName: fileName)
             let saved = try XCTUnwrap(migrated.container.viewContext.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
-            XCTAssertNil(saved.project); XCTAssertNil(saved.series)
+            XCTAssertNil(saved.event); XCTAssertEqual(saved.eventTitle, "Existing job")
+            XCTAssertEqual(saved.project?.name, version >= 6 ? "Existing project" : nil)
+            XCTAssertEqual(saved.series?.name, version >= 6 ? "Existing series" : nil)
+            XCTAssertEqual(saved.trackPlaceID, version >= 7 ? "existing-track" : "")
             XCTAssertEqual(saved.id, jobID); XCTAssertEqual(saved.client?.name, "Existing client")
             if version >= 3 { XCTAssertEqual(saved.activeSessions.first?.sortedLinks.first?.url, "https://example.com/old") }
             if version >= 4 { XCTAssertEqual(try saved.currentFee().amount, 12345) }
             XCTAssertEqual(try saved.directPaid(), 0)
+            if version >= 5 {
+                let invoice = try XCTUnwrap(migrated.container.viewContext.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first)
+                XCTAssertEqual(try invoice.currentValue().lines.first?.jobID, jobID)
+                XCTAssertEqual(try invoice.currentValue().lines.first?.jobName, "Historical invoice label")
+                XCTAssertEqual(try invoice.balance(), 11345)
+            }
         }
     }
 
@@ -395,7 +543,7 @@ final class PersistenceTests: XCTestCase {
         let store = try await openStore()
         let start = try XCTUnwrap(Day.date(from: "2026-10-14"))
         let end = try XCTUnwrap(Day.date(from: "2026-10-12"))
-        XCTAssertThrowsError(try JobDraft(name: " \n ").save(in: store.container.viewContext))
+        XCTAssertThrowsError(try EventDraft().save(in: store.container.viewContext, firstBooking: JobDraft()))
         XCTAssertThrowsError(try JobDraft(name: "Bad dates", startDate: start, endDate: end).save(in: store.container.viewContext))
         XCTAssertEqual(try store.container.viewContext.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
         XCTAssertFalse(store.container.viewContext.hasChanges)
@@ -436,7 +584,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(duplicate.client, job.client)
         XCTAssertEqual(try context.count(for: NSFetchRequest<Client>(entityName: "Client")), 1)
         XCTAssertEqual(try context.count(for: NSFetchRequest<WorkRole>(entityName: "WorkRole")), 2)
-        edit.name = " "
+        edit.endDate = edit.startDate.addingTimeInterval(-86400)
         XCTAssertThrowsError(try edit.save(in: context, editing: id))
         XCTAssertEqual(job.name, "Final coverage")
     }

@@ -236,3 +236,73 @@ Sync presentation tests use simulated activity and do not prove live-device deli
 Cuekeeper is licensed under the [MIT License](LICENSE), except for
 `release.sh` and `asc_profile.py`, which retain their
 [Mozilla Public License 2.0](LICENSE-MPL-2.0) terms. See [NOTICE](NOTICE).
+
+## Track location and event weather
+
+Jobs can save an Apple Maps Place ID through **Edit Job → Where you’ll work →
+Choose track location**. Native MapKit search needs no Google billing account or
+location permission. Search results update after a 350 ms typing pause, with
+loading, no-results and retry feedback; selecting a result opens its confirmation
+map. Existing free-text locations remain available as location
+notes. Only the selected Place ID is persisted and synced; venue details and
+coordinates are resolved through MapKit and kept temporarily in memory.
+
+Weather appears on job details only for **booked, on-site** jobs overlapping today
+through the next nine days in the venue’s timezone. It shows available event-day
+conditions, high/low temperature, precipitation probability and wind. Expand a
+session to see hourly conditions from call time (or session start) through its end.
+Forecast dates and hours use the venue timezone; units follow device preferences.
+
+Each device makes at most one WeatherKit attempt per Place ID per rolling 24 hours,
+including failed requests. Loads are on demand; there is no background polling.
+Concurrent requests share one task. Request timestamps and forecasts persist
+locally outside iCloud and backups. Forecasts show their fetch time and are marked
+outdated after Apple’s expiry. They stop displaying after 24 hours, and expired
+payloads are purged when the app runs. If refresh fails, weather is unavailable
+until the next permitted attempt. The 24-hour stale-display policy is an explicit
+initial product assumption, not a claim that Apple has approved this retention
+window. No forecasts are synced or retained as event history.
+
+### Setup before a device release
+
+- Enable WeatherKit for `com.arjunakankipati.cuekeeper` in the Apple Developer
+  portal (capability and App Services), and regenerate provisioning profiles.
+  `project.yml` and the generated app entitlements already include WeatherKit.
+- The V7 Core Data model adds `trackPlaceID`; V1–V6 migration is covered by tests.
+  Development schema initialization/export is complete. Review the schema diff,
+  deploy it to Production and run `./cloudkit.sh check` before distribution.
+- Verify real Apple Maps search and WeatherKit responses on a signed device.
+  Automated weather UI tests use synthetic data and do not consume weather quota.
+
+The simulator build and local schema checks do not prove WeatherKit account
+activation or live-device delivery. No Production schema deployment or app upload
+is part of this feature change.
+
+### Events and client bookings (V8, local implementation)
+
+The main agenda now lists events/weekends. Create an event with dates and a client;
+its title defaults to location and dates. Each event contains independent client
+bookings with their own status, overall fee, optional fee items, invoices and
+payments. Sessions belong to a client booking and select their series directly.
+The event screen collects those sessions into one schedule and opens focused
+editors for event details, client details and fees. Session entry offers Save &
+Add Another, duplication, and selected-session changes to date, series, coverage
+or client booking. Moving a session does not move financial records.
+
+V8 adds only `WorkEvent` and an optional `Job.event` relationship. `Job` remains
+the persisted client booking entity; all existing job/session IDs, original names,
+project/series associations, fee revisions, invoice snapshots and receipts remain
+in place. Older jobs appear as individual events without an eager data backfill.
+Editing shared event details or adding another client creates their event record
+transactionally. “Include Existing Booking” explicitly groups an older standalone
+booking; there is no automatic merging by date or client. Original booking metadata
+is retained, while shared dates/location come from the event. Session schedules
+are unchanged when event dates change. Calendar publishing uses one all-day event
+placeholder plus eligible session entries, retiring the old per-job placeholders.
+
+The checked-in CloudKit export still describes V7. **V8 must be initialized in
+Development, exported/reviewed, and deployed to Production before distribution.**
+The existing release gate intentionally rejects this model until that is done.
+No schema deployment or release upload is performed by this implementation.
+Physical-device iCloud convergence between upgraded devices remains a release
+check; older app versions do not understand event grouping.

@@ -144,7 +144,8 @@ def supports_cloudkit(profile, team, bundle_id, container):
             and container in entitlements.get("com.apple.developer.icloud-container-identifiers", [])
             and ("CloudKit" in services or "*" in services)
             and "Production" in environment
-            and entitlements.get("aps-environment") == "production")
+            and entitlements.get("aps-environment") == "production"
+            and entitlements.get("com.apple.developer.weatherkit") is True)
 
 
 def main():
@@ -212,8 +213,8 @@ def main():
         log(f"reusing profile {usable['attributes']['name']} (expires {usable['attributes'].get('expirationDate', '')[:10]})")
 
     if not supports_cloudkit(usable, a.team, a.bundle_id, a.cloudkit_container):
-        die("profile lacks Cuekeeper's production CloudKit or push entitlements. "
-            "Associate the iCloud container with the bundle ID in Certificates, Identifiers & Profiles first.")
+        die("profile lacks Cuekeeper's production CloudKit, push or WeatherKit entitlements. "
+            "Associate the iCloud container and enable WeatherKit for the bundle ID in Certificates, Identifiers & Profiles first.")
 
     # 4. Install it where Xcode and xcodebuild look.
     content = base64.b64decode(usable["attributes"]["profileContent"])

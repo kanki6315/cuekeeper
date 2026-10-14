@@ -13,18 +13,25 @@
 		29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */; };
 		2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
 		338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */; };
+		33C82DB863203C00DEF8E78C /* TrackLocationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */; };
 		3577724790278D35856FAC47 /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
 		38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184979F54A69B58764328050 /* PersistenceController.swift */; };
+		3A38BA8A890E9F76C0DB268A /* EventWeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */; };
+		3D34152724DEAC69AD5E7B5C /* EventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C96A98C9B9BAB0D065741A /* EventView.swift */; };
 		41B304D19B61465775986906 /* DesignFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AEB83E7804374638D4D0136 /* DesignFixtures.swift */; };
 		471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42AD7432BF268805135A824 /* CalendarSettingsView.swift */; };
 		4931AA30BA71C6966D2D1CDB /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
+		4B17D742F2471D53225B37E4 /* WorkEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95E08FF1047E3666557F964 /* WorkEvent.swift */; };
 		4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC535FB730F3A6A7FE4A398 /* SessionView.swift */; };
 		4EA1FBAF120B261072530418 /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
 		5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */; };
+		5EA2B0F8414CAB369A9845D7 /* SessionBatchEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994C44392560A52DE055B755 /* SessionBatchEditorView.swift */; };
 		5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */; };
+		60EDF0591C09FDC165CE7ABB /* WorkEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95E08FF1047E3666557F964 /* WorkEvent.swift */; };
 		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
 		64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */; };
+		8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */; };
 		991F28DFD42FDA0529BED47C /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
 		A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
@@ -35,12 +42,15 @@
 		B3245E99179AC51EDC4D2AE3 /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
 		B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC022135F654D55A6A7311E /* RootView.swift */; };
 		BB6FD0F28A906423BA740890 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
+		BC4BAD64E3C41BCEC423D7B9 /* EventVisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C39653F7538932613199392 /* EventVisualTests.swift */; };
 		BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE600824A3A4DC39439FDF0 /* CalendarController.swift */; };
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		C98339F7FD17877747472285 /* CalendarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71531F3273F27F2929AC0EE9 /* CalendarTests.swift */; };
 		D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC25F847FFB2944BBBC0D0D /* FeeView.swift */; };
 		DAA665273A525BD7459E740C /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
+		F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919618A957BA6EC5BAA77600 /* EventWeather.swift */; };
+		F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */; };
 		FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -62,14 +72,18 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeatherTests.swift; sourceTree = "<group>"; };
 		05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlan.swift; sourceTree = "<group>"; };
 		06442705EA3E6D3F4031E809 /* CaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureTests.swift; sourceTree = "<group>"; };
 		0AC022135F654D55A6A7311E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		134663AFB643D201DF4E98CF /* SchemaHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SchemaHelper.entitlements; sourceTree = "<group>"; };
+		14FCB06138FD31273B69B67C /* CuekeeperV8.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV8.xcdatamodel; sourceTree = "<group>"; };
 		184979F54A69B58764328050 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
+		1C39653F7538932613199392 /* EventVisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventVisualTests.swift; sourceTree = "<group>"; };
 		242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDraft.swift; sourceTree = "<group>"; };
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
+		25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackLocationView.swift; sourceTree = "<group>"; };
 		2CC25F847FFB2944BBBC0D0D /* FeeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeView.swift; sourceTree = "<group>"; };
 		346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV4.xcdatamodel; sourceTree = "<group>"; };
 		3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV5.xcdatamodel; sourceTree = "<group>"; };
@@ -81,12 +95,16 @@
 		5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CuekeeperSchemaHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		618C864D7A24CC9C62D1E183 /* Billing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Billing.swift; sourceTree = "<group>"; };
 		66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV2.xcdatamodel; sourceTree = "<group>"; };
+		6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeatherView.swift; sourceTree = "<group>"; };
+		6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherTests.swift; sourceTree = "<group>"; };
 		71531F3273F27F2929AC0EE9 /* CalendarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTests.swift; sourceTree = "<group>"; };
 		7AEB83E7804374638D4D0136 /* DesignFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignFixtures.swift; sourceTree = "<group>"; };
 		7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignCaptureTests.swift; sourceTree = "<group>"; };
 		893F1EA4F4B4BB063F301463 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		919618A957BA6EC5BAA77600 /* EventWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeather.swift; sourceTree = "<group>"; };
 		91C80D913C2F1C3287CFD3DF /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Cuekeeper.xcdatamodel; sourceTree = "<group>"; };
+		994C44392560A52DE055B755 /* SessionBatchEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBatchEditorView.swift; sourceTree = "<group>"; };
 		A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSupplementTests.swift; sourceTree = "<group>"; };
 		A5BA01886803FB21C0F4DAD4 /* Fees.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fees.swift; sourceTree = "<group>"; };
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -94,12 +112,15 @@
 		B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsView.swift; sourceTree = "<group>"; };
 		BBC535FB730F3A6A7FE4A398 /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
+		BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV7.xcdatamodel; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C42AD7432BF268805135A824 /* CalendarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSettingsView.swift; sourceTree = "<group>"; };
 		C4ECFB76E1416305BD27E80B /* CuekeeperV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV3.xcdatamodel; sourceTree = "<group>"; };
+		C9C96A98C9B9BAB0D065741A /* EventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventView.swift; sourceTree = "<group>"; };
 		CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		D32CAA2E3C0D27BDF3B934FD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D682B024A3E281F66B73080A /* JobEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobEditorView.swift; sourceTree = "<group>"; };
+		D95E08FF1047E3666557F964 /* WorkEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkEvent.swift; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
 		E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaybookStyle.swift; sourceTree = "<group>"; };
 		EDE600824A3A4DC39439FDF0 /* CalendarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarController.swift; sourceTree = "<group>"; };
@@ -113,6 +134,8 @@
 				06442705EA3E6D3F4031E809 /* CaptureTests.swift */,
 				7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */,
 				A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */,
+				1C39653F7538932613199392 /* EventVisualTests.swift */,
+				6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */,
 			);
 			path = CuekeeperUITests;
 			sourceTree = "<group>";
@@ -154,6 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				71531F3273F27F2929AC0EE9 /* CalendarTests.swift */,
+				01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */,
 				CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */,
 			);
 			path = CuekeeperTests;
@@ -171,6 +195,9 @@
 				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
 				E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */,
 				7AEB83E7804374638D4D0136 /* DesignFixtures.swift */,
+				C9C96A98C9B9BAB0D065741A /* EventView.swift */,
+				919618A957BA6EC5BAA77600 /* EventWeather.swift */,
+				6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */,
 				2CC25F847FFB2944BBBC0D0D /* FeeView.swift */,
 				C31D03E096ABF3A6E23F885D /* Info.plist */,
 				575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */,
@@ -178,7 +205,9 @@
 				91C80D913C2F1C3287CFD3DF /* LibraryView.swift */,
 				B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */,
 				0AC022135F654D55A6A7311E /* RootView.swift */,
+				994C44392560A52DE055B755 /* SessionBatchEditorView.swift */,
 				BBC535FB730F3A6A7FE4A398 /* SessionView.swift */,
+				25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */,
 				CE6FEAC4E23C39120396EE12 /* Storage */,
 			);
 			path = Cuekeeper;
@@ -201,6 +230,7 @@
 				252FA8AA4804BAF13CE8E06B /* Job.swift */,
 				242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */,
 				184979F54A69B58764328050 /* PersistenceController.swift */,
+				D95E08FF1047E3666557F964 /* WorkEvent.swift */,
 				F26B1DE5EBB870F41896D3CC /* WorkSession.swift */,
 				F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */,
 			);
@@ -351,6 +381,8 @@
 				DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */,
 				FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */,
 				64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */,
+				BC4BAD64E3C41BCEC423D7B9 /* EventVisualTests.swift in Sources */,
+				8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -359,6 +391,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C98339F7FD17877747472285 /* CalendarTests.swift in Sources */,
+				F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */,
 				29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -372,6 +405,7 @@
 				BB6FD0F28A906423BA740890 /* Cuekeeper.xcdatamodeld in Sources */,
 				4931AA30BA71C6966D2D1CDB /* Fees.swift in Sources */,
 				991F28DFD42FDA0529BED47C /* Job.swift in Sources */,
+				4B17D742F2471D53225B37E4 /* WorkEvent.swift in Sources */,
 				3577724790278D35856FAC47 /* WorkSession.swift in Sources */,
 				53C75F6086D7A02F11282AF7 /* main.swift in Sources */,
 			);
@@ -390,6 +424,9 @@
 				64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */,
 				062400846722C32FFC23825F /* DaybookStyle.swift in Sources */,
 				41B304D19B61465775986906 /* DesignFixtures.swift in Sources */,
+				3D34152724DEAC69AD5E7B5C /* EventView.swift in Sources */,
+				F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */,
+				3A38BA8A890E9F76C0DB268A /* EventWeatherView.swift in Sources */,
 				D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */,
 				4EA1FBAF120B261072530418 /* Fees.swift in Sources */,
 				B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */,
@@ -400,7 +437,10 @@
 				5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */,
 				38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */,
 				B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */,
+				5EA2B0F8414CAB369A9845D7 /* SessionBatchEditorView.swift in Sources */,
 				4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */,
+				33C82DB863203C00DEF8E78C /* TrackLocationView.swift in Sources */,
+				60EDF0591C09FDC165CE7ABB /* WorkEvent.swift in Sources */,
 				AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -586,7 +626,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -745,7 +785,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -814,7 +854,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -908,8 +948,10 @@
 				346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */,
 				3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */,
 				49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */,
+				BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */,
+				14FCB06138FD31273B69B67C /* CuekeeperV8.xcdatamodel */,
 			);
-			currentVersion = 49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */;
+			currentVersion = 14FCB06138FD31273B69B67C /* CuekeeperV8.xcdatamodel */;
 			path = Cuekeeper.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

@@ -206,3 +206,19 @@ control. When the scaled minimum width cannot fit, or Dynamic Type exceeds xLarg
 the same binding uses a labelled native menu. Booking status and arrangement retain
 menus because both currently have four choices. Library and multi-selection fields
 remain unchanged.
+
+## Single-client events — October 14, 2026
+
+Supersedes the unified multi-booking editor above. Event details and the previous
+booking detail now share one full-feature event surface: client/status, schedule,
+broadcast links, fee and payments, notes, project and championships. One editor
+shows event metadata plus Client / Work / Fee fields directly, without booking
+accordions, add-client controls or grouping links. Existing historical booking
+notes remain explicitly labelled and editable; new notes live on the event.
+
+Each former group member appears independently in the agenda with its client name.
+Bulk session editing is limited to this event; client reassignment is removed.
+Short Schedule/Coverage choices retain their adaptive segmented controls. The
+wizard sequence is unchanged; it creates independent one-client events.
+
+Verification and native screenshots: [single-client events](design/verification/single-client-events/README.md).

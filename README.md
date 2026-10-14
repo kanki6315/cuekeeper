@@ -364,3 +364,18 @@ device with supported Siri AI: request an all-day event, a timed event, and
 recurrence/invitees; verify the saved event, notice, edits, close, and cold launch.
 Opening the event requires foreground interaction and may require unlocking the
 device.
+
+### Single-client events
+
+The app now treats every client record as its own event. Adding clients to an event
+and grouping/linking events are no longer available. Client, project, championships,
+work, fees and notes are edited directly within the event. Sessions and payments
+are accessible on the same event detail screen.
+
+Old grouped records remain compatible: each client appears separately using the
+existing record ID. The first event save copies historical shared metadata into
+that client's own record without changing sessions, fee revisions, invoice lines
+or receipts. There is no eager CloudKit backfill or schema change. Use the updated
+app on all devices; older versions retain their previous grouping behaviour.
+Calendar reconciliation retires known grouped placeholders and publishes one
+placeholder per active client event, retaining eligible session entries.

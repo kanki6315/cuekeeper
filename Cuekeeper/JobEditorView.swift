@@ -6,7 +6,7 @@ struct JobEditorView: View {
     var job: Job? = nil
     var duplicating = false
     var body: some View {
-        if let job, !duplicating { EventEditorView(anchor: job, focusBooking: job.objectID) }
+        if let job, !duplicating { EventEditorView(anchor: job) }
         else { EventWizardView(template: duplicating ? job : nil) }
     }
 }
@@ -40,37 +40,46 @@ private struct LinkPresentation: Identifiable { let id = UUID(); let session: Wo
 struct JobDetailView: View {
     @EnvironmentObject private var calendar: CalendarController
     @ObservedObject var job: Job
+    @FetchRequest(sortDescriptors: []) private var eventRecords: FetchedResults<WorkEvent>
     @Environment(\.managedObjectContext) private var context
     @State private var error: String?
     @State private var editing = false
     @State private var duplicating = false
+    @State private var batch = false
     @State private var addingSession = false
     @State private var addingInvoice = false
     @State private var addingPayment = false
     @State private var choosingLinkSession = false
     @State private var linkEditor: LinkPresentation?
     var body: some View {
-        DaybookForm(title: job.client?.name ?? "Client to add", subtitle: job.eventTitle) {
+        let _ = eventRecords.count
+        DaybookForm(title: job.eventTitle, subtitle: job.client?.name ?? "Client to add") {
             Section {
                 Menu {
                     ForEach(BookingStatus.allCases, id: \.self) { status in Button(status.title) { updateBookingStatus(status) } }
                 } label: { HStack { BookingBadge(status: job.bookingStatus); Text("Change status"); Spacer(); Image(systemName: "chevron.down") } }
                 .accessibilityIdentifier("booking-status")
-                if !["completed", "cancelled"].contains(job.bookingStatus) {
-                    Button(job.bookingStatus == "tentative" ? "Mark as booked" : "Mark completed") { updateBookingStatus(job.bookingStatus == "tentative" ? .booked : .completed) }.accessibilityIdentifier("advance-booking-status")
-                }
-                DaybookLink { EventDetailView(anchor: job) } label: { DaybookMetadata(symbol: "calendar", text: dateRange(job)) }
+                Button { editing = true } label: { DaybookMetadata(symbol: "calendar", text: dateRange(job)) }.accessibilityIdentifier("edit-event-dates")
+                if !job.eventLocation.isEmpty { DaybookMetadata(symbol: "mappin", text: job.eventLocation) }
+            }.containerValue(\.daybookUnframed, true)
+            SessionsSection(job: job) { addingSession = true }
+            if !job.activeSessions.isEmpty {
+                Section { Button("Edit Multiple Sessions", systemImage: "checklist") { batch = true }.accessibilityIdentifier("batch-sessions") }.containerValue(\.daybookUnframed, true)
+            }
+            if !job.eventTrackPlaceID.isEmpty {
+                Section("Track location") { SavedTrackView(placeID: job.eventTrackPlaceID) }
+            }
+            EventWeatherSection(job: job)
+            Section("Work") {
                 if let client = job.client {
                     DaybookLink { LibraryDetailView(record: client, kind: .client) } label: { DaybookMetadata(symbol: "person", text: client.name) }
                 }
                 DaybookMetadata(symbol: job.workArrangement == "remote" ? "video" : "mappin.and.ellipse", text: (job.roleNames + [WorkArrangement(rawValue: job.workArrangement)?.title ?? "Unspecified"]).joined(separator: " · "))
-                if !job.eventLocation.isEmpty { DaybookMetadata(symbol: "mappin", text: job.eventLocation) }
                 if !job.eventTimeZoneID.isEmpty { DaybookMetadata(symbol: "globe", text: job.eventTimeZoneID.replacingOccurrences(of: "_", with: " ")) }
-            }.containerValue(\.daybookUnframed, true)
-            if !job.eventTrackPlaceID.isEmpty {
-                Section("Track location") { SavedTrackView(placeID: job.eventTrackPlaceID) }
+                if !["completed", "cancelled"].contains(job.bookingStatus) {
+                    Button(job.bookingStatus == "tentative" ? "Mark as booked" : "Mark completed") { updateBookingStatus(job.bookingStatus == "tentative" ? .booked : .completed) }.accessibilityIdentifier("advance-booking-status")
+                }
             }
-            SessionsSection(job: job) { addingSession = true }
             Section("Broadcast links") {
                 ForEach(job.activeSessions.filter { !$0.sortedLinks.isEmpty }, id: \.objectID) { session in
                     DisclosureGroup(session.title) {
@@ -95,7 +104,8 @@ struct JobDetailView: View {
                 }.accessibilityIdentifier("job-fee")
             }
             JobBillingSection(job: job, onInvoice: { addingInvoice = true }, onPayment: { addingPayment = true })
-            if !job.notes.isEmpty { Section("Notes") { Text(job.notes).textSelection(.enabled) } }
+            if !job.eventNotes.isEmpty { Section("Event notes") { Text(job.eventNotes).textSelection(.enabled) } }
+            if !job.notes.isEmpty { Section("Previous booking notes") { Text(job.notes).textSelection(.enabled) } }
             if job.project != nil || !job.allSeries.isEmpty {
                 Section("Project & series") {
                     if let project = job.project {
@@ -107,20 +117,21 @@ struct JobDetailView: View {
                 }
             }
             Section("Calendar") {
-                Text(job.bookingStatus == "cancelled" ? "Cancelled bookings have no timed entries. The event placeholder remains for other active clients." : "The all-day placeholder stays alongside confirmed sessions you’re covering.")
+                Text(job.bookingStatus == "cancelled" ? "Cancelled events have no calendar entries." : "The all-day placeholder stays alongside confirmed sessions you’re covering.")
                 Text(calendar.status).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             }
             Section {
-                Button("Duplicate Booking", systemImage: "plus.square.on.square") { duplicating = true }
+                Button("Duplicate Event", systemImage: "plus.square.on.square") { duplicating = true }
                     .accessibilityIdentifier("duplicate-job")
             } footer: { Text("Create a new event with this client and fee. Existing sessions and payment history stay here.") }
         }
         .saveErrorAlert($error)
-        .navigationTitle("Client booking")
+        .navigationTitle("Event")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { Button("Edit") { editing = true }.accessibilityIdentifier("edit-job") }
+        .toolbar { Button("Edit Event") { editing = true }.accessibilityIdentifier("edit-event") }
         .sheet(isPresented: $editing) { JobEditorView(job: job) }
         .sheet(isPresented: $duplicating) { JobEditorView(job: job, duplicating: true) }
+        .sheet(isPresented: $batch) { SessionBatchEditorView(anchor: job) }
         .sheet(isPresented: $addingSession) { SessionEditorView(job: job) }
         .sheet(isPresented: $addingInvoice) { InvoiceEditorView(job: job) }
          .sheet(isPresented: $addingPayment) { PaymentEditorView(job: job) }

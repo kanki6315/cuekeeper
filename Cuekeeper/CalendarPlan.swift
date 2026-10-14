@@ -20,15 +20,15 @@ struct CalendarPlan {
     var knownKeys: Set<String> = []
     var bounds: [Date] = []
 
-    init(jobs: [Job]) {
-        var publishedEvents = Set<NSManagedObjectID>()
+    init(jobs: [Job], historicalEventIDs: [UUID] = []) {
+        knownKeys.formUnion(historicalEventIDs.map { "event/\($0.uuidString)" })
         for job in jobs {
             guard let id = job.id else { continue }
             let legacyKey = "job/\(id.uuidString)"
             knownKeys.insert(legacyKey)
-            let key = job.event?.id.map { "event/\($0.uuidString)" } ?? legacyKey
-            knownKeys.insert(key)
-            let publishPlaceholder = publishedEvents.insert(job.eventKey).inserted
+            // Retire old grouped placeholders; every client event has its own job key.
+            if let oldID = job.event?.id { knownKeys.insert("event/\(oldID.uuidString)") }
+            let key = legacyKey
             var calendar = Calendar(identifier: .gregorian)
             let zone = TimeZone(identifier: job.eventTimeZoneID) ?? .current
             calendar.timeZone = zone
@@ -36,8 +36,8 @@ struct CalendarPlan {
                let last = Day.date(from: job.eventEndDay, timeZone: zone),
                let end = calendar.date(byAdding: .day, value: 1, to: last) {
                 bounds += [start, end]
-                if publishPlaceholder && job.eventBookings.contains(where: { $0.bookingStatus != "cancelled" }) {
-                    desired[key] = CalendarEntry(key: key, title: job.event == nil ? job.displayName : job.eventTitle, start: start, end: end, allDay: true,
+                if job.bookingStatus != "cancelled" {
+                    desired[key] = CalendarEntry(key: key, title: job.eventTitle + (job.client.map { " · " + $0.name } ?? ""), start: start, end: end, allDay: true,
                                                  timeZoneID: zone.identifier, notes: job.event == nil ? "Cuekeeper · \(job.bookingStatus.capitalized)\n\(job.notes)" : job.eventBookings.map { "\($0.client?.name ?? "Client to add") · \($0.bookingStatus.capitalized)" }.joined(separator: "\n") + "\n" + job.eventNotes, location: job.eventLocation)
                 }
             }

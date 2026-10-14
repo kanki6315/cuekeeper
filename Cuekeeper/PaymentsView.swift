@@ -94,7 +94,7 @@ struct PaymentsView: View {
             }
             invoiceSection("Voided invoices", status: "void")
             if jobs.isEmpty && invoices.isEmpty {
-                Section { Text("Add client bookings and fees to start tracking invoices and payments. You can leave fees unknown until they’re agreed.").foregroundStyle(Color("SecondaryText")) }
+                Section { Text("Add events and fees to start tracking invoices and payments. You can leave fees unknown until they’re agreed.").foregroundStyle(Color("SecondaryText")) }
             }
         }
         .navigationTitle("")

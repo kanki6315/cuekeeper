@@ -49,9 +49,9 @@ final class EventVisualTests: XCTestCase {
             let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             shot.name = "events-\(tablet ? "ipad" : "iphone")-\(route)-\(dark ? "dark-large" : "light")"; shot.lifetime = .keepAlways; add(shot)
             if route == "edit-event" {
-                let booking = app.buttons["editor-booking-section"].firstMatch
-                for _ in 0..<8 where !booking.isHittable { app.swipeUp() }
-                if !app.textFields["library-WorkProject-name"].exists { booking.tap() }
+                XCTAssertFalse(app.buttons["editor-booking-section"].exists)
+                let client = app.textFields["library-Client-name"]
+                for _ in 0..<8 where !client.isHittable { app.swipeUp() }
                 let work = app.buttons["edit-booking-status"]
                 for _ in 0..<3 where !work.isHittable { app.swipeUp() }
                 let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

@@ -32,20 +32,16 @@ final class EventWizardTests: XCTestCase {
         app.buttons["Cancel"].tap()
     }
 
-    func testEditorSectionsCollapseWithSummariesWithoutChangingDraft() {
+    func testSingleClientEditorKeepsFieldsVisibleAndFeeExpandable() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-event"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.textFields["job-location"].exists)
-        let booking = app.buttons["editor-booking-section"].firstMatch
-        for _ in 0..<8 where !booking.isHittable { app.swipeUp() }
-        XCTAssertTrue(booking.waitForExistence(timeout: 3))
-        if app.textFields["library-WorkProject-name"].exists { booking.tap() }
-        XCTAssertTrue(booking.label.contains("$1,200.00"))
-        capture("collapsed-editor-sections")
-        booking.tap()
+        XCTAssertFalse(app.buttons["editor-booking-section"].exists)
+        XCTAssertFalse(app.buttons["editor-add-client"].exists)
+        XCTAssertEqual(app.textFields.matching(identifier: "library-Client-name").count, 1)
         XCTAssertTrue(app.textFields["library-WorkProject-name"].exists)
         let fee = app.buttons["editor-fee-section"].firstMatch
         for _ in 0..<8 where !fee.isHittable { app.swipeUp() }

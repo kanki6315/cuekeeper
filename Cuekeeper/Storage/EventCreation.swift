@@ -49,7 +49,7 @@ struct EventCreationDraft: Equatable {
                 booking.name = ""
                 let job = try booking.stage(in: writer)
                 let grouped = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer)
-                grouped.id = UUID(); grouped.title = event.displayTitle
+                grouped.id = job.id; grouped.title = event.displayTitle
                 grouped.startDay = job.startDay; grouped.endDay = job.endDay
                 grouped.location = job.location; grouped.trackPlaceID = job.trackPlaceID
                 grouped.timeZoneID = job.timeZoneID; grouped.notes = event.notes

@@ -98,7 +98,8 @@ final class CalendarController: ObservableObject {
             guard let calendar = store.calendar(withIdentifier: selectedID), calendar.allowsContentModifications else { throw RecordError.invalid("The selected calendar is unavailable. Choose another calendar in Cuekeeper Settings.") }
             try await publisher.verify(deviceID: deviceID)
             let jobs = try context.fetch(NSFetchRequest<Job>(entityName: "Job"))
-            let plan = CalendarPlan(jobs: jobs)
+            let historicalEvents = try context.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
+            let plan = CalendarPlan(jobs: jobs, historicalEventIDs: historicalEvents.compactMap(\.id))
             rememberBounds(plan.bounds)
             let existing = managedEvents(calendar: calendar)
             var ids: [String: String] = [:]

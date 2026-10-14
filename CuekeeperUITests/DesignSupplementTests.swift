@@ -7,7 +7,7 @@ final class DesignSupplementTests: XCTestCase {
         XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=job", "--design-dark"]
         app.launch()
-        let edit = app.buttons["edit-job"]
+        let edit = app.buttons["edit-event"]
         XCTAssertTrue(edit.waitForExistence(timeout: 10)); edit.tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()

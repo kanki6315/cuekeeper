@@ -262,12 +262,19 @@ struct JobDetailView: View {
             HStack {
                 if job.bookingStatus != "completed" && job.bookingStatus != "cancelled" {
                     Button {
-                        let baseline = JobDraft(job: job)
-                        var draft = baseline; draft.bookingStatus = .completed
-                        do { try draft.save(in: context, editing: job.objectID, baseline: baseline) } catch { self.error = error.localizedDescription }
-                    } label: { Label("Mark completed", systemImage: "checkmark").frame(maxWidth: .infinity) }.buttonStyle(DaybookPrimaryButton())
+                        updateBookingStatus(job.bookingStatus == "tentative" ? .booked : .completed)
+                    } label: {
+                        Label(job.bookingStatus == "tentative" ? "Mark as booked" : "Mark completed", systemImage: "checkmark")
+                            .frame(maxWidth: .infinity)
+                    }.buttonStyle(DaybookPrimaryButton())
+                        .accessibilityIdentifier("advance-booking-status")
                 }
                 Menu("More", systemImage: "ellipsis") {
+                    Section("Booking status") {
+                        ForEach(BookingStatus.allCases.filter { $0.rawValue != job.bookingStatus }, id: \.self) { status in
+                            Button("Mark as \(status.title.lowercased())") { updateBookingStatus(status) }
+                        }
+                    }
                     Button("Duplicate Job", systemImage: "plus.square.on.square") { duplicating = true }
                     Button("Edit Job", systemImage: "pencil") { editing = true }
                 }.labelStyle(.iconOnly).buttonStyle(.glass).buttonBorderShape(.circle)
@@ -290,6 +297,14 @@ struct JobDetailView: View {
             }
             Button("New Session") { linkEditor = LinkPresentation(session: nil) }
         }
+    }
+
+    private func updateBookingStatus(_ status: BookingStatus) {
+        let baseline = JobDraft(job: job)
+        var draft = baseline
+        draft.bookingStatus = status
+        do { try draft.save(in: context, editing: job.objectID, baseline: baseline) }
+        catch { self.error = error.localizedDescription }
     }
 }
 

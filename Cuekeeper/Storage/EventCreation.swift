@@ -10,7 +10,7 @@ struct EventOutline: Identifiable, Equatable {
     var displayTitle: String {
         let custom = details.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !custom.isEmpty { return custom }
-        let subject = [details.projectName, details.clientName].first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? "Event"
+        let subject = [details.location, details.projectName, details.clientName].first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? "Event"
         return "\(subject) · \(details.startDate.formatted(date: .abbreviated, time: .omitted))"
     }
 }
@@ -30,10 +30,9 @@ struct EventCreationDraft: Equatable {
             result.details.roleNames = shared.roleNames
             result.details.workArrangement = shared.workArrangement
             result.details.timeZoneID = shared.timeZoneID
-            if result.details.location.isEmpty { result.details.location = shared.location }
+            if result.details.location.isEmpty { result.details.location = shared.location; result.details.trackPlaceID = shared.trackPlaceID }
             result.details.bookingStatus = shared.bookingStatus
             result.details.fee = shared.fee
-            result.details.name = result.displayTitle
             return result
         }
     }
@@ -45,7 +44,17 @@ struct EventCreationDraft: Equatable {
         do {
             var ids: [NSManagedObjectID] = []
             for event in resolvedEvents() {
-                let id = try event.details.save(in: context, transaction: writer)
+                var booking = event.details
+                booking.name = ""
+                let job = try booking.stage(in: writer)
+                let grouped = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer)
+                grouped.id = UUID(); grouped.title = event.displayTitle
+                grouped.startDay = job.startDay; grouped.endDay = job.endDay
+                grouped.location = job.location; grouped.trackPlaceID = job.trackPlaceID
+                grouped.timeZoneID = job.timeZoneID; grouped.notes = ""
+                job.event = grouped
+                try writer.obtainPermanentIDs(for: [job, grouped])
+                let id = job.objectID
                 for session in event.sessions { try session.save(in: context, jobID: id, transaction: writer) }
                 ids.append(id)
             }

@@ -107,6 +107,7 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["SportsCar Championship"].exists)
         app.buttons["Add championship"].tap()
         let championship = app.textFields["New championship"]
+        for _ in 0..<3 where !championship.isHittable || championship.frame.maxY > next.frame.minY - 12 { app.swipeUp() }
         championship.tap(); championship.typeText("Support championship")
         app.buttons["Add"].tap()
         XCTAssertTrue(app.staticTexts["Support championship"].exists)

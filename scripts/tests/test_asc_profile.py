@@ -12,6 +12,7 @@ class ProfileEntitlementTests(unittest.TestCase):
             "com.apple.developer.icloud-container-identifiers": ["iCloud.example"],
             "com.apple.developer.icloud-container-environment": ["Production"],
             "aps-environment": "production",
+            "com.apple.developer.weatherkit": True,
         }
         for services, expected in [("*", True), (["*"], True),
                                    (["CloudKit"], True), ("CloudKit", True),
@@ -23,3 +24,15 @@ class ProfileEntitlementTests(unittest.TestCase):
                         {}, "TEAM", "com.example.app", "iCloud.example"), expected)
                     self.assertFalse(asc_profile.supports_cloudkit(
                         {}, "TEAM", "com.example.app", "iCloud.wrong"))
+
+    def test_missing_weatherkit_is_rejected(self):
+        entitlements = {
+            "com.apple.developer.team-identifier": "TEAM",
+            "application-identifier": "TEAM.com.example.app",
+            "com.apple.developer.icloud-container-identifiers": ["iCloud.example"],
+            "com.apple.developer.icloud-container-environment": "Production",
+            "com.apple.developer.icloud-services": ["CloudKit"],
+            "aps-environment": "production",
+        }
+        with patch.object(asc_profile, "profile_entitlements", return_value=entitlements):
+            self.assertFalse(asc_profile.supports_cloudkit({}, "TEAM", "com.example.app", "iCloud.example"))

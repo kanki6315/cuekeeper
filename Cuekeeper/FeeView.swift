@@ -25,7 +25,7 @@ struct FeeEditorView: View {
     }
     var body: some View {
         NavigationStack {
-            DaybookForm(title: job.name, subtitle: "Fee & breakdown") {
+            DaybookForm(title: job.displayName, subtitle: "Fee & breakdown") {
                 Section { FeeFields(draft: $draft) } header: { Text("Overall fee") } footer: {
                     Text("Leave the amount blank if it’s unknown. Enter 0 for explicitly unpaid work. Changing the breakdown never changes this amount automatically.")
                 }
@@ -94,7 +94,7 @@ struct FeeDetailView: View {
     @State private var error: String?
     private var revisions: [FeeRevision] { (job.feeRevisions ?? []).sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) } }
     var body: some View {
-        DaybookForm(title: job.name, subtitle: "Fee & breakdown") {
+        DaybookForm(title: job.displayName, subtitle: "Fee & breakdown") {
             Section("Overall fee") {
                 Text(job.feeSummary).font(.title2).monospacedDigit()
                 if let value = try? job.currentFee() {

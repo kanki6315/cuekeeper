@@ -11,7 +11,7 @@ struct CalendarSettingsView: View {
                 Text(calendar.status).accessibilityIdentifier("calendar-status")
                 if calendar.busy { ProgressView("Updating Calendar…") }
             } header: { Text("Connection") } footer: {
-                Text("One device manages calendar entries to prevent duplicates. Edits from your other devices reach Calendar when this device opens Cuekeeper with an internet connection. Your jobs remain usable offline.")
+                Text("One device manages calendar entries to prevent duplicates. Edits from your other devices reach Calendar when this device opens Cuekeeper with an internet connection. Your events remain usable offline.")
             }
             if calendar.calendars.isEmpty {
                 Section {
@@ -33,7 +33,7 @@ struct CalendarSettingsView: View {
                 Section {
                     Button("Update Calendar Now") { Task { await calendar.sync() } }.disabled(calendar.busy)
                     Button("Disconnect & Remove Entries", role: .destructive) { disconnect = true }.disabled(calendar.busy)
-                } footer: { Text("Only Cuekeeper-marked entries in the selected calendar are managed. Editing Calendar events does not change your jobs in Cuekeeper.") }
+                } footer: { Text("Only Cuekeeper-marked entries in the selected calendar are managed. Editing Calendar events does not change your events in Cuekeeper.") }
             }
         }
         .navigationTitle("Calendar").navigationBarTitleDisplayMode(.inline)

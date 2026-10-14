@@ -36,7 +36,7 @@ struct LibraryView: View {
         .overlay {
             if records.isEmpty {
                 ContentUnavailableView("No \(kind.title.lowercased()) yet", systemImage: kind == .client ? "person.2" : "person.text.rectangle",
-                    description: Text("Add one here or while editing a job."))
+                    description: Text("Add one here or while editing a booking."))
             }
         }
         .navigationTitle(kind.title).navigationBarTitleDisplayMode(.inline)
@@ -60,7 +60,7 @@ struct LibraryDetailView: View {
             related.formUnion(series.additionalJobs ?? [])
             related.formUnion((series.sessions ?? []).filter { $0.deletedAt == nil && $0.overridesSeries }.compactMap(\.job))
         }
-        return related.sorted { $0.startDay > $1.startDay }
+        return related.sorted { $0.eventStartDay > $1.eventStartDay }
     }
     var body: some View {
         DaybookForm(title: record.value(forKey: "name") as? String ?? kind.singular) {
@@ -83,16 +83,16 @@ struct LibraryDetailView: View {
                 Section {
                     DaybookPicker("Year", selection: $year) {
                         Text("All years").tag("")
-                        ForEach(Array(Set(jobs.map { String($0.startDay.prefix(4)) })).sorted().reversed(), id: \.self) { Text($0).tag($0) }
+                        ForEach(Array(Set(jobs.map { String($0.eventStartDay.prefix(4)) })).sorted().reversed(), id: \.self) { Text($0).tag($0) }
                     }
                 }
             }
-            Section("Related jobs") {
-                if jobs.isEmpty { Text("No jobs yet").foregroundStyle(Color("SecondaryText")) }
-                ForEach(jobs.filter { year.isEmpty || $0.startDay.hasPrefix(year) }, id: \.objectID) { job in
+            Section("Related bookings") {
+                if jobs.isEmpty { Text("No bookings yet").foregroundStyle(Color("SecondaryText")) }
+                ForEach(jobs.filter { year.isEmpty || $0.eventStartDay.hasPrefix(year) }, id: \.objectID) { job in
                     DaybookLink { JobDetailView(job: job) } label: {
                         VStack(alignment: .leading) {
-                            HStack { Text(job.name).font(.headline); Spacer(); BookingBadge(status: job.bookingStatus) }
+                            HStack { Text(job.displayName).font(.headline); Spacer(); BookingBadge(status: job.bookingStatus) }
                             Text(dateRange(job)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                         }
                     }
@@ -136,7 +136,7 @@ struct LibraryEditor: View {
                         }
                         DaybookTextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...10)
                     }
-                } footer: { Text("Renaming updates the name shown on related jobs.") }
+                } footer: { Text("Renaming updates the name shown on related bookings.") }
             }
             .navigationTitle("\(record == nil ? "Add" : "Edit") \(kind.singular)")
             .navigationBarTitleDisplayMode(.inline)
@@ -177,14 +177,19 @@ struct NamedLibraryField: View {
     private var names: [String] { Array(Set(records.compactMap { $0.value(forKey: "name") as? String }).union(name.isEmpty ? [] : [name])).sorted() }
     var body: some View {
         if !records.isEmpty {
-            DaybookPicker("Reuse \(kind.singular.lowercased())", selection: $name, identifier: "reuse-\(kind.entity)") {
-                Text("None").tag("")
-                ForEach(names, id: \.self) { Text($0).tag($0) }
-            }
+            Menu {
+                Button("Clear selection") { name = "" }
+                ForEach(names, id: \.self) { value in Button(value) { name = value } }
+            } label: {
+                HStack {
+                    Text("Choose saved \(kind.singular.lowercased())").multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    Spacer(); Image(systemName: "chevron.down")
+                }.frame(minHeight: 44)
+            }.accessibilityIdentifier("reuse-\(kind.entity)")
         }
         VStack(alignment: .leading, spacing: 6) {
             Text(kind.singular).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-            DaybookTextField("Name (optional)", text: $name)
+            DaybookTextField(kind == .client ? "Client name" : "Name (optional)", text: $name)
                 .focused($focused).submitLabel(.done).onSubmit { focused = false }
                 .accessibilityLabel("\(kind.singular) name")
                 .accessibilityIdentifier("library-\(kind.entity)-name")

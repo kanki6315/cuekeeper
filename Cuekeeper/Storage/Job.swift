@@ -5,12 +5,14 @@ import Foundation
 final class Job: NSManagedObject {
     @NSManaged var id: UUID?
     @NSManaged var name: String
+    @NSManaged var event: WorkEvent?
     @NSManaged var startDay: String
     @NSManaged var endDay: String
     @NSManaged var bookingStatus: String
     @NSManaged var createdAt: Date?
     @NSManaged var workArrangement: String
     @NSManaged var location: String
+    @NSManaged var trackPlaceID: String
     @NSManaged var timeZoneID: String
     @NSManaged var notes: String
     @NSManaged var project: WorkProject?
@@ -121,6 +123,7 @@ struct JobDraft: Equatable {
     var roleNames: Set<String> = []
     var workArrangement = WorkArrangement.unspecified
     var location = ""
+    var trackPlaceID = ""
     var timeZoneID = ""
     var notes = ""
     var fee: FeeDraft? = FeeDraft()
@@ -143,6 +146,7 @@ struct JobDraft: Equatable {
         roleNames = Set(job.roleNames)
         workArrangement = WorkArrangement(rawValue: job.workArrangement) ?? .unspecified
         location = job.location
+        trackPlaceID = job.trackPlaceID
         timeZoneID = job.timeZoneID
         notes = job.notes
         fee = try? FeeDraft(job: job)
@@ -160,17 +164,21 @@ struct JobDraft: Equatable {
     }
 
     @discardableResult
-    func save(in context: NSManagedObjectContext, editing objectID: NSManagedObjectID? = nil, baseline: JobDraft? = nil, transaction: NSManagedObjectContext? = nil) throws -> NSManagedObjectID {
+    func save(in context: NSManagedObjectContext, editing objectID: NSManagedObjectID? = nil, baseline: JobDraft? = nil) throws -> NSManagedObjectID {
+        let writer = isolatedWriter(context)
+        let job = try stage(in: writer, editing: objectID, baseline: baseline)
+        try writer.save()
+        context.refreshAllObjects()
+        return job.objectID
+    }
+
+    /// Stage in a caller-owned transaction so event + first booking save atomically.
+    func stage(in writer: NSManagedObjectContext, editing objectID: NSManagedObjectID? = nil, baseline: JobDraft? = nil) throws -> Job {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw ValidationError.nameRequired }
         let start = Day.string(from: startDate)
         let end = Day.string(from: endDate)
         guard start <= end else { throw ValidationError.invalidDates }
         guard timeZoneID.isEmpty || TimeZone(identifier: timeZoneID) != nil else { throw ValidationError.invalidTimeZone }
-        // Isolate each save: a failed edit cannot leak partial changes into the UI context.
-        let writer = transaction ?? NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        writer.persistentStoreCoordinator = context.persistentStoreCoordinator
-        writer.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         let job: Job
         if let objectID {
             job = try writer.existingObject(with: objectID) as! Job
@@ -183,7 +191,7 @@ struct JobDraft: Equatable {
         let original: [String: String]? = baseline.map {
             ["name": $0.name, "startDay": Day.string(from: $0.startDate), "endDay": Day.string(from: $0.endDate),
              "bookingStatus": $0.bookingStatus.rawValue, "workArrangement": $0.workArrangement.rawValue,
-             "location": $0.location, "timeZoneID": $0.timeZoneID, "notes": $0.notes]
+             "location": $0.location, "trackPlaceID": $0.trackPlaceID, "timeZoneID": $0.timeZoneID, "notes": $0.notes]
         }
         func assign(_ key: String, _ value: String) {
             guard original?[key] != value else { return }
@@ -195,6 +203,7 @@ struct JobDraft: Equatable {
         assign("bookingStatus", bookingStatus.rawValue)
         assign("workArrangement", workArrangement.rawValue)
         assign("location", location.trimmingCharacters(in: .whitespacesAndNewlines))
+        assign("trackPlaceID", trackPlaceID)
         assign("timeZoneID", timeZoneID)
         assign("notes", notes)
         guard job.startDay <= job.endDay else { throw ValidationError.invalidDates }
@@ -234,11 +243,7 @@ struct JobDraft: Equatable {
             let changed = try fee.value() != (try? job.currentFee())
             if objectID == nil || changed { try fee.apply(to: job, in: writer) }
         }
-        if transaction == nil {
-            try writer.save()
-            context.performAndWait { context.refreshAllObjects() }
-        } else { try writer.obtainPermanentIDs(for: [job]) }
-        return job.objectID
+        return job
     }
 
     enum ValidationError: LocalizedError {
@@ -266,7 +271,8 @@ struct JobFilter {
 
     func includes(_ job: Job, query: String = "") -> Bool {
         let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (search.isEmpty || job.name.localizedCaseInsensitiveContains(search)
+        return (search.isEmpty || job.displayName.localizedCaseInsensitiveContains(search)
+                || job.eventTitle.localizedCaseInsensitiveContains(search)
                 || (job.client?.name.localizedCaseInsensitiveContains(search) ?? false)
                 || (job.project?.name.localizedCaseInsensitiveContains(search) ?? false)
                 || job.seriesNames.contains { $0.localizedCaseInsensitiveContains(search) }
@@ -276,6 +282,6 @@ struct JobFilter {
             && (project.isEmpty || job.project?.name == project)
             && (series.isEmpty || job.seriesNames.contains(series) || job.activeSessions.contains { $0.effectiveSeriesNames.contains(series) })
             && (role.isEmpty || job.roleNames.contains(role) || job.activeSessions.contains { $0.roleNames.contains(role) })
-            && (!usesDates || (job.endDay >= Day.string(from: start) && job.startDay <= Day.string(from: end)))
+            && (!usesDates || (job.eventEndDay >= Day.string(from: start) && job.eventStartDay <= Day.string(from: end)))
     }
 }

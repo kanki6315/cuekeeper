@@ -4,14 +4,16 @@
   "format": 1,
   "model_files": {
     "Cuekeeper/CalendarPublisher.swift": "9896206112dee4a506513dc9b6c590602e9c2856defb379af94af22a54110d2e",
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "1bc9b921074758165fd0730043b4d4c5dc533d6768b365bbb2e3221a27f57188",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "03a98c54f8bb35239f8cf9f1c496b52ebf380043625da18a46b8f636cd05821f",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/Cuekeeper.xcdatamodel/contents": "266a5735e7e410299f213394961b3b4cf9670f6b323fb3fb5fc6397193da0dff",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV2.xcdatamodel/contents": "428f1d885575311b82db85743d1a064c0b5c93d4f3139ab1ee6196e2f3d59161",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV3.xcdatamodel/contents": "f8baeb536b99143aa2181e7d88ce2f0052e57c7f2c1f5d11e72424af57fe8e5b",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV4.xcdatamodel/contents": "832e05a7018450e88e6fdf915fa7489efd87423b21ab1d6eb4cff60831eaae36",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV5.xcdatamodel/contents": "a1bd3c6d52bfbeed2a7a41d111eccc370f4bf59e9e76873aa9747c2a43dd82d6",
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV6.xcdatamodel/contents": "3e2c306abe5e4b867952345a9e8e46950abacbd83a9ca1901334a6f82422596f"
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV6.xcdatamodel/contents": "3e2c306abe5e4b867952345a9e8e46950abacbd83a9ca1901334a6f82422596f",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV7.xcdatamodel/contents": "2549ab3a31397adce5b1d5c73bb66e887fbd5fb681edcf421e65b979fb508a53",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV8.xcdatamodel/contents": "c2f5f54baedcbb2a78b80776e0462231fa9cf402973bb3133709ddff12003e13"
   },
-  "schema_sha256": "05ac5602de551548d46db6ca06bf1556207b85fc70d7a21fe5b7f8292e24b748",
+  "schema_sha256": "efde7fb42851242d8c1c9d4c937cca1c670b17559eca7cdbe9fd994c00f3dfe0",
   "team": "TDBAHN96B3"
 }

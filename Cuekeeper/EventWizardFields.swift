@@ -35,6 +35,7 @@ struct SeriesSelectionFields: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkSeries.name, ascending: true)]) private var library: FetchedResults<WorkSeries>
     @State private var adding = false
     @State private var newName = ""
+    @FocusState private var enteringName: Bool
     var body: some View {
         ForEach(names.sorted(), id: \.self) { name in
             HStack {
@@ -43,13 +44,16 @@ struct SeriesSelectionFields: View {
                     .labelStyle(.iconOnly).accessibilityLabel("Remove \(name)").frame(minWidth: 44, minHeight: 44)
             }
         }
-        DisclosureGroup("Add championship", isExpanded: $adding) {
+        Button { enteringName = false; adding.toggle() } label: {
+            HStack { Text("Add championship"); Spacer(); Image(systemName: adding ? "chevron.up" : "chevron.down") }
+        }
+        if adding {
             let available = Array(Set(library.map(\.name))).filter { !names.contains($0) }.sorted()
             if !available.isEmpty {
-                Menu("Reuse championship") { ForEach(available, id: \.self) { name in Button(name) { names.insert(name); adding = false } } }
+                Menu("Reuse championship") { ForEach(available, id: \.self) { name in Button(name) { enteringName = false; names.insert(name); adding = false } } }
             }
             HStack {
-                DaybookTextField("New championship", text: $newName).onSubmit(add)
+                DaybookTextField("New championship", text: $newName).focused($enteringName).onSubmit(add)
                 Button("Add", action: add).disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -58,7 +62,7 @@ struct SeriesSelectionFields: View {
         let value = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
         let canonical = library.first { $0.name.compare(value, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }?.name ?? value
-        names.insert(canonical); newName = ""; adding = false
+        enteringName = false; names.insert(canonical); newName = ""; adding = false
     }
 }
 

@@ -21,8 +21,8 @@ final class DesignCaptureTests: XCTestCase {
             let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             shot.name = "\(theme)-\(tablet ? "ipad-landscape" : "iphone")-\(route)"; shot.lifetime = .keepAlways; add(shot)
             if route == "root" {
-                let jobs = app.buttons["Jobs"].firstMatch
-                if jobs.exists { jobs.tap() } else { app.staticTexts["Jobs"].firstMatch.tap() }
+                let jobs = app.buttons["Events"].firstMatch
+                if jobs.exists { jobs.tap() } else { app.staticTexts["Events"].firstMatch.tap() }
                 Thread.sleep(forTimeInterval: 0.5)
                 let jobsShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); jobsShot.name = "\(theme)-\(tablet ? "ipad-landscape" : "iphone")-jobs"; jobsShot.lifetime = .keepAlways; add(jobsShot)
             }

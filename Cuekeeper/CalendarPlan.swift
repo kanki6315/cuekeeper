@@ -1,4 +1,5 @@
 import Foundation
+import CoreData
 
 struct CalendarEntry: Equatable {
     let key: String
@@ -20,20 +21,24 @@ struct CalendarPlan {
     var bounds: [Date] = []
 
     init(jobs: [Job]) {
+        var publishedEvents = Set<NSManagedObjectID>()
         for job in jobs {
             guard let id = job.id else { continue }
-            let key = "job/\(id.uuidString)"
+            let legacyKey = "job/\(id.uuidString)"
+            knownKeys.insert(legacyKey)
+            let key = job.event?.id.map { "event/\($0.uuidString)" } ?? legacyKey
             knownKeys.insert(key)
+            let publishPlaceholder = publishedEvents.insert(job.eventKey).inserted
             var calendar = Calendar(identifier: .gregorian)
-            let zone = TimeZone(identifier: job.timeZoneID) ?? .current
+            let zone = TimeZone(identifier: job.eventTimeZoneID) ?? .current
             calendar.timeZone = zone
-            if let start = Day.date(from: job.startDay, timeZone: zone),
-               let last = Day.date(from: job.endDay, timeZone: zone),
+            if let start = Day.date(from: job.eventStartDay, timeZone: zone),
+               let last = Day.date(from: job.eventEndDay, timeZone: zone),
                let end = calendar.date(byAdding: .day, value: 1, to: last) {
                 bounds += [start, end]
-                if job.bookingStatus != "cancelled" {
-                    desired[key] = CalendarEntry(key: key, title: job.name, start: start, end: end, allDay: true,
-                                                 timeZoneID: zone.identifier, notes: "Cuekeeper · \(job.bookingStatus.capitalized)\n\(job.notes)", location: job.location)
+                if publishPlaceholder && job.eventBookings.contains(where: { $0.bookingStatus != "cancelled" }) {
+                    desired[key] = CalendarEntry(key: key, title: job.event == nil ? job.displayName : job.eventTitle, start: start, end: end, allDay: true,
+                                                 timeZoneID: zone.identifier, notes: job.event == nil ? "Cuekeeper · \(job.bookingStatus.capitalized)\n\(job.notes)" : job.eventBookings.map { "\($0.client?.name ?? "Client to add") · \($0.bookingStatus.capitalized)" }.joined(separator: "\n") + "\n" + job.eventNotes, location: job.eventLocation)
                 }
             }
             for session in job.sessions ?? [] {
@@ -43,8 +48,8 @@ struct CalendarPlan {
                 if let start = session.startTime { bounds.append(start) }
                 if let end = session.endTime { bounds.append(end) }
                 if session.calendarEligible, let start = session.startTime, let end = session.endTime {
-                    desired[key] = CalendarEntry(key: key, title: "\(job.name) · \(session.title)", start: start, end: end, allDay: false,
-                                                 timeZoneID: session.timeZoneID, notes: session.notes, location: job.location)
+                    desired[key] = CalendarEntry(key: key, title: "\(job.displayName) · \(session.title)", start: start, end: end, allDay: false,
+                                                 timeZoneID: session.timeZoneID, notes: session.notes, location: job.eventLocation)
                 }
             }
         }
@@ -52,7 +57,7 @@ struct CalendarPlan {
     static func key(from url: URL?) -> String? {
         guard let url, url.scheme == "cuekeeper", url.host == "calendar" else { return nil }
         let parts = url.pathComponents.filter { $0 != "/" }
-        guard parts.count == 2, ["job", "session"].contains(parts[0]), UUID(uuidString: parts[1]) != nil else { return nil }
+        guard parts.count == 2, ["job", "session", "event"].contains(parts[0]), UUID(uuidString: parts[1]) != nil else { return nil }
         return parts.joined(separator: "/")
     }
 }

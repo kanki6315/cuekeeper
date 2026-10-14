@@ -12,6 +12,8 @@ struct EventWizardView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Client.name, ascending: true)]) private var clients: FetchedResults<Client>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
+    let onSave: ((NSManagedObjectID) -> Void)?
+    @State private var choosingTrack = false
     @State private var draft = EventCreationDraft()
     @State private var inactiveDraft = EventCreationDraft()
     @State private var season = false
@@ -33,7 +35,18 @@ struct EventWizardView: View {
     private var workDate: Date { draft.events.map(\.details.startDate).min() ?? Date() }
     private var fee: Binding<FeeDraft> { Binding(get: { draft.shared.fee ?? FeeDraft() }, set: { draft.shared.fee = $0 }) }
 
-    init() {
+    init(template: Job? = nil, onSave: ((NSManagedObjectID) -> Void)? = nil) {
+        self.onSave = onSave
+        if let template {
+            var value = EventCreationDraft()
+            value.shared = JobDraft.duplicate(template)
+            value.shared.location = template.eventLocation
+            value.shared.trackPlaceID = template.eventTrackPlaceID
+            value.shared.timeZoneID = template.eventTimeZoneID
+            value.events[0].details.name = template.eventTitle
+            _draft = State(initialValue: value)
+            _selected = State(initialValue: [.context, .work, .payment])
+        }
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--ui-testing"), args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") {
@@ -72,6 +85,7 @@ struct EventWizardView: View {
             if fee.wrappedValue.amount.isEmpty, fee.wrappedValue.lines.isEmpty, draft.payment.amount.isEmpty,
                let client = clients.first(where: { $0.name == name }) { draft.shared.fee?.currency = client.defaultCurrency }
         }
+        .sheet(isPresented: $choosingTrack) { TrackLocationPicker(placeID: $draft.shared.trackPlaceID) }
         .saveErrorAlert($error)
         .confirmationDialog("Discard this event draft?", isPresented: $discard, titleVisibility: .visible) {
             Button("Discard Draft", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
@@ -240,6 +254,9 @@ struct EventWizardView: View {
         Section {
             DaybookPicker("Arrangement", selection: $draft.shared.workArrangement) { ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) } }
             LocationSearchField(text: $draft.shared.location)
+            if !draft.shared.trackPlaceID.isEmpty { SavedTrackView(placeID: draft.shared.trackPlaceID) }
+            Button(draft.shared.trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }.accessibilityIdentifier("choose-track")
+            if !draft.shared.trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { draft.shared.trackPlaceID = "" } }
             DaybookLink { TimeZonePicker(selection: $draft.shared.timeZoneID, date: workDate) } label: { WizardSummaryRow("Timezone", value: zoneLabel(draft.shared.timeZoneID, date: workDate)) }
         } header: { Text("Where you’ll work") } footer: {
             if season { Text("Timezone offsets are shown for the first event, \(workDate.formatted(date: .abbreviated, time: .omitted)). Each session uses its own date and timezone.") }
@@ -333,7 +350,7 @@ struct EventWizardView: View {
                 path = route.dropFirst().prefix { $0 != .payment }.map { $0 } + [.payment]
                 throw error
             }
-            try draft.save(in: context); dismiss()
+            let ids = try draft.save(in: context); if let id = ids.first { onSave?(id) }; dismiss()
         } catch { self.error = error.localizedDescription }
     }
 }

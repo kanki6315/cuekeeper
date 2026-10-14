@@ -8,23 +8,36 @@ struct SessionEditorView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
     let job: Job
     let session: WorkSession?
+    private let savedBaseline: SessionDraft?
     @State private var draft: SessionDraft
     @State private var initial: SessionDraft
     @State private var error: String?
     @State private var discard = false
+    @State private var details = false
+    @State private var savedCount = 0
 
-    init(job: Job, session: WorkSession? = nil) {
-        self.job = job; self.session = session
-        let value = session.map(SessionDraft.init(session:)) ?? SessionDraft(job: job)
+    init(job: Job, session: WorkSession? = nil, duplicating: Bool = false) {
+        self.job = job; self.session = duplicating ? nil : session
+        self.savedBaseline = duplicating ? nil : session.map(SessionDraft.init(session:))
+        var value = session.map(SessionDraft.init(session:)) ?? SessionDraft(job: job)
+        if duplicating { value.scheduleStatus = "tentative"; value.links = []; value.notes = "" }
+        // Resolve legacy inheritance once for the simple, direct series picker.
+        value.seriesName = session?.effectiveSeries?.name ?? job.series?.name ?? ""
+        value.overridesSeries = true
         _draft = State(initialValue: value); _initial = State(initialValue: value)
     }
     private var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
     var body: some View {
         NavigationStack {
             DaybookForm {
+                if savedCount > 0 { Section { Text("\(savedCount) saved. Ready for the next session.").foregroundStyle(Color("SecondaryText")) } }
+                Section("Client & series") {
+                    Text(job.client?.name ?? "Client to add")
+                    NamedLibraryField(kind: .series, name: $draft.seriesName)
+                }
                 Section {
-                    DaybookTextField("Session name (optional)", text: $draft.name).accessibilityIdentifier("session-name")
-                    Toggle("Date known", isOn: Binding(get: { !draft.day.isEmpty }, set: { draft.day = $0 ? job.startDay : "" }))
+                    DaybookTextField("Session type or name (optional)", text: $draft.name).accessibilityIdentifier("session-name")
+                    Toggle("Date known", isOn: Binding(get: { !draft.day.isEmpty }, set: { draft.day = $0 ? job.eventStartDay : "" }))
                         .disabled(draft.startTime != nil)
                     if !draft.day.isEmpty {
                         if typeSize.isAccessibilitySize {
@@ -57,24 +70,17 @@ struct SessionEditorView: View {
                     Picker("Coverage", selection: $draft.coverage) {
                         Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering")
                     }.pickerStyle(.segmented).accessibilityIdentifier("session-coverage")
-                } header: { Text("Status & coverage") } footer: { Text("Confirming times does not change whether you’re covering this session or whether the job is booked.") }
-                Section("Series") {
-                    Toggle("Use job series", isOn: Binding(get: { !draft.overridesSeries }, set: { draft.overridesSeries = !$0 }))
-                        .accessibilityIdentifier("session-use-job-series")
-                    if draft.overridesSeries {
-                        NamedLibraryField(kind: .series, name: $draft.seriesName)
-                    } else {
-                        Text(job.seriesNames.count > 1 ? "Choose a series for this session using the override." : (job.seriesNames.first ?? "No event series selected")).foregroundStyle(Color("SecondaryText"))
-                    }
-                }
+                } header: { Text("Status & coverage") } footer: { Text("Confirming times does not change whether you’re covering this session or whether the client booking is confirmed.") }
+                Section { Button(details ? "Fewer details" : "Roles, notes & links", systemImage: "slider.horizontal.3") { details.toggle() } }
+                if details {
                 Section("Roles") {
-                    Toggle("Override job roles", isOn: $draft.overridesRoles)
+                    Toggle("Override booking roles", isOn: $draft.overridesRoles)
                     if draft.overridesRoles {
                         ForEach(Array(Set(roles.map(\.name))).sorted(), id: \.self) { role in
                             Toggle(role, isOn: Binding(get: { draft.roleNames.contains(role) }, set: { if $0 { draft.roleNames.insert(role) } else { draft.roleNames.remove(role) } }))
                         }
-                        if roles.isEmpty { Text("Add reusable roles in Settings or in the job editor.").foregroundStyle(Color("SecondaryText")) }
-                    } else { Text(job.roleNames.isEmpty ? "No job roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(Color("SecondaryText")) }
+                        if roles.isEmpty { Text("Add reusable roles in Settings or in the booking editor.").foregroundStyle(Color("SecondaryText")) }
+                    } else { Text(job.roleNames.isEmpty ? "No booking roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(Color("SecondaryText")) }
                 }
                 Section("Notes") { DaybookTextField("Session notes", text: $draft.notes, axis: .vertical).lineLimit(3...8) }
                 Section {
@@ -90,6 +96,10 @@ struct SessionEditorView: View {
                     Button("Add Broadcast Link", systemImage: "link.badge.plus") { draft.links.append(LinkDraft()) }
                         .accessibilityIdentifier("add-broadcast-link")
                 } header: { Text("Broadcast links") } footer: { Text("Save links when they’re available. They aren’t required to save a session.") }
+                }
+                if session == nil {
+                    Section { Button("Save & Add Another", systemImage: "plus") { save(another: true) }.accessibilityIdentifier("save-another-session") }
+                }
             }
             .environment(\.timeZone, zone)
             .navigationTitle(session == nil ? "Add Session" : "Edit Session").navigationBarTitleDisplayMode(.inline)
@@ -97,8 +107,7 @@ struct SessionEditorView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if draft != initial { discard = true } else { dismiss() } } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        do { try draft.save(in: context, jobID: job.objectID, editing: session?.objectID, baseline: session == nil ? nil : initial); dismiss() }
-                        catch { self.error = error.localizedDescription }
+                        save(another: false)
                     }.accessibilityIdentifier("save-session")
                 }
             }
@@ -110,6 +119,17 @@ struct SessionEditorView: View {
         .presentationSizing(.page)
         .presentationDetents([.large])
         .presentationBackground(Color("PageBackground"))
+    }
+    private func save(another: Bool) {
+        do {
+            let savedID = try draft.save(in: context, jobID: job.objectID, editing: session?.objectID, baseline: savedBaseline)
+            if another {
+                if let saved = try context.existingObject(with: savedID) as? WorkSession { draft.day = saved.day }
+                draft.name = ""; draft.startTime = nil; draft.endTime = nil; draft.callTime = nil
+                draft.scheduleStatus = "tentative"; draft.notes = ""; draft.links = []
+                initial = draft; savedCount += 1
+            } else { dismiss() }
+        } catch { self.error = error.localizedDescription }
     }
     private var sessionDatePicker: some View {
         DatePicker("Session date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date)
@@ -157,7 +177,7 @@ struct SessionsSection: View {
                 DaybookLink { SessionDetailView(session: session) } label: { SessionRow(session: session) }
             }
         } header: { HStack { Text("Sessions"); Spacer(); Button("Add", systemImage: "plus", action: onAdd).buttonStyle(DaybookSecondaryButton()).accessibilityLabel("Add Session").accessibilityIdentifier("add-session") } } footer: {
-            if sessions.isEmpty { Text("No sessions yet. Placeholder job dates remain useful until the schedule arrives.") }
+            if sessions.isEmpty { Text("No sessions yet. Event dates remain useful until the schedule arrives.") }
             else if sessions.contains(where: { $0.scheduleStatus != "confirmed" }) { Text("Some session times are still tentative.") }
         }
     }
@@ -183,10 +203,11 @@ struct SessionDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var editing = false
     @State private var removing = false
+    @State private var duplicating = false
     @State private var error: String?
     var body: some View {
-        DaybookForm(title: session.title, subtitle: session.job?.name ?? "") {
-            Section("Series") { Text(session.effectiveSeriesNames.isEmpty ? "Not added" : session.effectiveSeriesNames.joined(separator: ", ")) }
+        DaybookForm(title: session.title, subtitle: session.job?.displayName ?? "") {
+            Section("Series") { Text(session.effectiveSeries?.name ?? "Not added") }
             Section("Schedule") {
                 Text(session.scheduleDescription)
                 LabeledContent("Schedule", value: session.scheduleStatus.capitalized)
@@ -213,13 +234,15 @@ struct SessionDetailView: View {
                 Text(session.calendarEligible ? "Eligible for a timed entry in your connected calendar." : "A timed entry requires confirmed start and end times and coverage set to Covering.")
                 Text(calendar.status).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             }
+            Section { Button("Duplicate Session", systemImage: "plus.square.on.square") { duplicating = true }.accessibilityIdentifier("duplicate-session") }
             Section { Button("Remove Session", role: .destructive) { removing = true } }
         }
         .navigationTitle(session.title).navigationBarTitleDisplayMode(.inline)
         .toolbar { Button("Edit") { editing = true }.accessibilityIdentifier("edit-session") }
         .sheet(isPresented: $editing) { if let job = session.job { SessionEditorView(job: job, session: session) } }
+        .sheet(isPresented: $duplicating) { if let job = session.job { SessionEditorView(job: job, session: session, duplicating: true) } }
         .saveErrorAlert($error)
-        .confirmationDialog("Remove this session and its links from the job?", isPresented: $removing, titleVisibility: .visible) {
+        .confirmationDialog("Remove this session and its links from the booking?", isPresented: $removing, titleVisibility: .visible) {
             Button("Remove Session", role: .destructive) {
                 do {
                     let writer = isolatedWriter(context)

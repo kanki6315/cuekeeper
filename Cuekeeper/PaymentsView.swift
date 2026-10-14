@@ -21,7 +21,7 @@ struct PaymentsView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         ForEach(0..<3) { kind in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(["Expected job fees", "Invoiced outstanding", "Payments received"][kind]).font(.headline)
+                                Text(["Expected booking fees", "Invoiced outstanding", "Payments received"][kind]).font(.headline)
                                 Text("USD · \(total("USD", kind: kind))").monospacedDigit()
                                 Text("EUR · \(total("EUR", kind: kind))").monospacedDigit()
                             }
@@ -33,7 +33,7 @@ struct PaymentsView: View {
                     ForEach(0..<3) { kind in
                         if kind > 0 { Divider().gridCellColumns(3) }
                         GridRow {
-                            Text(["Expected job fees", "Invoiced outstanding", "Payments received"][kind]).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+                            Text(["Expected booking fees", "Invoiced outstanding", "Payments received"][kind]).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
                             Text(total("USD", kind: kind)).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
                             Text(total("EUR", kind: kind)).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
                         }.font(.subheadline)
@@ -41,7 +41,7 @@ struct PaymentsView: View {
                 }.fixedSize(horizontal: false, vertical: true)
                 }
             } footer: {
-                Text("Currencies are tracked separately. Expected fees include invoiced jobs; they are not added to outstanding balances. Records needing review are excluded.")
+                Text("Currencies are tracked separately. Expected fees include invoiced bookings; they are not added to outstanding balances. Records needing review are excluded.")
             }
             if invoices.contains(where: { $0.issue(in: context) != nil }) || jobs.contains(where: { (try? $0.currentFee()) == nil }) {
             Section {
@@ -51,7 +51,7 @@ struct PaymentsView: View {
                     }
                 }
                 ForEach(jobs.filter { (try? $0.currentFee()) == nil }, id: \.objectID) { job in
-                    DaybookLink("\(job.name) · Fee needs review") { FeeDetailView(job: job) }
+                    DaybookLink("\(job.displayName) · Fee needs review") { FeeDetailView(job: job) }
                 }
             } header: { Text("Needs review") }
             }
@@ -61,7 +61,7 @@ struct PaymentsView: View {
                     DaybookLink { JobDetailView(job: job) } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "doc.text").foregroundStyle(Color("SecondaryText"))
-                            VStack(alignment: .leading, spacing: 5) { Text(job.name).font(.headline); Text(job.client?.name ?? "").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                            VStack(alignment: .leading, spacing: 5) { Text(job.displayName).font(.headline); Text(job.client?.name ?? "").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                             Spacer(); Text(job.feeSummary).font(.subheadline).monospacedDigit()
                         }
                     }
@@ -87,14 +87,14 @@ struct PaymentsView: View {
             Section("Direct payments") {
                 ForEach(jobs.filter { !($0.payments ?? []).isEmpty }, id: \.objectID) { job in
                     DaybookLink { JobDetailView(job: job) } label: {
-                        VStack(alignment: .leading, spacing: 4) { Text(job.name); Text(job.billingSummary(in: context)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                        VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                     }
                 }
             }
             }
             invoiceSection("Voided invoices", status: "void")
             if jobs.isEmpty && invoices.isEmpty {
-                Section { Text("Add jobs and their fees to start tracking invoices and payments. You can leave fees unknown until they’re agreed.").foregroundStyle(Color("SecondaryText")) }
+                Section { Text("Add client bookings and fees to start tracking invoices and payments. You can leave fees unknown until they’re agreed.").foregroundStyle(Color("SecondaryText")) }
             }
         }
         .navigationTitle("")
@@ -187,7 +187,7 @@ struct InvoiceDetailView: View {
                             DaybookLink { JobDetailView(job: job) } label: { LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
                         } else { LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
                     }
-                } header: { Text("Billed jobs") } footer: { Text("Payments settle this invoice as a whole. Partial payments are not assigned to individual jobs.") }
+                } header: { Text("Billed bookings") } footer: { Text("Payments settle this invoice as a whole. Partial payments are not assigned to individual bookings.") }
                 Section("Balance") {
                     LabeledContent("Total") { Text(Money.format((try? value.total()) ?? 0, currency: value.currency)).monospacedDigit().foregroundStyle(.primary) }
                         .padding(.vertical, 4)
@@ -270,7 +270,7 @@ struct PaymentEditorView: View {
             DaybookForm {
                 Section {
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(invoice?.title ?? job?.name ?? "").font(.title2.bold())
+                        Text(invoice?.title ?? job?.displayName ?? "").font(.title2.bold())
                         Text(invoice?.client?.name ?? job?.client?.name ?? "").font(.subheadline).foregroundStyle(Color("SecondaryText"))
                     }
                     if let balance = try? invoice?.balance() { LabeledContent("Balance before payment") { Text(Money.format(balance, currency: currency)).fontWeight(.semibold).monospacedDigit() } }
@@ -339,7 +339,7 @@ struct ReceiptDetailView: View {
             Section {
                 Text(Money.format(payment.amount, currency: payment.currency)).font(.title2).monospacedDigit()
                 LabeledContent("Received", value: payment.receivedAt?.formatted(date: .abbreviated, time: .omitted) ?? "Unknown")
-                LabeledContent("For", value: payment.invoice?.title ?? payment.job?.name ?? "Syncing")
+                LabeledContent("For", value: payment.invoice?.title ?? payment.job?.displayName ?? "Syncing")
                 if !payment.note.isEmpty { Text(payment.note).textSelection(.enabled) }
                 if reversed { Text("This receipt has been reversed. Both entries remain in history.") }
                 else if payment.reversesID == nil { Button("Reverse Payment", role: .destructive) { reverse = true } }
@@ -366,7 +366,7 @@ struct JobBillingSection: View {
             }
             if (try? job.activeInvoices(in: context).isEmpty) == true {
                 if job.client != nil && (try? job.directPaid()) == 0 { Button("Add to Invoice", action: onInvoice).accessibilityIdentifier("add-job-invoice") }
-                else if job.client == nil { Text("Add a client to include this job on an invoice.").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                else if job.client == nil { Text("Add a client to include this booking on an invoice.").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                 Button("Record Direct Payment", action: onPayment).accessibilityIdentifier("record-direct-payment")
             }
             ReceiptLinks(records: Array(job.payments ?? []))

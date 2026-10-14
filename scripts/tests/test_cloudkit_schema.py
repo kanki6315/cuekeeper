@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,6 +28,10 @@ class SchemaTests(unittest.TestCase):
     def export(self, source=SCHEMA):
         with patch.object(ck, "remote_export", return_value=source):
             ck.export_development(self.root)
+
+    def test_v7_export_is_not_sufficient_for_v8_release(self):
+        with self.assertRaisesRegex(ck.SchemaError, "CD_WorkEvent"):
+            ck.require_model_records(self.root, re.sub(r"RECORD TYPE CD_WorkEvent\s*\(.*?\);", "", SCHEMA, flags=re.S))
 
     def test_missing_snapshot_blocks_release(self):
         with self.assertRaisesRegex(ck.SchemaError, "No reviewed schema"):

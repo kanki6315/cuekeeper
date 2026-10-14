@@ -60,6 +60,7 @@ struct CuekeeperApp: App {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
+                    EventWeatherStore.shared.purgeExpired()
                     calendar.refreshCalendars(); calendar.scheduleSync()
                     Task { await persistence.refreshAccountStatus() }
                 }

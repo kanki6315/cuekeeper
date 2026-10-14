@@ -64,6 +64,21 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(second.seriesNames.count, 2)
     }
 
+    func testWizardPaymentFailureRollsBackAndValidReceiptPersists() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var draft = EventCreationDraft()
+        draft.shared.fee?.amount = "200"
+        draft.payment.amount = "-1"
+        XCTAssertThrowsError(try draft.save(in: context))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 0)
+        draft.payment.amount = "50"
+        let id = try XCTUnwrap(draft.save(in: context).first)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        XCTAssertEqual(try job.directPaid(), 5000)
+        XCTAssertEqual(try job.currentFee().amount, 20000)
+    }
+
     func testSessionCopyPreservesWallTimeAcrossDSTAndAppends() throws {
         var draft = EventCreationDraft()
         let sourceDate = try XCTUnwrap(Day.date(from: "2026-03-01"))

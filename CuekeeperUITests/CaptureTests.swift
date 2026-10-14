@@ -27,6 +27,24 @@ final class CaptureTests: XCTestCase {
         }
     }
 
+    private func finishEvent(_ app: XCUIApplication) {
+        let next = app.buttons["wizard-continue"]
+        if next.exists {
+            for _ in 0..<8 where next.exists {
+                next.tap()
+                if app.alerts.firstMatch.exists { break }
+            }
+            XCTAssertTrue(next.waitForNonExistence(timeout: 5), "Wizard should save and dismiss")
+        } else { app.buttons["save-job"].tap() }
+    }
+
+    private func openCreationContext(_ app: XCUIApplication) {
+        let toggle = app.switches["Client, project & series"]
+        reveal(toggle, in: app); toggle.tap()
+        app.buttons["wizard-continue"].tap()
+        XCTAssertTrue(app.textFields["job-client"].waitForExistence(timeout: 5))
+    }
+
     func testSyncFeedbackRemainsNonblocking() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--ui-test-sync-receiving"]
@@ -63,14 +81,15 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["job-end-date"].firstMatch.waitForExistence(timeout: 3))
         multiple.switches.firstMatch.tap()
         XCTAssertFalse(app.descendants(matching: .any)["job-end-date"].firstMatch.exists)
-        app.buttons["job-more-details"].tap()
+        openCreationContext(app)
         let project = app.textFields["library-WorkProject-name"]
         project.tap(); project.typeText("IMSA\n")
-        let series = app.textFields["library-WorkSeries-name"]
+        app.buttons["Add championship"].tap()
+        let series = app.textFields["New championship"]
         series.tap(); series.typeText("Main championship\n")
         let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         editor.name = "Project and series editor"; editor.lifetime = .keepAlways; add(editor)
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
         app.staticTexts["Daytona"].firstMatch.tap()
         XCTAssertTrue(app.buttons["job-project-link"].waitForExistence(timeout: 5))
@@ -82,7 +101,7 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "IMSA")).firstMatch.waitForExistence(timeout: 10))
         app.buttons["add-job"].tap()
         app.textFields["job-name"].tap(); app.textFields["job-name"].typeText("Sebring\n")
-        app.buttons["job-more-details"].tap()
+        openCreationContext(app)
         XCTAssertTrue(app.buttons["reuse-WorkProject"].waitForExistence(timeout: 5))
         app.buttons["reuse-WorkProject"].tap(); app.buttons["IMSA"].tap()
         XCTAssertEqual(app.textFields["library-WorkProject-name"].value as? String, "IMSA")
@@ -97,7 +116,7 @@ final class CaptureTests: XCTestCase {
         let name = app.textFields["job-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Archive broadcast\n")
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
         app.staticTexts["Archive broadcast"].firstMatch.tap()
         let addLink = app.buttons["job-add-link"]
@@ -129,7 +148,7 @@ final class CaptureTests: XCTestCase {
         let name = app.textFields["job-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Invoiced show\n")
-        app.buttons["job-more-details"].tap()
+        openCreationContext(app)
         let client = app.textFields["job-client"]
         for _ in 0..<8 where !client.isHittable {
             // Scroll within the form sheet; a whole-window swipe can skip a field on iPad.
@@ -138,7 +157,7 @@ final class CaptureTests: XCTestCase {
                 .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)))
         }
         client.tap(); client.typeText("Studio Network")
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         app.staticTexts["Invoiced show"].firstMatch.tap()
         let addInvoice = app.buttons["add-job-invoice"]
@@ -196,7 +215,7 @@ final class CaptureTests: XCTestCase {
         let name = app.textFields["job-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Paid broadcast")
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         XCTAssertTrue(app.staticTexts["Paid broadcast"].waitForExistence(timeout: 5))
         app.staticTexts["Paid broadcast"].firstMatch.tap()
         let fee = app.buttons["job-fee"]
@@ -225,7 +244,7 @@ final class CaptureTests: XCTestCase {
         let name = app.textFields["job-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Breakdown broadcast\n")
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         XCTAssertTrue(app.buttons["save-job"].waitForNonExistence(timeout: 5))
         app.staticTexts["Breakdown broadcast"].firstMatch.tap()
         let fee = app.buttons["job-fee"]
@@ -263,7 +282,7 @@ final class CaptureTests: XCTestCase {
         let name = app.textFields["job-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Studio finals")
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         XCTAssertTrue(app.staticTexts["Studio finals"].waitForExistence(timeout: 5))
         app.staticTexts["Studio finals"].firstMatch.tap()
         let addSession = app.buttons["add-session"]
@@ -308,10 +327,10 @@ final class CaptureTests: XCTestCase {
         app.buttons["add-job"].tap()
         let name = app.textFields["job-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["save-job"].isEnabled)
+        XCTAssertTrue(app.buttons["wizard-continue"].isEnabled)
         name.tap()
         name.typeText("Test broadcast")
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         XCTAssertTrue(app.staticTexts["Test broadcast"].waitForExistence(timeout: 5))
         app.terminate()
@@ -333,7 +352,7 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
         name.typeText("Weekend coverage")
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         XCTAssertTrue(app.staticTexts["Weekend coverage"].waitForExistence(timeout: 5))
         app.staticTexts["Weekend coverage"].firstMatch.tap()
@@ -349,7 +368,7 @@ final class CaptureTests: XCTestCase {
         editor.name = "Job editor"
         editor.lifetime = .keepAlways
         add(editor)
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         let status = app.descendants(matching: .any)["booking-status"].firstMatch
         XCTAssertTrue(status.waitForExistence(timeout: 5))
@@ -368,7 +387,7 @@ final class CaptureTests: XCTestCase {
         dates.switches.firstMatch.tap()
         let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: app.buttons["save-job"])
         XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 5), .completed)
-        app.buttons["save-job"].tap()
+        finishEvent(app)
         if !app.buttons["save-job"].waitForNonExistence(timeout: 5) { print("SAVE_JOB_FAILURE\n" + app.debugDescription); XCTFail("Job save did not dismiss") }
         XCTAssertTrue(app.buttons["edit-job"].waitForExistence(timeout: 5))
         app.buttons["edit-job"].tap()

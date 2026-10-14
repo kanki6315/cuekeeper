@@ -8,7 +8,7 @@ struct EventDateFields: View {
     @Binding var draft: JobDraft
     @State private var multipleDays = false
     var body: some View {
-        Toggle("Multiple days", isOn: $multipleDays)
+        Toggle("Multiple days", isOn: $multipleDays).accessibilityIdentifier("job-multiple-days")
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading) {
                 Text(multipleDays ? "Start" : "Date")
@@ -17,12 +17,12 @@ struct EventDateFields: View {
             if multipleDays {
                 VStack(alignment: .leading) {
                     Text("End")
-                    DatePicker("End", selection: $draft.endDate, in: draft.startDate..., displayedComponents: .date).datePickerStyle(.wheel).labelsHidden()
+                    DatePicker("End", selection: $draft.endDate, in: draft.startDate..., displayedComponents: .date).datePickerStyle(.wheel).labelsHidden().accessibilityIdentifier("job-end-date")
                 }
             }
         } else {
             DatePicker(multipleDays ? "Start" : "Date", selection: $draft.startDate, displayedComponents: .date)
-            if multipleDays { DatePicker("End", selection: $draft.endDate, in: draft.startDate..., displayedComponents: .date) }
+            if multipleDays { DatePicker("End", selection: $draft.endDate, in: draft.startDate..., displayedComponents: .date).accessibilityIdentifier("job-end-date") }
         }
         Group {}.onAppear { multipleDays = Day.string(from: draft.startDate) != Day.string(from: draft.endDate) }
             .onChange(of: draft.startDate) { _, date in if !multipleDays || draft.endDate < date { draft.endDate = date } }
@@ -98,7 +98,7 @@ struct LocationSearchField: View {
                         Text(result.title).foregroundStyle(.primary)
                         if !result.subtitle.isEmpty { Text(result.subtitle).font(.caption).foregroundStyle(.secondary) }
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                }
+                }.accessibilityIdentifier("location-suggestion")
             }
             if suggestions.unavailable { Text("Suggestions unavailable. You can still enter a location.").font(.caption).foregroundStyle(.secondary) }
         }
@@ -110,8 +110,8 @@ struct WizardSessionFields: View {
     var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
     var body: some View {
         DaybookTextField("Session title", text: $draft.name)
-        DatePicker("Date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date).disabled(draft.startTime != nil)
-        DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()) } label: { LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date())) }
+        DatePicker("Date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date).environment(\.timeZone, zone).disabled(draft.startTime != nil).accessibilityIdentifier("wizard-session-date").accessibilityLabel("Session date")
+        DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date()) } label: { LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date())) }
         if draft.timeZoneID.isEmpty { Text("Choose a timezone to add times.").font(.caption).foregroundStyle(.secondary) }
         optionalTime("Start", value: $draft.startTime)
         optionalTime("End", value: $draft.endTime)

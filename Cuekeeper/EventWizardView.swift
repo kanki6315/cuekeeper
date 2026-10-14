@@ -30,7 +30,31 @@ struct EventWizardView: View {
     @State private var copyNotice = ""
     @State private var breakdown = false
     private var route: [EventWizardStep] { [.setup] + (season ? [.events] : []) + EventWizardStep.optional.filter { selected.contains($0) } + [.review] }
+    private var workDate: Date { draft.events.map(\.details.startDate).min() ?? Date() }
     private var fee: Binding<FeeDraft> { Binding(get: { draft.shared.fee ?? FeeDraft() }, set: { draft.shared.fee = $0 }) }
+
+    init() {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--ui-testing"), args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") {
+            var sample = EventCreationDraft()
+            sample.shared.clientName = "Northside Sports"
+            sample.shared.projectName = "Winter broadcasts"
+            sample.shared.roleNames = ["Commentator"]
+            sample.shared.workArrangement = .onSite
+            sample.shared.location = "Silverstone Circuit"
+            sample.shared.timeZoneID = "America/New_York"
+            sample.shared.fee?.amount = "1200"
+            sample.events[0].details.startDate = Day.date(from: "2026-01-15")!
+            sample.events[0].details.endDate = sample.events[0].details.startDate
+            sample.events[0].sessions = [SessionDraft(day: "2026-01-15", timeZoneID: "Asia/Tokyo")]
+            _draft = State(initialValue: sample)
+            _selected = State(initialValue: Set(EventWizardStep.optional))
+            _path = State(initialValue: args.contains("--wizard-foreign-session") ? [.sessions] : [.review])
+            _activeSession = State(initialValue: args.contains("--wizard-foreign-session") ? 0 : nil)
+        }
+        #endif
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -150,7 +174,7 @@ struct EventWizardView: View {
                     ForEach(Array(Set(clients.map(\.name)).union([draft.shared.clientName])).sorted(), id: \.self) { if !$0.isEmpty { Text($0).tag($0) } }
                 }
             }
-            DaybookTextField("Client name", text: $draft.shared.clientName)
+            DaybookTextField("Client name", text: $draft.shared.clientName).accessibilityIdentifier("job-client")
             NamedLibraryField(kind: .project, name: $draft.shared.projectName)
         }
         Section(season ? "Shared series" : "Series") { SeriesSelectionFields(names: $draft.shared.seriesNames) }
@@ -213,10 +237,12 @@ struct EventWizardView: View {
                 Button("Add") { let name = newRole.trimmingCharacters(in: .whitespacesAndNewlines); if !name.isEmpty { draft.shared.roleNames.insert(name); newRole = "" } }.disabled(newRole.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        Section("Where you’ll work") {
+        Section {
             DaybookPicker("Arrangement", selection: $draft.shared.workArrangement) { ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) } }
             LocationSearchField(text: $draft.shared.location)
-            DaybookLink { TimeZonePicker(selection: $draft.shared.timeZoneID) } label: { LabeledContent("Timezone", value: zoneLabel(draft.shared.timeZoneID)) }
+            DaybookLink { TimeZonePicker(selection: $draft.shared.timeZoneID, date: workDate) } label: { WizardSummaryRow("Timezone", value: zoneLabel(draft.shared.timeZoneID, date: workDate)) }
+        } header: { Text("Where you’ll work") } footer: {
+            if season { Text("Timezone offsets are shown for the first event, \(workDate.formatted(date: .abbreviated, time: .omitted)). Each session uses its own date and timezone.") }
         }
     }
     @ViewBuilder private var paymentPage: some View {
@@ -238,16 +264,23 @@ struct EventWizardView: View {
     @ViewBuilder private var reviewPage: some View {
         Section(season ? "Event calendar" : "Event") { eventRows }
         Section("Summary") {
-            LabeledContent("Booking", value: draft.shared.bookingStatus.title)
-            if !draft.shared.clientName.isEmpty { LabeledContent("Client", value: draft.shared.clientName) }
-            if !draft.shared.projectName.isEmpty { LabeledContent("Project", value: draft.shared.projectName) }
-            if !draft.shared.seriesNames.isEmpty { LabeledContent("Series", value: draft.shared.seriesNames.sorted().joined(separator: ", ")) }
+            WizardSummaryRow("Booking", value: draft.shared.bookingStatus.title)
+            if !draft.shared.clientName.isEmpty { WizardSummaryRow("Client", value: draft.shared.clientName) }
+            if !draft.shared.projectName.isEmpty { WizardSummaryRow("Project", value: draft.shared.projectName) }
+            if !draft.shared.seriesNames.isEmpty { WizardSummaryRow("Series", value: draft.shared.seriesNames.sorted().joined(separator: ", ")) }
+            if !draft.shared.roleNames.isEmpty || draft.shared.workArrangement != .unspecified || !draft.shared.location.isEmpty {
+                Button {
+                    selected.insert(.work); path = Array(route.dropFirst().prefix { $0 != .work }) + [.work]
+                } label: {
+                    WizardSummaryRow("Work", value: (draft.shared.roleNames.sorted() + (draft.shared.workArrangement == .unspecified ? [] : [draft.shared.workArrangement.title]) + (draft.shared.location.isEmpty ? [] : [draft.shared.location])).joined(separator: " · "))
+                }.buttonStyle(.plain).accessibilityHint("Edit role and location")
+            }
             let count = draft.events.reduce(0) { $0 + $1.sessions.count }
-            if count > 0 { LabeledContent("Sessions", value: "\(count)") }
-            LabeledContent(season ? "Fee per event" : "Fee", value: (try? fee.wrappedValue.value().amount).map { Money.format($0, currency: fee.wrappedValue.currency) } ?? "Unknown")
+            if count > 0 { WizardSummaryRow("Sessions", value: "\(count)") }
+            WizardSummaryRow(season ? "Fee per event" : "Fee", value: (try? fee.wrappedValue.value().amount).map { Money.format($0, currency: fee.wrappedValue.currency) } ?? "Unknown")
             if let total = try? FeeValue(lines: fee.wrappedValue.lines).total(), !fee.wrappedValue.lines.isEmpty,
-               total != (try? Money.parse(fee.wrappedValue.amount)) { LabeledContent("Breakdown total", value: Money.format(total, currency: fee.wrappedValue.currency)).foregroundStyle(Color("AmberText")) }
-            if !season, let received = try? Money.parse(draft.payment.amount) { LabeledContent("Received", value: Money.format(received, currency: fee.wrappedValue.currency)) }
+               total != (try? Money.parse(fee.wrappedValue.amount)) { WizardSummaryRow("Breakdown total", value: Money.format(total, currency: fee.wrappedValue.currency)).foregroundStyle(Color("AmberText")) }
+            if !season, let received = try? Money.parse(draft.payment.amount) { WizardSummaryRow("Received", value: Money.format(received, currency: fee.wrappedValue.currency)) }
         }
         Section {
             Menu("Edit details") {
@@ -323,5 +356,20 @@ struct FeeBreakdownFields: View {
             LabeledContent("Breakdown total", value: Money.format(total, currency: draft.currency))
             Button("Use breakdown total as overall fee") { draft.amount = Money.text(total) }.disabled(total < 0)
         }
+    }
+}
+
+struct WizardSummaryRow: View {
+    let title: String
+    let value: String
+    @Environment(\.dynamicTypeSize) private var typeSize
+    init(_ title: String, value: String) { self.title = title; self.value = value }
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                Text(value).foregroundStyle(Color("SecondaryText")).fixedSize(horizontal: false, vertical: true)
+            }.accessibilityElement(children: .combine)
+        } else { LabeledContent(title, value: value) }
     }
 }

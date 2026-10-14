@@ -1,0 +1,45 @@
+Revision 4 — discussion mockup only. Production app unchanged.
+THESIS: Required dates, optional custom title, and user-selected sections form a dynamic wizard. Edit focused detail; finish with a short review.
+OWN-WORLD: Existing Combined Glass/Daybook palette and native-style grouped fields, switches, library pickers and segmented controls. Browser approximates native controls.
+STORY: Select context, sessions, role/location, fee/payment. Add multiple sessions, reopening one editor at a time. Optional fee breakdown stays independent from overall fee. Review essentials with edit links.
+FIRST VIEWPORT: Optional title, required date with Multiple days toggle, and optional section switches. Phone sheet; iPad side outline.
+FORM: User-directed refinement. Timezone names lead instead of city names; underlying IANA IDs preserve DST. UTC offsets reflect session/event date. Curated timezone subset is illustrative. Work timezone and every session timezone remain independent.
+FINISH: Source checks and independent source review; browser rendering remains blocked by admin policy. Historical storyboard.png is revision 1, not current evidence.
+
+Locations: Apple-style typeahead design with explicit simulated suggestions. Fixtures match venue/city queries, keyboard arrows/Enter/Escape, and keep custom typed locations. No Apple Maps service request or native location API is implemented in this HTML.
+Sessions: Add session collapses previous editor; session headers reopen; removal available. Season event selector scopes sessions to each event. Session date follows Start when present. Timezone, start/end/call, schedule and coverage stay per session.
+Fees: Provide fee breakdown reveals description, quantity and rate lines, supports negative adjustment rates, calculates a total, and exposes explicit Use breakdown total as overall fee. Toggling off hides but preserves lines. Changed items never silently revise overall fee. Incomplete items are surfaced for correction before creation.
+Review: title/date/booking, client/project and work when entered, session count, overall fee and received amount. Breakdown discrepancy remains visible. Season dates behind disclosure. No exhaustive empty-field list; summary rows return to their editor. Other configured values retained.
+Limits: no persistence, sync, calendar or payment writes. Monetary arithmetic is illustrative JS, not the native exact-decimal implementation. Optional title is proposed behavior. Required event dates match current native model. No production DESIGN.md changes.
+
+Revision 5 supersedes the single event-series concept: multiple series can be
+selected directly on setup using switches and an Add series field. This is a
+proposed model change; native Job.series currently remains singular. Season
+setup establishes shared series; individual events inherit or explicitly
+replace the set with their own selection (including none). Session-level series
+selection/default rules are not demonstrated in this prototype; do not infer
+that choosing several event series assigns all of them to every session.
+One event / Season-multiple events now lives inside the setup screen; season
+primary action reads Add events. Add event sits above the batch list. Existing
+paste-list and per-event editing remain. No intentional multiple-event omission.
+Routine helper subtitles and instructions removed. Retained helper content is
+limited to meaningful state retention, money semantics, timezone offset behavior,
+validation and simulation disclosures. Series shown in compact review and batch
+rows. Source-harness checks passed multi-selection, shared inheritance, individual
+overrides, batch add and scope entry, alongside existing route/session/fee checks.
+
+Revision 6: Series moved from initial setup into Client, project & series.
+Only selected championships are listed. Add championship expands a reuse picker
+and new championship entry; existing library choices are not automatically
+rendered as switches. Individual event overrides use the same add/remove UI.
+Series summary on review returns to the context step.
+Session page for a season offers Copy sessions to other events. Current event
+is source; user selects destinations. Copy appends independent session objects.
+Default copies outlines with destination start date and blank times. Optional
+Include session times shifts civil dates relative to source/destination event
+starts while retaining wall-clock times and IANA timezone. All copies reset
+schedule to Tentative and coverage to Undecided. Originals and existing
+destination sessions remain intact. User must review changed schedules.
+Review now displays the complete event-date agenda immediately, without a
+collapsed disclosure. Source checks passed series placement, copy independence,
+append behavior, civil-date shift, reset statuses and expanded agenda.

@@ -1,0 +1,75 @@
+Native event wizard implementation
+Branch: feature/event-creation-wizard
+
+242f313 adds the V7 model, multiple event series and an atomic creation
+transaction. f86c732 adds the native wizard and reusable fields; 1421f41 adds
+review repairs and regression coverage. Main sources:
+Cuekeeper/EventWizardView.swift, EventWizardFields.swift and
+Storage/EventCreation.swift; JobEditorView routes new jobs into the wizard.
+
+Implemented behavior
+- One event or season, required dates and optional multi-day range, suggested
+  title or custom override, and selected optional sections with retained data.
+- Client/project context with selected championships and explicit add/reuse;
+  shared series with preserved per-event overrides, including none.
+- Multiple collapsible sessions; copies append independent drafts. Outline
+  copies omit times; timed copies shift civil dates while preserving local
+  clock times, reject nonexistent DST times and reset schedule/coverage.
+- Named timezones with date-aware offsets, separate work/session zones,
+  MKLocalSearchCompleter suggestions and manual location entry.
+- Exact native fee arithmetic, independent optional breakdown with explicit
+  adoption, unknown versus zero, per-event season fees and individual receipts.
+- Full event calendar at review, concise configured details and edit controls.
+  Events, sessions and eligible single-event payment save atomically; failures
+  roll back the transaction and retain the editable draft.
+
+Series semantics
+V7 extends the event relationship while preserving legacy series membership.
+Sessions still have a singular override. An unoverridden session inherits only
+when its event has exactly one series; multiple event series do not silently
+choose one or assign all championships to every session.
+
+Design extension
+The wizard uses existing Daybook forms, matte panels, semantic SF text, native
+controls, glass actions and appearance-aware assets. It extends the incumbent
+world. DESIGN.md and the sidecar remain unchanged; the prior quick-editor
+narrative and known sidecar drift are recorded here rather than repaired.
+
+Checked evidence
+- /tmp/cuekeeper-wizard-repair-verification.log: all 26 unit tests passed, plus
+  the corrected populated accessibility review, Tokyo January 15 session-date
+  and winter work timezone UTC−05:00 runtime check on iPhone.
+- /tmp/cuekeeper-wizard-ipad-repair-final.log: corrected targeted runtime check
+  passed on iPad (TEST EXECUTE SUCCEEDED).
+- /tmp/cuekeeper-wizard-final-ui-tests.log and
+  /tmp/cuekeeper-wizard-ipad-final-tests.log: four wizard UI tests passed on
+  each device before the final targeted repair checks.
+- /tmp/cuekeeper-wizard-regression-tests.log: all ten CaptureTests passed.
+  The combined run failed only in the new repair test's obsolete Date locator;
+  that locator was corrected and the separate iPhone/iPad reruns above passed.
+- /tmp/cuekeeper-wizard-location-tests.log: championship reuse/new selection
+  and live Apple suggestions passed on iPhone without a service skip.
+- Current simulator captures are local, ignored files under
+  .impeccable/review/event-wizard/. Populated accessibility review captures use
+  iphone-wizard-populated-accessible-review*.png and ipad equivalents;
+  iphone-wizard-foreign-session-date.png and
+  iphone-wizard-winter-work-timezone.png show the latest timezone checks.
+  Captures are simulator evidence, not physical-device validation.
+
+Finish review
+native_finish_reviewer marked all four repairs RESOLVED: session Date uses its
+own timezone; work offsets use the earliest event date with season explanation;
+configured role/arrangement/location have a concise editable Work summary;
+summary labels/values stack at accessibility sizes. Disposition: ship, limited
+to these four repairs. This is not a blanket app or release approval. Repairs
+and regression tests are committed in 1421f41; documentation is maintained
+separately. This documentation pass inspected source, repair diffs and result
+logs and made no code changes or new test runs.
+
+Release limits
+Production CloudKit V7 deployment has not occurred. Normal release gating must
+initialize/export/deploy and verify the V7 schema before a TestFlight upload.
+No upload or release readiness is claimed. Physical-device sync, multi-device
+V7 behavior and real-device accessibility validation remain separate checks.
+HTML browser verification is still policy-blocked; native simulator evidence
+is independent. The HTML and historical storyboard remain concept artifacts.

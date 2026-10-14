@@ -114,10 +114,10 @@ struct SiriEventQuery: EntityQuery {
 
 @AppIntent(schema: .calendar.createEvent)
 struct CreateCalendarEventIntent {
-    static let supportedModes: IntentModes = .foreground
+    static let supportedModes: IntentModes = .foreground(.deferred)
     static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
     @Dependency private var persistence: PersistenceController
-    @Dependency private var handoff: EventWizardHandoff
+    @Dependency private var handoff: EventEditorHandoff
     var title: String
     var startDate: Date
     var endDate: Date?
@@ -136,7 +136,7 @@ struct CreateCalendarEventIntent {
 
     var importNotices: [String] {
         var notices: [String] = []
-        if recurrence != nil { notices.append("Recurrence wasn’t imported. This draft creates one event.") }
+        if recurrence != nil { notices.append("Recurrence wasn’t imported. Only one event was created.") }
         if !attendees.isEmpty { notices.append("Invitees weren’t imported. Cuekeeper won’t send invitations.") }
         return notices
     }
@@ -145,9 +145,7 @@ struct CreateCalendarEventIntent {
     func perform() async throws -> some ReturnsValue<SiriEventEntity> {
         let draft = try makeDraft()
         try await persistence.waitUntilLoaded()
-        // The schema requires a real saved event as its result. Await the wizard's
-        // explicit Create action; never report an unsaved draft as a created event.
-        let id = try await handoff.review(draft, notices: importNotices)
+        let id = try handoff.create(draft, in: persistence.container.viewContext, notices: importNotices)
         let job = try persistence.container.viewContext.existingObject(with: id) as! Job
         guard let event = job.event else { throw RecordError.invalid("The saved event is unavailable.") }
         return .result(value: try SiriEventEntity(event: event))

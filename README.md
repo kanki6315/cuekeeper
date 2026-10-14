@@ -329,36 +329,38 @@ gate still runs before upload. No TestFlight upload was performed in this step.
 ## Siri event creation
 
 The iOS 27 integration uses Apple's `.calendar.createEvent` schema. Siri resolves
-standard calendar parameters, then opens Cuekeeper's existing event wizard with
-an unsaved draft. Add client, championships, roles, fees, or other details and
-review before tapping **Create event**. The intent returns a saved event only
-after that action succeeds. Discarding the wizard or cancelling the intent creates
-no records. A second Siri draft is rejected while one is already open.
+standard calendar parameters and saves a basic event through the wizard's existing
+`EventCreationDraft` transaction. The intent returns that saved event and opens
+Cuekeeper to its detail screen. It does not wait for the user to finish editing.
+Add clients, championships, roles, fees, sessions, or other details through the
+existing editors, anchored to the saved record's permanent ID. These edits update
+the same event. Closing the screen or cancelling an edit keeps the basic event.
+A second Siri creation is rejected while the first event screen remains open.
 
 No App Shortcut trigger phrases are advertised. Existing custom shortcuts using
-the older Create Event action remain compatible, but now open the same review
-wizard instead of saving in the background. The legacy action is hidden from
-new action discovery.
+the older Create Event action remain compatible and use the same save-then-edit
+flow. The legacy action is hidden from new action discovery.
 
 All-day calendar end dates are exclusive; the adapter converts them to the
 wizard's inclusive end day using calendar arithmetic. Timed requests populate a
 session with the original start/end instants and device timezone, leaving its
 schedule tentative and coverage undecided. Missing end times stay unknown.
-Location and notes are carried into the draft. Recurrence and invitees are not
+Location and notes are saved with the event. Recurrence and invitees are not
 imported; a six-second, accessibility-announced notice explains that only one
-event will be created and no invitations will be sent. Invalid date ranges
+event was created and no invitations will be sent. Invalid date ranges
 still fail validation. No Siri audio or full conversation transcript is received.
 
-The intent uses the app's shared persistence controller and `EventCreationDraft`
-transaction. Nothing is written to EventKit directly; the existing designated
-calendar publisher and foreground reconciliation rules remain in effect.
+The intent uses the app's shared persistence controller. Nothing is written to
+EventKit directly; the existing designated calendar publisher and foreground
+reconciliation rules remain in effect.
 
 Validation includes schema metadata export (calendar domain, no App Shortcuts),
-persistence tests for unsaved handoff, explicit save, discard, task cancellation,
-concurrent requests and daylight-saving date conversion, plus simulator wizard
-save/discard and disappearing-notice flows. These do not establish Siri speech
-recognition, schema routing, or foreground continuation on a physical device.
-Test the installed build on an iOS 27 device with supported Siri AI: request an
-all-day event, a timed event, and recurrence/invitees; verify the populated draft,
-notice, discard, save, and cold launch. Opening the wizard requires foreground
-interaction and may require unlocking the device.
+persistence tests for creating once, editing the same record, closing without
+removing it, failed saves, concurrent requests, and daylight-saving date conversion.
+Simulator tests cover editing in place, cancelling edits, and the disappearing
+notice. These do not establish Siri speech recognition, schema routing, or
+foreground handoff on a physical device. Test the installed build on an iOS 27
+device with supported Siri AI: request an all-day event, a timed event, and
+recurrence/invitees; verify the saved event, notice, edits, close, and cold launch.
+Opening the event requires foreground interaction and may require unlocking the
+device.

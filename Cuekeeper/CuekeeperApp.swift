@@ -31,6 +31,7 @@ struct CuekeeperApp: App {
         let controller = PersistenceController(storeURL: storeURL, cloudEnabled: !testing)
         _persistence = StateObject(wrappedValue: controller)
         AppDependencyManager.shared.add(dependency: controller)
+        CuekeeperShortcuts.updateAppShortcutParameters()
     }
 
     var body: some Scene {

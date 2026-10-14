@@ -88,7 +88,10 @@ struct CuekeeperShortcuts: AppShortcutsProvider {
         AppShortcut(intent: CreateEventIntent(), phrases: [
             "Create an event in \(.applicationName)",
             "Add an event in \(.applicationName)",
-            "Create a booking in \(.applicationName)"
+            "Create a booking in \(.applicationName)",
+            "Create a new \(.applicationName) event",
+            "Create a \(.applicationName) event",
+            "Add a new event in \(.applicationName)"
         ], shortTitle: "Create Event", systemImageName: "calendar.badge.plus")
     }
 }

@@ -133,7 +133,7 @@ private struct JobsView: View {
                     Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
                 }
                 if upcomingOnly {
-                    Picker("Show upcoming", selection: $thisWeek) { Text("All upcoming").tag(false); Text("This week").tag(true) }.pickerStyle(.menu)
+                    Picker("Show upcoming", selection: $thisWeek) { Text("All upcoming").tag(false); Text("This week").tag(true) }.pickerStyle(.menu).accessibilityIdentifier("upcoming-scope")
                 } else {
                     Picker("Bookings", selection: $scope) { ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) } }.pickerStyle(.menu)
                 }

@@ -108,14 +108,19 @@ schema by hand.
 
 ## Current schema status
 
-As of October 13, 2026, the V6 Development schema has been deployed to
-Production. The live `./cloudkit.sh check` passed against the reviewed snapshot
-for Cuekeeper 0.1.1. This includes the project and series record types, job
-relationships, and session series overrides, as well as the existing financial
-and calendar records.
+On October 14, 2026, the signed macOS helper successfully initialized the V9
+model in Development and exported the actual schema. The schema export is
+byte-for-byte unchanged from V8; only the current-model fingerprint and V9 model
+entry changed in `schema.json`. Core Data's existing generic many-to-many
+relationship record (`CDMR`) accommodates the additional series relationship.
 
-Local migration tests passed. Schema agreement is verified; cross-device data
-delivery and conflict behavior still need testing on the user's iPhone and iPad.
+Both `./cloudkit.sh check --local-only` and the live `./cloudkit.sh check` passed.
+Production already matches the V9 Development export, so no schema promotion was
+needed for V9. No Production mutation or TestFlight upload was performed during
+this initialization. Logs are under `build/cloudkit-initialize-mac/`.
+
+Schema agreement does not prove cross-device data delivery or conflict behavior;
+those still require device validation.
 
 ## Deploy, then check
 

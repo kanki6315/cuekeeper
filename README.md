@@ -321,6 +321,7 @@ batch-session editors remain available.
 
 V7 (track locations) and V8 (event grouping) are preserved unchanged. V9 adds only
 optional additional booking-series relationships. The checked-in CloudKit export
-is the historical V8 export: initialize, export, review and deploy the V9 schema
-through the normal release gate before distributing this integration. No V9
-schema deployment or upload was performed as part of the merge.
+was refreshed after successful V9 Development initialization on October 14, 2026.
+The exported schema is unchanged from V8 and the live Production comparison
+passes; no Production promotion is needed for this model. The normal release
+gate still runs before upload. No TestFlight upload was performed in this step.

@@ -112,3 +112,18 @@ final class EventWeatherTests: XCTestCase {
         XCTAssertEqual(calls, 1)
     }
 }
+
+final class SessionTimeInputTests: XCTestCase {
+    func testClockFormatsAndInvalidInput() {
+        let zone = TimeZone(identifier: "America/Chicago")!
+        let day = Day.date(from: "2026-10-24", timeZone: zone)!
+        for (input, hours) in [("9:30 AM", 9.5), ("21:30", 21.5), ("12 am", 0), ("12 PM", 12), ("9pm", 21)] {
+            XCTAssertEqual(SessionTimeInput.date(input, on: day, zone: zone), day.addingTimeInterval(hours * 3600), input)
+        }
+        for input in ["", "25:00", "9:60", "0pm", "13am", "9:30junk", "-1"] {
+            XCTAssertNil(SessionTimeInput.date(input, on: day, zone: zone), input)
+        }
+        let spring = Day.date(from: "2026-03-08", timeZone: zone)!
+        XCTAssertNil(SessionTimeInput.date("2:30 AM", on: spring, zone: zone))
+    }
+}

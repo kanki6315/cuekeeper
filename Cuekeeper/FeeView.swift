@@ -12,20 +12,11 @@ struct FeeFields: View {
     }
 }
 
-struct FeeEditorView: View {
-    let job: Job
-    @Environment(\.managedObjectContext) private var context
-    @Environment(\.dismiss) private var dismiss
-    @State private var draft: FeeDraft
-    @State private var initial: FeeDraft
+struct FeeEditingFields: View {
+    @Binding var draft: FeeDraft
     @State private var error: String?
-    @State private var discard = false
-    init(job: Job, draft: FeeDraft) {
-        self.job = job; _draft = State(initialValue: draft); _initial = State(initialValue: draft)
-    }
     var body: some View {
-        NavigationStack {
-            DaybookForm(title: job.displayName, subtitle: "Fee & breakdown") {
+        Group {
                 Section { FeeFields(draft: $draft) } header: { Text("Overall fee") } footer: {
                     Text("Leave the amount blank if it’s unknown. Enter 0 for explicitly unpaid work. Changing the breakdown never changes this amount automatically.")
                 }
@@ -61,6 +52,25 @@ struct FeeEditorView: View {
                         } else { Text("Complete each quantity and rate to calculate the breakdown.").foregroundStyle(Color("SecondaryText")) }
                     }
                 } header: { Text("Optional breakdown") }
+        }.saveErrorAlert($error)
+    }
+}
+
+struct FeeEditorView: View {
+    let job: Job
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: FeeDraft
+    @State private var initial: FeeDraft
+    @State private var error: String?
+    @State private var discard = false
+    init(job: Job, draft: FeeDraft) {
+        self.job = job; _draft = State(initialValue: draft); _initial = State(initialValue: draft)
+    }
+    var body: some View {
+        NavigationStack {
+            DaybookForm(title: job.displayName, subtitle: "Fee & breakdown") {
+                FeeEditingFields(draft: $draft)
             }
             .navigationTitle("Edit Fee").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -91,6 +101,7 @@ private struct PresentedFee: Identifiable {
 struct FeeDetailView: View {
     @ObservedObject var job: Job
     @State private var editing: PresentedFee?
+    @State private var editingEvent = false
     @State private var error: String?
     private var revisions: [FeeRevision] { (job.feeRevisions ?? []).sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) } }
     var body: some View {
@@ -145,10 +156,11 @@ struct FeeDetailView: View {
         }
         .navigationTitle("Fee").navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editing) { FeeEditorView(job: job, draft: $0.draft) }
+        .sheet(isPresented: $editingEvent) { EventEditorView(anchor: job, focusBooking: job.objectID, focusFee: true) }
         .saveErrorAlert($error)
     }
     private func openEditor() {
-        do { editing = PresentedFee(draft: try FeeDraft(job: job)) }
+        do { _ = try FeeDraft(job: job); editingEvent = true }
         catch { self.error = error.localizedDescription }
     }
 }

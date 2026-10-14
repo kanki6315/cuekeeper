@@ -6,7 +6,7 @@ struct JobEditorView: View {
     var job: Job? = nil
     var duplicating = false
     var body: some View {
-        if let job, !duplicating { BookingEditorView(anchor: job, booking: job) }
+        if let job, !duplicating { EventEditorView(anchor: job, focusBooking: job.objectID) }
         else { EventWizardView(template: duplicating ? job : nil) }
     }
 }

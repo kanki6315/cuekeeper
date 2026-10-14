@@ -8,17 +8,28 @@ struct EventEditorView: View {
     let onSave: ((NSManagedObjectID) -> Void)?
     @State private var draft: EventDraft
     @State private var initial: EventDraft
+    @State private var bookings: [EventBookingDraft]
+    @State private var expandedBookings: Set<NSManagedObjectID>
+    @State private var expandedFees: Set<NSManagedObjectID>
+    @State private var eventExpanded: Bool
+    let focusBooking: NSManagedObjectID?
+    let focusFee: Bool
     @State private var booking = JobDraft()
-    private let initialBooking: JobDraft
+    @State private var initialBooking: JobDraft
     @State private var multipleDays: Bool
     @State private var details = false
     @State private var choosingTrack = false
     @State private var discard = false
     @State private var error: String?
-    init(anchor: Job? = nil, template: Job? = nil, onSave: ((NSManagedObjectID) -> Void)? = nil) {
+    init(anchor: Job? = nil, template: Job? = nil, focusBooking: NSManagedObjectID? = nil, focusFee: Bool = false, onSave: ((NSManagedObjectID) -> Void)? = nil) {
         self.anchor = anchor; self.onSave = onSave
+        self.focusBooking = focusBooking; self.focusFee = focusFee
+        _eventExpanded = State(initialValue: focusBooking == nil)
+        _expandedFees = State(initialValue: Set(focusFee ? (focusBooking.map { [$0] } ?? []) : []))
+        _bookings = State(initialValue: anchor?.eventBookings.map(EventBookingDraft.init(job:)) ?? [])
+        _expandedBookings = State(initialValue: Set(focusBooking.map { [$0] } ?? []))
         let first = template.map(JobDraft.duplicate) ?? JobDraft()
-        initialBooking = first; _booking = State(initialValue: first)
+        _initialBooking = State(initialValue: first); _booking = State(initialValue: first)
         var value = anchor.map(EventDraft.init(anchor:)) ?? EventDraft()
         if let template {
             value = EventDraft(anchor: template); value.startDate = Date(); value.endDate = value.startDate; value.notes = ""
@@ -26,36 +37,101 @@ struct EventEditorView: View {
         _draft = State(initialValue: value); _initial = State(initialValue: value)
         _multipleDays = State(initialValue: Day.string(from: value.startDate) != Day.string(from: value.endDate))
     }
-    private var changed: Bool { draft != initial || booking != initialBooking }
+    private var changed: Bool { draft != initial || booking != initialBooking || bookings.contains { $0.changed } }
+    private var eventSummary: String {
+        let start = draft.startDate.formatted(date: .abbreviated, time: .omitted)
+        let dates = multipleDays ? "\(start) – \(draft.endDate.formatted(date: .abbreviated, time: .omitted))" : start
+        return [draft.title, dates, draft.location].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    private func bookingSummary(_ booking: JobDraft) -> String {
+        [booking.bookingStatus.title, booking.workArrangement.title, booking.projectName, feeSummary(booking.fee)]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    private func expansion(_ id: NSManagedObjectID, in selection: Binding<Set<NSManagedObjectID>>) -> Binding<Bool> {
+        Binding(get: { selection.wrappedValue.contains(id) }, set: { expanded in
+            if expanded { selection.wrappedValue.insert(id) } else { selection.wrappedValue.remove(id) }
+        })
+    }
     var body: some View {
         NavigationStack {
-            DaybookForm {
-                Section("Dates") {
-                    DatePicker(multipleDays ? "Start" : "Date", selection: $draft.startDate, displayedComponents: .date)
-                    Toggle("Multiple days", isOn: $multipleDays).accessibilityIdentifier("job-multiple-days")
-                    if multipleDays { DatePicker("End", selection: $draft.endDate, in: draft.startDate..., displayedComponents: .date).accessibilityIdentifier("job-end-date") }
-                }
-                if anchor == nil {
-                    Section("First client booking") {
-                        NamedLibraryField(kind: .client, name: $booking.clientName)
-                        FeeFields(draft: Binding(get: { booking.fee ?? FeeDraft() }, set: { booking.fee = $0 }))
+            ScrollViewReader { proxy in
+                DaybookForm {
+                    if !bookings.isEmpty {
+                        Section {
+                            Menu("Jump to section", systemImage: "list.bullet") {
+                                Button("Event details") { eventExpanded = true; proxy.scrollTo("event-details", anchor: .top) }
+                                ForEach(bookings) { entry in
+                                    Button(entry.draft.clientName.isEmpty ? "Client booking" : entry.draft.clientName) {
+                                        expandedBookings.insert(entry.id)
+                                        proxy.scrollTo(entry.id, anchor: .top)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Section {
+                        DisclosureGroup(isExpanded: $eventExpanded) {
+                            DaybookSections {
+                                Section("Dates") {
+                                    DatePicker(multipleDays ? "Start" : "Date", selection: $draft.startDate, displayedComponents: .date)
+                                    Toggle("Multiple days", isOn: $multipleDays).accessibilityIdentifier("job-multiple-days")
+                                    if multipleDays { DatePicker("End", selection: $draft.endDate, in: draft.startDate..., displayedComponents: .date).accessibilityIdentifier("job-end-date") }
+                                }
+                                if anchor == nil {
+                                    Section("First client booking") {
+                                        NamedLibraryField(kind: .client, name: $booking.clientName)
+                                        FeeFields(draft: Binding(get: { booking.fee ?? FeeDraft() }, set: { booking.fee = $0 }))
+                                    }
+                                }
+                                Section("Location") {
+                                    DaybookTextField("Location (optional)", text: $draft.location).accessibilityIdentifier("job-location")
+                                    if !draft.trackPlaceID.isEmpty { SavedTrackView(placeID: draft.trackPlaceID) }
+                                    Button(draft.trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }.accessibilityIdentifier("choose-track")
+                                    if !draft.trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { draft.trackPlaceID = "" }.accessibilityIdentifier("remove-track") }
+                                    DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startDate) } label: {
+                                        LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Choose timezone" : zoneLabel(draft.timeZoneID, date: draft.startDate))
+                                    }
+                                }
+                                Section {
+                                    DisclosureGroup("Title & notes", isExpanded: $details) {
+                                        DaybookTextField("Custom title (optional)", text: $draft.title).accessibilityIdentifier("event-title")
+                                        DaybookTextField("Shared event notes", text: $draft.notes, axis: .vertical).lineLimit(3...8)
+                                    }
+                                } footer: { Text("The event uses its location and dates as its title unless you add one. Sessions keep their own dates and times when you change event dates.") }
+                            }.padding(.top, 12)
+                        } label: {
+                            EditorSectionLabel(title: "Event details", summary: eventSummary, expanded: eventExpanded)
+                                .accessibilityIdentifier("editor-event-section")
+                        }
+                        .id("event-details")
+                    }
+                    ForEach($bookings) { $entry in
+                        Section {
+                            DisclosureGroup(isExpanded: expansion(entry.id, in: $expandedBookings)) {
+                                VStack(alignment: .leading, spacing: 18) {
+                                    EventBookingFields(draft: $entry.draft, newRole: $entry.newRole,
+                                                       feeExpanded: expansion(entry.id, in: $expandedFees),
+                                                       feeID: "fee-\(entry.id.uriRepresentation())")
+                                }.padding(.top, 12)
+                            } label: {
+                                EditorSectionLabel(title: entry.draft.clientName.isEmpty ? "Client booking" : entry.draft.clientName,
+                                                   summary: bookingSummary(entry.draft), expanded: expandedBookings.contains(entry.id))
+                                    .accessibilityIdentifier("editor-booking-section")
+                            }
+                            .id(entry.id)
+                        }
+
                     }
                 }
-                Section("Location") {
-                    DaybookTextField("Location (optional)", text: $draft.location).accessibilityIdentifier("job-location")
-                    if !draft.trackPlaceID.isEmpty { SavedTrackView(placeID: draft.trackPlaceID) }
-                    Button(draft.trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }.accessibilityIdentifier("choose-track")
-                    if !draft.trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { draft.trackPlaceID = "" }.accessibilityIdentifier("remove-track") }
-                    DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startDate) } label: {
-                        LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Choose timezone" : zoneLabel(draft.timeZoneID, date: draft.startDate))
+                .task {
+                    // The sheet must finish its initial layout before resolving scroll targets.
+                    try? await Task.sleep(for: .milliseconds(350))
+                    guard !Task.isCancelled else { return }
+                    if let focusBooking {
+                        if focusFee { proxy.scrollTo("fee-\(focusBooking.uriRepresentation())", anchor: .top) }
+                        else { proxy.scrollTo(focusBooking, anchor: .top) }
                     }
                 }
-                Section {
-                    DisclosureGroup("Title & notes", isExpanded: $details) {
-                        DaybookTextField("Custom title (optional)", text: $draft.title).accessibilityIdentifier("event-title")
-                        DaybookTextField("Shared event notes", text: $draft.notes, axis: .vertical).lineLimit(3...8)
-                    }
-                } footer: { Text("The event uses its location and dates as its title unless you add one. Sessions keep their own dates and times when you change event dates.") }
             }
             .navigationTitle(anchor == nil ? "Add Event" : "Edit Event").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -63,7 +139,7 @@ struct EventEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         do {
-                            let id = try draft.save(in: context, anchorID: anchor?.objectID, baseline: anchor == nil ? nil : initial, firstBooking: anchor == nil ? booking : nil)
+                            let id = try draft.save(in: context, anchorID: anchor?.objectID, baseline: anchor == nil ? nil : initial, firstBooking: anchor == nil ? booking : nil, bookings: bookings)
                             onSave?(id); dismiss()
                         } catch { self.error = error.localizedDescription }
                     }.disabled(anchor == nil && booking.clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("save-event")
@@ -79,6 +155,77 @@ struct EventEditorView: View {
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
             .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) { Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {} }
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
+    }
+}
+
+private struct EditorSectionLabel: View {
+    let title: String
+    let summary: String
+    let expanded: Bool
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.headline)
+            if !expanded { Text(summary).font(.subheadline).foregroundStyle(Color("SecondaryText")).fixedSize(horizontal: false, vertical: true) }
+        }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .accessibilityElement(children: .combine)
+    }
+}
+
+private func feeSummary(_ draft: FeeDraft?) -> String {
+    guard let draft else { return "Fee needs review" }
+    let amount: String
+    if draft.amount.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { amount = "Fee unknown" }
+    else if let value = try? Money.parse(draft.amount) { amount = Money.format(value, currency: draft.currency) }
+    else { amount = "Amount needs review" }
+    return "\(amount) · \(draft.agreement.capitalized) · \(draft.lines.count) breakdown \(draft.lines.count == 1 ? "item" : "items")"
+}
+
+private struct EventBookingFields: View {
+    @Binding var draft: JobDraft
+    @Binding var newRole: String
+    @Binding var feeExpanded: Bool
+    let feeID: String
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
+    var body: some View {
+        NamedLibraryField(kind: .client, name: $draft.clientName)
+        NamedLibraryField(kind: .project, name: $draft.projectName)
+        SeriesSelectionFields(names: $draft.seriesNames)
+        DaybookPicker("Status", selection: $draft.bookingStatus, identifier: "edit-booking-status") {
+            ForEach(BookingStatus.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        DaybookPicker("Arrangement", selection: $draft.workArrangement) {
+            ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        DisclosureGroup("Roles") {
+            ForEach(Array(Set(roles.map(\.name)).union(draft.roleNames)).sorted(), id: \.self) { role in
+                Toggle(role, isOn: Binding(get: { draft.roleNames.contains(role) }, set: { if $0 { draft.roleNames.insert(role) } else { draft.roleNames.remove(role) } }))
+            }
+            HStack {
+                DaybookTextField("New role", text: $newRole)
+                Button("Add") {
+                    let role = newRole.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !role.isEmpty { draft.roleNames.insert(role) }
+                    newRole = ""
+                }.disabled(newRole.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        DaybookTextField("Booking notes", text: $draft.notes, axis: .vertical).lineLimit(3...8)
+        if !draft.name.isEmpty {
+            DisclosureGroup("Existing record details") { DaybookTextField("Original title", text: $draft.name) }
+        }
+        DisclosureGroup(isExpanded: $feeExpanded) {
+            if draft.fee != nil {
+                DaybookSections {
+                    FeeEditingFields(draft: Binding(get: { draft.fee ?? FeeDraft() }, set: { draft.fee = $0 }))
+                }.padding(.top, 12)
+            } else {
+                Text("This fee needs review. Resolve conflicting revisions from the booking’s Fee screen.").foregroundStyle(Color("SecondaryText"))
+            }
+        } label: {
+            EditorSectionLabel(title: "Fee & breakdown", summary: feeSummary(draft.fee), expanded: feeExpanded)
+                .accessibilityIdentifier("editor-fee-section")
+        }
+        .id(feeID)
     }
 }
 
@@ -107,6 +254,7 @@ struct BookingEditorView: View {
         NavigationStack {
             DaybookForm {
                 Section("Client") { NamedLibraryField(kind: .client, name: $draft.clientName) }
+                Section("Project") { NamedLibraryField(kind: .project, name: $draft.projectName) }
                 Section("Series") { SeriesSelectionFields(names: $draft.seriesNames) }
                 Section("Booking") {
                     DaybookPicker("Status", selection: $draft.bookingStatus, identifier: "edit-booking-status") { ForEach(BookingStatus.allCases, id: \.self) { Text($0.title).tag($0) } }
@@ -128,7 +276,6 @@ struct BookingEditorView: View {
                 if !draft.name.isEmpty || !draft.projectName.isEmpty {
                     Section { DisclosureGroup("Existing record details") {
                         DaybookTextField("Original title", text: $draft.name)
-                        if !draft.projectName.isEmpty { NamedLibraryField(kind: .project, name: $draft.projectName) }
                     } } footer: { Text("Kept from your existing record. New bookings use the client’s name.") }
                 }
             }
@@ -224,8 +371,8 @@ struct EventDetailView: View {
         .toolbar { Button("Edit Event") { editing = true }.accessibilityIdentifier("edit-event") }
         .sheet(isPresented: $editing) { EventEditorView(anchor: anchor) }
         .sheet(isPresented: $addingClient) { BookingEditorView(anchor: anchor) }
-        .sheet(item: $editBooking) { BookingEditorView(anchor: anchor, booking: $0.job) }
-        .sheet(item: $editFee) { FeeEditorView(job: $0.job, draft: $0.draft) }
+        .sheet(item: $editBooking) { EventEditorView(anchor: anchor, focusBooking: $0.job.objectID) }
+        .sheet(item: $editFee) { EventEditorView(anchor: anchor, focusBooking: $0.job.objectID, focusFee: true) }
         .sheet(item: $sessionBooking) { SessionEditorView(job: $0.job) }
         .sheet(isPresented: $batch) { SessionBatchEditorView(anchor: anchor) }
         .sheet(isPresented: $attaching) { AttachBookingView(anchor: anchor) }

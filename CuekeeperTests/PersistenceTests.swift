@@ -31,6 +31,43 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testUnifiedEventEditSavesBookingsProjectsAndFeeHistoryAtomically() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        var first = JobDraft(); first.clientName = "First client"
+        let id = try EventDraft().save(in: context, firstBooking: first)
+        let anchor = try context.existingObject(with: id) as! Job
+        var second = JobDraft(); second.clientName = "Second client"
+        let secondID = try second.saveBooking(in: context, anchorID: id)
+        let baseline = EventDraft(anchor: anchor)
+        var event = baseline; event.location = "New venue"
+        var entries = anchor.eventBookings.map(EventBookingDraft.init(job:))
+        let index = try XCTUnwrap(entries.firstIndex { $0.id == id })
+        let other = try XCTUnwrap(entries.firstIndex { $0.id == secondID })
+        let priorRevisions = anchor.feeRevisions?.count ?? 0
+        entries[index].draft.projectName = "New project"
+        entries[index].draft.fee?.amount = "1250"
+        entries[index].newRole = "Producer"
+        entries[other].draft.fee?.amount = "invalid"
+        XCTAssertThrowsError(try event.save(in: context, anchorID: id, baseline: baseline, bookings: entries))
+        context.refreshAllObjects()
+        XCTAssertEqual(anchor.eventLocation, baseline.location)
+        XCTAssertNil(anchor.project)
+        XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions)
+        entries[other].draft.fee?.amount = "500"
+        try event.save(in: context, anchorID: id, baseline: baseline, bookings: entries)
+        XCTAssertEqual(anchor.eventLocation, "New venue")
+        XCTAssertEqual(anchor.project?.name, "New project")
+        XCTAssertTrue(anchor.roleNames.contains("Producer"))
+        XCTAssertEqual(try anchor.currentFee().amount, 125000)
+        XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions + 1)
+        XCTAssertEqual(anchor.eventBookings.count, 2)
+        let fresh = EventDraft(anchor: anchor)
+        let unchanged = anchor.eventBookings.map(EventBookingDraft.init(job:))
+        try fresh.save(in: context, anchorID: id, baseline: fresh, bookings: unchanged)
+        XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions + 1)
+    }
+
     func testSiriDraftHandoffIsUnsavedUntilWizardCreates() async throws {
         let store = try await openStore()
         let context = store.container.viewContext

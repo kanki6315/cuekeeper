@@ -49,6 +49,19 @@ extension Job {
     }
 }
 
+struct EventBookingDraft: Identifiable, Equatable {
+    let id: NSManagedObjectID
+    var draft: JobDraft
+    let baseline: JobDraft
+    var newRole = ""
+    var changed: Bool { draft != baseline || !newRole.isEmpty }
+    init(job: Job) {
+        id = job.objectID
+        draft = JobDraft(job: job)
+        baseline = draft
+    }
+}
+
 struct EventDraft: Equatable {
     var title = ""
     var startDate = Date()
@@ -73,7 +86,7 @@ struct EventDraft: Equatable {
     }
     @discardableResult
     func save(in context: NSManagedObjectContext, anchorID: NSManagedObjectID? = nil,
-              baseline: EventDraft? = nil, firstBooking: JobDraft? = nil) throws -> NSManagedObjectID {
+              baseline: EventDraft? = nil, firstBooking: JobDraft? = nil, bookings: [EventBookingDraft] = []) throws -> NSManagedObjectID {
         guard startDate <= endDate || Day.string(from: startDate) == Day.string(from: endDate) else { throw JobDraft.ValidationError.invalidDates }
         guard timeZoneID.isEmpty || TimeZone(identifier: timeZoneID) != nil else { throw JobDraft.ValidationError.invalidTimeZone }
         let writer = isolatedWriter(context)
@@ -93,6 +106,15 @@ struct EventDraft: Equatable {
         for (key, value) in values where isNew || baseline?.values[key] != value { event.setValue(value, forKey: key) }
         guard event.startDay <= event.endDay else { throw JobDraft.ValidationError.invalidDates }
         anchor.event = event
+        for entry in bookings where entry.changed {
+            let existing = try writer.existingObject(with: entry.id) as! Job
+            guard existing.event == event else { throw RecordError.invalid("This booking is no longer part of this event. Reopen the editor to review it.") }
+            guard !entry.draft.clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RecordError.invalid("Choose a client for each booking.") }
+            var updated = entry.draft
+            let role = entry.newRole.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !role.isEmpty { updated.roleNames.insert(role) }
+            _ = try updated.stage(in: writer, editing: entry.id, baseline: entry.baseline)
+        }
         try writer.save(); context.refreshAllObjects()
         return anchor.objectID
     }

@@ -1,6 +1,62 @@
 import XCTest
 
 final class EventWizardTests: XCTestCase {
+    func testUnifiedEditorShowsBookingFieldsAndDiscardsChanges() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-job"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 10))
+        let project = app.textFields["library-WorkProject-name"]
+        for _ in 0..<8 where !project.isHittable { app.swipeUp() }
+        XCTAssertTrue(project.isHittable)
+        project.tap()
+        project.typeText(" revised")
+        capture("unified-event-booking")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["Discard Changes"].waitForExistence(timeout: 3))
+        app.buttons["Discard Changes"].tap()
+        XCTAssertTrue(app.navigationBars["Edit Event"].waitForNonExistence(timeout: 5))
+    }
+
+    func testFeeShortcutOpensUnifiedEditorAtFee() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=fee"]
+        app.launch()
+        XCTAssertTrue(app.buttons["edit-fee"].waitForExistence(timeout: 10))
+        app.buttons["edit-fee"].tap()
+        XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 5))
+        capture("unified-event-fee")
+        XCTAssertTrue(app.textFields["overall-fee"].isHittable)
+        app.buttons["Cancel"].tap()
+    }
+
+    func testEditorSectionsCollapseWithSummariesWithoutChangingDraft() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-event"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 10))
+        let event = app.buttons["editor-event-section"]
+        event.tap()
+        XCTAssertFalse(app.textFields["job-location"].exists)
+        let booking = app.buttons["editor-booking-section"].firstMatch
+        XCTAssertTrue(booking.waitForExistence(timeout: 3))
+        XCTAssertTrue(booking.label.contains("$1,200.00"))
+        capture("collapsed-editor-sections")
+        booking.tap()
+        XCTAssertTrue(app.textFields["library-WorkProject-name"].exists)
+        let fee = app.buttons["editor-fee-section"].firstMatch
+        for _ in 0..<8 where !fee.isHittable { app.swipeUp() }
+        fee.tap()
+        XCTAssertTrue(app.textFields["overall-fee"].exists)
+        fee.tap()
+        XCTAssertFalse(app.textFields["overall-fee"].exists)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Edit Event"].waitForNonExistence(timeout: 5))
+    }
+
     func testSiriDraftReviewAndSave() {
         continueAfterFailure = false
         let app = XCUIApplication()

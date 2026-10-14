@@ -156,8 +156,8 @@ final class CaptureTests: XCTestCase {
         amount.tap(); amount.typeText("1234.56")
         let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         editor.name = "Fee editor"; editor.lifetime = .keepAlways; add(editor)
-        app.buttons["save-fee"].tap()
-        if !app.buttons["save-fee"].waitForNonExistence(timeout: 5) { print("SAVE_FEE_FAILURE\n" + app.debugDescription); XCTFail("Fee save did not dismiss") }
+        app.buttons["save-event"].tap()
+        if !app.buttons["save-event"].waitForNonExistence(timeout: 5) { print("SAVE_FEE_FAILURE\n" + app.debugDescription); XCTFail("Fee save did not dismiss") }
         XCTAssertTrue(app.staticTexts["$1,234.56"].firstMatch.waitForExistence(timeout: 5))
         let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         details.name = "Fee and history"; details.lifetime = .keepAlways; add(details)
@@ -179,15 +179,15 @@ final class CaptureTests: XCTestCase {
         let rate = app.textFields["Rate (negative for adjustments)"]
         reveal(rate, in: app)
         rate.tap(); rate.typeText("100\n")
-        app.buttons["save-fee"].tap()
-        XCTAssertTrue(app.buttons["save-fee"].waitForNonExistence(timeout: 5))
+        app.buttons["save-event"].tap()
+        XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["$150.00"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Breakdown total: $100.00. The overall fee remains unchanged."].exists)
         app.buttons["edit-fee"].tap()
         let useTotal = app.buttons["Use Breakdown Total"]
         reveal(useTotal, in: app)
-        useTotal.tap(); app.buttons["save-fee"].tap()
-        XCTAssertTrue(app.buttons["save-fee"].waitForNonExistence(timeout: 5))
+        useTotal.tap(); app.buttons["save-event"].tap()
+        XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["$100.00"].firstMatch.waitForExistence(timeout: 5))
     }
 

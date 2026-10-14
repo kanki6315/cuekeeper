@@ -4,6 +4,7 @@ import AppIntents
 @main
 struct CuekeeperApp: App {
     @StateObject private var persistence: PersistenceController
+    @StateObject private var handoff: EventWizardHandoff
     @StateObject private var calendar = CalendarController()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -31,7 +32,15 @@ struct CuekeeperApp: App {
         let controller = PersistenceController(storeURL: storeURL, cloudEnabled: !testing)
         _persistence = StateObject(wrappedValue: controller)
         AppDependencyManager.shared.add(dependency: controller)
-        CuekeeperShortcuts.updateAppShortcutParameters()
+        let handoff = EventWizardHandoff()
+        _handoff = StateObject(wrappedValue: handoff)
+        AppDependencyManager.shared.add(dependency: handoff)
+        #if DEBUG
+        if testing && arguments.contains("--siri-wizard-test") {
+            let draft = try! SiriEventDraft.make(title: "IMSA esports", start: Day.date(from: "2026-11-07")!, end: nil, allDay: true)
+            try? handoff.stage(draft, notices: arguments.contains("--siri-import-notice") ? ["Recurrence wasn’t imported. This draft creates one event."] : [])
+        }
+        #endif
     }
 
     var body: some Scene {
@@ -51,6 +60,15 @@ struct CuekeeperApp: App {
                         RootView()
                         #endif
                     }.environment(\.managedObjectContext, persistence.container.viewContext)
+                    .fullScreenCover(item: Binding(get: { handoff.pending }, set: { value in
+                        if value == nil, let id = handoff.pending?.id { handoff.cancel(id: id) }
+                    })) { request in
+                        EventWizardView(initialDraft: request.draft, importNotices: request.notices) { objectID in
+                            handoff.saved(objectID, requestID: request.id)
+                        }
+                        .environment(\.managedObjectContext, persistence.container.viewContext)
+                        .onDisappear { handoff.cancel(id: request.id) }
+                    }
                 } else {
                     ProgressView("Opening your daybook…")
                 }

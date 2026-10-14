@@ -42,6 +42,7 @@
 		AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */; };
 		B3245E99179AC51EDC4D2AE3 /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
+		B85760704BC921A06AF76497 /* CalendarEventIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D728490D92E5AF2A632031C /* CalendarEventIntent.swift */; };
 		B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC022135F654D55A6A7311E /* RootView.swift */; };
 		BB6FD0F28A906423BA740890 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
 		BC4BAD64E3C41BCEC423D7B9 /* EventVisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C39653F7538932613199392 /* EventVisualTests.swift */; };
@@ -52,6 +53,7 @@
 		DAA665273A525BD7459E740C /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
+		EEF6F74D6395DF0098A9C424 /* EventWizardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */; };
 		F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919618A957BA6EC5BAA77600 /* EventWeather.swift */; };
 		F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */; };
 		F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */; };
@@ -86,6 +88,7 @@
 		134663AFB643D201DF4E98CF /* SchemaHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SchemaHelper.entitlements; sourceTree = "<group>"; };
 		14FCB06138FD31273B69B67C /* CuekeeperV8.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV8.xcdatamodel; sourceTree = "<group>"; };
 		184979F54A69B58764328050 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
+		1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardHandoff.swift; sourceTree = "<group>"; };
 		1C39653F7538932613199392 /* EventVisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventVisualTests.swift; sourceTree = "<group>"; };
 		242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDraft.swift; sourceTree = "<group>"; };
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
@@ -94,6 +97,7 @@
 		2DBF588394D95094941421C3 /* CuekeeperV9.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV9.xcdatamodel; sourceTree = "<group>"; };
 		346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV4.xcdatamodel; sourceTree = "<group>"; };
 		3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV5.xcdatamodel; sourceTree = "<group>"; };
+		3D728490D92E5AF2A632031C /* CalendarEventIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventIntent.swift; sourceTree = "<group>"; };
 		40A57E11DA88086857902024 /* Cuekeeper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cuekeeper.entitlements; sourceTree = "<group>"; };
 		46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV6.xcdatamodel; sourceTree = "<group>"; };
@@ -155,7 +159,9 @@
 		285E6E4929F5CD01A13F37D3 /* Intents */ = {
 			isa = PBXGroup;
 			children = (
+				3D728490D92E5AF2A632031C /* CalendarEventIntent.swift */,
 				6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */,
+				1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */,
 			);
 			path = Intents;
 			sourceTree = "<group>";
@@ -442,6 +448,7 @@
 			files = (
 				DAA665273A525BD7459E740C /* Billing.swift in Sources */,
 				BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */,
+				B85760704BC921A06AF76497 /* CalendarEventIntent.swift in Sources */,
 				338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */,
 				2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */,
 				471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */,
@@ -455,6 +462,7 @@
 				F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */,
 				3A38BA8A890E9F76C0DB268A /* EventWeatherView.swift in Sources */,
 				F89D30978FFF5B0982468F02 /* EventWizardFields.swift in Sources */,
+				EEF6F74D6395DF0098A9C424 /* EventWizardHandoff.swift in Sources */,
 				620CF7BB9617AA81919C13FA /* EventWizardView.swift in Sources */,
 				D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */,
 				4EA1FBAF120B261072530418 /* Fees.swift in Sources */,
@@ -655,7 +663,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.3;
+				MARKETING_VERSION = 0.1.4;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -814,7 +822,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.3;
+				MARKETING_VERSION = 0.1.4;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -883,7 +891,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.3;
+				MARKETING_VERSION = 0.1.4;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

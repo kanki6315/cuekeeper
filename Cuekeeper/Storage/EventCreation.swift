@@ -7,6 +7,7 @@ struct EventOutline: Identifiable, Equatable {
     var usesSharedSeries = true
     var seriesOverrideInitialized = false
     var sessions: [SessionDraft] = []
+    var notes = ""
     var displayTitle: String {
         let custom = details.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !custom.isEmpty { return custom }
@@ -51,7 +52,7 @@ struct EventCreationDraft: Equatable {
                 grouped.id = UUID(); grouped.title = event.displayTitle
                 grouped.startDay = job.startDay; grouped.endDay = job.endDay
                 grouped.location = job.location; grouped.trackPlaceID = job.trackPlaceID
-                grouped.timeZoneID = job.timeZoneID; grouped.notes = ""
+                grouped.timeZoneID = job.timeZoneID; grouped.notes = event.notes
                 job.event = grouped
                 try writer.obtainPermanentIDs(for: [job, grouped])
                 let id = job.objectID

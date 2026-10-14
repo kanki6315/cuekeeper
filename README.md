@@ -328,26 +328,37 @@ gate still runs before upload. No TestFlight upload was performed in this step.
 
 ## Siri event creation
 
-Say “Create an event in Cuekeeper” or choose **Cuekeeper → Create Event** in
-Shortcuts. Siri requests a start date when omitted. End date is optional and
-inclusive; omitting it creates a one-day event. Title, client, project,
-championships, roles, booking status, work arrangement, location, and an IANA
-timezone are available as parameters. Booking defaults to tentative; an empty
-title uses the wizard's generated title. Free-text library names use the same
-case-insensitive reuse/create behavior as the wizard.
+The iOS 27 integration uses Apple's `.calendar.createEvent` schema. Siri resolves
+standard calendar parameters, then opens Cuekeeper's existing event wizard with
+an unsaved draft. Add client, championships, roles, fees, or other details and
+review before tapping **Create event**. The intent returns a saved event only
+after that action succeeds. Discarding the wizard or cancelling the intent creates
+no records. A second Siri draft is rejected while one is already open.
 
-The intent requires authentication and always asks for confirmation with the
-resolved title, dates, status, and supplied context before saving. Cancelling
-that prompt creates no event, job, library entries, or fee revisions. Reversed
-date ranges and invalid timezone identifiers prompt for a replacement value.
-The same `EventCreationDraft.save` transaction creates the event and first job;
-there is no separate Calendar write. Existing calendar-manager/foreground rules
-still apply. Sessions, track selection, fees, payments, and season creation are
-available in the app, not this initial intent.
+No App Shortcut trigger phrases are advertised. Existing custom shortcuts using
+the older Create Event action remain compatible, but now open the same review
+wizard instead of saving in the background. The legacy action is hidden from
+new action discovery.
 
-On a physical device, verify Siri and Shortcuts after installing and opening the
-app: invoke without a date, supply a range, decline confirmation and check no
-record appears, then repeat and accept. Also check a custom title/client/role,
-an invalid end date, a cold launch, and cancellation while the store opens.
-Simulator tests verify the draft mapping and confirmation/save boundary; they do
-not establish Siri speech recognition or its conversation behavior on device.
+All-day calendar end dates are exclusive; the adapter converts them to the
+wizard's inclusive end day using calendar arithmetic. Timed requests populate a
+session with the original start/end instants and device timezone, leaving its
+schedule tentative and coverage undecided. Missing end times stay unknown.
+Location and notes are carried into the draft. Recurrence and invitees are not
+imported; a six-second, accessibility-announced notice explains that only one
+event will be created and no invitations will be sent. Invalid date ranges
+still fail validation. No Siri audio or full conversation transcript is received.
+
+The intent uses the app's shared persistence controller and `EventCreationDraft`
+transaction. Nothing is written to EventKit directly; the existing designated
+calendar publisher and foreground reconciliation rules remain in effect.
+
+Validation includes schema metadata export (calendar domain, no App Shortcuts),
+persistence tests for unsaved handoff, explicit save, discard, task cancellation,
+concurrent requests and daylight-saving date conversion, plus simulator wizard
+save/discard and disappearing-notice flows. These do not establish Siri speech
+recognition, schema routing, or foreground continuation on a physical device.
+Test the installed build on an iOS 27 device with supported Siri AI: request an
+all-day event, a timed event, and recurrence/invitees; verify the populated draft,
+notice, discard, save, and cold launch. Opening the wizard requires foreground
+interaction and may require unlocking the device.

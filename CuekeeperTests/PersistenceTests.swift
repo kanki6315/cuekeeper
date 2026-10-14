@@ -31,69 +31,74 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
-    func testSiriCreationDefaultsAndConfirmationBeforePersistence() async throws {
+    func testSiriDraftHandoffIsUnsavedUntilWizardCreates() async throws {
         let store = try await openStore()
         let context = store.container.viewContext
-        let intent = CreateEventIntent()
-        intent.startDate = Day.date(from: "2026-11-06")!
-        intent.client = "  ESPN  "
-        intent.location = "Interlagos"
-        intent.roles = ["Camera operator"]
-        intent.championships = ["Formula 1", "Formula 2"]
-        intent.bookingStatus = .tentative
-        intent.workArrangement = .onSite
-        let draft = intent.makeDraft()
-        XCTAssertEqual(draft.events[0].details.endDate, intent.startDate)
-        XCTAssertEqual(draft.shared.clientName, "ESPN")
-        XCTAssertNil(try draft.shared.fee?.value().amount)
-        var asked = false
-        try await draft.confirmAndSave(in: context) { summary in
-            asked = true
-            XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
-            XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
-            XCTAssertTrue(summary.contains("Interlagos"))
-            XCTAssertTrue(summary.contains("ESPN"))
-            XCTAssertTrue(summary.contains("Formula 2"))
-            XCTAssertTrue(summary.contains("Tentative"))
-        }
-        XCTAssertTrue(asked)
-        let job = try XCTUnwrap(context.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
-        XCTAssertNotNil(job.event)
-        XCTAssertEqual(job.eventTitle, draft.resolvedEvents()[0].displayTitle)
+        let start = Day.date(from: "2026-11-06")!
+        let draft = try SiriEventDraft.make(title: "IMSA esports", start: start, end: nil, allDay: true,
+                                           location: "Remote", notes: "Production briefing")
+        let handoff = EventWizardHandoff()
+        let task = Task { try await handoff.review(draft) }
+        for _ in 0..<100 where handoff.pending == nil { await Task.yield() }
+        let request = try XCTUnwrap(handoff.pending)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
+        XCTAssertThrowsError(try handoff.stage(EventCreationDraft()))
+        XCTAssertEqual(handoff.pending?.id, request.id)
+        var reviewed = request.draft
+        reviewed.shared.clientName = "ESPN"
+        let id = try XCTUnwrap(reviewed.save(in: context).first)
+        handoff.saved(id, requestID: request.id)
+        let returnedID = try await task.value
+        XCTAssertEqual(returnedID, id)
+        XCTAssertNil(handoff.pending)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        XCTAssertEqual(job.eventTitle, "IMSA esports")
+        XCTAssertEqual(job.eventNotes, "Production briefing")
         XCTAssertEqual(job.startDay, "2026-11-06")
         XCTAssertEqual(job.endDay, job.startDay)
         XCTAssertEqual(job.client?.name, "ESPN")
-        XCTAssertEqual(job.roleNames, ["Camera operator"])
+        XCTAssertNil(try job.currentFee().amount)
     }
 
-    func testSiriInvalidParametersRequestCorrectionBeforeAccessingStore() async throws {
-        let intent = CreateEventIntent()
-        intent.startDate = Day.date(from: "2026-11-08")!
-        intent.endDate = Day.date(from: "2026-11-06")!
-        do {
-            _ = try await intent.perform()
-            XCTFail("A reversed date range must request a replacement end date")
-        } catch { }
-        intent.endDate = nil
-        intent.timeZoneID = "Not/A_Timezone"
-        do {
-            _ = try await intent.perform()
-            XCTFail("An invalid timezone must request a replacement")
-        } catch { }
-    }
-
-    func testSiriDeclinedConfirmationDoesNotCreateRecords() async throws {
+    func testSiriDiscardAndTaskCancellationLeaveNoRecords() async throws {
         let store = try await openStore()
         let context = store.container.viewContext
-        var draft = EventCreationDraft()
-        draft.shared.clientName = "Must not be created"
-        do {
-            try await draft.confirmAndSave(in: context) { _ in throw CancellationError() }
-            XCTFail("Declined confirmation must cancel creation")
-        } catch is CancellationError { }
+        let handoff = EventWizardHandoff()
+        for cancelTask in [false, true] {
+            let task = Task { try await handoff.review(EventCreationDraft()) }
+            for _ in 0..<100 where handoff.pending == nil { await Task.yield() }
+            let id = try XCTUnwrap(handoff.pending?.id)
+            if cancelTask { task.cancel() } else { handoff.cancel(id: id) }
+            do { _ = try await task.value; XCTFail("Discard should cancel the request") }
+            catch is CancellationError { }
+            XCTAssertNil(handoff.pending)
+        }
         for entity in ["Job", "WorkEvent", "Client", "FeeRevision"] {
             XCTAssertEqual(try context.count(for: NSFetchRequest<NSManagedObject>(entityName: entity)), 0)
         }
+    }
+
+    func testSiriDateMappingAcrossDSTAndTimedSessions() throws {
+        let zone = TimeZone(identifier: "America/New_York")!
+        let start = Day.date(from: "2026-10-31", timeZone: zone)!
+        let end = Day.date(from: "2026-11-03", timeZone: zone)!
+        let allDay = try SiriEventDraft.make(title: "Weekend", start: start, end: end, allDay: true, timeZone: zone)
+        XCTAssertEqual(Day.string(from: allDay.events[0].details.startDate), "2026-10-31")
+        XCTAssertEqual(Day.string(from: allDay.events[0].details.endDate), "2026-11-02")
+        let timedStart = start.addingTimeInterval(23 * 3600)
+        let timedEnd = timedStart.addingTimeInterval(4 * 3600)
+        let timed = try SiriEventDraft.make(title: "Overnight", start: timedStart, end: timedEnd, allDay: false, timeZone: zone)
+        let session = try XCTUnwrap(timed.events[0].sessions.first)
+        XCTAssertEqual(session.startTime, timedStart)
+        XCTAssertEqual(session.endTime, timedEnd)
+        XCTAssertEqual(session.timeZoneID, zone.identifier)
+        XCTAssertEqual(session.scheduleStatus, "tentative")
+        XCTAssertEqual(session.coverage, "undecided")
+        XCTAssertEqual(Day.string(from: timed.events[0].details.endDate), "2026-11-01")
+        let incomplete = try SiriEventDraft.make(title: "Call", start: timedStart, end: nil, allDay: false)
+        XCTAssertNil(incomplete.events[0].sessions.first?.endTime)
+        XCTAssertThrowsError(try SiriEventDraft.make(title: "Invalid", start: end, end: start, allDay: true))
     }
 
     func testEventClientsKeepIndependentBillingAndSurviveReopen() async throws {

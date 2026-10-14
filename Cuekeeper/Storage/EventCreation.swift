@@ -5,6 +5,7 @@ struct EventOutline: Identifiable, Equatable {
     var id = UUID()
     var details = JobDraft()
     var usesSharedSeries = true
+    var seriesOverrideInitialized = false
     var sessions: [SessionDraft] = []
     var displayTitle: String {
         let custom = details.name.trimmingCharacters(in: .whitespacesAndNewlines)

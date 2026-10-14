@@ -183,9 +183,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try first.save(in: context, editing: id))
     }
 
-    func testV2ThroughV5StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV2ThroughV6StoresMigrateWithRelationshipsAndFeeHistory() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...5 {
+        for version in 2...6 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"
@@ -208,10 +208,17 @@ final class PersistenceTests: XCTestCase {
                 fee.setValue(UUID(), forKey: "id"); fee.setValue(Date(), forKey: "createdAt"); fee.setValue(job, forKey: "job")
                 fee.setValue(String(decoding: try JSONEncoder().encode(FeeValue(amount: 12345)), as: UTF8.self), forKey: "valueJSON")
             }
+            if version >= 6 {
+                let championship = NSEntityDescription.insertNewObject(forEntityName: "WorkSeries", into: oldContext)
+                championship.setValue(UUID(), forKey: "id"); championship.setValue("Existing championship", forKey: "name")
+                job.setValue(championship, forKey: "series")
+            }
             try oldContext.save(); oldContext.reset(); try coordinator.remove(oldStore)
             let migrated = try await openStore(fileName: fileName)
             let saved = try XCTUnwrap(migrated.container.viewContext.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
-            XCTAssertNil(saved.project); XCTAssertNil(saved.series)
+            XCTAssertNil(saved.project)
+            if version >= 6 { XCTAssertEqual(saved.seriesNames, ["Existing championship"]) }
+            else { XCTAssertNil(saved.series) }
             XCTAssertEqual(saved.id, jobID); XCTAssertEqual(saved.client?.name, "Existing client")
             if version >= 3 { XCTAssertEqual(saved.activeSessions.first?.sortedLinks.first?.url, "https://example.com/old") }
             if version >= 4 { XCTAssertEqual(try saved.currentFee().amount, 12345) }

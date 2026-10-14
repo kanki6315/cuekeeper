@@ -23,6 +23,7 @@
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
 		5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */; };
 		5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */; };
+		620CF7BB9617AA81919C13FA /* EventWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A535829E430BC6AF335536 /* EventWizardView.swift */; };
 		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
 		64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */; };
 		991F28DFD42FDA0529BED47C /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
@@ -30,6 +31,7 @@
 		A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
 		AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */ = {isa = PBXBuildFile; fileRef = BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */; };
+		AD8486D75DB2BC6875E65E18 /* EventWizardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFC518A6A7190800E88CDF /* EventWizardTests.swift */; };
 		AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */; };
 		B3245E99179AC51EDC4D2AE3 /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
@@ -42,6 +44,7 @@
 		DAA665273A525BD7459E740C /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 		F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */; };
+		F89D30978FFF5B0982468F02 /* EventWizardFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A5F712AF2B3219F8DC48DD /* EventWizardFields.swift */; };
 		FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -63,6 +66,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		00A5F712AF2B3219F8DC48DD /* EventWizardFields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardFields.swift; sourceTree = "<group>"; };
 		05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlan.swift; sourceTree = "<group>"; };
 		06442705EA3E6D3F4031E809 /* CaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureTests.swift; sourceTree = "<group>"; };
 		0AC022135F654D55A6A7311E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -80,8 +84,10 @@
 		4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPublisher.swift; sourceTree = "<group>"; };
 		575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceEditorView.swift; sourceTree = "<group>"; };
 		5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CuekeeperSchemaHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		60A535829E430BC6AF335536 /* EventWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardView.swift; sourceTree = "<group>"; };
 		618C864D7A24CC9C62D1E183 /* Billing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Billing.swift; sourceTree = "<group>"; };
 		66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV2.xcdatamodel; sourceTree = "<group>"; };
+		69DFC518A6A7190800E88CDF /* EventWizardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardTests.swift; sourceTree = "<group>"; };
 		71531F3273F27F2929AC0EE9 /* CalendarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTests.swift; sourceTree = "<group>"; };
 		7AEB83E7804374638D4D0136 /* DesignFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignFixtures.swift; sourceTree = "<group>"; };
 		7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignCaptureTests.swift; sourceTree = "<group>"; };
@@ -116,6 +122,7 @@
 				06442705EA3E6D3F4031E809 /* CaptureTests.swift */,
 				7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */,
 				A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */,
+				69DFC518A6A7190800E88CDF /* EventWizardTests.swift */,
 			);
 			path = CuekeeperUITests;
 			sourceTree = "<group>";
@@ -174,6 +181,8 @@
 				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
 				E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */,
 				7AEB83E7804374638D4D0136 /* DesignFixtures.swift */,
+				00A5F712AF2B3219F8DC48DD /* EventWizardFields.swift */,
+				60A535829E430BC6AF335536 /* EventWizardView.swift */,
 				2CC25F847FFB2944BBBC0D0D /* FeeView.swift */,
 				C31D03E096ABF3A6E23F885D /* Info.plist */,
 				575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */,
@@ -355,6 +364,7 @@
 				DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */,
 				FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */,
 				64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */,
+				AD8486D75DB2BC6875E65E18 /* EventWizardTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -395,6 +405,8 @@
 				062400846722C32FFC23825F /* DaybookStyle.swift in Sources */,
 				41B304D19B61465775986906 /* DesignFixtures.swift in Sources */,
 				F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */,
+				F89D30978FFF5B0982468F02 /* EventWizardFields.swift in Sources */,
+				620CF7BB9617AA81919C13FA /* EventWizardView.swift in Sources */,
 				D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */,
 				4EA1FBAF120B261072530418 /* Fees.swift in Sources */,
 				B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */,

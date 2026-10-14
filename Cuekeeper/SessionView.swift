@@ -34,14 +34,14 @@ struct SessionEditorView: View {
                             }
                         } else { sessionDatePicker }
                     }
-                    DaybookLink { TimeZonePicker(selection: $draft.timeZoneID) } label: {
+                    DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()) } label: {
                         if typeSize.isAccessibilitySize {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Timezone")
-                                Text(draft.timeZoneID.isEmpty ? "Choose timezone" : draft.timeZoneID.replacingOccurrences(of: "_", with: " ")).foregroundStyle(Color("SecondaryText"))
+                                Text(zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date())).foregroundStyle(Color("SecondaryText"))
                             }
                         } else {
-                            LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Choose timezone" : draft.timeZoneID.replacingOccurrences(of: "_", with: " "))
+                            LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()))
                         }
                     }
                     optionalTime("Start", value: $draft.startTime)
@@ -64,7 +64,7 @@ struct SessionEditorView: View {
                     if draft.overridesSeries {
                         NamedLibraryField(kind: .series, name: $draft.seriesName)
                     } else {
-                        Text(job.seriesNames.isEmpty ? "No event series selected" : job.seriesNames.joined(separator: ", ")).foregroundStyle(Color("SecondaryText"))
+                        Text(job.seriesNames.count > 1 ? "Choose a series for this session using the override." : (job.seriesNames.first ?? "No event series selected")).foregroundStyle(Color("SecondaryText"))
                     }
                 }
                 Section("Roles") {

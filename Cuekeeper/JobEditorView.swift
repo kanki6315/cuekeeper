@@ -2,6 +2,15 @@ import CoreData
 import SwiftUI
 
 struct JobEditorView: View {
+    var job: Job? = nil
+    var duplicating = false
+    var body: some View {
+        if let job { ExistingJobEditorView(job: job, duplicating: duplicating) }
+        else { EventWizardView() }
+    }
+}
+
+struct ExistingJobEditorView: View {
     @Environment(\.managedObjectContext) private var context
     @Environment(\.dismiss) private var dismiss
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Client.name, ascending: true)]) private var clients: FetchedResults<Client>
@@ -33,8 +42,8 @@ struct JobEditorView: View {
             DaybookForm {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Job name").font(.caption).foregroundStyle(Color("SecondaryText"))
-                        DaybookTextField("Job name", text: $draft.name).focused($nameFocused).accessibilityIdentifier("job-name")
+                        Text("Title").font(.caption).foregroundStyle(Color("SecondaryText"))
+                        DaybookTextField("Title", text: $draft.name).focused($nameFocused).accessibilityIdentifier("job-name")
                             .submitLabel(.done).onSubmit { nameFocused = false }
                     }
                     Toggle("Multiple days", isOn: $multipleDays).accessibilityIdentifier("job-multiple-days")
@@ -58,9 +67,9 @@ struct JobEditorView: View {
                 if moreDetails {
                 Section {
                     NamedLibraryField(kind: .project, name: $draft.projectName)
-                    NamedLibraryField(kind: .series, name: $draft.seriesName)
+                    SeriesSelectionFields(names: $draft.seriesNames)
                 } header: { Text("Project & series") } footer: {
-                    Text("Link jobs across the year with a project, such as IMSA. Sessions use this series unless you choose another.")
+                    Text("Sessions can choose a championship separately.")
                 }
                 Section("Booking") {
                     DaybookPicker("Status", selection: $draft.bookingStatus, identifier: "edit-booking-status") {
@@ -106,9 +115,9 @@ struct JobEditorView: View {
                     }
                     DaybookTextField("Location (optional)", text: $draft.location).accessibilityIdentifier("job-location")
                     DaybookLink {
-                        TimeZonePicker(selection: $draft.timeZoneID)
+                        TimeZonePicker(selection: $draft.timeZoneID, date: draft.startDate)
                     } label: {
-                        LabeledContent("Timezone", value: draft.timeZoneID.isEmpty ? "Unspecified" : draft.timeZoneID.replacingOccurrences(of: "_", with: " "))
+                        LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startDate))
                     }
                 }
                 Section("Notes") {
@@ -165,21 +174,25 @@ struct JobEditorView: View {
 
 struct TimeZonePicker: View {
     @Binding var selection: String
+    var date = Date()
     @State private var search = ""
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         DaybookList {
             Button("Unspecified") { selection = ""; dismiss() }
-            ForEach(TimeZone.knownTimeZoneIdentifiers.filter { search.isEmpty || $0.replacingOccurrences(of: "_", with: " ").localizedCaseInsensitiveContains(search) }, id: \.self) { zone in
+            ForEach(TimeZone.knownTimeZoneIdentifiers.filter { search.isEmpty || zoneLabel($0, date: date).localizedCaseInsensitiveContains(search) || $0.localizedCaseInsensitiveContains(search) }, id: \.self) { zone in
                 Button { selection = zone; dismiss() } label: {
                     HStack {
-                        Text(zone.replacingOccurrences(of: "_", with: " ")).foregroundStyle(.primary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(zoneLabel(zone, date: date)).foregroundStyle(.primary)
+                            Text(zone).font(.caption).foregroundStyle(.secondary)
+                        }
                         Spacer()
-                        if selection == zone { Image(systemName: "checkmark") }
+                        if selection == zone { Image(systemName: "checkmark").accessibilityLabel("Selected") }
                     }
                 }
             }
-        }.searchable(text: $search, prompt: "Search city or region").navigationTitle("Timezone").navigationBarTitleDisplayMode(.inline)
+        }.searchable(text: $search, prompt: "Search timezones").navigationTitle("Timezone").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -239,13 +252,13 @@ struct JobDetailView: View {
             }
             JobBillingSection(job: job, onInvoice: { addingInvoice = true }, onPayment: { addingPayment = true })
             if !job.notes.isEmpty { Section("Notes") { Text(job.notes).textSelection(.enabled) } }
-            if job.project != nil || job.series != nil {
+            if job.project != nil || !job.allSeries.isEmpty {
                 Section("Project & series") {
                     if let project = job.project {
                         DaybookLink { LibraryDetailView(record: project, kind: .project) } label: { LabeledContent("Project", value: project.name) }.accessibilityIdentifier("job-project-link")
                     }
-                    if let series = job.series {
-                        DaybookLink { LibraryDetailView(record: series, kind: .series) } label: { LabeledContent("Default series", value: series.name) }
+                    ForEach(job.allSeries.sorted { $0.name < $1.name }, id: \.objectID) { series in
+                        DaybookLink { LibraryDetailView(record: series, kind: .series) } label: { LabeledContent("Series", value: series.name) }
                     }
                 }
             }

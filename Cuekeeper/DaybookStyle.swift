@@ -183,6 +183,7 @@ extension View {
 
 /// Explicit field labels remain visible outside the system Form container.
 struct DaybookPicker<Selection: Hashable, Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let title: String
     @Binding var selection: Selection
     var identifier: String = ""
@@ -191,9 +192,17 @@ struct DaybookPicker<Selection: Hashable, Content: View>: View {
         self.title = title; _selection = selection; self.identifier = identifier; self.content = content()
     }
     var body: some View {
-        LabeledContent {
-            Picker(title, selection: $selection) { content }.labelsHidden().accessibilityIdentifier(identifier)
-        } label: { Text(title) }
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                Picker(title, selection: $selection) { content }.labelsHidden()
+                    .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier(identifier)
+            }
+        } else {
+            LabeledContent {
+                Picker(title, selection: $selection) { content }.labelsHidden().accessibilityIdentifier(identifier)
+            } label: { Text(title) }
+        }
     }
 }
 

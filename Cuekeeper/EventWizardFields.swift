@@ -33,36 +33,74 @@ struct EventDateFields: View {
 struct SeriesSelectionFields: View {
     @Binding var names: Set<String>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkSeries.name, ascending: true)]) private var library: FetchedResults<WorkSeries>
-    @State private var adding = false
     @State private var newName = ""
-    @FocusState private var enteringName: Bool
     var body: some View {
         ForEach(names.sorted(), id: \.self) { name in
             HStack {
-                Text(name); Spacer()
+                Text(name).fixedSize(horizontal: false, vertical: true)
+                Spacer()
                 Button("Remove", systemImage: "minus.circle", role: .destructive) { names.remove(name) }
                     .labelStyle(.iconOnly).accessibilityLabel("Remove \(name)").frame(minWidth: 44, minHeight: 44)
             }
         }
-        Button { enteringName = false; adding.toggle() } label: {
-            HStack { Text("Add championship"); Spacer(); Image(systemName: adding ? "chevron.up" : "chevron.down") }
-        }
-        if adding {
-            let available = Array(Set(library.map(\.name))).filter { !names.contains($0) }.sorted()
-            if !available.isEmpty {
-                Menu("Reuse championship") { ForEach(available, id: \.self) { name in Button(name) { enteringName = false; names.insert(name); adding = false } } }
+        LibraryTypeaheadField(title: "Championship", prompt: "Search or add championship", text: $newName,
+                              savedNames: library.map(\.name).filter { !names.contains($0) },
+                              identifier: "championship-search", onSelect: { value in
+                                  let canonical = library.first {
+                                      $0.name.compare(value, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+                                  }?.name ?? value
+                                  names.insert(canonical); newName = ""
+                              })
+    }
+}
+
+/// Suggestions come only from saved records; typing never creates a library entry.
+struct LibraryTypeaheadField: View {
+    let title: String
+    let prompt: String
+    @Binding var text: String
+    let savedNames: [String]
+    let identifier: String
+    var onSelect: ((String) -> Void)? = nil
+    @FocusState private var focused: Bool
+
+    private var query: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var matches: [String] {
+        Array(Set(savedNames)).sorted().filter { query.isEmpty || $0.localizedStandardContains(query) }
+    }
+    private var exactMatch: String? {
+        savedNames.first { $0.compare(query, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                DaybookTextField(prompt, text: $text)
+                    .focused($focused).submitLabel(.done)
+                    .accessibilityLabel(title).accessibilityIdentifier(identifier)
+                    .onSubmit { if !query.isEmpty { select(exactMatch ?? query) } else { focused = false } }
             }
-            HStack {
-                DaybookTextField("New championship", text: $newName).focused($enteringName).onSubmit(add)
-                Button("Add", action: add).disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            if focused || (onSelect != nil && !query.isEmpty) {
+                ForEach(matches.prefix(5), id: \.self) { name in
+                    Button { select(name) } label: {
+                        Text(name).fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }.accessibilityIdentifier("\(identifier)-suggestion")
+                }
+            }
+            if onSelect != nil && !query.isEmpty && exactMatch == nil {
+                Button { select(query) } label: {
+                    Text("Add “\(query)”").fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }.accessibilityIdentifier("\(identifier)-add")
             }
         }
     }
-    private func add() {
-        let value = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty else { return }
-        let canonical = library.first { $0.name.compare(value, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }?.name ?? value
-        enteringName = false; names.insert(canonical); newName = ""; adding = false
+
+    private func select(_ name: String) {
+        focused = false
+        if let onSelect { onSelect(name) } else { text = name }
     }
 }
 

@@ -135,7 +135,11 @@ private struct JobsView: View {
                 if upcomingOnly {
                     Picker("Show upcoming", selection: $thisWeek) { Text("All upcoming").tag(false); Text("This week").tag(true) }.pickerStyle(.menu).accessibilityIdentifier("upcoming-scope")
                 } else {
-                    Picker("Bookings", selection: $scope) { ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) } }.pickerStyle(.menu)
+                    Picker("Bookings", selection: $scope) {
+                        ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("event-status-scope")
                 }
                 if representatives.isEmpty {
                     ContentUnavailableView("No events to show", systemImage: "calendar", description: Text(jobs.isEmpty && persistence.awaitingInitialImport ? "Existing work may still arrive from iCloud. You can add an event now." : "Start with dates and a client. Add the schedule when it arrives."))

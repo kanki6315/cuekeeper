@@ -39,36 +39,74 @@ struct EventDateFields: View {
 struct SeriesSelectionFields: View {
     @Binding var names: Set<String>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkSeries.name, ascending: true)]) private var library: FetchedResults<WorkSeries>
-    @State private var adding = false
     @State private var newName = ""
-    @FocusState private var enteringName: Bool
     var body: some View {
         ForEach(names.sorted(), id: \.self) { name in
             HStack {
-                Text(name); Spacer()
+                Text(name).fixedSize(horizontal: false, vertical: true)
+                Spacer()
                 Button("Remove", systemImage: "minus.circle", role: .destructive) { names.remove(name) }
                     .labelStyle(.iconOnly).accessibilityLabel("Remove \(name)").frame(minWidth: 44, minHeight: 44)
             }
         }
-        Button { enteringName = false; adding.toggle() } label: {
-            HStack { Text("Add championship"); Spacer(); Image(systemName: adding ? "chevron.up" : "chevron.down") }
-        }
-        if adding {
-            let available = Array(Set(library.map(\.name))).filter { !names.contains($0) }.sorted()
-            if !available.isEmpty {
-                Menu("Reuse championship") { ForEach(available, id: \.self) { name in Button(name) { enteringName = false; names.insert(name); adding = false } } }
+        LibraryTypeaheadField(title: "Championship", prompt: "Search or add championship", text: $newName,
+                              savedNames: library.map(\.name).filter { !names.contains($0) },
+                              identifier: "championship-search", onSelect: { value in
+                                  let canonical = library.first {
+                                      $0.name.compare(value, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+                                  }?.name ?? value
+                                  names.insert(canonical); newName = ""
+                              })
+    }
+}
+
+/// Suggestions come only from saved records; typing never creates a library entry.
+struct LibraryTypeaheadField: View {
+    let title: String
+    let prompt: String
+    @Binding var text: String
+    let savedNames: [String]
+    let identifier: String
+    var onSelect: ((String) -> Void)? = nil
+    @FocusState private var focused: Bool
+
+    private var query: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var matches: [String] {
+        Array(Set(savedNames)).sorted().filter { query.isEmpty || $0.localizedStandardContains(query) }
+    }
+    private var exactMatch: String? {
+        savedNames.first { $0.compare(query, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                DaybookTextField(prompt, text: $text)
+                    .focused($focused).submitLabel(.done)
+                    .accessibilityLabel(title).accessibilityIdentifier(identifier)
+                    .onSubmit { if !query.isEmpty { select(exactMatch ?? query) } else { focused = false } }
             }
-            HStack {
-                DaybookTextField("New championship", text: $newName).focused($enteringName).onSubmit(add)
-                Button("Add", action: add).disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            if focused || (onSelect != nil && !query.isEmpty) {
+                ForEach(matches.prefix(5), id: \.self) { name in
+                    Button { select(name) } label: {
+                        Text(name).fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }.accessibilityIdentifier("\(identifier)-suggestion")
+                }
+            }
+            if onSelect != nil && !query.isEmpty && exactMatch == nil {
+                Button { select(query) } label: {
+                    Text("Add “\(query)”").fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }.accessibilityIdentifier("\(identifier)-add")
             }
         }
     }
-    private func add() {
-        let value = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty else { return }
-        let canonical = library.first { $0.name.compare(value, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }?.name ?? value
-        enteringName = false; names.insert(canonical); newName = ""; adding = false
+
+    private func select(_ name: String) {
+        focused = false
+        if let onSelect { onSelect(name) } else { text = name }
     }
 }
 
@@ -117,24 +155,24 @@ struct LocationSearchField: View {
 
 struct WizardSessionFields: View {
     @Binding var draft: SessionDraft
-    var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
+    let eventTimeZoneID: String
+    var zone: TimeZone { TimeZone(identifier: eventTimeZoneID) ?? .current }
     var body: some View {
         DaybookTextField("Session title", text: $draft.name)
-        DatePicker("Date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date).environment(\.timeZone, zone).disabled(draft.startTime != nil).accessibilityIdentifier("wizard-session-date").accessibilityLabel("Session date")
-        DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date()) } label: { LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date())) }
-        if draft.timeZoneID.isEmpty { Text("Choose a timezone to add times.").font(.caption).foregroundStyle(.secondary) }
-        SessionScheduleField(draft: $draft)
+        DatePicker("Date", selection: Binding(get: { draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date).environment(\.timeZone, zone).disabled(draft.startTime != nil).accessibilityIdentifier("wizard-session-date").accessibilityLabel("Session date")
+        if eventTimeZoneID.isEmpty { Text("Choose the event timezone above to add times.").font(.caption).foregroundStyle(.secondary) }
+        SessionScheduleField(draft: $draft, zone: zone).disabled(eventTimeZoneID.isEmpty)
         optionalTime("Call time", value: $draft.callTime)
         DaybookChoicePicker("Schedule", selection: $draft.scheduleStatus, identifier: "wizard-session-schedule") { Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed") }
         DaybookChoicePicker("Coverage", selection: $draft.coverage, identifier: "wizard-session-coverage") { Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering") }
         Group {}.onChange(of: draft.startTime) { _, value in if let value { draft.day = Day.string(from: value, timeZone: zone) } }
-            .onChange(of: draft.timeZoneID) { _, _ in if let value = draft.startTime { draft.day = Day.string(from: value, timeZone: zone) } }
+            .onChange(of: eventTimeZoneID) { _, _ in if let value = draft.startTime { draft.day = Day.string(from: value, timeZone: zone) } }
     }
     @ViewBuilder private func optionalTime(_ title: String, value: Binding<Date?>) -> some View {
         OptionalSessionTimeField(title: title, value: value,
             defaultDate: (draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date())
                 .addingTimeInterval(title == "End" ? 3600 : 0), zone: zone)
-            .disabled(draft.timeZoneID.isEmpty)
+            .disabled(eventTimeZoneID.isEmpty)
     }
 }
 
@@ -144,6 +182,43 @@ func zoneLabel(_ identifier: String, date: Date = Date()) -> String {
     let seconds = zone.secondsFromGMT(for: date)
     let offset = String(format: "UTC%@%02d:%02d", seconds < 0 ? "−" : "+", abs(seconds) / 3600, abs(seconds) % 3600 / 60)
     return "\(name) · \(offset)"
+}
+
+struct EventTimeZoneField: View {
+    @Binding var selection: String
+    var date: Date
+    var body: some View {
+        DaybookLink { TimeZonePicker(selection: $selection, date: date) } label: {
+            TimeZoneValueLabel(title: "Event timezone", value: zoneLabel(selection, date: date))
+        }.accessibilityIdentifier("event-timezone")
+    }
+}
+
+struct WorkTimeZoneField: View {
+    @Binding var draft: JobDraft
+    var date: Date
+    var body: some View {
+        if draft.workArrangement == .remote || draft.workArrangement == .hybrid {
+            DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: date) } label: {
+                TimeZoneValueLabel(title: "Your timezone", value: zoneLabel(draft.timeZoneID, date: date))
+            }.accessibilityIdentifier("work-timezone")
+            Text("Session schedules use the event timezone. Your timezone shows the corresponding local times.").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct TimeZoneValueLabel: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let title: String
+    let value: String
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                Text(value).foregroundStyle(Color("SecondaryText"))
+            }
+        } else { LabeledContent(title, value: value) }
+    }
 }
 
 /// Opening the editor never assigns a time; only Set or Clear changes the draft.
@@ -259,7 +334,7 @@ private struct SessionTimeEditor: View {
 struct SessionScheduleField: View {
     @Binding var draft: SessionDraft
     @State private var editing = false
-    private var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
+    let zone: TimeZone
     private var summary: String {
         guard draft.startTime != nil || draft.endTime != nil else { return "Not set" }
         let formatter = DateFormatter()
@@ -338,7 +413,7 @@ private struct SessionScheduleEditor: View {
                     Button("Set") {
                         draft.startTime = start; draft.endTime = end
                         draft.day = Day.string(from: day, timeZone: zone)
-                        if (start != nil || end != nil) && draft.timeZoneID.isEmpty { draft.timeZoneID = zone.identifier }
+                        if start != nil || end != nil { draft.timeZoneID = zone.identifier }
                         dismiss()
                     }.disabled(issue != nil)
                 }

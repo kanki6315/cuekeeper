@@ -22,26 +22,43 @@ final class WorkSession: NSManagedObject {
     @NSManaged var job: Job?
     @NSManaged var roles: Set<WorkRole>?
     @NSManaged var links: Set<BroadcastLink>?
+    var eventTimeZoneID: String { job?.eventTimeZoneID ?? timeZoneID }
+    var eventDay: String {
+        guard let startTime, let zone = TimeZone(identifier: eventTimeZoneID) else { return day }
+        return Day.string(from: startTime, timeZone: zone)
+    }
     var title: String { name.isEmpty ? "Session" : name }
     var roleNames: [String] { overridesRoles ? (roles ?? []).map(\.name).sorted() : job?.roleNames ?? [] }
     var sortedLinks: [BroadcastLink] { (links ?? []).sorted { ($0.label, $0.url) < ($1.label, $1.url) } }
     var calendarEligible: Bool {
         deletedAt == nil && job?.bookingStatus != "cancelled" && scheduleStatus == "confirmed"
             && coverage == "covering" && startTime != nil && endTime != nil
-            && endTime! > startTime! && TimeZone(identifier: timeZoneID) != nil
+            && endTime! > startTime! && TimeZone(identifier: eventTimeZoneID) != nil
     }
     func formattedTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium; formatter.timeStyle = .short
-        formatter.timeZone = TimeZone(identifier: timeZoneID) ?? .current
+        formatter.timeZone = TimeZone(identifier: eventTimeZoneID) ?? .current
         return formatter.string(from: date)
+    }
+    var localScheduleDescription: String? {
+        guard let job, job.hasWorkTimeZone, job.workTimeZoneID != eventTimeZoneID,
+              let zone = TimeZone(identifier: job.workTimeZoneID) else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium; formatter.timeStyle = .short; formatter.timeZone = zone
+        var parts: [String] = []
+        if let startTime { parts.append(formatter.string(from: startTime)) }
+        if let endTime { parts.append("– " + formatter.string(from: endTime)) }
+        if let callTime { parts.append("· Call " + formatter.string(from: callTime)) }
+        guard !parts.isEmpty else { return nil }
+        return "Your time: " + parts.joined(separator: " ") + " · " + zone.identifier.replacingOccurrences(of: "_", with: " ")
     }
     var scheduleDescription: String {
         guard let startTime, let endTime else { return day.isEmpty ? "Date and times to come" : "\(day) · Times to come" }
         let formatter = DateFormatter()
         formatter.dateStyle = .medium; formatter.timeStyle = .short
-        formatter.timeZone = TimeZone(identifier: timeZoneID) ?? .current
-        return "\(formatter.string(from: startTime)) – \(formatter.string(from: endTime)) · \(timeZoneID.replacingOccurrences(of: "_", with: " "))"
+        formatter.timeZone = TimeZone(identifier: eventTimeZoneID) ?? .current
+        return "\(formatter.string(from: startTime)) – \(formatter.string(from: endTime)) · \(eventTimeZoneID.replacingOccurrences(of: "_", with: " "))"
     }
 }
 
@@ -87,7 +104,8 @@ struct SessionDraft: Equatable {
     init(job: Job) { day = job.eventStartDay; timeZoneID = job.eventTimeZoneID }
     init(session: WorkSession) {
         name = session.name; day = session.day; startTime = session.startTime; endTime = session.endTime
-        callTime = session.callTime; timeZoneID = session.timeZoneID; scheduleStatus = session.scheduleStatus
+        callTime = session.callTime; timeZoneID = session.eventTimeZoneID; scheduleStatus = session.scheduleStatus
+        if let startTime, let zone = TimeZone(identifier: timeZoneID) { day = Day.string(from: startTime, timeZone: zone) }
         coverage = session.coverage; overridesRoles = session.overridesRoles
         overridesSeries = session.overridesSeries; seriesName = session.series?.name ?? ""
         roleNames = Set((session.roles ?? []).map(\.name)); notes = session.notes
@@ -97,7 +115,7 @@ struct SessionDraft: Equatable {
         if !day.isEmpty && Day.date(from: day) == nil { throw RecordError.invalid("Choose a valid session date.") }
         if !timeZoneID.isEmpty && TimeZone(identifier: timeZoneID) == nil { throw RecordError.invalid("Choose a valid timezone.") }
         if startTime != nil || endTime != nil || callTime != nil {
-            guard TimeZone(identifier: timeZoneID) != nil else { throw RecordError.invalid("Choose a timezone before adding times.") }
+            guard TimeZone(identifier: timeZoneID) != nil else { throw RecordError.invalid("Choose the event timezone before adding times.") }
         }
         if let startTime, let endTime, endTime <= startTime { throw RecordError.invalid("The end must be after the start. For overnight sessions, choose the following date.") }
         if scheduleStatus == "confirmed" && (startTime == nil || endTime == nil) {
@@ -110,9 +128,16 @@ struct SessionDraft: Equatable {
     }
     @discardableResult
     func save(in context: NSManagedObjectContext, jobID: NSManagedObjectID, editing id: NSManagedObjectID? = nil, baseline: SessionDraft? = nil, transaction: NSManagedObjectContext? = nil) throws -> NSManagedObjectID {
-        try validate()
         let writer = transaction ?? isolatedWriter(context)
         let job = try writer.existingObject(with: jobID) as! Job
+        var resolved = self
+        resolved.timeZoneID = job.eventTimeZoneID
+        // Legacy/programmatic capture establishes a single event timezone once.
+        if resolved.timeZoneID.isEmpty && job.event == nil && !timeZoneID.isEmpty {
+            job.timeZoneID = timeZoneID
+            resolved.timeZoneID = timeZoneID
+        }
+        try resolved.validate()
         let session = try id.map { try writer.existingObject(with: $0) as! WorkSession }
             ?? WorkSession(entity: NSEntityDescription.entity(forEntityName: "WorkSession", in: writer)!, insertInto: writer)
         guard session.deletedAt == nil else { throw RecordError.invalid("This session was removed on another device. Cancel and return to the job.") }
@@ -125,7 +150,7 @@ struct SessionDraft: Equatable {
         assign("startTime", startTime, baseline.map(\.startTime))
         assign("endTime", endTime, baseline.map(\.endTime))
         assign("callTime", callTime, baseline.map(\.callTime))
-        assign("timeZoneID", timeZoneID, baseline?.timeZoneID)
+        session.timeZoneID = resolved.timeZoneID
         assign("scheduleStatus", scheduleStatus, baseline?.scheduleStatus)
         assign("coverage", coverage, baseline?.coverage)
         assign("overridesSeries", overridesSeries, baseline?.overridesSeries)

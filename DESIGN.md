@@ -222,3 +222,25 @@ Short Schedule/Coverage choices retain their adaptive segmented controls. The
 wizard sequence is unchanged; it creates independent one-client events.
 
 Verification and native screenshots: [single-client events](design/verification/single-client-events/README.md).
+
+## Event timezone ownership — October 14, 2026
+
+The event owns the timezone for every session. The wizard exposes it in event
+setup and once above the session list; the session editor shows it read-only.
+Remote and hybrid work expose “Your timezone” in Work for secondary local-time
+readouts, including call time. On-site work inherits the event zone. Event-zone
+changes preserve scheduled instants and update the displayed civil dates.
+
+## Event capture fields — October 14, 2026
+
+The new-event wizard keeps Back on the leading side and Cancel on the trailing
+side throughout the flow. Client entry is one labelled typeahead: suggestions
+come from saved clients only, and new text remains in the draft until saving.
+Championship selection uses the same inline search, with explicit Add for a new
+name and removable selected rows. Both searches show up to five matching saved
+names while focused and support keyboard submission. Championship matches remain
+visible for an uncommitted query when scrolling dismisses the keyboard.
+
+New events offer Tentative and Booked through DaybookChoicePicker, with its native
+menu fallback for larger Dynamic Type or narrow layouts. Completed and Cancelled
+remain available in the existing event editor.

@@ -17,6 +17,26 @@ actor TestCalendarPublisher: CalendarPublishing {
 
 @MainActor
 final class CalendarTests: XCTestCase {
+    func testTimeZoneChoicesPreserveDaylightSavingRules() throws {
+        let winter = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T00:00:00Z"))
+        let summer = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-07-01T00:00:00Z"))
+        let choices = TimeZoneChoice.grouped(date: winter)
+        func choice(_ identifier: String) throws -> TimeZoneChoice {
+            try XCTUnwrap(choices.first { $0.identifiers.contains(identifier) })
+        }
+        XCTAssertEqual(Set(choices.flatMap(\.identifiers)), Set(TimeZone.knownTimeZoneIdentifiers))
+        XCTAssertEqual(Set(choices.map(\.label)).count, choices.count)
+        let eastern = try choice("America/New_York")
+        XCTAssertEqual(eastern.id, try choice("America/Toronto").id)
+        XCTAssertNotEqual(try choice("America/Denver").id, try choice("America/Phoenix").id)
+        XCTAssertNotEqual(try choice("Europe/London").id, try choice("Africa/Abidjan").id)
+        XCTAssertEqual(eastern.identifier(selection: "America/Toronto", search: "", current: ""), "America/Toronto")
+        XCTAssertEqual(eastern.identifier(selection: "", search: "New York", current: ""), "America/New_York")
+        let zone = try XCTUnwrap(TimeZone(identifier: eastern.identifier(selection: "", search: "", current: "")))
+        XCTAssertEqual(zone.secondsFromGMT(for: winter), -18000)
+        XCTAssertEqual(zone.secondsFromGMT(for: summer), -14400)
+    }
+
     func testProjectionPreservesPlaceholdersAndUsesCivilDayBoundaries() throws {
         let modelURL = try XCTUnwrap(Bundle.main.url(forResource: "Cuekeeper", withExtension: "momd"))
         let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL))

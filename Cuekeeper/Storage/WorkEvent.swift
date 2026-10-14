@@ -21,13 +21,21 @@ extension Job {
     var eventEndDay: String { event?.endDay ?? endDay }
     var eventLocation: String { event?.location ?? location }
     var eventTrackPlaceID: String { event?.trackPlaceID ?? trackPlaceID }
-    var eventTimeZoneID: String { event?.timeZoneID ?? timeZoneID }
+    var eventTimeZoneID: String {
+        let stored = event?.timeZoneID ?? timeZoneID
+        if !stored.isEmpty { return stored }
+        // Recover a common timezone for older records that only stored it on sessions.
+        let legacy = Set((sessions ?? []).filter { $0.deletedAt == nil }.map(\.timeZoneID).filter { !$0.isEmpty })
+        return legacy.count == 1 ? legacy.first! : ""
+    }
+    var hasWorkTimeZone: Bool { workArrangement == "remote" || workArrangement == "hybrid" }
+    var workTimeZoneID: String { hasWorkTimeZone ? timeZoneID : eventTimeZoneID }
     var eventNotes: String { event?.notes ?? "" }
     var eventKey: NSManagedObjectID { objectID }
     var eventBookings: [Job] { [self] }
     var eventSeriesNames: [String] { seriesNames.sorted() }
     var eventSessions: [WorkSession] {
-        activeSessions.sorted { ($0.day, $0.startTime ?? .distantFuture, $0.title) < ($1.day, $1.startTime ?? .distantFuture, $1.title) }
+        activeSessions.sorted { ($0.eventDay, $0.startTime ?? .distantFuture, $0.title) < ($1.eventDay, $1.startTime ?? .distantFuture, $1.title) }
     }
     var eventTitle: String {
         let custom = event?.title ?? name
@@ -120,6 +128,18 @@ struct EventDraft: Equatable {
             let role = entry.newRole.trimmingCharacters(in: .whitespacesAndNewlines)
             if !role.isEmpty { updated.roleNames.insert(role) }
             _ = try updated.stage(in: writer, editing: entry.id, baseline: entry.baseline)
+        }
+        if prior.timeZoneID != event.timeZoneID {
+            let timed = anchor.activeSessions.filter { $0.startTime != nil || $0.endTime != nil || $0.callTime != nil }
+            guard timed.isEmpty || TimeZone(identifier: event.timeZoneID) != nil else {
+                throw RecordError.invalid("Choose an event timezone while sessions have times.")
+            }
+            for session in anchor.activeSessions {
+                session.timeZoneID = event.timeZoneID
+                if let start = session.startTime, let zone = TimeZone(identifier: event.timeZoneID) {
+                    session.day = Day.string(from: start, timeZone: zone)
+                }
+            }
         }
         try writer.save(); context.refreshAllObjects()
         return anchor.objectID

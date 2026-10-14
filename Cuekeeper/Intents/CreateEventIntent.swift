@@ -37,7 +37,7 @@ struct CreateEventIntent: AppIntent {
     @Parameter(title: "Booking status", default: .tentative) var bookingStatus: BookingStatus
     @Parameter(title: "Work arrangement", default: .unspecified) var workArrangement: WorkArrangement
     @Parameter(title: "Location") var location: String?
-    @Parameter(title: "Timezone", description: "An IANA timezone, such as Europe/London. Optional for an all-day event.")
+    @Parameter(title: "Event timezone", description: "An IANA timezone, such as Europe/London. Optional for an all-day event.")
     var timeZoneID: String?
 
     static var parameterSummary: some ParameterSummary {
@@ -59,7 +59,7 @@ struct CreateEventIntent: AppIntent {
         draft.shared.bookingStatus = bookingStatus
         draft.shared.workArrangement = workArrangement
         draft.shared.location = (location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        draft.shared.timeZoneID = (timeZoneID ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        draft.events[0].timeZoneID = (timeZoneID ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         return draft
     }
 
@@ -69,7 +69,7 @@ struct CreateEventIntent: AppIntent {
             throw $endDate.needsValueError("What is the last day? It must be on or after the start date.")
         }
         let draft = makeDraft()
-        if !draft.shared.timeZoneID.isEmpty && TimeZone(identifier: draft.shared.timeZoneID) == nil {
+        if !draft.events[0].timeZoneID.isEmpty && TimeZone(identifier: draft.events[0].timeZoneID) == nil {
             throw $timeZoneID.needsValueError("Which timezone? Use a timezone such as Europe/London or America/New_York.")
         }
         try await persistence.waitUntilLoaded()

@@ -26,7 +26,7 @@ struct SessionEditorView: View {
         value.overridesSeries = true
         _draft = State(initialValue: value); _initial = State(initialValue: value)
     }
-    private var zone: TimeZone { TimeZone(identifier: draft.timeZoneID) ?? .current }
+    private var zone: TimeZone { TimeZone(identifier: job.eventTimeZoneID) ?? .current }
     var body: some View {
         NavigationStack {
             DaybookForm {
@@ -47,20 +47,12 @@ struct SessionEditorView: View {
                             }
                         } else { sessionDatePicker }
                     }
-                    DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()) } label: {
-                        if typeSize.isAccessibilitySize {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Timezone")
-                                Text(zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date())).foregroundStyle(Color("SecondaryText"))
-                            }
-                        } else {
-                            LabeledContent("Timezone", value: zoneLabel(draft.timeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()))
-                        }
-                    }
-                    SessionScheduleField(draft: $draft)
+                    TimeZoneValueLabel(title: "Event timezone", value: zoneLabel(job.eventTimeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()))
+                    if job.eventTimeZoneID.isEmpty { Text("Set the timezone in Edit Event before adding times.").font(.caption).foregroundStyle(.secondary) }
+                    SessionScheduleField(draft: $draft, zone: zone).disabled(job.eventTimeZoneID.isEmpty)
                     optionalTime("Call time", value: $draft.callTime)
                 } header: { Text("Schedule") } footer: {
-                    Text("Times can remain incomplete. For overnight work, set the end on the following date. Times are shown in the selected timezone.")
+                    Text("Times can remain incomplete. For overnight work, set the end on the following date. All sessions use the event timezone.")
                 }
                 Section {
                     DaybookChoicePicker("Schedule", selection: $draft.scheduleStatus, identifier: "session-schedule") {
@@ -131,16 +123,13 @@ struct SessionEditorView: View {
         } catch { self.error = error.localizedDescription }
     }
     private var sessionDatePicker: some View {
-        DatePicker("Session date", selection: Binding(get: { Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date)
+        DatePicker("Session date", selection: Binding(get: { draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date)
             .disabled(draft.startTime != nil)
     }
     @ViewBuilder private func optionalTime(_ label: String, value: Binding<Date?>) -> some View {
         OptionalSessionTimeField(title: label, value: value,
-            defaultDate: (draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date())
-                .addingTimeInterval(label == "End" ? 3600 : 0), zone: zone)
-            .onChange(of: value.wrappedValue) { _, date in
-                if date != nil && draft.timeZoneID.isEmpty { draft.timeZoneID = zone.identifier }
-            }
+            defaultDate: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date(), zone: zone)
+            .disabled(job.eventTimeZoneID.isEmpty)
     }
 
 }
@@ -173,6 +162,7 @@ struct SessionRow: View {
             Text(session.title).font(.headline)
             if !session.effectiveSeriesNames.isEmpty { Text(session.effectiveSeriesNames.joined(separator: ", ")).font(.subheadline) }
             DaybookMetadata(symbol: "clock", text: session.compactSchedule)
+            if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
             HStack { BookingBadge(status: session.scheduleStatus); Text(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized).font(.caption).foregroundStyle(Color("SecondaryText")) }
             if let call = session.callTime { DaybookMetadata(symbol: "video", text: "Call \(session.shortTime(call))") }
         }.padding(.vertical, 4)
@@ -193,11 +183,12 @@ struct SessionDetailView: View {
             Section("Series") { Text(session.effectiveSeries?.name ?? "Not added") }
             Section("Schedule") {
                 Text(session.scheduleDescription)
+                if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                 LabeledContent("Schedule", value: session.scheduleStatus.capitalized)
                 LabeledContent("Coverage", value: session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized)
                 if let call = session.callTime {
                     Text("Call: \(session.shortTime(call))")
-                        .environment(\.timeZone, TimeZone(identifier: session.timeZoneID) ?? .current)
+                        .environment(\.timeZone, TimeZone(identifier: session.eventTimeZoneID) ?? .current)
                 }
                 LabeledContent("Roles", value: session.roleNames.isEmpty ? "None selected" : session.roleNames.joined(separator: ", "))
             }

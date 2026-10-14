@@ -4,6 +4,7 @@ import Foundation
 struct EventOutline: Identifiable, Equatable {
     var id = UUID()
     var details = JobDraft()
+    var timeZoneID = ""
     var usesSharedSeries = true
     var seriesOverrideInitialized = false
     var sessions: [SessionDraft] = []
@@ -30,7 +31,14 @@ struct EventCreationDraft: Equatable {
             if event.usesSharedSeries { result.details.seriesNames = shared.seriesNames }
             result.details.roleNames = shared.roleNames
             result.details.workArrangement = shared.workArrangement
-            result.details.timeZoneID = shared.timeZoneID
+            result.details.timeZoneID = [.remote, .hybrid].contains(shared.workArrangement) ? shared.timeZoneID : event.timeZoneID
+            result.sessions = event.sessions.map { session in
+                var value = session; value.timeZoneID = event.timeZoneID
+                if let start = value.startTime, let zone = TimeZone(identifier: event.timeZoneID) {
+                    value.day = Day.string(from: start, timeZone: zone)
+                }
+                return value
+            }
             if result.details.location.isEmpty { result.details.location = shared.location; result.details.trackPlaceID = shared.trackPlaceID }
             result.details.bookingStatus = shared.bookingStatus
             result.details.fee = shared.fee
@@ -45,6 +53,7 @@ struct EventCreationDraft: Equatable {
         do {
             var ids: [NSManagedObjectID] = []
             for event in resolvedEvents() {
+                guard event.timeZoneID.isEmpty || TimeZone(identifier: event.timeZoneID) != nil else { throw JobDraft.ValidationError.invalidTimeZone }
                 var booking = event.details
                 booking.name = ""
                 let job = try booking.stage(in: writer)
@@ -52,7 +61,7 @@ struct EventCreationDraft: Equatable {
                 grouped.id = job.id; grouped.title = event.displayTitle
                 grouped.startDay = job.startDay; grouped.endDay = job.endDay
                 grouped.location = job.location; grouped.trackPlaceID = job.trackPlaceID
-                grouped.timeZoneID = job.timeZoneID; grouped.notes = event.notes
+                grouped.timeZoneID = event.timeZoneID; grouped.notes = event.notes
                 job.event = grouped
                 try writer.obtainPermanentIDs(for: [job, grouped])
                 let id = job.objectID
@@ -69,12 +78,16 @@ struct EventCreationDraft: Equatable {
     }
 
     mutating func copySessions(from sourceID: UUID, to targets: Set<UUID>, includingTimes: Bool) throws {
-        guard let source = events.first(where: { $0.id == sourceID }) else { return }
+        guard let source = resolvedEvents().first(where: { $0.id == sourceID }) else { return }
         var updated = events
         for index in updated.indices where targets.contains(updated[index].id) && updated[index].id != sourceID {
             let destination = updated[index]
-            let copies = try source.sessions.map { try $0.copied(from: source.details.startDate, to: destination.details.startDate, includingTimes: includingTimes) }
-            updated[index].sessions.append(contentsOf: copies)
+            let copies = try source.sessions.map { try $0.copied(from: source.details.startDate, to: destination.details.startDate, includingTimes: includingTimes, destinationTimeZoneID: destination.timeZoneID) }
+            updated[index].sessions.append(contentsOf: copies.map { session in
+                var value = session; value.timeZoneID = destination.timeZoneID
+                if let start = value.startTime, let zone = TimeZone(identifier: destination.timeZoneID) { value.day = Day.string(from: start, timeZone: zone) }
+                return value
+            })
         }
         events = updated
     }
@@ -82,7 +95,7 @@ struct EventCreationDraft: Equatable {
 
 extension SessionDraft {
     /// Preserve local clock times across daylight-saving changes, rejecting nonexistent times.
-    func copied(from sourceDate: Date, to destinationDate: Date, includingTimes: Bool) throws -> SessionDraft {
+    func copied(from sourceDate: Date, to destinationDate: Date, includingTimes: Bool, destinationTimeZoneID: String? = nil) throws -> SessionDraft {
         var copy = self
         copy.scheduleStatus = "tentative"; copy.coverage = "undecided"
         copy.links = links.map { var link = $0; link.id = UUID(); return link }
@@ -91,6 +104,7 @@ extension SessionDraft {
             copy.startTime = nil; copy.endTime = nil; copy.callTime = nil
             return copy
         }
+        try validate()
         let zone = TimeZone(identifier: timeZoneID) ?? .current
         var civil = Calendar(identifier: .gregorian); civil.timeZone = TimeZone(secondsFromGMT: 0)!
         let source = Day.date(from: Day.string(from: sourceDate), timeZone: civil.timeZone)!
@@ -108,6 +122,23 @@ extension SessionDraft {
         copy.startTime = try shift(startTime); copy.endTime = try shift(endTime); copy.callTime = try shift(callTime)
         if let start = copy.startTime { copy.day = Day.string(from: start, timeZone: zone) }
         else if let date = Day.date(from: day, timeZone: zone), let shifted = try shift(date) { copy.day = Day.string(from: shifted, timeZone: zone) }
+        if let destinationTimeZoneID, destinationTimeZoneID != timeZoneID {
+            guard let targetZone = TimeZone(identifier: destinationTimeZoneID) else {
+                throw RecordError.invalid("Choose the destination event timezone before copying times.")
+            }
+            var target = Calendar(identifier: .gregorian); target.timeZone = targetZone
+            func convert(_ date: Date?) throws -> Date? {
+                guard let date else { return nil }
+                let components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+                guard let result = target.date(from: components),
+                      target.dateComponents([.year, .month, .day, .hour, .minute, .second], from: result) == components else {
+                    throw RecordError.invalid("A copied time falls in a daylight-saving clock change. Copy without times and enter it manually.")
+                }
+                return result
+            }
+            copy.startTime = try convert(copy.startTime); copy.endTime = try convert(copy.endTime); copy.callTime = try convert(copy.callTime)
+            copy.timeZoneID = destinationTimeZoneID
+        }
         try copy.validate()
         return copy
     }

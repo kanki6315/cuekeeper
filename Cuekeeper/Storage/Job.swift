@@ -24,6 +24,7 @@ final class Job: NSManagedObject {
     var seriesNames: [String] { allSeries.map(\.name).sorted() }
     @NSManaged var client: Client?
     @NSManaged var roles: Set<WorkRole>?
+    @NSManaged var expenses: Set<Expense>?
     @NSManaged var payments: Set<PaymentRecord>?
     @NSManaged var feeRevisions: Set<FeeRevision>?
     @NSManaged var sessions: Set<WorkSession>?

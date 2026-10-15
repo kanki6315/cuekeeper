@@ -48,6 +48,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: Cuekeeper uses the camera to scan receipts and attach them to event expenses.
         NSCalendarsFullAccessUsageDescription: Cuekeeper reads and updates its own job placeholders and confirmed sessions in your selected calendar.
         UIBackgroundModes: [remote-notification]
         UILaunchScreen: {}
@@ -78,6 +79,7 @@ targets:
       - path: Cuekeeper/Storage/Job.swift
       - path: Cuekeeper/Storage/WorkEvent.swift
       - path: Cuekeeper/Storage/WorkSession.swift
+      - path: Cuekeeper/Storage/Expenses.swift
       - path: Cuekeeper/Storage/Fees.swift
       - path: Cuekeeper/Storage/Billing.swift
       - path: Cuekeeper/CalendarPublisher.swift

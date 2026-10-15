@@ -203,6 +203,7 @@ struct JobDetailView: View {
                     }
                 }.accessibilityIdentifier("job-fee")
             }
+            EventExpensesSection(job: job)
             JobBillingSection(job: job, onInvoice: { addingInvoice = true }, onPayment: { addingPayment = true })
             if !job.eventNotes.isEmpty { Section("Event notes") { Text(job.eventNotes).textSelection(.enabled) } }
             if !job.notes.isEmpty { Section("Previous booking notes") { Text(job.notes).textSelection(.enabled) } }

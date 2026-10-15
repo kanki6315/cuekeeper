@@ -392,3 +392,35 @@ times in the destination event timezone and rejects nonexistent daylight-saving 
 Existing session timezone fields remain for storage compatibility; an older event
 without a timezone can recover a common zone from its sessions. Conflicting legacy
 zones require choosing an event timezone.
+
+## Receipt expenses (V12)
+
+Event → Expenses → Scan Receipt opens the native document camera, with photo
+import available after cancelling the camera or on devices without a scanner.
+Scan one page per expense. Vision reads the image on-device and the on-device
+Foundation Models model proposes merchant, civil date, total, currency, included
+tax and category. No PCC or third-party model is used. Apple Intelligence must
+be available for automatic field extraction; manual review remains available
+when it is disabled, unsupported, downloading or fails.
+
+The review form requires confirmation before an expense is counted as saved.
+The normalized receipt JPEG is persisted as an event-linked draft before model
+processing. Keep Draft preserves incomplete fields; reopen Review receipt in the
+event to continue. A process interruption preserves the photo, but form edits
+since the last save may be lost. Saved expenses can be reopened and edited, with
+stale edits rejected locally. Expenses do not change fees, invoices or payments.
+This version supports positive totals in USD, EUR, GBP, CAD, AUD, NZD and CHF;
+it does not split receipts or perform currency conversion or tax calculation.
+
+The discoverable Scan Receipt App Intent and App Shortcut open event selection
+and then receipt capture. Assign it through Settings → Action Button → Shortcut
+→ Cuekeeper → Scan Receipt (or create a shortcut containing that action).
+It requires foreground interaction and authentication. Repeated invocations
+reuse the pending selection rather than creating events or expenses.
+
+V12 adds the optional Expense entity and Job.expenses inverse, with externally
+stored binary receipt data. Photos and draft fields are included in explicit
+backups; pre-expense archives remain restorable. Event deletion retains its
+expenses with the event tombstone. The existing 100 MB backup limit still applies.
+Production schema deployment and real-device camera/model, Action Button,
+and cross-device image-sync checks are required before release.

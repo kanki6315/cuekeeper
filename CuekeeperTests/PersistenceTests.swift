@@ -687,9 +687,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try first.save(in: context, editing: id))
     }
 
-    func testV2ThroughV10StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV2ThroughV11StoresMigrateWithRelationshipsAndFeeHistory() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...10 {
+        for version in 2...11 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"

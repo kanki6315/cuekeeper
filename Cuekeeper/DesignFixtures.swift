@@ -34,6 +34,17 @@ enum DesignFixtures {
             let id = try draft.save(in: context)
             created.append(try context.existingObject(with: id) as! Job)
         }
+        if route == "expense" {
+            let format = UIGraphicsImageRendererFormat(); format.scale = 1
+            let image = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 700), format: format).image { renderer in
+                UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 600, height: 700))
+                let text = "CIRCUIT PARKING\n\n15 October 2026\n\nParking          EUR 20.00\nTax               EUR 4.50\nTOTAL            EUR 24.50\n\nPaid by card\n\nSYNTHETIC TEST RECEIPT"
+                (text as NSString).draw(in: CGRect(x: 35, y: 45, width: 530, height: 620), withAttributes: [.font: UIFont.monospacedSystemFont(ofSize: 24, weight: .regular), .foregroundColor: UIColor.black])
+            }
+            let id = try Expense.capture(image.jpegData(compressionQuality: 0.9)!, jobID: created[0].objectID, in: context)
+            let expense = try context.existingObject(with: id) as! Expense
+            try Expense.save(ExpenseValue(merchant: "Circuit Parking", day: "2026-10-15", amount: "24.50", currency: "EUR", tax: "4.50", category: "Parking"), id: id, revision: expense.revision, confirmed: false, in: context)
+        }
         if let client = created[0].client {
             let original = LibraryDraft(record: client)
             var contact = original; contact.contact = "Production desk · producer@northside.example"; contact.notes = "Send fee confirmations to the production desk."
@@ -97,6 +108,10 @@ struct DesignFixtureScreen: View {
         else if let job = jobs.first, let invoice = invoices.first {
             NavigationStack {
                 switch DesignFixtures.route {
+                case "expense": JobDetailView(job: job).sheet(isPresented: $editorPresented) {
+                    if let expense = job.expenses?.first { ExpenseEditorView(job: job, expense: expense) }
+                }
+                case "receipt-shortcut": ReceiptEventPicker()
                 case "recently-deleted": RecentlyDeletedView()
                 case "backups": BackupView(cloud: FixtureBackups.shared, preview: true)
                 case "event": EventDetailView(anchor: job)

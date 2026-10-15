@@ -26,6 +26,8 @@
 	<false/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Cuekeeper reads and updates its own job placeholders and confirmed sessions in your selected calendar.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cuekeeper uses the camera to scan receipts and attach them to event expenses.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

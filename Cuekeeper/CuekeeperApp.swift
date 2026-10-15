@@ -69,6 +69,9 @@ struct CuekeeperApp: App {
                         launchContent
                         #endif
                     }.environment(\.managedObjectContext, persistence.container.viewContext)
+                    .sheet(isPresented: $handoff.scanningReceipt) {
+                        ReceiptEventPicker().environment(\.managedObjectContext, persistence.container.viewContext)
+                    }
                     .fullScreenCover(item: Binding(get: { handoff.pending }, set: { value in
                         if value == nil, let id = handoff.pending?.id { handoff.close(id: id) }
                     })) { request in

@@ -278,3 +278,21 @@ regressions. The fresh native finish review returned `ship` for the supplied evi
 This establishes simulator behavior, not live cross-device iCloud delivery,
 VoiceOver gestures or physical-device ergonomics. No schema deployment, release
 archive or TestFlight upload occurred; broader product validation remains open.
+
+## Receipt expenses — October 15, 2026
+
+Events now include receipt expenses. Scan or import one receipt page, extract
+proposed fields with Vision and the on-device Foundation Models model, review and
+edit, then save the expense with its photo. A persisted draft protects the photo
+before extraction; Keep Draft saves incomplete details. Manual entry remains
+available when automatic extraction fails or Apple Intelligence is unavailable.
+Draft photos can be replaced with confirmation; saved expenses reopen for editing.
+Expenses remain independent of fees, invoices and payments. The first version
+supports USD, EUR, GBP, CAD, AUD, NZD and CHF with exact two-decimal minor units.
+
+The Scan Receipt intent and App Shortcut support Action Button assignment and
+open event selection followed by capture. V12 adds event-linked expenses and
+binary receipt attachments; backups include photos and accept older archives.
+Development schema initialization/export and local validation passed. Production
+deployment and physical-device capture/model/shortcut/sync checks remain release
+prerequisites. Evidence: design/verification/receipt-expenses/README.md.

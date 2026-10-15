@@ -1,0 +1,50 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "6FD9B15D-0931-41A1-9760-C788903A5FDB",
+        "deviceName" : "Cuekeeper Job Management iPad",
+        "exportedFileName" : "61C65708-6A30-4686-BA70-EDE9AE38B038.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "receipt-saved_0_36E378F9-856F-40DC-A67D-1F4A5EDB9AE6.png",
+        "timestamp" : 1792038061.524
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "6FD9B15D-0931-41A1-9760-C788903A5FDB",
+        "deviceName" : "Cuekeeper Job Management iPad",
+        "exportedFileName" : "0A151E50-25D4-42F7-AF08-207940C57FD3.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "receipt-review-fields_0_7EA8715E-7CC7-45B5-9F61-AC66D05914DF.png",
+        "timestamp" : 1792038054.584
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "6FD9B15D-0931-41A1-9760-C788903A5FDB",
+        "deviceName" : "Cuekeeper Job Management iPad",
+        "exportedFileName" : "CC6FC3BD-3AF7-4393-BF60-E063A932EE39.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "receipt-review-top_0_B74CB0FC-A808-4922-95F5-82A4EF5C5CC9.png",
+        "timestamp" : 1792038051.573
+      }
+    ],
+    "testIdentifier" : "ExpenseUITests/testReviewEditSaveAndReopenReceipt()",
+    "testIdentifierURL" : "test://com.apple.xcode/Cuekeeper/CuekeeperUITests/ExpenseUITests/testReviewEditSaveAndReopenReceipt"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "6FD9B15D-0931-41A1-9760-C788903A5FDB",
+        "deviceName" : "Cuekeeper Job Management iPad",
+        "exportedFileName" : "7FAE209C-C016-4F29-9910-CFB20392E56A.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "receipt-shortcut-events_0_448C35AF-FF25-4F31-B642-A979554689C7.png",
+        "timestamp" : 1792038067.679
+      }
+    ],
+    "testIdentifier" : "ExpenseUITests/testShortcutEventChoice()",
+    "testIdentifierURL" : "test://com.apple.xcode/Cuekeeper/CuekeeperUITests/ExpenseUITests/testShortcutEventChoice"
+  }
+]

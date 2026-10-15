@@ -1,0 +1,56 @@
+APP STORE LISTING — DRAFT FOR OWNER REVIEW
+
+Name
+Cuekeeper
+
+Subtitle
+Your freelance work, organized
+
+Primary category suggestion
+Productivity
+
+Keywords
+broadcast,freelancer,daybook,bookings,sessions,invoices,payments,receipts,expenses,schedule
+
+Promotional text
+Keep bookings, sessions, fees and payments together. Plan your next call, review receipt expenses, and carry your daybook between iPhone and iPad with iCloud.
+
+Description
+Your next event starts here.
+
+Cuekeeper is a daybook for broadcast freelancers: commentators, presenters, producers and crew. Capture dates now, then add the details as your work takes shape.
+
+KEEP YOUR WORK TOGETHER
+Track tentative, booked, completed and cancelled events. Save clients, roles, locations and notes, and build a session schedule with call times and broadcast links.
+
+SEE WHAT'S NEXT
+Use Today, Week and All to find upcoming work. Home and Lock Screen widgets show a snapshot of your schedule. Work across timezones with event times and an additional local-time display for remote or hybrid work.
+
+TRACK FEES AND PAYMENTS
+Record agreed fees, track invoices and partial payments, and keep balances separate by currency. Cuekeeper tracks your records; it does not generate or send invoice documents, connect to banking, calculate tax or convert currencies.
+
+KEEP RECEIPTS WITH THE EVENT
+Scan or import a receipt, review its details, and save it as an expense. Automatic field extraction uses Apple's on-device model on compatible devices; manual entry remains available. Set up an optional Shortcuts Wallet automation to capture expense drafts for later review.
+
+CONNECT YOUR CALENDAR
+Publish event placeholders and eligible confirmed sessions to a calendar you choose. One designated device publishes changes when Cuekeeper is open and connected.
+
+YOUR DAYBOOK, ACROSS DEVICES
+Save work offline and sync through your private iCloud database when available. Create separate manual iCloud backups and recover recently deleted events. Sync and backups serve different purposes.
+
+Requires iOS/iPadOS 27. Automatic receipt extraction requires a compatible device with Apple Intelligence enabled and its model available. iCloud features require an available Apple Account and connectivity. Wallet automation is configured by you in Shortcuts; available inputs vary. Widgets update on the system's schedule.
+
+Support: https://cuekeeper.arjunakankipati.com/support
+Privacy: https://cuekeeper.arjunakankipati.com/privacy
+
+Marketing URL
+https://cuekeeper.arjunakankipati.com/
+
+Support URL
+https://cuekeeper.arjunakankipati.com/support
+
+Privacy Policy URL
+https://cuekeeper.arjunakankipati.com/privacy
+
+Copyright
+2026 Arjuna Kankipati

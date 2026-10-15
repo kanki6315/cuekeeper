@@ -340,8 +340,13 @@ struct SettingsView: View {
                 DaybookLink { RecentlyDeletedView() } label: { Label("Recently Deleted", systemImage: "trash") }
             }
             Section("About") {
+                Link(destination: URL(string: "https://cuekeeper.arjunakankipati.com/support")!) {
+                    Label("Help & Support", systemImage: "questionmark.circle")
+                }
+                Link(destination: URL(string: "https://cuekeeper.arjunakankipati.com/privacy")!) {
+                    Label("Privacy Policy", systemImage: "hand.raised")
+                }
                 LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"))")
-                Text("Personal beta").foregroundStyle(Color("SecondaryText"))
             }
         }
         .navigationTitle("")

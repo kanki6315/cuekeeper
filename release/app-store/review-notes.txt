@@ -1,0 +1,20 @@
+APP REVIEW NOTES — DRAFT; ADD THE FINAL BUILD AND REVIEW CONTACT IN APP STORE CONNECT
+
+Cuekeeper is a native daybook for broadcast freelancers. No Cuekeeper login or demo account is required. Core local event, session and financial entry can be reviewed without connecting Calendar or iCloud.
+
+Suggested walkthrough:
+1. Complete first-launch preferences and choose Not now for Calendar.
+2. Add an event with a name and dates. Add a client and a session, then edit their details.
+3. Record a fee and use Payments to track invoices and payments. This is recordkeeping only: no banking, document sending, tax calculations or currency conversion.
+4. In the event's Expenses, scan or import a one-page receipt, review the fields and save. Automatic extraction uses Vision and on-device Foundation Models. It requires Apple Intelligence availability; manual entry is available otherwise. No remote AI endpoint is used.
+5. Settings contains Calendar connection, Wallet Automation instructions, backups, Recently Deleted, support and privacy links.
+
+Optional integrations:
+- iCloud sync and manual backups use the signed-in user's private CloudKit database. The developer cannot supply a shared demo iCloud account containing user data. A fresh review installation may have an empty daybook.
+- Calendar access is requested only when connecting. A single designated device publishes event placeholders and eligible confirmed, covering sessions. Open the publishing device with connectivity for reconciliation.
+- Scan Receipt is a foreground App Shortcut and can be assigned to the Action Button on supported hardware. Capture Expense is a separate background intent that saves a draft; optional Wallet personal automation must be configured by the user in Shortcuts. Cuekeeper does not independently access Wallet transactions.
+- Expense-completion notifications are optional local notifications with generic text.
+- Home/Lock Screen widgets read the main app's schedule snapshot. They do not independently sync CloudKit; open the app to refresh the snapshot. OS scheduling controls widget reloads.
+- Selected-venue maps and weather use Apple's services, not device GPS permission.
+
+Before submitting these notes: enter the actual review contact name, phone and email in App Store Connect; confirm all public links load and the final signed build has passed the production schema and physical-device checks. Do not submit this preparation paragraph.

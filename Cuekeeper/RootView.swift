@@ -168,6 +168,7 @@ private struct JobsView: View {
                         VStack(alignment: .leading, spacing: 12) { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); addButton }
                     }
                 }
+                if upcomingOnly { PendingExpensesPrompt() }
                 if !jobs.isEmpty {
                     if !upcomingOnly || upcomingScope != "Today" { HStack {
                         DaybookTextField("Search events, clients or series", text: $query).accessibilityIdentifier("search-jobs")
@@ -291,7 +292,10 @@ struct SettingsView: View {
                 Button("Run setup again") { showingSetup = true }.frame(minHeight: 44)
                     .accessibilityIdentifier("run-setup-again")
             }
-            Section("Integrations") { DaybookLink { CalendarSettingsView() } label: { Label("Calendar", systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading) } }
+            Section("Integrations") {
+                DaybookLink { CalendarSettingsView() } label: { Label("Calendar", systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading) }
+                DaybookLink { ExpenseAutomationSettingsView() } label: { Label("Wallet Automation", systemImage: "creditcard").frame(maxWidth: .infinity, alignment: .leading) }.accessibilityIdentifier("wallet-automation-settings")
+            }
             Section("Libraries") {
                 DaybookLink { LibraryView(kind: .series) } label: { libraryLabel("Series", symbol: "rectangle.stack") }
                 DaybookLink { LibraryView(kind: .client) } label: { libraryLabel("Clients", symbol: "person.2") }

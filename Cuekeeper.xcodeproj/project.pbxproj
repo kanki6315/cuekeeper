@@ -33,6 +33,7 @@
 		4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC535FB730F3A6A7FE4A398 /* SessionView.swift */; };
 		4EA1FBAF120B261072530418 /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
+		5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */; };
 		5D61BFB198A9CC57CF470000 /* ExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69C16751D64E2080FCAD476 /* ExpenseTests.swift */; };
 		5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */; };
 		5EA2B0F8414CAB369A9845D7 /* SessionBatchEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994C44392560A52DE055B755 /* SessionBatchEditorView.swift */; };
@@ -42,6 +43,7 @@
 		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
 		64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */; };
 		6502B73414003C2DB2976046 /* ScanReceiptIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436A92BF7020E76AE820EC62 /* ScanReceiptIntent.swift */; };
+		65C1A4E83D4C7A58B11D893A /* ExpenseNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8242BC562D7713F5EAFAAE4 /* ExpenseNotifications.swift */; };
 		6A4FFD670D492A7563E2FA9E /* RecoveryBackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BE8FC36A37D1122F844EE96 /* RecoveryBackupTests.swift */; };
 		6F10F9A23FA535E443F05AAB /* ExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */; };
 		75124E87A3A68003C805BECE /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8A51E9BA7FE1E0EA6C578E /* TodayTests.swift */; };
@@ -58,6 +60,7 @@
 		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
 		A28ED7E82351B9557E0B880C /* CuekeeperWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
+		A8F6275D847E686B5FC978BA /* PendingExpensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC028165CC976F299783F54 /* PendingExpensesView.swift */; };
 		A933C1120214E017ABB6DABE /* FirstLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1A3615096553A427E9202D /* FirstLaunchTests.swift */; };
 		AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
 		AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */ = {isa = PBXBuildFile; fileRef = BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */; };
@@ -77,12 +80,14 @@
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		C94502CCC6AD8B533F1DFE7A /* BackupArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4510B4441D5730C579C736AA /* BackupArchive.swift */; };
 		C98339F7FD17877747472285 /* CalendarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71531F3273F27F2929AC0EE9 /* CalendarTests.swift */; };
+		D2F5F7D4DAFBD2CB1B51CFC4 /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */; };
 		D3C9527CEA68B7181C4AD974 /* Expenses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3763FF11F6A434226B2DBD /* Expenses.swift */; };
 		D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC25F847FFB2944BBBC0D0D /* FeeView.swift */; };
 		DAA665273A525BD7459E740C /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 		DCF5239950C0B0CFD22B1449 /* FirstLaunchBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */; };
+		DE6839B173599AEF04121980 /* ExpenseAutomationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */; };
 		E87E8E7C6AECCF11ECC0FA0C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
 		EEF6F74D6395DF0098A9C424 /* EventWizardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */; };
 		F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919618A957BA6EC5BAA77600 /* EventWeather.swift */; };
@@ -90,6 +95,7 @@
 		F32D8B7636FD757FB78A8368 /* FirstLaunchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762E08735536CF82AAD4C49D /* FirstLaunchView.swift */; };
 		F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */; };
 		F89D30978FFF5B0982468F02 /* EventWizardFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A5F712AF2B3219F8DC48DD /* EventWizardFields.swift */; };
+		FB86A1E722C6D0BEB91A95B7 /* CaptureExpenseIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F150655EBDB219023A79B0 /* CaptureExpenseIntent.swift */; };
 		FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -143,6 +149,7 @@
 		184979F54A69B58764328050 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
 		1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardHandoff.swift; sourceTree = "<group>"; };
 		1C39653F7538932613199392 /* EventVisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventVisualTests.swift; sourceTree = "<group>"; };
+		1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundExpenseTests.swift; sourceTree = "<group>"; };
 		206A75976A88F3D6564A881F /* Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recovery.swift; sourceTree = "<group>"; };
 		242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDraft.swift; sourceTree = "<group>"; };
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
@@ -167,6 +174,7 @@
 		54BB016BE1437AC97CC962A7 /* CuekeeperV12.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV12.xcdatamodel; sourceTree = "<group>"; };
 		575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceEditorView.swift; sourceTree = "<group>"; };
 		5A1A3615096553A427E9202D /* FirstLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchTests.swift; sourceTree = "<group>"; };
+		5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseAutomationSettingsView.swift; sourceTree = "<group>"; };
 		5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CuekeeperSchemaHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60A535829E430BC6AF335536 /* EventWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardView.swift; sourceTree = "<group>"; };
 		618C864D7A24CC9C62D1E183 /* Billing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Billing.swift; sourceTree = "<group>"; };
@@ -180,6 +188,7 @@
 		71531F3273F27F2929AC0EE9 /* CalendarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTests.swift; sourceTree = "<group>"; };
 		762E08735536CF82AAD4C49D /* FirstLaunchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchView.swift; sourceTree = "<group>"; };
 		77E6DB6F2628C8A88BCDD097 /* CloudBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupStore.swift; sourceTree = "<group>"; };
+		7AC028165CC976F299783F54 /* PendingExpensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingExpensesView.swift; sourceTree = "<group>"; };
 		7AEB83E7804374638D4D0136 /* DesignFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignFixtures.swift; sourceTree = "<group>"; };
 		7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignCaptureTests.swift; sourceTree = "<group>"; };
 		893F1EA4F4B4BB063F301463 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -196,6 +205,8 @@
 		A5BA01886803FB21C0F4DAD4 /* Fees.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fees.swift; sourceTree = "<group>"; };
 		A69C16751D64E2080FCAD476 /* ExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTests.swift; sourceTree = "<group>"; };
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A6F150655EBDB219023A79B0 /* CaptureExpenseIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureExpenseIntent.swift; sourceTree = "<group>"; };
+		A8242BC562D7713F5EAFAAE4 /* ExpenseNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseNotifications.swift; sourceTree = "<group>"; };
 		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF513485C51BD69B238E3E80 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsView.swift; sourceTree = "<group>"; };
@@ -224,6 +235,7 @@
 		EDE600824A3A4DC39439FDF0 /* CalendarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarController.swift; sourceTree = "<group>"; };
 		F26B1DE5EBB870F41896D3CC /* WorkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSession.swift; sourceTree = "<group>"; };
 		F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTests.swift; sourceTree = "<group>"; };
+		FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundExpenseTests.swift; sourceTree = "<group>"; };
 		FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriCreatedEventView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -231,6 +243,7 @@
 		27D261610FBDE70E33F6FD27 /* CuekeeperUITests */ = {
 			isa = PBXGroup;
 			children = (
+				FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */,
 				06442705EA3E6D3F4031E809 /* CaptureTests.swift */,
 				7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */,
 				A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */,
@@ -249,6 +262,7 @@
 			isa = PBXGroup;
 			children = (
 				3D728490D92E5AF2A632031C /* CalendarEventIntent.swift */,
+				A6F150655EBDB219023A79B0 /* CaptureExpenseIntent.swift */,
 				6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */,
 				1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */,
 				436A92BF7020E76AE820EC62 /* ScanReceiptIntent.swift */,
@@ -315,6 +329,7 @@
 		7B10F434EE90C5483BD6177B /* CuekeeperTests */ = {
 			isa = PBXGroup;
 			children = (
+				1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */,
 				71531F3273F27F2929AC0EE9 /* CalendarTests.swift */,
 				B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */,
 				01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */,
@@ -345,6 +360,8 @@
 				6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */,
 				00A5F712AF2B3219F8DC48DD /* EventWizardFields.swift */,
 				60A535829E430BC6AF335536 /* EventWizardView.swift */,
+				5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */,
+				A8242BC562D7713F5EAFAAE4 /* ExpenseNotifications.swift */,
 				9B6F1A7864EA8EF9E6647080 /* ExpenseView.swift */,
 				2CC25F847FFB2944BBBC0D0D /* FeeView.swift */,
 				D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */,
@@ -354,6 +371,7 @@
 				D682B024A3E281F66B73080A /* JobEditorView.swift */,
 				91C80D913C2F1C3287CFD3DF /* LibraryView.swift */,
 				B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */,
+				7AC028165CC976F299783F54 /* PendingExpensesView.swift */,
 				D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */,
 				D305E1038A9ABA4A3975A914 /* ReceiptExtractor.swift */,
 				66BCF474DBEC80465600AB43 /* RecoveryView.swift */,
@@ -562,6 +580,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D2F5F7D4DAFBD2CB1B51CFC4 /* BackgroundExpenseTests.swift in Sources */,
 				DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */,
 				FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */,
 				64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */,
@@ -579,6 +598,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */,
 				C98339F7FD17877747472285 /* CalendarTests.swift in Sources */,
 				9DC58F2C1AE2C2F5D7730D8E /* DayScheduleTests.swift in Sources */,
 				F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */,
@@ -628,6 +648,7 @@
 				338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */,
 				2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */,
 				471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */,
+				FB86A1E722C6D0BEB91A95B7 /* CaptureExpenseIntent.swift in Sources */,
 				BB946F58C6118E99571762DC /* CloudBackupStore.swift in Sources */,
 				DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */,
 				28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */,
@@ -644,6 +665,8 @@
 				F89D30978FFF5B0982468F02 /* EventWizardFields.swift in Sources */,
 				EEF6F74D6395DF0098A9C424 /* EventWizardHandoff.swift in Sources */,
 				620CF7BB9617AA81919C13FA /* EventWizardView.swift in Sources */,
+				DE6839B173599AEF04121980 /* ExpenseAutomationSettingsView.swift in Sources */,
+				65C1A4E83D4C7A58B11D893A /* ExpenseNotifications.swift in Sources */,
 				390F74DA1120AA42FC06A91E /* ExpenseView.swift in Sources */,
 				D3C9527CEA68B7181C4AD974 /* Expenses.swift in Sources */,
 				D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */,
@@ -656,6 +679,7 @@
 				5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */,
 				C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */,
 				5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */,
+				A8F6275D847E686B5FC978BA /* PendingExpensesView.swift in Sources */,
 				38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */,
 				BC7F0A4CEFBE7ED67362CE1E /* PreferenceFields.swift in Sources */,
 				9C6E74F9DB600B9E0315F2B6 /* ReceiptExtractor.swift in Sources */,
@@ -860,7 +884,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.9;
+				MARKETING_VERSION = 0.1.10;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1057,7 +1081,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.9;
+				MARKETING_VERSION = 0.1.10;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1126,7 +1150,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.9;
+				MARKETING_VERSION = 0.1.10;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

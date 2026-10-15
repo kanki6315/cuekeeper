@@ -452,3 +452,43 @@ independently sync CloudKit, so they reflect the last app snapshot, not a guaran
 of current data on every device. UI-test stores never publish widget snapshots.
 
 Design references and verification notes live in `design/today-widgets/`.
+
+## Background expense capture (0.1.10)
+
+Capture Expense is a separate, background-only App Intent with optional Merchant,
+Amount, Currency, Transaction date and Transaction ID inputs. It saves an expense
+draft without a receipt or event and returns its UUID. It does not open the app or
+ask for missing fields. Scan Receipt remains the foreground Action Button action.
+The new behavior reuses V12; optional captured-payment metadata is stored with the
+expense value, so no further Core Data/CloudKit schema version is required.
+
+Set up the Wallet personal automation on the iPhone using Settings → Integrations
+→ Wallet Automation. The guide explains mapping available Shortcut Input fields,
+Run Immediately, optional completion reminders, and the separate Scan Receipt
+Action Button use case. Cuekeeper cannot install the personal automation itself.
+Unknown or unparseable transaction values remain available in Captured payment;
+review fields stay blank rather than assuming a currency, date or total.
+
+Upcoming shows a completion prompt when drafts exist; Payments always links to
+Expenses to complete. Choose a draft, attach a receipt and assign an active event.
+Keep Draft saves incomplete work. Confirming still requires a receipt, event and
+valid expense details. Receipt extraction fills blanks and shows explicit choices
+for conflicts instead of overwriting payment values. Original payment evidence
+remains unchanged after editing. Personal/duplicate drafts can be removed with
+confirmation; their capture identity remains retained to prevent re-import.
+
+Deduplication uses only an explicit stable source Transaction ID (stored as a hash).
+Re-delivery of that ID does not modify a completed, edited or removed record. If
+no source ID is supplied, captures are kept separately; equal merchant/amount/date
+values are not sufficient evidence to discard a genuine second purchase. Local
+intent saves are serialized on the main actor; independently captured duplicates
+on offline devices are not globally deduplicated by CloudKit.
+
+Reminders are opt-in and local to the capturing device. Notification denial or
+scheduling failure never undoes a saved draft. Generic notification text avoids
+putting merchant/amount details on the lock screen. Tapping routes by persisted
+expense UUID after store loading. Completion/removal clears its reminder, and
+foreground reconciliation removes stale delivered/pending reminders. Drafts stay
+accessible when reminders are disabled or silenced by Focus. Locked-device access,
+actual Wallet payloads and cold-start notification delivery still need hardware
+validation. No server, PCC or remote notification service is used for this flow.

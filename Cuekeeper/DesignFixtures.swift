@@ -8,7 +8,7 @@ import WidgetKit
 enum DesignFixtures {
     static var enabled: Bool { ProcessInfo.processInfo.arguments.contains("--ui-testing") && ProcessInfo.processInfo.arguments.contains("--design-fixtures") }
     static var route: String { ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--design-screen=") })?.replacingOccurrences(of: "--design-screen=", with: "") ?? "root" }
-    static func seed(_ context: NSManagedObjectContext) throws {
+    @MainActor static func seed(_ context: NSManagedObjectContext) throws {
         guard enabled, try context.count(for: NSFetchRequest<Job>(entityName: "Job")) == 0 else { return }
         if ProcessInfo.processInfo.arguments.contains("--today-fixtures") {
             try seedToday(context)
@@ -39,16 +39,23 @@ enum DesignFixtures {
             let id = try draft.save(in: context)
             created.append(try context.existingObject(with: id) as! Job)
         }
-        if route == "expense" {
+        if ["expense", "pending-expenses", "expense-notification", "pending-root"].contains(route) {
             let format = UIGraphicsImageRendererFormat(); format.scale = 1
             let image = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 700), format: format).image { renderer in
                 UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 600, height: 700))
                 let text = "CIRCUIT PARKING\n\n15 October 2026\n\nParking          EUR 20.00\nTax               EUR 4.50\nTOTAL            EUR 24.50\n\nPaid by card\n\nSYNTHETIC TEST RECEIPT"
                 (text as NSString).draw(in: CGRect(x: 35, y: 45, width: 530, height: 620), withAttributes: [.font: UIFont.monospacedSystemFont(ofSize: 24, weight: .regular), .foregroundColor: UIColor.black])
             }
-            let id = try Expense.capture(image.jpegData(compressionQuality: 0.9)!, jobID: created[0].objectID, in: context)
-            let expense = try context.existingObject(with: id) as! Expense
-            try Expense.save(ExpenseValue(merchant: "Circuit Parking", day: "2026-10-15", amount: "24.50", currency: "EUR", tax: "4.50", category: "Parking"), id: id, revision: expense.revision, confirmed: false, in: context)
+            if route == "expense" {
+                let id = try Expense.capture(image.jpegData(compressionQuality: 0.9)!, jobID: created[0].objectID, in: context)
+                let expense = try context.existingObject(with: id) as! Expense
+                try Expense.save(ExpenseValue(merchant: "Circuit Parking", day: "2026-10-15", amount: "24.50", currency: "EUR", tax: "4.50", category: "Parking"), id: id, revision: expense.revision, confirmed: false, in: context)
+            } else {
+                let captured = try Expense.captureBackground(ExpenseCaptureInput(merchant: "Circuit Parking", amount: "24.50", currency: "EUR", date: Day.date(from: "2026-10-15"), transactionID: "fixture-parking"), in: context)
+                let expense = try context.existingObject(with: captured.objectID) as! Expense
+                try Expense.replacePhoto(image.jpegData(compressionQuality: 0.9)!, id: expense.objectID, revision: expense.revision, in: context)
+                _ = try Expense.captureBackground(ExpenseCaptureInput(merchant: "Hotel", amount: "120", currency: "EUR", transactionID: "fixture-hotel"), in: context)
+            }
         }
         if let client = created[0].client {
             let original = LibraryDraft(record: client)
@@ -129,12 +136,20 @@ struct DesignFixtureScreen: View {
     @State private var editorPresented = true
     var body: some View {
         if ["widgets", "accessories"].contains(DesignFixtures.route) { WidgetFixtureGallery() }
-        else if DesignFixtures.route == "root" { RootView() }
+        else if ["root", "pending-root"].contains(DesignFixtures.route) { RootView() }
         else if let job = jobs.first, let invoice = invoices.first {
             NavigationStack {
                 switch DesignFixtures.route {
                 case "expense": JobDetailView(job: job).sheet(isPresented: $editorPresented) {
                     if let expense = job.expenses?.first { ExpenseEditorView(job: job, expense: expense) }
+                }
+                case "pending-expenses": PendingExpensesView()
+                case "expense-automation": ExpenseAutomationSettingsView()
+                case "expense-notification": Text("Opening expense…").task {
+                    let request = NSFetchRequest<Expense>(entityName: "Expense")
+                    if let expense = try? context.fetch(request).first(where: { $0.value.merchant == "Hotel" }), let id = expense.id {
+                        ExpenseNotifications.shared.open(userInfo: ["expenseID": id.uuidString])
+                    }
                 }
                 case "receipt-shortcut": ReceiptEventPicker()
                 case "recently-deleted": RecentlyDeletedView()

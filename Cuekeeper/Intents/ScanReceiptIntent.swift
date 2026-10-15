@@ -16,6 +16,7 @@ struct ScanReceiptIntent: AppIntent {
 
 struct CuekeeperShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: CaptureExpenseIntent(), phrases: ["Capture an expense with \(.applicationName)"], shortTitle: "Capture Expense", systemImageName: "tray.and.arrow.down")
         AppShortcut(intent: ScanReceiptIntent(), phrases: ["Scan a receipt with \(.applicationName)"], shortTitle: "Scan Receipt", systemImageName: "doc.viewfinder")
     }
 }

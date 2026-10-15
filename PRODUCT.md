@@ -48,7 +48,7 @@ Settings now includes Recently Deleted (30 days) and explicit private iCloud
 backups. Backup restore merges missing records and recovers deleted records; it
 does not roll back newer edits or financial receipts.
 DESIGN.md and .impeccable/design.json describe the current visual implementation.
-The configured app version is 0.1.9; this documentation/version change is not a
+The configured app version is 0.1.10; this documentation/version change is not a
 TestFlight release or new device verification.
 
 First launch now introduces device-local defaults, optional Calendar connection
@@ -296,3 +296,19 @@ binary receipt attachments; backups include photos and accept older archives.
 Development schema initialization/export and local validation passed. Production
 deployment and physical-device capture/model/shortcut/sync checks remain release
 prerequisites. Evidence: design/verification/receipt-expenses/README.md.
+
+
+## Background expense drafts — October 15, 2026
+
+Capture Expense saves optional Wallet transaction details in the background without
+requiring an event or photo. Upcoming prompts for incomplete expenses; Payments
+provides the completion list. Users attach a receipt, select an event, and confirm
+fields; captured payment details remain available when OCR/model results differ.
+Settings → Integrations → Wallet Automation provides the personal automation setup
+steps and optional local notification controls. Notifications open a persisted
+draft by UUID; drafts remain accessible without notification permission.
+
+An explicit source transaction ID prevents repeated local delivery from creating
+another draft. Without an ID, captures remain separate to avoid dropping legitimate
+purchases. Removing a draft is confirmed and preserves its identity. V12 is reused;
+version is 0.1.10. This work does not deploy Production or upload TestFlight.

@@ -1,3 +1,4 @@
+import CloudKit
 import CoreData
 import XCTest
 import ZIPFoundation
@@ -452,3 +453,53 @@ final class RecoveryBackupTests: XCTestCase {
 }
 
 private final class BackupCancellationHolder: @unchecked Sendable { var control: BackupControl? }
+
+final class CloudBackupListingTests: XCTestCase {
+    func testUnreadableEntriesDoNotHideHealthyBackups() throws {
+        let ids = (0..<5).map { CKRecord.ID(recordName: "backup-\($0)", zoneID: CloudBackupStore.zoneID) }
+        let healthy = CKRecord(recordType: "CuekeeperBackup", recordID: ids[0])
+        healthy["savedAt"] = Date() as CKRecordValue
+        healthy["byteCount"] = Int64(123) as CKRecordValue
+        healthy["eventCount"] = Int64(2) as CKRecordValue
+        let malformed = CKRecord(recordType: "CuekeeperBackup", recordID: ids[1])
+        let entries = CloudBackupStore.entries(ids: ids, results: [
+            ids[0]: .success(healthy), ids[1]: .success(malformed),
+            ids[2]: .failure(CKError(.unknownItem)), ids[3]: .failure(CKError(.networkFailure))
+        ])
+        XCTAssertEqual(Set(entries.map(\.id)), Set(ids))
+        XCTAssertEqual(entries.filter(\.canRestore).map(\.id), [ids[0]])
+        XCTAssertEqual(entries.first?.bytes, 123)
+        XCTAssertTrue(entries.filter { !$0.canRestore }.allSatisfy { $0.issue != nil })
+    }
+
+    func testInvalidSizesAndEventCountsCannotBeRestored() {
+        let id = CKRecord.ID(recordName: "invalid", zoneID: CloudBackupStore.zoneID)
+        let record = CKRecord(recordType: "CuekeeperBackup", recordID: id)
+        record["savedAt"] = Date() as CKRecordValue
+        for (bytes, events) in [(Int64(0), Int64(1)), (BackupLimits.archive + 1, 1), (1, -1)] {
+            record["byteCount"] = bytes as CKRecordValue
+            record["eventCount"] = events as CKRecordValue
+            XCTAssertFalse(CloudBackupStore.entries(ids: [id], results: [id: .success(record)])[0].canRestore)
+        }
+    }
+
+    func testDeletionDiscoversOrphanPartsWithoutManifest() throws {
+        let store = CloudBackupStore()
+        let root = CKRecord.ID(recordName: "damaged", zoneID: store.zoneID)
+        let ids = store.deletionCandidates(root)
+        XCTAssertEqual(ids.count, 33)
+        XCTAssertEqual(ids.last?.recordName, "damaged-part-31")
+        XCTAssertTrue(ids.allSatisfy { $0.zoneID == store.zoneID })
+        var results: [CKRecord.ID: Result<CKRecord, Error>] = Dictionary(uniqueKeysWithValues:
+            ids.map { ($0, .failure(CKError(.unknownItem))) })
+        // Even if the root and manifest are gone, all surviving parts are removed.
+        for id in [ids[1], ids[32]] {
+            results[id] = .success(CKRecord(recordType: "CuekeeperBackup", recordID: id))
+        }
+        XCTAssertEqual(try CloudBackupStore.existingDeletionIDs(ids, results: results), [ids[1], ids[32]])
+        results[ids[1]] = .failure(CKError(.networkFailure))
+        XCTAssertThrowsError(try CloudBackupStore.existingDeletionIDs(ids, results: results))
+        results[ids[1]] = nil
+        XCTAssertThrowsError(try CloudBackupStore.existingDeletionIDs(ids, results: results))
+    }
+}

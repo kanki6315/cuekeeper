@@ -62,8 +62,8 @@ struct BackupView: View {
                 if loaded && entries.isEmpty { ContentUnavailableView("No backups yet", systemImage: "icloud", description: Text("Tap Back Up Now to save your first copy.")) }
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(entry.date.formatted(date: .abbreviated, time: .shortened)).font(.headline)
-                        Text("\(entry.events) events · \(ByteCountFormatter.string(fromByteCount: entry.bytes, countStyle: .file))").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text(entry.title).font(.headline)
+                        Text(entry.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                         ViewThatFits(in: .horizontal) {
                             HStack { actions(entry) }
                             VStack(alignment: .leading) { actions(entry) }
@@ -122,7 +122,7 @@ struct BackupView: View {
                 try control.check()
                 try await workflow.read(url, context: context, control: control)
             }
-        }.frame(minHeight: 44).disabled(workflow.busy)
+        }.frame(minHeight: 44).disabled(workflow.busy || !entry.canRestore)
         Button("Delete Backup", role: .destructive) { deleting = entry; confirmDelete = true }.frame(minHeight: 44).disabled(workflow.busy)
     }
     private func refresh() {

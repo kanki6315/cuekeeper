@@ -33,9 +33,17 @@ struct CloudBackupStore: CloudBacking {
 
     struct Entry: Identifiable {
         let id: CKRecord.ID
-        let date: Date
-        let bytes: Int64
-        let events: Int
+        let date: Date?
+        let bytes: Int64?
+        let events: Int?
+        var issue: String? = nil
+        var canRestore: Bool { issue == nil }
+        var title: String { date?.formatted(date: .abbreviated, time: .shortened) ?? "Unavailable backup" }
+        var details: String {
+            if let issue { return issue }
+            guard let events, let bytes else { return "Backup details unavailable." }
+            return "\(events) events · \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))"
+        }
     }
     private func prepare() async throws {
         guard try await CKContainer(identifier: "iCloud.com.arjunakankipati.cuekeeper").accountStatus() == .available else {
@@ -57,13 +65,27 @@ struct CloudBackupStore: CloudBacking {
         let ids = (index["backupNames"] as? [String] ?? []).map { CKRecord.ID(recordName: $0, zoneID: zoneID) }
         guard !ids.isEmpty else { return [] }
         let results = try await database.records(for: ids, desiredKeys: ["savedAt", "byteCount", "eventCount"])
-        return try ids.map { id in
-            guard let result = results[id] else { throw RecordError.invalid("Couldn’t load a backup. Refresh and try again.") }
-            let record = try result.get()
-            guard let date = record["savedAt"] as? Date, let bytes = record["byteCount"] as? Int64,
-                  let events = record["eventCount"] as? Int64 else { throw RecordError.invalid("This backup’s details could not be read.") }
-            return Entry(id: id, date: date, bytes: bytes, events: Int(events))
-        }.sorted { $0.date > $1.date }
+        return Self.entries(ids: ids, results: results)
+    }
+    static func entries(ids: [CKRecord.ID], results: [CKRecord.ID: Result<CKRecord, Error>]) -> [Entry] {
+        ids.map { id in
+            guard let result = results[id], case .success(let record) = result else {
+                return Entry(id: id, date: nil, bytes: nil, events: nil,
+                             issue: "Couldn’t load this backup. Refresh to retry, or delete it.")
+            }
+            let date = record["savedAt"] as? Date
+            let bytes = record["byteCount"] as? Int64
+            let events = (record["eventCount"] as? Int64).flatMap { Int(exactly: $0) }
+            guard let date, let bytes, bytes > 0, bytes <= BackupLimits.archive,
+                  let events, events >= 0 else {
+                return Entry(id: id, date: date, bytes: nil, events: nil,
+                             issue: "This backup’s details could not be read. You can delete it.")
+            }
+            return Entry(id: id, date: date, bytes: bytes, events: events)
+        }.sorted {
+            if $0.date != $1.date { return ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
+            return $0.id.recordName < $1.id.recordName
+        }
     }
     private struct CloudManifest: Codable {
         var format = "com.cuekeeper.cloud-backup"
@@ -138,6 +160,7 @@ struct CloudBackupStore: CloudBacking {
     }
     /// Caller owns the returned temporary file and must remove it after use.
     func load(_ entry: Entry) async throws -> URL {
+        guard entry.canRestore else { throw RecordError.invalid("Refresh this backup’s details before restoring it.") }
         let value = try await manifest(entry)
         try BackupLimits.requireSpace(value.bytes)
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("DownloadedBackup-\(UUID()).zip")
@@ -168,8 +191,12 @@ struct CloudBackupStore: CloudBacking {
         return file
     }
     func delete(_ entry: Entry) async throws {
-        let value = try await manifest(entry)
-        let ids = [entry.id] + (0..<value.parts).map { partID(entry.id, $0) }
+        try await prepare()
+        // Part names are deterministic and bounded by the archive limit. Discover
+        // existing records without downloading or trusting a damaged manifest.
+        let candidates = deletionCandidates(entry.id)
+        let results = try await database.records(for: candidates, desiredKeys: [])
+        let ids = try Self.existingDeletionIDs(candidates, results: results)
         for attempt in 0..<3 {
             let index = try await index()
             let names = index["backupNames"] as? [String] ?? []
@@ -177,6 +204,22 @@ struct CloudBackupStore: CloudBacking {
             index["backupNames"] = names.filter { $0 != entry.id.recordName } as CKRecordValue
             do { try await modify(saving: [index], deleting: ids); return }
             catch { if attempt == 2 || !Self.isConflict(error) { throw error } }
+        }
+    }
+    func deletionCandidates(_ root: CKRecord.ID) -> [CKRecord.ID] {
+        let maximumParts = Int((BackupLimits.archive + Int64(BackupLimits.cloudPart) - 1) / Int64(BackupLimits.cloudPart))
+        return [root] + (0..<maximumParts).map { partID(root, $0) }
+    }
+    static func existingDeletionIDs(_ ids: [CKRecord.ID], results: [CKRecord.ID: Result<CKRecord, Error>]) throws -> [CKRecord.ID] {
+        try ids.compactMap { id in
+            guard let result = results[id] else { throw RecordError.invalid("Couldn’t check this backup. Refresh and try again.") }
+            switch result {
+            case .success: return id
+            case .failure(let error):
+                if let error = error as? CKError, error.code == .unknownItem { return nil }
+                // Transient failures must not remove the index and orphan assets.
+                throw error
+            }
         }
     }
     private func modify(saving: [CKRecord], deleting: [CKRecord.ID]) async throws {

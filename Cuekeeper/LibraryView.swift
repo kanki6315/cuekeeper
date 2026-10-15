@@ -60,7 +60,7 @@ struct LibraryDetailView: View {
             related.formUnion(series.additionalJobs ?? [])
             related.formUnion((series.sessions ?? []).filter { $0.deletedAt == nil && $0.overridesSeries }.compactMap(\.job))
         }
-        return related.sorted { $0.eventStartDay > $1.eventStartDay }
+        return related.filter { $0.deletedAt == nil }.sorted { $0.eventStartDay > $1.eventStartDay }
     }
     var body: some View {
         DaybookForm(title: record.value(forKey: "name") as? String ?? kind.singular) {

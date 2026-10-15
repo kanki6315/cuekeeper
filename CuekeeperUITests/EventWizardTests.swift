@@ -1,6 +1,36 @@
 import XCTest
 
 final class EventWizardTests: XCTestCase {
+    func testDeleteEventRequiresConfirmation() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=root"]
+        app.launch()
+        let event = app.staticTexts["City vs United"].firstMatch
+        XCTAssertTrue(event.waitForExistence(timeout: 10))
+        event.tap()
+        let delete = app.buttons["delete-job"]
+        for _ in 0..<15 where !delete.isHittable {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.8))
+                .press(forDuration: 0.01, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.25)))
+        }
+        XCTAssertTrue(delete.isHittable)
+        XCTAssertTrue(app.buttons["duplicate-job"].exists)
+        delete.tap()
+        XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 3))
+        capture("delete-event-confirmation")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(delete.exists)
+        delete.tap()
+        app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Delete Event", "delete-job")).firstMatch.tap()
+        XCTAssertTrue(event.waitForNonExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--reset-test-store" }
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Studio highlights"].firstMatch.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["City vs United"].exists)
+    }
+
     func testEventCreationUsesMultiDateCalendar() {
         continueAfterFailure = false
         let app = XCUIApplication()

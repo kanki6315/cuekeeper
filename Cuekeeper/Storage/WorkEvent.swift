@@ -106,6 +106,7 @@ struct EventDraft: Equatable {
             booking.startDate = startDate; booking.endDate = endDate
             anchor = try booking.stage(in: writer)
         }
+        guard anchor.deletedAt == nil else { throw RecordError.invalid("This event has been deleted.") }
         // An owned metadata record uses the job UUID. This also detaches old
         // grouped records when the other clients have not yet downloaded.
         let prior = EventDraft(anchor: anchor)

@@ -85,7 +85,7 @@ private struct JobsView: View {
     @EnvironmentObject private var persistence: PersistenceController
     let upcomingOnly: Bool
     var selectedJob: Binding<Job?>? = nil
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)]) private var jobs: FetchedResults<Job>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)], predicate: NSPredicate(format: "deletedAt == nil")) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: []) private var events: FetchedResults<WorkEvent>
     @FetchRequest(sortDescriptors: []) private var sessions: FetchedResults<WorkSession>
     @State private var showingAdd = false
@@ -137,12 +137,19 @@ private struct JobsView: View {
                     Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
                 }
                 if upcomingOnly {
-                    Picker("Show upcoming", selection: $thisWeek) { Text("All upcoming").tag(false); Text("This week").tag(true) }.pickerStyle(.menu).accessibilityIdentifier("upcoming-scope")
+                    Picker("Show upcoming", selection: $thisWeek) {
+                        Text("All upcoming").tag(false)
+                        Text("This week").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .background(Color("AccentColor").opacity(0.08), in: Capsule())
+                    .accessibilityIdentifier("upcoming-scope")
                 } else {
                     Picker("Bookings", selection: $scope) {
                         ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    .background(Color("AccentColor").opacity(0.08), in: Capsule())
                     .accessibilityIdentifier("event-status-scope")
                 }
                 if representatives.isEmpty {

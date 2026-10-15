@@ -138,6 +138,7 @@
 		D682B024A3E281F66B73080A /* JobEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobEditorView.swift; sourceTree = "<group>"; };
 		D95E08FF1047E3666557F964 /* WorkEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkEvent.swift; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
+		DFCD2035B5EA406A2998B79C /* CuekeeperV10.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV10.xcdatamodel; sourceTree = "<group>"; };
 		E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaybookStyle.swift; sourceTree = "<group>"; };
 		EDE600824A3A4DC39439FDF0 /* CalendarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarController.swift; sourceTree = "<group>"; };
 		F26B1DE5EBB870F41896D3CC /* WorkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSession.swift; sourceTree = "<group>"; };
@@ -992,8 +993,9 @@
 				BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */,
 				14FCB06138FD31273B69B67C /* CuekeeperV8.xcdatamodel */,
 				2DBF588394D95094941421C3 /* CuekeeperV9.xcdatamodel */,
+				DFCD2035B5EA406A2998B79C /* CuekeeperV10.xcdatamodel */,
 			);
-			currentVersion = 2DBF588394D95094941421C3 /* CuekeeperV9.xcdatamodel */;
+			currentVersion = DFCD2035B5EA406A2998B79C /* CuekeeperV10.xcdatamodel */;
 			path = Cuekeeper.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

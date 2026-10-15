@@ -129,6 +129,7 @@ DEFINE SCHEMA
         CD_bookingStatus_ckAsset   ASSET,
         CD_client                  STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_createdAt               TIMESTAMP QUERYABLE SORTABLE,
+        CD_deletedAt               TIMESTAMP QUERYABLE SORTABLE,
         CD_endDay                  STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_endDay_ckAsset          ASSET,
         CD_entityName              STRING QUERYABLE SEARCHABLE SORTABLE,

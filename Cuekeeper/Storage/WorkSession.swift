@@ -31,7 +31,7 @@ final class WorkSession: NSManagedObject {
     var roleNames: [String] { overridesRoles ? (roles ?? []).map(\.name).sorted() : job?.roleNames ?? [] }
     var sortedLinks: [BroadcastLink] { (links ?? []).sorted { ($0.label, $0.url) < ($1.label, $1.url) } }
     var calendarEligible: Bool {
-        deletedAt == nil && job?.bookingStatus != "cancelled" && scheduleStatus == "confirmed"
+        deletedAt == nil && job != nil && job?.deletedAt == nil && job?.bookingStatus != "cancelled" && scheduleStatus == "confirmed"
             && coverage == "covering" && startTime != nil && endTime != nil
             && endTime! > startTime! && TimeZone(identifier: eventTimeZoneID) != nil
     }
@@ -132,6 +132,7 @@ struct SessionDraft: Equatable {
         let job = try writer.existingObject(with: jobID) as! Job
         var resolved = self
         resolved.timeZoneID = job.eventTimeZoneID
+        guard job.deletedAt == nil else { throw RecordError.invalid("This event has been deleted.") }
         // Legacy/programmatic capture establishes a single event timezone once.
         if resolved.timeZoneID.isEmpty && job.event == nil && !timeZoneID.isEmpty {
             job.timeZoneID = timeZoneID

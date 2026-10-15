@@ -3,6 +3,7 @@ import Foundation
 
 @objc(Job)
 final class Job: NSManagedObject {
+    @NSManaged var deletedAt: Date?
     @NSManaged var id: UUID?
     @NSManaged var name: String
     @NSManaged var event: WorkEvent?
@@ -26,6 +27,15 @@ final class Job: NSManagedObject {
     @NSManaged var feeRevisions: Set<FeeRevision>?
     @NSManaged var sessions: Set<WorkSession>?
     var activeSessions: [WorkSession] { (sessions ?? []).filter { $0.deletedAt == nil }.sorted { ($0.eventDay, $0.startTime ?? .distantFuture, $0.name) < ($1.eventDay, $1.startTime ?? .distantFuture, $1.name) } }
+    /// Keep a synced tombstone so calendar cleanup and financial history survive deletion.
+    static func remove(_ objectID: NSManagedObjectID, in context: NSManagedObjectContext) throws {
+        let writer = isolatedWriter(context)
+        let job = try writer.existingObject(with: objectID) as! Job
+        if job.deletedAt == nil { job.deletedAt = Date() }
+        try writer.save()
+        context.refreshAllObjects()
+    }
+
     var roleNames: [String] { (roles ?? []).map(\.name).sorted() }
 }
 
@@ -187,6 +197,7 @@ struct JobDraft: Equatable {
             job.id = UUID()
             job.createdAt = Date()
         }
+        guard job.deletedAt == nil else { throw RecordError.invalid("This event has been deleted.") }
         // Apply only changed fields so unrelated incoming sync edits are preserved.
         let original: [String: String]? = baseline.map {
             ["name": $0.name, "startDay": Day.string(from: $0.startDate), "endDay": Day.string(from: $0.endDate),
@@ -259,7 +270,6 @@ struct JobDraft: Equatable {
 }
 
 struct JobFilter {
-    var status = ""
     var client = ""
     var role = ""
     var project = ""
@@ -267,17 +277,16 @@ struct JobFilter {
     var usesDates = false
     var start = Date()
     var end = Date()
-    var isActive: Bool { !status.isEmpty || !client.isEmpty || !role.isEmpty || !project.isEmpty || !series.isEmpty || usesDates }
+    var isActive: Bool { !client.isEmpty || !role.isEmpty || !project.isEmpty || !series.isEmpty || usesDates }
 
     func includes(_ job: Job, query: String = "") -> Bool {
         let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (search.isEmpty || job.displayName.localizedCaseInsensitiveContains(search)
+        return job.deletedAt == nil && (search.isEmpty || job.displayName.localizedCaseInsensitiveContains(search)
                 || job.eventTitle.localizedCaseInsensitiveContains(search)
                 || (job.client?.name.localizedCaseInsensitiveContains(search) ?? false)
                 || (job.project?.name.localizedCaseInsensitiveContains(search) ?? false)
                 || job.seriesNames.contains { $0.localizedCaseInsensitiveContains(search) }
                 || job.activeSessions.contains { $0.effectiveSeriesNames.contains { $0.localizedCaseInsensitiveContains(search) } })
-            && (status.isEmpty || job.bookingStatus == status)
             && (client.isEmpty || job.client?.name == client)
             && (project.isEmpty || job.project?.name == project)
             && (series.isEmpty || job.seriesNames.contains(series) || job.activeSessions.contains { $0.effectiveSeriesNames.contains(series) })

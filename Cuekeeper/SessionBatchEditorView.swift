@@ -12,6 +12,7 @@ struct SessionBatchChange {
         guard !ids.isEmpty else { throw RecordError.invalid("Select at least one session.") }
         let writer = isolatedWriter(context)
         let anchor = try writer.existingObject(with: anchorID) as! Job
+        guard anchor.deletedAt == nil else { throw RecordError.invalid("This event has been deleted.") }
         let bookings = Set(anchor.eventBookings.map(\.objectID))
         let target = try bookingID.map { try writer.existingObject(with: $0) as! Job }
         if let target, !bookings.contains(target.objectID) { throw RecordError.invalid("Choose a client booking in this event.") }

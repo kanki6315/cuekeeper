@@ -31,6 +31,63 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testDeletingInvoicedJobKeepsInvoiceAndPaymentHistory() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        var draft = JobDraft(name: "Invoiced event")
+        draft.clientName = "Client"; draft.fee?.amount = "100"
+        let id = try draft.save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        var draftInvoice = InvoiceDraft(clientID: job.client!.id!, currency: "USD")
+        draftInvoice.value.status = "sent"; draftInvoice.value.reference = "INV-DELETE"
+        draftInvoice.value.sentDay = Day.string(from: Date())
+        draftInvoice.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 10000)]
+        let invoiceID = try draftInvoice.save(in: context)
+        try PaymentDraft(amount: "25").save(in: context, invoiceID: invoiceID)
+        try Job.remove(id, in: context)
+        let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
+        XCTAssertEqual(try invoice.currentValue(), draftInvoice.value)
+        XCTAssertEqual(try invoice.balance(), 7500)
+        XCTAssertEqual(try invoice.paid(), 2500)
+        XCTAssertNil(invoice.issue(in: context))
+    }
+
+    func testDeletingJobHidesItAndRetiresCalendarEntriesWhileKeepingPayments() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        var draft = JobDraft(name: "Delete me")
+        draft.clientName = "Client"
+        draft.bookingStatus = .booked
+        draft.fee?.amount = "100"
+        let id = try draft.save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        var session = SessionDraft(day: job.startDay, timeZoneID: "Europe/London")
+        session.startTime = Date(); session.endTime = Date().addingTimeInterval(3600)
+        session.scheduleStatus = "confirmed"; session.coverage = "covering"
+        try session.save(in: context, jobID: id)
+        try PaymentDraft(amount: "50").save(in: context, jobID: id)
+        let before = CalendarPlan(jobs: [job])
+        XCTAssertEqual(before.desired.count, 2)
+        let baseline = JobDraft(job: job)
+        try Job.remove(id, in: context)
+        XCTAssertNotNil(job.deletedAt)
+        XCTAssertFalse(JobFilter().includes(job))
+        XCTAssertEqual(try job.directPaid(), 5000)
+        XCTAssertEqual(job.client?.name, "Client")
+        let after = CalendarPlan(jobs: [job])
+        XCTAssertTrue(after.desired.isEmpty)
+        XCTAssertEqual(after.knownKeys, before.knownKeys)
+        XCTAssertEqual(after.bounds, before.bounds)
+        let request = NSFetchRequest<Job>(entityName: "Job")
+        request.predicate = NSPredicate(format: "deletedAt == nil")
+        XCTAssertTrue(try context.fetch(request).isEmpty)
+        XCTAssertThrowsError(try baseline.save(in: context, editing: id, baseline: baseline))
+        XCTAssertThrowsError(try session.save(in: context, jobID: id))
+        context.reset()
+        let reloaded = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        XCTAssertNotNil(reloaded.deletedAt)
+        XCTAssertEqual(try reloaded.directPaid(), 5000)
+    }
+
     func testEventTimezoneControlsSessionsAndRemoteDisplayWithoutMovingInstants() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var creation = EventCreationDraft()
@@ -630,9 +687,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try first.save(in: context, editing: id))
     }
 
-    func testV2ThroughV8StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV2ThroughV9StoresMigrateWithRelationshipsAndFeeHistory() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...8 {
+        for version in 2...9 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"
@@ -1024,7 +1081,6 @@ final class PersistenceTests: XCTestCase {
         let id = try draft.save(in: context)
         let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
         var filter = JobFilter()
-        filter.status = "booked"
         filter.client = "North Sports"
         filter.role = "Producer"
         filter.usesDates = true
@@ -1034,8 +1090,8 @@ final class PersistenceTests: XCTestCase {
         filter.start = Day.date(from: "2026-10-16")!
         XCTAssertFalse(filter.includes(job))
         filter.usesDates = false
-        filter.status = "cancelled"
-        XCTAssertFalse(filter.includes(job))
+        job.bookingStatus = "cancelled"
+        XCTAssertTrue(filter.includes(job))
     }
 
     func testV1StoreMigratesWithoutLosingJobs() async throws {

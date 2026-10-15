@@ -1,5 +1,6 @@
 #if DEBUG
 import CoreData
+import CloudKit
 import SwiftUI
 
 /// Synthetic review records, gated to the isolated UI-test store. Never used in a normal launch.
@@ -64,6 +65,9 @@ enum DesignFixtures {
         var second = InvoiceDraft(clientID: created[5].client!.id!, currency: "USD")
         second.value.reference = "INV-2026-043"; second.value.lines = [BilledLine(jobID: created[5].id!, jobName: created[5].name, amount: 150000)]
         try second.save(in: context)
+        if DesignFixtures.route == "recently-deleted" {
+            try Job.remove(created[0].objectID, in: context)
+        }
         if ProcessInfo.processInfo.arguments.contains("--event-fixtures") {
             var event = EventDraft(anchor: created[0]); event.title = "Silverstone weekend"; event.location = "Silverstone"
             try event.save(in: context, anchorID: created[0].objectID)
@@ -93,6 +97,8 @@ struct DesignFixtureScreen: View {
         else if let job = jobs.first, let invoice = invoices.first {
             NavigationStack {
                 switch DesignFixtures.route {
+                case "recently-deleted": RecentlyDeletedView()
+                case "backups": BackupView(cloud: FixtureBackups.shared, preview: true)
                 case "event": EventDetailView(anchor: job)
                 case "edit-event": EventDetailView(anchor: job).sheet(isPresented: $editorPresented) { EventEditorView(anchor: job) }
                 case "job": JobDetailView(job: job)
@@ -125,5 +131,21 @@ struct DesignFixtureScreen: View {
             }
         } else { ProgressView("Loading review records…") }
     }
+}
+/// Test-only transport. UI workflows exercise real archive generation and restore
+/// without reading or writing the signed-in user's private iCloud database.
+actor FixtureBackups: CloudBacking {
+    static let shared = FixtureBackups()
+    private var values: [String: (CloudBackupStore.Entry, Data)] = [:]
+    func list() async throws -> [CloudBackupStore.Entry] { values.values.map { $0.0 }.sorted { $0.date > $1.date } }
+    func save(data: Data, date: Date, events: Int) async throws {
+        let id = CKRecord.ID(recordName: UUID().uuidString)
+        values[id.recordName] = (CloudBackupStore.Entry(id: id, date: date, bytes: Int64(data.count), events: events), data)
+    }
+    func load(_ entry: CloudBackupStore.Entry) async throws -> Data {
+        guard let value = values[entry.id.recordName] else { throw RecordError.invalid("Backup not found.") }
+        return value.1
+    }
+    func delete(_ entry: CloudBackupStore.Entry) async throws { values[entry.id.recordName] = nil }
 }
 #endif

@@ -34,6 +34,9 @@ def model_files(root):
     calendar = root / "Cuekeeper/CalendarPublisher.swift"
     if calendar.is_file():
         paths.append(calendar)
+    backup = root / "Cuekeeper/CloudBackupStore.swift"
+    if backup.is_file():
+        paths.append(backup)
     return {str(p.relative_to(root)): digest(p.read_bytes()) for p in paths}
 
 
@@ -126,6 +129,9 @@ def require_model_records(root, source):
     required = required_fields(root)
     if (root / "Cuekeeper/CalendarPublisher.swift").is_file():
         required["CuekeeperCalendarPublisher"] = {"ownerID", "ownerName"}
+    if (root / "Cuekeeper/CloudBackupStore.swift").is_file():
+        required["CuekeeperBackup"] = {"savedAt", "byteCount", "eventCount", "payload"}
+        required["CuekeeperBackupIndex"] = {"backupNames"}
     for name, expected in required.items():
         actual = {unquote(item[0]) for item in records.get(name, ()) if item and item[0] != "GRANT"}
         missing = expected - actual

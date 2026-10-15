@@ -24,6 +24,7 @@ class SchemaTests(unittest.TestCase):
         shutil.copy(ROOT / "Cuekeeper/Cuekeeper.entitlements", self.root / "Cuekeeper")
         shutil.copy(ROOT / "project.yml", self.root)
         shutil.copy(ROOT / "Cuekeeper/CalendarPublisher.swift", self.root / "Cuekeeper")
+        shutil.copy(ROOT / "Cuekeeper/CloudBackupStore.swift", self.root / "Cuekeeper")
 
     def export(self, source=SCHEMA):
         with patch.object(ck, "remote_export", return_value=source):

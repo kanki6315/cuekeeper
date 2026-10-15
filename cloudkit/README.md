@@ -106,7 +106,7 @@ when the model or publisher schema changes. Publisher source changes also requir
 a fresh export because that file is fingerprinted. Do not edit the exported
 schema by hand.
 
-## Current schema status
+## Historical V10 schema status
 
 On October 14, 2026, the signed macOS helper initialized the V10 model in
 Development and exported the generated schema. The only schema addition is
@@ -115,7 +115,7 @@ records for calendar cleanup and financial history.
 
 The schema was deployed to Production through CloudKit Console by the user.
 The terminal command `./cloudkit.sh check` subsequently passed, confirming that
-the current V10 snapshot matches the live Production schema. The local fingerprint
+the then-current V10 snapshot matches the live Production schema. The local fingerprint
 check also passed. No TestFlight upload was performed.
 
 Schema agreement does not prove cross-device data delivery or conflict behavior;
@@ -159,3 +159,25 @@ readiness. Normal uploads must use the ordinary `Cuekeeper` Release scheme.
 References: [Core Data schema initialization](https://developer.apple.com/documentation/coredata/creating-a-core-data-model-for-cloudkit),
 [CloudKit schema deployment](https://developer.apple.com/documentation/cloudkit/deploying-an-icloud-container-s-schema),
 and [Apple's cktool guide](https://developer.apple.com/icloud/ck-tool/).
+
+
+## Explicit backups and recovery (V11)
+
+V11 adds optional `recoveryDiscardedAt` timestamps to Job and WorkSession.
+`Cuekeeper/CloudBackupStore.swift` defines `CuekeeperBackup` (savedAt, byteCount,
+eventCount, payload asset) and `CuekeeperBackupIndex` (backupNames). Both live in
+the user's private database, in the separate `CuekeeperBackups` custom zone.
+The index and snapshot are saved/deleted atomically with optimistic conflict
+checks so concurrent devices cannot drop each other's snapshots. No query index
+is required for listing: the app fetches the fixed index and its named records.
+
+Both schema initializers seed and remove disposable representative records.
+The Mac helper also supports `--verify-backups` alongside
+`--initialize-development-schema`: it creates a uniquely named disposable zone,
+checks concurrent upload, list, exact asset download and deletion, then removes
+only that test zone. It never uses the real backup index for verification.
+The release gate now checks the backup record fields and fingerprints their
+source. Export is a Development snapshot, not a Production deployment.
+
+The current snapshot is V11 in Development. Production deployment of the V11
+recovery fields and explicit backup record types is still required before release.

@@ -141,6 +141,7 @@ final class PersistenceController: ObservableObject {
             try await Task.detached { [container] in
                 try container.initializeCloudKitSchema(options: [])
             }.value
+            try await CloudBackupStore.initializeDevelopmentSchema()
             succeeded = true
             schemaInitializationStatus = "Development schema initialized. Return to the Cuekeeper scheme, then run ./cloudkit.sh export on your Mac."
         } catch {

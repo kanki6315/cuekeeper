@@ -44,6 +44,9 @@ client/championship typeaheads and adaptive short-choice controls support captur
 The event owns session timezones; remote/hybrid work can display a second timezone.
 Ready-to-invoice rows expand by client while keeping currency totals separate.
 Confirmed event deletion removes scheduled work while preserving financial history.
+Settings now includes Recently Deleted (30 days) and explicit private iCloud
+backups. Backup restore merges missing records and recovers deleted records; it
+does not roll back newer edits or financial receipts.
 DESIGN.md and .impeccable/design.json describe the current visual implementation.
 The configured app version is 0.1.8; this documentation/version change is not a
 TestFlight release or new device verification.
@@ -61,7 +64,7 @@ Calendar publishing retains placeholders alongside eligible confirmed, covering 
 
 Fees distinguish unknown from zero and preserve the overall fee independently of an optional breakdown until explicit application. Fee/invoice revisions and receipt/reversal history are immutable; conflicting versions remain reviewable and require explicit resolution. Same-client/currency invoice lines snapshot billed amounts, and partial receipts reduce the invoice balance as a whole. Direct payments are also supported. Money uses exact integer cents and decimal arithmetic; USD/EUR summaries stay separate. Duplicate billing is rejected locally and flagged for review when concurrent invoices converge.
 
-Step 7 remains recovery/export and Recently Deleted. Step 8 remains broader physical-device beta validation, first-run and App Store polish. No claim is made that the full product specification is complete.
+At that milestone, Step 7 remained recovery/export and Recently Deleted. Recently Deleted and private iCloud snapshots were subsequently implemented; readable file export remains outstanding. Step 8 remains broader physical-device beta validation, first-run and App Store polish. No claim is made that the full product specification is complete.
 
 ## Implementation Evidence
 
@@ -213,3 +216,28 @@ financial revisions, invoice snapshots and receipts remain unchanged. New-event
 metadata uses its Job UUID; older group metadata is retained for calendar cleanup.
 No schema migration is required. Older builds still understand the historical
 group records, so all devices should use the new behaviour for consistent editing.
+
+
+## Recovery and explicit iCloud backups — October 14, 2026
+
+Settings → Recovery & backups provides Recently Deleted and iCloud Backups.
+Events and individually deleted sessions can be restored for 30 days. Restoring
+an event retains independently deleted sessions in recovery. Ending recovery
+keeps tombstones for calendar cleanup and financial history; it is not a secure
+erasure operation. Existing backups are not changed by deletion.
+
+Back Up Now saves a dated snapshot to the user's private CloudKit database in a
+separate CuekeeperBackups zone. The list shows date, event count and byte size,
+with explicit restore and delete confirmations. Backups use the user's iCloud
+quota, with up to 50 manually retained copies and a 100 MB per-backup limit.
+No automatic retention deletes older backups. Snapshots contain local records,
+including financial revisions, relationships and deleted records, but exclude
+calendar ownership and device preferences. Pending remote sync is not assumed
+complete. Restores validate format, identities and relationships before an atomic
+save, add missing UUIDs, recover deleted records that were active in the backup,
+and preserve current fields and receipts. Repeated restores are idempotent.
+
+V11 adds optional recoveryDiscardedAt fields to Job and WorkSession. Development
+schema initialization and a live disposable-zone backup test passed, including
+concurrent uploads, exact downloads and deletion. Production deployment remains
+a release prerequisite; no TestFlight release was made in this task.

@@ -124,7 +124,7 @@ final class CalendarController: ObservableObject {
             // IDs are assigned on commit; recapture them for date changes and moved entries.
             for event in managedEvents(calendar: calendar) { if let key = CalendarPlan.key(from: event.url), let id = event.eventIdentifier { ids[key] = id } }
             defaults.set(ids, forKey: "calendar.eventIDs")
-            status = "Calendar updated \(Date().formatted(date: .omitted, time: .shortened)). Managed from this device."
+            status = "Updated at \(Date().formatted(date: .omitted, time: .shortened)) on this device."
         } catch {
             store.reset()
             status = "Calendar update pending: \(error.localizedDescription)"

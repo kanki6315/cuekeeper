@@ -26,6 +26,36 @@ final class RecoveryBackupTests: XCTestCase {
         stores.append(store); try await store.waitUntilLoaded()
         return store.container.viewContext
     }
+    func testLaunchRemovesInterruptedBackupArtifactsOnly() throws {
+        let manager = FileManager.default
+        let staleNames = ["CuekeeperBackup-\(UUID())", "CloudBackup-\(UUID())", "DownloadedBackup-\(UUID()).zip"]
+        for name in staleNames.prefix(2) {
+            let receipts = folder.appendingPathComponent(name).appendingPathComponent("receipts")
+            try manager.createDirectory(at: receipts, withIntermediateDirectories: true)
+            try Data("private receipt".utf8).write(to: receipts.appendingPathComponent("receipt.jpg"))
+        }
+        try Data("partial zip".utf8).write(to: folder.appendingPathComponent(staleNames[2]))
+        let keptNames = ["unrelated.tmp", "\(UUID()).zip", "CuekeeperBackup-not-a-uuid",
+                         "CloudBackup-not-a-uuid", "DownloadedBackup-\(UUID()).zip.extra", "Cuekeeper-export.zip"]
+        for name in keptNames { try Data("keep".utf8).write(to: folder.appendingPathComponent(name)) }
+
+        XCTAssertTrue(try BackupTemporaryFiles.removeInterruptedBackups(in: folder).isEmpty)
+        for name in staleNames { XCTAssertFalse(manager.fileExists(atPath: folder.appendingPathComponent(name).path)) }
+        for name in keptNames { XCTAssertEqual(try Data(contentsOf: folder.appendingPathComponent(name)), Data("keep".utf8)) }
+        XCTAssertTrue(try BackupTemporaryFiles.removeInterruptedBackups(in: folder).isEmpty)
+    }
+
+    func testLaunchCleanupDoesNotFollowBackupSymlinks() throws {
+        let target = folder.appendingPathComponent("keep")
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        let receipt = target.appendingPathComponent("receipt.jpg")
+        try Data("keep".utf8).write(to: receipt)
+        let link = folder.appendingPathComponent("CuekeeperBackup-\(UUID())")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        XCTAssertTrue(try BackupTemporaryFiles.removeInterruptedBackups(in: folder).isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: link.path))
+        XCTAssertEqual(try Data(contentsOf: receipt), Data("keep".utf8))
+    }
     private func fixture(_ context: NSManagedObjectContext) throws -> Job {
         var draft = JobDraft(name: "Broadcast weekend")
         draft.clientName = "Network"; draft.roleNames = ["Commentator"]; draft.fee?.amount = "100"

@@ -73,3 +73,8 @@ Integrated the newer compact `DaybookSegments` controls from main while preservi
 Today / Week / All. The earlier layout captures show the prior native segmented
 picker; schedule and widget content are unchanged. UI test selectors were updated
 to the new string scope identifiers. The combined signed Release build passed.
+The post-integration Events filter UI check passed. The widget-link rerun did not
+complete successfully: one run failed its return-to-Today assertion amid runner
+restarts, and an isolated run on a second simulator restarted before completion.
+Those stalled runs were stopped. Earlier pre-integration widget-link checks passed
+on both devices; post-integration widget-link verification remains inconclusive.

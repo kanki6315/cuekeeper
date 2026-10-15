@@ -5,7 +5,7 @@ struct FeeFields: View {
     @Binding var draft: FeeDraft
     var body: some View {
         DaybookTextField("Overall fee (unknown if blank)", text: $draft.amount).keyboardType(.decimalPad).accessibilityIdentifier("overall-fee")
-        DaybookPicker("Currency", selection: $draft.currency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") }
+        DaybookPicker("Currency", selection: $draft.currency) { ForEach(CurrencyPreferences.supported, id: \.self) { Text($0).tag($0) } }
         DaybookPicker("Agreement", selection: $draft.agreement) {
             Text("Unknown").tag("unknown"); Text("Estimated").tag("estimated"); Text("Agreed").tag("agreed")
         }

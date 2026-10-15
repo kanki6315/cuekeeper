@@ -5,7 +5,7 @@ struct LibraryDraft: Equatable {
     var name = ""
     var contact = ""
     var notes = ""
-    var currency = "USD"
+    var currency = UserDefaults.standard.string(forKey: "defaultCurrency") ?? "USD"
     init(record: NSManagedObject? = nil) {
         name = record?.value(forKey: "name") as? String ?? ""
         if let client = record as? Client {

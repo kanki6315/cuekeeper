@@ -74,7 +74,7 @@ struct EventWeatherSnapshot: Codable {
     }
 }
 
-/// One attempt per place per rolling 24 hours, including failed WeatherKit requests.
+/// Hourly attempts per place, with a shared rolling 24-hour device budget (including failures).
 /// Persist the attempt before calling Apple so relaunching cannot bypass the limit.
 @MainActor
 final class EventWeatherStore {
@@ -86,6 +86,14 @@ final class EventWeatherStore {
         let attemptedAt: Date
         var snapshot: EventWeatherSnapshot?
     }
+    static let refreshInterval: TimeInterval = 60 * 60
+    static let budgetWindow: TimeInterval = 24 * 60 * 60
+    static let dailyFetchLimit = 24
+    struct State: Codable {
+        var entries: [String: Entry]
+        var attempts: [Date]
+    }
+    private var attempts: [Date] = []
     private var entries: [String: Entry] = [:]
     private var inFlight: [String: Task<EventWeatherSnapshot, Error>] = [:]
     private let fileURL: URL?
@@ -97,7 +105,16 @@ final class EventWeatherStore {
          fetch: @escaping (CLLocation, TimeZone) async throws -> EventWeatherSnapshot = EventWeatherStore.fetchWeather) {
         self.fileURL = fileURL; self.clock = clock; self.fetch = fetch
         if let fileURL, FileManager.default.fileExists(atPath: fileURL.path) {
-            do { entries = try JSONDecoder().decode([String: Entry].self, from: Data(contentsOf: fileURL)) }
+            do {
+                let data = try Data(contentsOf: fileURL)
+                if let state = try? JSONDecoder().decode(State.self, from: data) {
+                    entries = state.entries; attempts = state.attempts
+                } else {
+                    // Preserve attempts from the original per-place cache during migration.
+                    entries = try JSONDecoder().decode([String: Entry].self, from: data)
+                    attempts = entries.values.map(\.attemptedAt)
+                }
+            }
             catch { storageFailed = true } // Fail closed instead of silently resetting the request budget.
         }
         purgeExpired()
@@ -109,19 +126,33 @@ final class EventWeatherStore {
     }
 
     func nextAttempt(placeID: String) -> Date? {
-        guard let attempt = entries[placeID]?.attemptedAt,
-              clock() < attempt.addingTimeInterval(EventWeatherSnapshot.lifetime) else { return nil }
-        return attempt.addingTimeInterval(EventWeatherSnapshot.lifetime)
+        let now = clock()
+        var limits: [Date] = []
+        if let attempt = entries[placeID]?.attemptedAt {
+            limits.append(attempt.addingTimeInterval(Self.refreshInterval))
+        }
+        let recent = attempts.filter { now < $0.addingTimeInterval(Self.budgetWindow) }.sorted()
+        if recent.count >= Self.dailyFetchLimit {
+            limits.append(recent[recent.count - Self.dailyFetchLimit].addingTimeInterval(Self.budgetWindow))
+        }
+        return limits.filter { $0 > now }.max()
     }
 
     func load(placeID: String, location: CLLocation, timeZone: TimeZone) async throws -> EventWeatherSnapshot {
-        if let cached = cached(placeID: placeID) { return cached }
+        let cached = cached(placeID: placeID)
         if let task = inFlight[placeID] { return try await task.value }
         guard !storageFailed else { throw Failure.storage }
-        guard nextAttempt(placeID: placeID) == nil else { throw Failure.dailyLimit }
+        if nextAttempt(placeID: placeID) != nil {
+            if let cached { return cached }
+            throw Failure.dailyLimit
+        }
         let previous = entries[placeID]
-        entries[placeID] = Entry(attemptedAt: clock(), snapshot: nil)
-        do { try persist() } catch { entries[placeID] = previous; throw Failure.storage }
+        let previousAttempts = attempts
+        attempts.append(clock())
+        entries[placeID] = Entry(attemptedAt: clock(), snapshot: cached)
+        do { try persist() } catch {
+            entries[placeID] = previous; attempts = previousAttempts; throw Failure.storage
+        }
         let task = Task { try await fetch(location, timeZone) }
         inFlight[placeID] = task
         defer { inFlight[placeID] = nil }
@@ -134,9 +165,11 @@ final class EventWeatherStore {
 
     func purgeExpired() {
         let now = clock()
+        let oldAttemptCount = attempts.count
+        attempts.removeAll { now >= $0.addingTimeInterval(Self.budgetWindow) }
         let oldCount = entries.count
         entries = entries.filter { now < $0.value.attemptedAt.addingTimeInterval(EventWeatherSnapshot.lifetime) || inFlight[$0.key] != nil }
-        var changed = entries.count != oldCount
+        var changed = entries.count != oldCount || attempts.count != oldAttemptCount
         for key in Array(entries.keys) {
             if let snapshot = entries[key]?.snapshot, !snapshot.canDisplay(at: now) {
                 entries[key]?.snapshot = nil; changed = true
@@ -151,14 +184,14 @@ final class EventWeatherStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var values = URLResourceValues(); values.isExcludedFromBackup = true
         try directory.setResourceValues(values)
-        try JSONEncoder().encode(entries).write(to: fileURL, options: .atomic)
+        try JSONEncoder().encode(State(entries: entries, attempts: attempts)).write(to: fileURL, options: .atomic)
     }
 
     enum Failure: LocalizedError {
         case dailyLimit, unavailable, storage
         var errorDescription: String? {
             switch self {
-            case .dailyLimit: return "Weather couldn’t be loaded during today’s update. It will try again after the daily limit resets."
+            case .dailyLimit: return "Weather has reached its refresh limit on this device. Try again after the next update becomes available."
             case .unavailable: return "Weather is unavailable for this track."
             case .storage: return "Weather couldn’t save its local update limit. Try reopening Cuekeeper."
             }

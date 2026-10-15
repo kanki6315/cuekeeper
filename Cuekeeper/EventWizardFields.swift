@@ -366,3 +366,18 @@ struct SessionDateField: View {
             .environment(\.timeZone, zone)
     }
 }
+
+
+// Resolve on every access: controls can retain bindings after their row is removed.
+// The snapshot keeps teardown reads safe; late writes to deleted items are ignored.
+extension Binding {
+    func elementBinding<Element: Identifiable>(for snapshot: Element) -> Binding<Element> where Value == [Element] {
+        Binding<Element>(
+            get: { wrappedValue.first { $0.id == snapshot.id } ?? snapshot },
+            set: { updated in
+                guard let index = wrappedValue.firstIndex(where: { $0.id == snapshot.id }) else { return }
+                wrappedValue[index] = updated
+            }
+        )
+    }
+}

@@ -1,5 +1,6 @@
 import CoreData
 import XCTest
+import SwiftUI
 @testable import Cuekeeper
 
 @MainActor
@@ -1328,5 +1329,68 @@ final class PersistenceTests: XCTestCase {
                 XCTAssertEqual(Day.string(from: localDate, timeZone: timeZone), day)
             }
         }
+    }
+}
+
+@MainActor
+final class EventWizardBindingTests: XCTestCase {
+    func testEventBindingsSurviveRemovalAndIgnoreLateFieldWrites() {
+        for removedIndex in 0..<3 {
+            var events = (0..<3).map { index in
+                var event = EventOutline()
+                event.details.name = "Event \(index)"
+                return event
+            }
+            let bindings = Binding(get: { events }, set: { events = $0 })
+            let removed = bindings.elementBinding(for: events[removedIndex])
+            let survivor = bindings.elementBinding(for: events[(removedIndex + 1) % 3])
+            let title = removed.details.name
+            events.remove(at: removedIndex)
+            let expected = events
+            XCTAssertEqual(title.wrappedValue, "Event \(removedIndex)")
+            title.wrappedValue = "Late edit"
+            removed.timeZoneID.wrappedValue = "Asia/Tokyo"
+            XCTAssertEqual(events, expected)
+            survivor.details.name.wrappedValue = "Still editable"
+            XCTAssertEqual(events.first { $0.id == survivor.wrappedValue.id }?.details.name, "Still editable")
+        }
+    }
+
+    func testSessionBindingsSurviveRemovalAndParentDeletion() {
+        for removedIndex in 0..<3 {
+            var outline = EventOutline()
+            outline.sessions = (0..<3).map { index in
+                var session = SessionDraft(day: "2026-10-15")
+                session.name = "Session \(index)"
+                return session
+            }
+            var events = [outline, EventOutline()]
+            let collection = Binding(get: { events }, set: { events = $0 })
+            let event = collection.elementBinding(for: outline)
+            let removed = event.sessions.elementBinding(for: outline.sessions[removedIndex])
+            let survivor = event.sessions.elementBinding(for: outline.sessions[(removedIndex + 1) % 3])
+            event.wrappedValue.sessions.remove(at: removedIndex)
+            let expected = events
+            XCTAssertEqual(removed.name.wrappedValue, "Session \(removedIndex)")
+            removed.name.wrappedValue = "Late edit"
+            removed.startTime.wrappedValue = Date()
+            XCTAssertEqual(events, expected)
+            survivor.name.wrappedValue = "Still editable"
+            XCTAssertEqual(events[0].sessions.first { $0.id == survivor.wrappedValue.id }?.name, "Still editable")
+            events.removeFirst()
+            let remaining = events
+            _ = survivor.name.wrappedValue
+            survivor.name.wrappedValue = "Write after parent removal"
+            XCTAssertEqual(events, remaining)
+        }
+    }
+
+    func testCopiedSessionsHaveDistinctIdentities() throws {
+        let session = SessionDraft(day: "2026-10-15")
+        let date = try XCTUnwrap(Day.date(from: session.day))
+        let first = try session.copied(from: date, to: date, includingTimes: false)
+        let second = try session.copied(from: date, to: date, includingTimes: false)
+        XCTAssertNotEqual(session.id, first.id)
+        XCTAssertNotEqual(first.id, second.id)
     }
 }

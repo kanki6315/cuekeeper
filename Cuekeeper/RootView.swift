@@ -373,38 +373,52 @@ struct SettingsView: View {
 
 struct SyncFeedbackView: View {
     @EnvironmentObject private var persistence: PersistenceController
+    @State private var displayedActivity: SyncActivity?
     let showDetails: () -> Void
 
     var body: some View {
-        if let message = persistence.syncActivity.message {
-            Button(action: showDetails) {
-                HStack(spacing: 12) {
-                    if persistence.syncActivity.needsAttention {
-                        Image(systemName: "exclamationmark.icloud")
-                            .foregroundStyle(Color("AmberText"))
-                    } else if persistence.syncActivity.isBusy {
-                        ProgressView().controlSize(.small).tint(Color.accentColor)
-                    } else {
-                        Image(systemName: persistence.syncActivity.offline ? "icloud.slash" : "icloud").foregroundStyle(Color.accentColor)
+        Group {
+            if let activity = displayedActivity, let message = activity.message {
+                Button(action: showDetails) {
+                    HStack(spacing: 12) {
+                        if activity.needsAttention {
+                            Image(systemName: "exclamationmark.icloud")
+                                .foregroundStyle(Color("AmberText"))
+                        } else if activity.isBusy {
+                            ProgressView().controlSize(.small).tint(Color.accentColor)
+                        } else {
+                            Image(systemName: activity.offline ? "icloud.slash" : "icloud").foregroundStyle(Color.accentColor)
+                        }
+                        Text(message).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color("SecondaryText"))
                     }
-                    Text(message).font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color("SecondaryText"))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .frame(maxWidth: 540, minHeight: 48)
+                    .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 16))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(activity.needsAttention ? Color("AmberText").opacity(0.5) : Color.primary.opacity(0.16), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                 }
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 16).padding(.vertical, 12)
-                .frame(maxWidth: 540, minHeight: 48)
-                .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 16))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(persistence.syncActivity.needsAttention ? Color("AmberText").opacity(0.5) : Color.primary.opacity(0.16), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sync-feedback")
+                .accessibilityLabel(activity.needsAttention ? "Warning: \(message)" : message)
+                .accessibilityHint("Opens storage and iCloud details in Settings")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("sync-feedback")
-            .accessibilityLabel(persistence.syncActivity.needsAttention ? "Warning: \(message)" : message)
-            .accessibilityHint("Opens storage and iCloud details in Settings")
+        }
+        .task(id: persistence.syncActivity) {
+            let activity = persistence.syncActivity
+            if activity.enabled && activity.message == nil {
+                // CloudKit can finish one transfer before announcing the next.
+                // Keep the same banner and indicator until activity settles.
+                do { try await Task.sleep(for: .seconds(1.5)) }
+                catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            displayedActivity = activity.message == nil ? nil : activity
         }
     }
 }

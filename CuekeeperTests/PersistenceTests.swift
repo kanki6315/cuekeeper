@@ -849,6 +849,83 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try PaymentDraft(amount: "-10").save(in: context, jobID: job.objectID))
     }
 
+    func testInvalidInvoiceCurrencyOnlyBlocksReferencedJobs() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let affected = try billingJob("Affected", amount: "100", in: context)
+        let unrelated = try billingJob("Unrelated", amount: "100", in: context)
+        var draft = InvoiceDraft(clientID: affected.client!.id!, currency: "USD")
+        draft.value.lines = [BilledLine(jobID: affected.id!, jobName: affected.name, amount: 10000)]
+        let invoiceID = try draft.save(in: context)
+        let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
+        let revision = try XCTUnwrap(invoice.revisions?.first)
+        var invalid = draft.value; invalid.currency = "GBP"
+        revision.valueJSON = String(decoding: try JSONEncoder().encode(invalid), as: UTF8.self)
+        try context.save()
+
+        let index = InvoiceIndex(in: context)
+        XCTAssertThrowsError(try invoice.heads())
+        XCTAssertThrowsError(try affected.activeInvoices(in: context, index: index))
+        XCTAssertEqual(affected.billingSummary(in: context, index: index), "Billing needs review")
+        XCTAssertTrue(try unrelated.activeInvoices(in: context, index: index).isEmpty)
+        XCTAssertEqual(unrelated.billingSummary(in: context, index: index), "Not invoiced")
+        XCTAssertThrowsError(try PaymentDraft(amount: "10").save(in: context, jobID: affected.objectID))
+        try PaymentDraft(amount: "10").save(in: context, jobID: unrelated.objectID)
+        XCTAssertEqual(try unrelated.directPaid(), 1000)
+        XCTAssertNotNil(invoice.issue(in: context))
+
+        revision.valueJSON = String(decoding: try JSONEncoder().encode(draft.value), as: UTF8.self)
+        try context.save()
+        XCTAssertEqual(try affected.activeInvoices(in: context).count, 1)
+    }
+
+    func testIncompleteInvoiceHistoryIsScopedAndRecheckedAfterSync() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let affected = try billingJob("Affected", amount: "100", in: context)
+        var otherDraft = JobDraft(name: "Other client"); otherDraft.clientName = "Other network"
+        otherDraft.fee?.amount = "100"
+        let unrelated = try XCTUnwrap(context.existingObject(with: otherDraft.save(in: context)) as? Job)
+        let invoice = Invoice(entity: NSEntityDescription.entity(forEntityName: "Invoice", in: context)!, insertInto: context)
+        invoice.id = UUID(); invoice.client = affected.client; invoice.createdAt = Date()
+        try context.save()
+        XCTAssertThrowsError(try affected.activeInvoices(in: context))
+        XCTAssertTrue(try unrelated.activeInvoices(in: context).isEmpty)
+        try PaymentDraft(amount: "10").save(in: context, jobID: unrelated.objectID)
+
+        let revision = InvoiceRevision(entity: NSEntityDescription.entity(forEntityName: "InvoiceRevision", in: context)!, insertInto: context)
+        var value = InvoiceValue(clientID: affected.client!.id!)
+        value.lines = [BilledLine(jobID: affected.id!, jobName: affected.name, amount: 10000)]
+        let missingParent = UUID()
+        revision.id = UUID(); revision.invoice = invoice; revision.createdAt = Date()
+        revision.parentsJSON = String(decoding: try JSONEncoder().encode([missingParent]), as: UTF8.self)
+        revision.valueJSON = "unreadable"
+        try context.save()
+        XCTAssertThrowsError(try affected.activeInvoices(in: context))
+        XCTAssertTrue(try unrelated.activeInvoices(in: context).isEmpty)
+        revision.valueJSON = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        try context.save()
+        XCTAssertThrowsError(try affected.activeInvoices(in: context))
+        XCTAssertTrue(try unrelated.activeInvoices(in: context).isEmpty)
+        XCTAssertTrue(try affected.activeInvoices(in: context, excluding: invoice.objectID).isEmpty)
+        var newInvoice = InvoiceDraft(clientID: unrelated.client!.id!, currency: "USD")
+        newInvoice.value.lines = [BilledLine(jobID: unrelated.id!, jobName: unrelated.name, amount: 10000)]
+        let receipt = try XCTUnwrap(unrelated.payments?.first)
+        try PaymentLedger.reverse(receipt, in: context)
+        newInvoice.value.status = "sent"; newInvoice.value.reference = "Other invoice"
+        newInvoice.value.sentDay = "2026-01-01"
+        let healthyID = try newInvoice.save(in: context)
+        try PaymentDraft(amount: "10").save(in: context, invoiceID: healthyID)
+
+        let parent = InvoiceRevision(entity: NSEntityDescription.entity(forEntityName: "InvoiceRevision", in: context)!, insertInto: context)
+        parent.id = missingParent; parent.invoice = invoice; parent.createdAt = Date()
+        parent.parentsJSON = "[]"; parent.valueJSON = revision.valueJSON
+        try context.save()
+        XCTAssertEqual(try affected.activeInvoices(in: context).count, 1)
+        var void = try InvoiceDraft(invoice: invoice); void.value.status = "void"
+        try void.save(in: context, editing: invoice.objectID)
+        XCTAssertTrue(try affected.activeInvoices(in: context).isEmpty)
+        try PaymentDraft(amount: "10").save(in: context, jobID: affected.objectID)
+    }
+
     func testSyncedDuplicateBillingCanBeDetectedAndVoided() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         let job = try billingJob("Shared job", amount: "100", in: context)

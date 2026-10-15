@@ -66,6 +66,63 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertFalse(Recovery.canRestore(job)); XCTAssertThrowsError(try Recovery.restore(job.objectID, in: context))
         XCTAssertEqual(try context.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 1)
     }
+    func testWorkflowWaitsForInitialImportThenMergesDownloadedIdentities() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let snapshot = try BackupArchive.capture(in: source)
+        let target = try await context()
+        let workflow = BackupWorkflow()
+        workflow.archive = snapshot
+        var activity = SyncActivity()
+        let importID = UUID()
+
+        // Setup/export success, offline status and a failed import must not unlock restore.
+        activity.record(id: UUID(), kind: .setup, ended: true, succeeded: true, error: nil)
+        activity.record(id: UUID(), kind: .sending, ended: true, succeeded: true, error: nil)
+        activity.offline = true
+        activity.record(id: importID, kind: .receiving, ended: true, succeeded: false, error: "Offline")
+        workflow.restore(context: target, syncActivity: { activity }) { _ in XCTFail("Restore must wait") }
+        XCTAssertNotNil(workflow.error)
+        XCTAssertNotNil(workflow.archive)
+        XCTAssertFalse(workflow.busy)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+
+        activity.offline = false
+        activity.record(id: importID, kind: .receiving, ended: false, succeeded: false, error: nil)
+        workflow.restore(context: target, syncActivity: { activity }) { _ in XCTFail("Import is still running") }
+        XCTAssertFalse(workflow.busy)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+
+        // Simulate iCloud delivering the same records before its successful completion.
+        _ = try snapshot.restore(in: target)
+        activity.record(id: importID, kind: .receiving, ended: true, succeeded: true, error: nil)
+        let restored = expectation(description: "Restore after initial import")
+        workflow.restore(context: target, syncActivity: { activity }) { result in
+            XCTAssertEqual(result.added, 0)
+            restored.fulfill()
+        }
+        await fulfillment(of: [restored], timeout: 5)
+        XCTAssertNil(workflow.error)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 1)
+        let invoice = try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first)
+        XCTAssertEqual(try invoice.balance(), 7500)
+        XCTAssertNoThrow(try BackupArchive.capture(in: target))
+    }
+
+    func testWorkflowAllowsLocalOnlyRestore() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let target = try await context()
+        let workflow = BackupWorkflow()
+        workflow.archive = try BackupArchive.capture(in: source)
+        var activity = SyncActivity(); activity.enabled = false
+        let restored = expectation(description: "Local restore")
+        workflow.restore(context: target, syncActivity: { activity }) { result in
+            XCTAssertGreaterThan(result.added, 0)
+            restored.fulfill()
+        }
+        await fulfillment(of: [restored], timeout: 5)
+        XCTAssertNil(workflow.error)
+    }
+
     func testBackupRoundTripIntoEmptyStoreAndRepeatedRestore() async throws {
         let source = try await context(); let original = try fixture(source)
         let archive = try BackupArchive.capture(in: source)

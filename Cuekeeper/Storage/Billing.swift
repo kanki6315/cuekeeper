@@ -64,14 +64,15 @@ final class Invoice: NSManagedObject {
         let value = try currentValue()
         return value.status == "void" ? 0 : try value.total() - paid()
     }
-    func issue(in context: NSManagedObjectContext) -> String? {
+    func issue(in context: NSManagedObjectContext, index: InvoiceIndex? = nil) -> String? {
         do {
             let value = try currentValue(); _ = try paid()
             if value.status == "void" { return nil }
+            let index = index ?? InvoiceIndex(in: context)
             for line in value.lines {
                 let request = NSFetchRequest<Job>(entityName: "Job"); request.predicate = NSPredicate(format: "id == %@", line.jobID as CVarArg)
                 guard let job = try context.fetch(request).first else { return "An included job is still syncing." }
-                if try job.activeInvoices(in: context).count > 1 { return "A job appears on multiple active invoices. Void the duplicate invoice to resolve this." }
+                if try job.activeInvoices(in: context, index: index).count > 1 { return "A job appears on multiple active invoices. Void the duplicate invoice to resolve this." }
                 if try job.directPaid() > 0 { return "An included job also has direct payments. Review and reverse the receipt if it belongs on this invoice." }
             }
             return nil
@@ -137,18 +138,67 @@ enum PaymentLedger {
     }
 }
 
+/// A context-local snapshot. Rebuild for each render/transaction so sync and edits
+/// cannot leave eligibility cached across financial writes.
+struct InvoiceIndex {
+    private var active: [UUID: [Invoice]] = [:]
+    private var blockedJobs: [UUID: Set<NSManagedObjectID>] = [:]
+    private var blockedClients: [UUID: Set<NSManagedObjectID>] = [:]
+    private var unknown: Set<NSManagedObjectID> = []
+    private var fetchError: Error?
+
+    init(in context: NSManagedObjectContext) {
+        do {
+            let request = NSFetchRequest<Invoice>(entityName: "Invoice")
+            request.relationshipKeyPathsForPrefetching = ["revisions", "client"]
+            for invoice in try context.fetch(request) {
+                do {
+                    let heads = try invoice.heads()
+                    let jobs = Set(heads.compactMap(\.value).filter { $0.status != "void" }.flatMap { $0.lines.map(\.jobID) })
+                    for job in jobs { active[job, default: []].append(invoice) }
+                } catch {
+                    let records = Array(invoice.revisions ?? [])
+                    let values = records.compactMap(\.value)
+                    for job in Set(values.flatMap { $0.lines.map(\.jobID) }) {
+                        blockedJobs[job, default: []].insert(invoice.objectID)
+                    }
+                    // Missing/unreadable history may contain additional jobs. Limit
+                    // that uncertainty to known clients, including historical ones.
+                    let ids = Set(records.compactMap(\.id))
+                    let incomplete = records.isEmpty || values.count != records.count || records.contains {
+                        guard let parents = try? JSONDecoder().decode([UUID].self, from: Data($0.parentsJSON.utf8)) else { return true }
+                        return !Set(parents).isSubset(of: ids)
+                    }
+                    if incomplete {
+                        var clients = Set(values.map(\.clientID))
+                        if let client = invoice.client?.id { clients.insert(client) }
+                        if clients.isEmpty { unknown.insert(invoice.objectID) }
+                        for client in clients { blockedClients[client, default: []].insert(invoice.objectID) }
+                    }
+                }
+            }
+        } catch { fetchError = error }
+    }
+
+    func invoices(for job: Job, excluding excluded: NSManagedObjectID? = nil) throws -> [Invoice] {
+        if let fetchError { throw fetchError }
+        guard let id = job.id else { return [] }
+        var blocked = unknown.union(blockedJobs[id] ?? [])
+        if let client = job.client?.id { blocked.formUnion(blockedClients[client] ?? []) }
+        if let excluded { blocked.remove(excluded) }
+        guard blocked.isEmpty else { throw RecordError.invalid("An invoice that may include this job needs review. Wait for sync or resolve its history before billing this job.") }
+        return (active[id] ?? []).filter { $0.objectID != excluded }
+    }
+}
+
 extension Job {
-    func activeInvoices(in context: NSManagedObjectContext, excluding excluded: NSManagedObjectID? = nil) throws -> [Invoice] {
-        guard let id else { return [] }
-        return try context.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).filter { invoice in
-            if invoice.objectID == excluded { return false }
-            return try invoice.heads().contains { revision in revision.value.map { $0.status != "void" && $0.lines.contains { $0.jobID == id } } ?? false }
-        }
+    func activeInvoices(in context: NSManagedObjectContext, excluding excluded: NSManagedObjectID? = nil, index: InvoiceIndex? = nil) throws -> [Invoice] {
+        try (index ?? InvoiceIndex(in: context)).invoices(for: self, excluding: excluded)
     }
     func directPaid() throws -> Int64 { try PaymentLedger.net(Array(payments ?? [])) }
-    func billingSummary(in context: NSManagedObjectContext) -> String {
+    func billingSummary(in context: NSManagedObjectContext, index: InvoiceIndex? = nil) -> String {
         do {
-            let invoices = try activeInvoices(in: context)
+            let invoices = try activeInvoices(in: context, index: index)
             if invoices.count > 1 { return "Duplicate billing needs review" }
             if try !invoices.isEmpty && directPaid() > 0 { return "Direct payment and invoice need review" }
             if let invoice = invoices.first {
@@ -189,6 +239,7 @@ struct InvoiceDraft: Equatable {
         }
         let clients = NSFetchRequest<Client>(entityName: "Client"); clients.predicate = NSPredicate(format: "id == %@", value.clientID as CVarArg)
         guard let client = try writer.fetch(clients).first else { throw RecordError.invalid("Choose a saved client for this invoice.") }
+        let index = InvoiceIndex(in: writer)
         for line in value.lines {
             let request = NSFetchRequest<Job>(entityName: "Job"); request.predicate = NSPredicate(format: "id == %@", line.jobID as CVarArg)
             guard let job = try writer.fetch(request).first else { throw RecordError.invalid("Every included job must belong to the selected client.") }
@@ -198,7 +249,7 @@ struct InvoiceDraft: Equatable {
                 guard try job.currentFee().currency == value.currency else { throw RecordError.invalid("All jobs on an invoice must use the same currency.") }
                 guard try job.directPaid() == 0 else { throw RecordError.invalid("A job with direct payments cannot also be invoiced. Reverse those receipts first if they should belong to an invoice.") }
                 }
-                guard try job.activeInvoices(in: writer, excluding: invoice.objectID).isEmpty else { throw RecordError.invalid("A selected job is already on another active invoice. Review or void that invoice before billing it again.") }
+                guard try job.activeInvoices(in: writer, excluding: invoice.objectID, index: index).isEmpty else { throw RecordError.invalid("A selected job is already on another active invoice. Review or void that invoice before billing it again.") }
             }
         }
         if invoice.id == nil { invoice.id = UUID(); invoice.createdAt = Date() }
@@ -222,10 +273,11 @@ struct PaymentDraft: Equatable {
         if let invoiceID {
             invoice = try writer.existingObject(with: invoiceID) as? Invoice
             let value = try invoice!.currentValue()
+            let index = InvoiceIndex(in: writer)
             guard value.status == "sent" else { throw RecordError.invalid("Mark the invoice sent before recording payment.") }
             for line in value.lines {
                 let request = NSFetchRequest<Job>(entityName: "Job"); request.predicate = NSPredicate(format: "id == %@", line.jobID as CVarArg)
-                guard let job = try writer.fetch(request).first, try job.activeInvoices(in: writer).count == 1, try job.directPaid() == 0 else { throw RecordError.invalid("Resolve duplicate billing before recording a payment.") }
+                guard let job = try writer.fetch(request).first, try job.activeInvoices(in: writer, index: index).count == 1, try job.directPaid() == 0 else { throw RecordError.invalid("Resolve duplicate billing before recording a payment.") }
             }
             _ = try invoice!.paid(); currency = value.currency
         } else {

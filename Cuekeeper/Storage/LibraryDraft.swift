@@ -18,8 +18,7 @@ struct LibraryDraft: Equatable {
     func save(entity: String, editing id: NSManagedObjectID?, baseline: LibraryDraft, in context: NSManagedObjectContext) throws {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { throw JobDraft.ValidationError.nameRequired }
-        let writer = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        writer.persistentStoreCoordinator = context.persistentStoreCoordinator
+        let writer = isolatedWriter(context)
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
         request.predicate = NSPredicate(format: "name ==[cd] %@", name)
         if try writer.fetch(request).contains(where: { $0.objectID != id }) {

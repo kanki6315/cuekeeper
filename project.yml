@@ -29,10 +29,13 @@ targets:
     platform: iOS
     sources:
       - path: Cuekeeper
+      - path: Shared
+      - path: CuekeeperWidgets/CuekeeperWidgets.swift
       - path: design/brand/Cuekeeper.icon
     entitlements:
       path: Cuekeeper/Cuekeeper.entitlements
       properties:
+        com.apple.security.application-groups: [group.com.arjunakankipati.cuekeeper]
         aps-environment: development
         com.apple.developer.weatherkit: true
         com.apple.developer.icloud-container-identifiers:
@@ -44,6 +47,9 @@ targets:
       path: Cuekeeper/Info.plist
       properties:
         CuekeeperCloudKitEnvironment: $(CLOUDKIT_ENVIRONMENT)
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [cuekeeper]
+            CFBundleURLName: com.arjunakankipati.cuekeeper
         CFBundleDisplayName: Cuekeeper
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -68,6 +74,33 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: Cuekeeper
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_MACCATALYST: NO
+    dependencies:
+      - target: CuekeeperWidgets
+        embed: true
+  CuekeeperWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CuekeeperWidgets
+      - path: Shared
+    entitlements:
+      path: CuekeeperWidgets/CuekeeperWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.arjunakankipati.cuekeeper]
+    info:
+      path: CuekeeperWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Cuekeeper
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.cuekeeper.widgets
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXTENSION"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
   CuekeeperSchemaHelper:
     type: application
     platform: macOS

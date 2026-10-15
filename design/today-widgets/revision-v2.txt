@@ -1,0 +1,11 @@
+Revision 2 supersedes the layout proposal in concept-notes.txt.
+Full chronological day schedule is the main content.
+Directions and Event notes buttons are removed from Today.
+Next call is a compact strip rather than a dominant panel.
+Every session shows its parent event and client, start/end and call times.
+The fictional example includes two events and four sessions.
+Medium widgets show session times and parent event names together.
+Small and Lock Screen widgets retain their next-call focus.
+Existing edge-state and privacy notes still apply.
+Generated with built-in image_gen, using concept-board.png as edit reference.
+Design concept only; no production code changed.

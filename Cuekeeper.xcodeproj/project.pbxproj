@@ -9,10 +9,14 @@
 /* Begin PBXBuildFile section */
 		039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A6C890CABAF4353CE145B9D8 /* Assets.xcassets */; };
 		062400846722C32FFC23825F /* DaybookStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */; };
+		0E1754E0F626C4A2470A77AF /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F2A2E2C9FC3521A2899B7E /* TodayView.swift */; };
+		1ED3D411CEF476412227AA25 /* SchedulePublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */; };
 		2349E476E2580C0A2FBC71C1 /* SiriCreatedEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */; };
+		24BEEAE21058EB26AEC57197 /* CuekeeperWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */; };
 		28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
 		29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */; };
 		2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
+		31296B6D5EDECA64D1FE7B8E /* CuekeeperWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */; };
 		338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */; };
 		33C82DB863203C00DEF8E78C /* TrackLocationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */; };
 		3577724790278D35856FAC47 /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
@@ -35,13 +39,18 @@
 		64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */; };
 		64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */; };
 		6A4FFD670D492A7563E2FA9E /* RecoveryBackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BE8FC36A37D1122F844EE96 /* RecoveryBackupTests.swift */; };
+		75124E87A3A68003C805BECE /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8A51E9BA7FE1E0EA6C578E /* TodayTests.swift */; };
 		789BFF476A91BB6DA4110CE0 /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BCF474DBEC80465600AB43 /* RecoveryView.swift */; };
 		8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */; };
+		8DC18CBE3C781DED3F4B888C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
 		8FCB4E47836A4382380C6D83 /* FirstLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */; };
 		92339E8B9B9F67BE1793652E /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4201CFBC74D97C4425E97FD /* BackupView.swift */; };
+		976472552A08D5CD31A7FFD9 /* CuekeeperMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */; };
 		991F28DFD42FDA0529BED47C /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252FA8AA4804BAF13CE8E06B /* Job.swift */; };
 		995D62E791EF421E35257B23 /* CloudBackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E6DB6F2628C8A88BCDD097 /* CloudBackupStore.swift */; };
+		9DC58F2C1AE2C2F5D7730D8E /* DayScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */; };
 		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
+		A28ED7E82351B9557E0B880C /* CuekeeperWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		A933C1120214E017ABB6DABE /* FirstLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1A3615096553A427E9202D /* FirstLaunchTests.swift */; };
 		AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
@@ -57,6 +66,7 @@
 		BB946F58C6118E99571762DC /* CloudBackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E6DB6F2628C8A88BCDD097 /* CloudBackupStore.swift */; };
 		BC4BAD64E3C41BCEC423D7B9 /* EventVisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C39653F7538932613199392 /* EventVisualTests.swift */; };
 		BC7F0A4CEFBE7ED67362CE1E /* PreferenceFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */; };
+		BE38B159D7E7F755F31684D0 /* CuekeeperMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */; };
 		BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE600824A3A4DC39439FDF0 /* CalendarController.swift */; };
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		C94502CCC6AD8B533F1DFE7A /* BackupArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4510B4441D5730C579C736AA /* BackupArchive.swift */; };
@@ -66,6 +76,7 @@
 		DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 		DCF5239950C0B0CFD22B1449 /* FirstLaunchBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */; };
+		E87E8E7C6AECCF11ECC0FA0C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
 		EEF6F74D6395DF0098A9C424 /* EventWizardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */; };
 		F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919618A957BA6EC5BAA77600 /* EventWeather.swift */; };
 		F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */; };
@@ -83,6 +94,13 @@
 			remoteGlobalIDString = 7AD0EA2D4AC35F68DB77E170;
 			remoteInfo = Cuekeeper;
 		};
+		8BBBC5BA7BB8F382FAE01BA0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4A85EB1B1A16873832E3E514 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AC952C7E1265FB02814F0064;
+			remoteInfo = CuekeeperWidgets;
+		};
 		A0387BCC157F22FE4AD2F2D4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4A85EB1B1A16873832E3E514 /* Project object */;
@@ -91,6 +109,20 @@
 			remoteInfo = Cuekeeper;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8A42CC8B2821BA10F7B186E9 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A28ED7E82351B9557E0B880C /* CuekeeperWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		00A5F712AF2B3219F8DC48DD /* EventWizardFields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardFields.swift; sourceTree = "<group>"; };
@@ -111,14 +143,19 @@
 		2BE8FC36A37D1122F844EE96 /* RecoveryBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryBackupTests.swift; sourceTree = "<group>"; };
 		2CC25F847FFB2944BBBC0D0D /* FeeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeView.swift; sourceTree = "<group>"; };
 		2DBF588394D95094941421C3 /* CuekeeperV9.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV9.xcdatamodel; sourceTree = "<group>"; };
+		2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = CuekeeperWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		33F836C8BA3141120B7425E7 /* DaySchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySchedule.swift; sourceTree = "<group>"; };
 		346CE0331007A04D422DEA83 /* CuekeeperV4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV4.xcdatamodel; sourceTree = "<group>"; };
+		3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperWidgets.swift; sourceTree = "<group>"; };
 		3BFF91FDC02AC7049028F31D /* CuekeeperV5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV5.xcdatamodel; sourceTree = "<group>"; };
 		3D728490D92E5AF2A632031C /* CalendarEventIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventIntent.swift; sourceTree = "<group>"; };
 		40A57E11DA88086857902024 /* Cuekeeper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cuekeeper.entitlements; sourceTree = "<group>"; };
+		44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulePublisher.swift; sourceTree = "<group>"; };
 		4510B4441D5730C579C736AA /* BackupArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupArchive.swift; sourceTree = "<group>"; };
 		46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV6.xcdatamodel; sourceTree = "<group>"; };
 		4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPublisher.swift; sourceTree = "<group>"; };
+		5281AB6F1525268F5E58336E /* CuekeeperWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CuekeeperWidgets.entitlements; sourceTree = "<group>"; };
 		575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceEditorView.swift; sourceTree = "<group>"; };
 		5A1A3615096553A427E9202D /* FirstLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchTests.swift; sourceTree = "<group>"; };
 		5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CuekeeperSchemaHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -140,16 +177,21 @@
 		919618A957BA6EC5BAA77600 /* EventWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeather.swift; sourceTree = "<group>"; };
 		91C80D913C2F1C3287CFD3DF /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchTests.swift; sourceTree = "<group>"; };
+		94F2A2E2C9FC3521A2899B7E /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Cuekeeper.xcdatamodel; sourceTree = "<group>"; };
 		994C44392560A52DE055B755 /* SessionBatchEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBatchEditorView.swift; sourceTree = "<group>"; };
+		9D8A51E9BA7FE1E0EA6C578E /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
 		A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSupplementTests.swift; sourceTree = "<group>"; };
 		A5BA01886803FB21C0F4DAD4 /* Fees.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fees.swift; sourceTree = "<group>"; };
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AF513485C51BD69B238E3E80 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsView.swift; sourceTree = "<group>"; };
+		B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayScheduleTests.swift; sourceTree = "<group>"; };
 		BBC535FB730F3A6A7FE4A398 /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
 		BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV7.xcdatamodel; sourceTree = "<group>"; };
+		C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperMark.swift; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C42AD7432BF268805135A824 /* CalendarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSettingsView.swift; sourceTree = "<group>"; };
 		C4ECFB76E1416305BD27E80B /* CuekeeperV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV3.xcdatamodel; sourceTree = "<group>"; };
@@ -182,6 +224,7 @@
 				69DFC518A6A7190800E88CDF /* EventWizardTests.swift */,
 				9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */,
 				658D5107A3868AF488F32DDE /* RecoveryTests.swift */,
+				9D8A51E9BA7FE1E0EA6C578E /* TodayTests.swift */,
 				6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */,
 			);
 			path = CuekeeperUITests;
@@ -196,6 +239,16 @@
 				FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */,
 			);
 			path = Intents;
+			sourceTree = "<group>";
+		};
+		393877717C35462577D8F7AB /* CuekeeperWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				5281AB6F1525268F5E58336E /* CuekeeperWidgets.entitlements */,
+				3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */,
+				AF513485C51BD69B238E3E80 /* Info.plist */,
+			);
+			path = CuekeeperWidgets;
 			sourceTree = "<group>";
 		};
 		476CB99C5F3CA8A9334ABC4F /* CloudKitSetupMac */ = {
@@ -216,6 +269,8 @@
 				9B745CEBE47DCA88FDCB58A9 /* Cuekeeper */,
 				7B10F434EE90C5483BD6177B /* CuekeeperTests */,
 				27D261610FBDE70E33F6FD27 /* CuekeeperUITests */,
+				393877717C35462577D8F7AB /* CuekeeperWidgets */,
+				6C7E83D3F71F2C0DAEDB8A55 /* Shared */,
 				5FEFC93A30BA70D94EF03E3C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -227,14 +282,25 @@
 				5BFB6A467D3F47DDFB0FE5B9 /* CuekeeperSchemaHelper.app */,
 				46DD50C69F165967D01C9545 /* CuekeeperTests.xctest */,
 				1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */,
+				2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		6C7E83D3F71F2C0DAEDB8A55 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */,
+				33F836C8BA3141120B7425E7 /* DaySchedule.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		7B10F434EE90C5483BD6177B /* CuekeeperTests */ = {
 			isa = PBXGroup;
 			children = (
 				71531F3273F27F2929AC0EE9 /* CalendarTests.swift */,
+				B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */,
 				01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */,
 				5A1A3615096553A427E9202D /* FirstLaunchTests.swift */,
 				CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */,
@@ -273,8 +339,10 @@
 				D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */,
 				66BCF474DBEC80465600AB43 /* RecoveryView.swift */,
 				0AC022135F654D55A6A7311E /* RootView.swift */,
+				44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */,
 				994C44392560A52DE055B755 /* SessionBatchEditorView.swift */,
 				BBC535FB730F3A6A7FE4A398 /* SessionView.swift */,
+				94F2A2E2C9FC3521A2899B7E /* TodayView.swift */,
 				25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */,
 				285E6E4929F5CD01A13F37D3 /* Intents */,
 				CE6FEAC4E23C39120396EE12 /* Storage */,
@@ -353,10 +421,12 @@
 			buildPhases = (
 				F188A65F2138C47EF72297CA /* Sources */,
 				7F320D7F11229E951718C76E /* Resources */,
+				8A42CC8B2821BA10F7B186E9 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AA611D949E2E4E5EEB574EBF /* PBXTargetDependency */,
 			);
 			name = Cuekeeper;
 			packageProductDependencies = (
@@ -382,6 +452,23 @@
 			productName = CuekeeperUITests;
 			productReference = 1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		AC952C7E1265FB02814F0064 /* CuekeeperWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EA50B6E25B2F7EA70933A956 /* Build configuration list for PBXNativeTarget "CuekeeperWidgets" */;
+			buildPhases = (
+				8E3EF948D5EC1A62B05B7218 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CuekeeperWidgets;
+			packageProductDependencies = (
+			);
+			productName = CuekeeperWidgets;
+			productReference = 2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -409,6 +496,10 @@
 						ProvisioningStyle = Automatic;
 						TestTargetID = 7AD0EA2D4AC35F68DB77E170;
 					};
+					AC952C7E1265FB02814F0064 = {
+						DevelopmentTeam = TDBAHN96B3;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 30560D0AD55B860D46C468AF /* Build configuration list for PBXProject "Cuekeeper" */;
@@ -426,6 +517,7 @@
 			projectRoot = "";
 			targets = (
 				7AD0EA2D4AC35F68DB77E170 /* Cuekeeper */,
+				AC952C7E1265FB02814F0064 /* CuekeeperWidgets */,
 				39D4444CB292F06AEDFEE9F3 /* CuekeeperSchemaHelper */,
 				5A212CD0E684CD58B669CF96 /* CuekeeperTests */,
 				9C7672FB0F82A2EBCBA77A94 /* CuekeeperUITests */,
@@ -457,6 +549,7 @@
 				AD8486D75DB2BC6875E65E18 /* EventWizardTests.swift in Sources */,
 				8FCB4E47836A4382380C6D83 /* FirstLaunchTests.swift in Sources */,
 				3F6B9BDFB7A906E3B4F8D755 /* RecoveryTests.swift in Sources */,
+				75124E87A3A68003C805BECE /* TodayTests.swift in Sources */,
 				8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -466,10 +559,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				C98339F7FD17877747472285 /* CalendarTests.swift in Sources */,
+				9DC58F2C1AE2C2F5D7730D8E /* DayScheduleTests.swift in Sources */,
 				F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */,
 				A933C1120214E017ABB6DABE /* FirstLaunchTests.swift in Sources */,
 				29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */,
 				6A4FFD670D492A7563E2FA9E /* RecoveryBackupTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8E3EF948D5EC1A62B05B7218 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BE38B159D7E7F755F31684D0 /* CuekeeperMark.swift in Sources */,
+				31296B6D5EDECA64D1FE7B8E /* CuekeeperWidgets.swift in Sources */,
+				8DC18CBE3C781DED3F4B888C /* DaySchedule.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,6 +609,9 @@
 				DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */,
 				28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */,
 				64149773D5E74012CED7868A /* CuekeeperApp.swift in Sources */,
+				976472552A08D5CD31A7FFD9 /* CuekeeperMark.swift in Sources */,
+				24BEEAE21058EB26AEC57197 /* CuekeeperWidgets.swift in Sources */,
+				E87E8E7C6AECCF11ECC0FA0C /* DaySchedule.swift in Sources */,
 				062400846722C32FFC23825F /* DaybookStyle.swift in Sources */,
 				41B304D19B61465775986906 /* DesignFixtures.swift in Sources */,
 				F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */,
@@ -529,9 +636,11 @@
 				B11DC4F05904A85461B231A9 /* Recovery.swift in Sources */,
 				789BFF476A91BB6DA4110CE0 /* RecoveryView.swift in Sources */,
 				B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */,
+				1ED3D411CEF476412227AA25 /* SchedulePublisher.swift in Sources */,
 				5EA2B0F8414CAB369A9845D7 /* SessionBatchEditorView.swift in Sources */,
 				4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */,
 				2349E476E2580C0A2FBC71C1 /* SiriCreatedEventView.swift in Sources */,
+				0E1754E0F626C4A2470A77AF /* TodayView.swift in Sources */,
 				33C82DB863203C00DEF8E78C /* TrackLocationView.swift in Sources */,
 				60EDF0591C09FDC165CE7ABB /* WorkEvent.swift in Sources */,
 				AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */,
@@ -550,6 +659,11 @@
 			isa = PBXTargetDependency;
 			target = 7AD0EA2D4AC35F68DB77E170 /* Cuekeeper */;
 			targetProxy = 8B825F1DFE91C7DCC3F9411A /* PBXContainerItemProxy */;
+		};
+		AA611D949E2E4E5EEB574EBF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AC952C7E1265FB02814F0064 /* CuekeeperWidgets */;
+			targetProxy = 8BBBC5BA7BB8F382FAE01BA0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -730,6 +844,25 @@
 			};
 			name = Release;
 		};
+		8EB311C3E8E54211E37C0D18 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = CuekeeperWidgets/CuekeeperWidgets.entitlements;
+				INFOPLIST_FILE = CuekeeperWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		9FAB2B999FAC057C5C6CD694 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -769,6 +902,25 @@
 				TARGETED_DEVICE_FAMILY = "";
 			};
 			name = CloudKitSetup;
+		};
+		A64B54E8D9D3CE2EE49BEE7F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = CuekeeperWidgets/CuekeeperWidgets.entitlements;
+				INFOPLIST_FILE = CuekeeperWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 		B9B2474A6270C0C2565021BD /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -959,6 +1111,25 @@
 			};
 			name = CloudKitSetup;
 		};
+		E1F0FBEC098E6E214F2DFE6C /* CloudKitSetup */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = CuekeeperWidgets/CuekeeperWidgets.entitlements;
+				INFOPLIST_FILE = CuekeeperWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = CloudKitSetup;
+		};
 		EE458C1F5E9B2596E2325777 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1025,6 +1196,16 @@
 				44F05C58CD448523EF3643F3 /* CloudKitSetup */,
 				BF3E30EBCC512622DE77A8EB /* Debug */,
 				B9B2474A6270C0C2565021BD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CloudKitSetup;
+		};
+		EA50B6E25B2F7EA70933A956 /* Build configuration list for PBXNativeTarget "CuekeeperWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1F0FBEC098E6E214F2DFE6C /* CloudKitSetup */,
+				A64B54E8D9D3CE2EE49BEE7F /* Debug */,
+				8EB311C3E8E54211E37C0D18 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = CloudKitSetup;

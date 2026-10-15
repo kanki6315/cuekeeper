@@ -2,6 +2,7 @@
 import CoreData
 import CloudKit
 import SwiftUI
+import WidgetKit
 
 /// Synthetic review records, gated to the isolated UI-test store. Never used in a normal launch.
 enum DesignFixtures {
@@ -9,6 +10,10 @@ enum DesignFixtures {
     static var route: String { ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--design-screen=") })?.replacingOccurrences(of: "--design-screen=", with: "") ?? "root" }
     static func seed(_ context: NSManagedObjectContext) throws {
         guard enabled, try context.count(for: NSFetchRequest<Job>(entityName: "Job")) == 0 else { return }
+        if ProcessInfo.processInfo.arguments.contains("--today-fixtures") {
+            try seedToday(context)
+            return
+        }
         let start = Calendar.current.startOfDay(for: Date())
         var created: [Job] = []
         for (index, name) in ["City vs United", "Studio highlights", "National finals", "Daytona", "Sebring AEC", "Season opener"].enumerated() {
@@ -79,6 +84,25 @@ enum DesignFixtures {
         }
 
     }
+    static func seedToday(_ context: NSManagedObjectContext) throws {
+        let day = Calendar.current.startOfDay(for: Date())
+        for (index, name) in ["Silverstone weekend", "Studio highlights"].enumerated() {
+            var job = JobDraft(name: name, startDate: day, endDate: day)
+            job.clientName = index == 0 ? "Northside Sports" : "Apex Broadcast"
+            job.bookingStatus = .booked
+            job.timeZoneID = TimeZone.current.identifier
+            let id = try job.save(in: context)
+            let times: [(String, Double, Double)] = index == 0 ? [("Qualifying", 10.5, 11.5), ("Race briefing", 13.5, 14), ("Feature race", 15, 16.5)] : [("Evening review", 19, 20)]
+            for (name, hour, end) in times {
+                var row = SessionDraft(day: Day.string(from: day), timeZoneID: TimeZone.current.identifier)
+                row.name = name; row.startTime = day.addingTimeInterval(hour * 3600)
+                row.endTime = day.addingTimeInterval(end * 3600); row.callTime = row.startTime!.addingTimeInterval(-1800)
+                row.scheduleStatus = "confirmed"; row.coverage = "covering"
+                try row.save(in: context, jobID: id)
+            }
+        }
+    }
+
 }
 
 struct DesignFixtureScreen: View {
@@ -93,7 +117,8 @@ struct DesignFixtureScreen: View {
     @State private var zone = "Europe/London"
     @State private var editorPresented = true
     var body: some View {
-        if DesignFixtures.route == "root" { RootView() }
+        if ["widgets", "accessories"].contains(DesignFixtures.route) { WidgetFixtureGallery() }
+        else if DesignFixtures.route == "root" { RootView() }
         else if let job = jobs.first, let invoice = invoices.first {
             NavigationStack {
                 switch DesignFixtures.route {
@@ -147,5 +172,44 @@ actor FixtureBackups: CloudBacking {
         return value.1
     }
     func delete(_ entry: CloudBackupStore.Entry) async throws { values[entry.id.recordName] = nil }
+}
+#endif
+
+#if DEBUG
+struct WidgetFixtureGallery: View {
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.colorScheme) private var appearance
+    var body: some View {
+        ScrollView {
+            if let snapshot = try? DaySchedule.capture(in: context) {
+                VStack(spacing: 24) {
+                    if DesignFixtures.route == "accessories" {
+                        Text("Lock Screen accessories").font(.title2.bold())
+                        Text("Rectangular").font(.headline)
+                        specimen(snapshot, hour: 9, family: .accessoryRectangular, width: 170, height: 80)
+                        Text("Circular").font(.headline)
+                        specimen(snapshot, hour: 9, family: .accessoryCircular, width: 80, height: 80)
+                        Text("Inline").font(.headline)
+                        specimen(snapshot, hour: 9, family: .accessoryInline, width: 320, height: 36)
+                    } else {
+                    Text("Small widget · one event").font(.headline)
+                    specimen(snapshot, hour: 9, family: .systemSmall, width: 170, height: 170)
+                    Text("Small widget · across events").font(.headline)
+                    specimen(snapshot, hour: 14, family: .systemSmall, width: 170, height: 170)
+                    Text("Medium widget").font(.headline)
+                    specimen(snapshot, hour: 9, family: .systemMedium, width: 360, height: 170)
+                    Text("Lock Screen · rectangular").font(.headline)
+                    specimen(snapshot, hour: 9, family: .accessoryRectangular, width: 170, height: 80)
+                    }
+                }.padding()
+            }
+        }.daybookSurface()
+    }
+    private func specimen(_ snapshot: DaySchedule, hour: Double, family: WidgetFamily, width: CGFloat, height: CGFloat) -> some View {
+        ScheduleWidgetView(familyOverride: family, entry: ScheduleEntry(date: Calendar.current.startOfDay(for: Date()).addingTimeInterval(hour * 3600), schedule: snapshot))
+            .padding(family == .systemSmall || family == .systemMedium ? 14 : 4).frame(width: width, height: height)
+            .background(Color("PageBackground"), in: RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.secondary.opacity(0.25)))
+    }
 }
 #endif

@@ -1,0 +1,27 @@
+Today & widgets — proposed concept
+
+Scope: design mockups only; no app code changes.
+Use the existing Daybook / Combined Glass identity.
+Today lives within Upcoming, alongside Week and All scopes.
+Lead with the next confirmed call for a session marked Covering; use session
+start when call time is unknown. Display the timezone explicitly.
+Follow with the remaining schedule and existing directions, notes and links.
+Do not interpret a scheduled session as a live broadcast status.
+
+Home Screen: small next-call widget and medium daily schedule widget.
+Lock Screen: minimal rectangular and circular next-call accessories.
+Widget taps open Today or the corresponding session as appropriate to size.
+No financial amounts or private notes appear on widget surfaces.
+
+States for implementation design:
+- No work today: say so and show the next dated booking, if any.
+- Dates without confirmed times: Schedule to come; do not invent a countdown.
+- Finished schedule: No more sessions today; keep the day available in the app.
+- Tentative/undecided work stays visible separately from the next confirmed call.
+- Multiple events: label each session with its event; do not assume one venue.
+- Remote/hybrid work: distinguish event and user timezones when they differ.
+- Widgets use saved local data; do not claim continuous live refresh or sync.
+- Respect widget privacy/redaction, system tint, Dynamic Type and accessibility.
+
+The board uses a fictional Wednesday 14 October 2026 schedule at 09:41 BST.
+Generation: built-in image_gen, using existing app captures as style references.

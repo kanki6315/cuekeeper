@@ -11,9 +11,10 @@ The owner supplied `cuekeeper.arjunakankipati.com` and
 `cuekeeper@arjunakankipati.com`. Settings uses HTTPS links to support and privacy. The support page provides the
 email address; there is no separate email button in the app.
 
-The subdomain failed DNS resolution during the October 15 terminal check. This
-may be environment-dependent; public availability is not established. The owner
-must configure DNS/hosting and TLS, verify the support mailbox, and publish:
+A later October 15 terminal check found the subdomain resolving over HTTPS:
+`/`, `/privacy` and `/support` each returned 200 with the expected page titles,
+and plain HTTP returned a 301 redirect. The owner must still verify the support
+mailbox and keep these pages current:
 
 | URL | Content |
 | --- | --- |
@@ -32,6 +33,9 @@ Do not ship the new links until their destinations work.
 - Main app: `NSPrivacyAccessedAPICategoryUserDefaults`, reason `CA92.1`. Used for
   app-owned preferences, setup completion, calendar connection/publisher state,
   reminder preference and view state in `UserDefaults.standard` / `@AppStorage`.
+- Main app: `NSPrivacyAccessedAPICategoryDiskSpace`, reason `E174.1`.
+  `BackupLimits.requireSpace` reads `volumeAvailableCapacityForImportantUsageKey`
+  before writing a backup and refuses to start when free space is insufficient.
 - Widget: no direct required-reason API usage found. The shared schedule is a JSON
   file in the App Group, not shared UserDefaults, so `1C8F.1` is not declared.
 - Both manifests declare no tracking, tracking domains or collected data types.
@@ -41,8 +45,9 @@ Do not ship the new links until their destinations work.
   on-device model goes to Apple Private Cloud Compute. This is not a claim that nothing
   leaves the device.
 - The backup file-size read uses `URLResourceKey.fileSizeKey`; that key is not on
-  Apple's current required-reason API list. No direct timestamp, disk-capacity,
-  active-keyboard or system-uptime API calls were found in shipping source.
+  Apple's current required-reason API list. Apart from the disk-space check
+  above, no direct timestamp, disk-capacity, active-keyboard or system-uptime API
+  calls were found in shipping source.
 - XcodeGen includes each manifest in its own target's resources. Inspect the
   final archive as well; a plist lint alone does not prove distribution acceptance.
 - Re-audit if a dependency, telemetry endpoint, shared-defaults implementation or
@@ -113,7 +118,8 @@ This scope does not close production-schema, real-device, or backup-capacity wor
 - All 27 existing Python tooling tests passed; listing field lengths checked.
 - `git diff --check` passed. No new UI automation or visual captures were run for
   the standard Settings links. No archive upload or App Store acceptance
-  is implied. The public URLs remain unverified because DNS did not resolve.
+  is implied. DNS did not resolve at the time; a later check found the public
+  URLs serving over HTTPS (see Public pages and owner setup).
 
 ## Settings visual follow-up
 

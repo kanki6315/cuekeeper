@@ -19,7 +19,7 @@ struct InvoiceValue: Codable, Equatable {
     var lines: [BilledLine] = []
     func total() throws -> Int64 { try Money.minorUnits(lines.reduce(Decimal(0)) { $0 + Decimal($1.amount) }) }
     func validate() throws {
-        guard ["USD", "EUR"].contains(currency), ["draft", "sent", "void"].contains(status) else { throw RecordError.invalid("Choose a valid invoice currency and status.") }
+        guard CurrencyPreferences.supported.contains(currency), ["draft", "sent", "void"].contains(status) else { throw RecordError.invalid("Choose a valid invoice currency and status.") }
         guard !lines.isEmpty, Set(lines.map(\.jobID)).count == lines.count, lines.allSatisfy({ $0.amount >= 0 && $0.amount <= Money.limit }) else {
             throw RecordError.invalid("Include at least one job, once each, with a nonnegative billed amount.")
         }
@@ -106,7 +106,7 @@ final class PaymentRecord: NSManagedObject {
 
 enum PaymentLedger {
     static func net(_ records: [PaymentRecord]) throws -> Int64 {
-        guard records.allSatisfy({ $0.id != nil && $0.receivedAt != nil && $0.createdAt != nil && ["USD", "EUR"].contains($0.currency) && $0.amount != 0 }) else {
+        guard records.allSatisfy({ $0.id != nil && $0.receivedAt != nil && $0.createdAt != nil && CurrencyPreferences.supported.contains($0.currency) && $0.amount != 0 }) else {
             throw RecordError.invalid("Payment history is incomplete. Wait for sync before changing this balance.")
         }
         var originals: [UUID: PaymentRecord] = [:]

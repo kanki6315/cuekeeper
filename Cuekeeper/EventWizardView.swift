@@ -28,7 +28,7 @@ struct EventWizardView: View {
     @State private var pastedTitles = ""
     @State private var editingEvent: UUID?
     @State private var sessionEvent = 0
-    @State private var activeSession: Int?
+    @State private var activeSession: UUID?
     @State private var copyExpanded = false
     @State private var copyTimes = false
     @State private var copyTargets: Set<UUID> = []
@@ -75,7 +75,7 @@ struct EventWizardView: View {
             initial = sample
             initialSteps = Set(EventWizardStep.optional)
             _path = State(initialValue: args.contains("--wizard-foreign-session") ? [.sessions] : [.review])
-            _activeSession = State(initialValue: args.contains("--wizard-foreign-session") ? 0 : nil)
+            _activeSession = State(initialValue: args.contains("--wizard-foreign-session") ? sample.events[0].sessions.first?.id : nil)
             if args.contains("--wizard-timezone-preview") {
                 sample.events[0].timeZoneID = "Europe/Paris"
                 sample.events[0].sessions = []
@@ -120,24 +120,25 @@ struct EventWizardView: View {
         .sheet(isPresented: $choosingTrack) { TrackLocationPicker(placeID: $draft.shared.trackPlaceID) }
         .saveErrorAlert($error)
         .sheet(item: Binding(get: { editingEvent.map(EventEditID.init) }, set: { editingEvent = $0?.id })) { item in
-            if let index = draft.events.firstIndex(where: { $0.id == item.id }) {
+            if let outline = draft.events.first(where: { $0.id == item.id }) {
+                let event = $draft.events.elementBinding(for: outline)
                 NavigationStack {
                     DaybookForm {
-                        Section("Event") { DaybookTextField("Title (optional)", text: $draft.events[index].details.name); EventDateFields(draft: $draft.events[index].details); EventTimeZoneField(selection: $draft.events[index].timeZoneID, date: draft.events[index].details.startDate) }
+                        Section("Event") { DaybookTextField("Title (optional)", text: event.details.name); EventDateFields(draft: event.details); EventTimeZoneField(selection: event.timeZoneID, date: event.wrappedValue.details.startDate) }
                         if season { Section("Series") {
-                            Toggle("Use shared series", isOn: Binding(get: { draft.events[index].usesSharedSeries }, set: { shared in
-                                if !shared && !draft.events[index].seriesOverrideInitialized {
-                                    draft.events[index].details.seriesNames = draft.shared.seriesNames
-                                    draft.events[index].seriesOverrideInitialized = true
+                            Toggle("Use shared series", isOn: Binding(get: { event.wrappedValue.usesSharedSeries }, set: { shared in
+                                if !shared && !event.wrappedValue.seriesOverrideInitialized {
+                                    event.wrappedValue.details.seriesNames = draft.shared.seriesNames
+                                    event.wrappedValue.seriesOverrideInitialized = true
                                 }
-                                draft.events[index].usesSharedSeries = shared
+                                event.wrappedValue.usesSharedSeries = shared
                             }))
-                            if draft.events[index].usesSharedSeries { Text(draft.shared.seriesNames.sorted().joined(separator: ", ")) }
-                            else { SeriesSelectionFields(names: $draft.events[index].details.seriesNames) }
+                            if event.wrappedValue.usesSharedSeries { Text(draft.shared.seriesNames.sorted().joined(separator: ", ")) }
+                            else { SeriesSelectionFields(names: event.details.seriesNames) }
                         }
                         }
-                        Section("Location") { LocationSearchField(text: $draft.events[index].details.location) }
-                        if draft.events.count > 1 { Section { Button("Remove Event", role: .destructive) { draft.events.remove(at: index); sessionEvent = 0; activeSession = nil; editingEvent = nil } } }
+                        Section("Location") { LocationSearchField(text: event.details.location) }
+                        if draft.events.count > 1 { Section { Button("Remove Event", role: .destructive) { draft.events.removeAll { $0.id == item.id }; sessionEvent = 0; activeSession = nil; editingEvent = nil } } }
                     }
                     .navigationTitle("Edit event").navigationBarTitleDisplayMode(.inline)
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { editingEvent = nil } } }
@@ -243,26 +244,31 @@ struct EventWizardView: View {
                 }.onChange(of: sessionEvent) { _, _ in activeSession = nil; copyTargets = []; copyExpanded = false; copyNotice = "" }
             }
         }
+        let outline = draft.events[sessionEvent]
+        let event = $draft.events.elementBinding(for: outline)
         Section {
-            EventTimeZoneField(selection: $draft.events[sessionEvent].timeZoneID, date: draft.events[sessionEvent].details.startDate)
+            EventTimeZoneField(selection: event.timeZoneID, date: outline.details.startDate)
         } footer: { Text("All sessions use this event timezone. Changing it preserves existing scheduled instants.") }
-        ForEach(draft.events[sessionEvent].sessions.indices, id: \.self) { index in
+        ForEach(Array(outline.sessions.enumerated()), id: \.element.id) { index, session in
             Section {
                 Button {
-                    activeSession = activeSession == index ? nil : index
+                    activeSession = activeSession == session.id ? nil : session.id
                 } label: {
-                    HStack { Text(draft.events[sessionEvent].sessions[index].name.isEmpty ? "Session \(index + 1)" : draft.events[sessionEvent].sessions[index].name); Spacer(); Image(systemName: activeSession == index ? "chevron.up" : "chevron.down") }
+                    HStack { Text(session.name.isEmpty ? "Session \(index + 1)" : session.name); Spacer(); Image(systemName: activeSession == session.id ? "chevron.up" : "chevron.down") }
                 }
-                if activeSession == index {
-                    WizardSessionFields(draft: $draft.events[sessionEvent].sessions[index], eventTimeZoneID: draft.events[sessionEvent].timeZoneID)
-                    Button("Remove session", role: .destructive) { draft.events[sessionEvent].sessions.remove(at: index); activeSession = nil }
+                if activeSession == session.id {
+                    WizardSessionFields(draft: event.sessions.elementBinding(for: session), eventTimeZoneID: outline.timeZoneID)
+                    Button("Remove session", role: .destructive) {
+                        activeSession = nil
+                        event.wrappedValue.sessions.removeAll { $0.id == session.id }
+                    }
                 }
             }
         }
         Section {
             Button("Add session", systemImage: "plus") {
                 draft.events[sessionEvent].sessions.append(SessionDraft(day: Day.string(from: draft.events[sessionEvent].details.startDate), timeZoneID: draft.events[sessionEvent].timeZoneID))
-                activeSession = draft.events[sessionEvent].sessions.count - 1
+                activeSession = draft.events[sessionEvent].sessions.last?.id
             }
             if season && draft.events.count > 1 {
                 DisclosureGroup("Copy sessions to other events", isExpanded: $copyExpanded) {
@@ -380,9 +386,9 @@ struct EventWizardView: View {
     private func save() {
         do {
             for (eventIndex, event) in draft.resolvedEvents().enumerated() {
-                for (sessionIndex, session) in event.sessions.enumerated() {
+                for session in event.sessions {
                     do { try session.validate() } catch {
-                        selected.insert(.sessions); sessionEvent = eventIndex; activeSession = sessionIndex
+                        selected.insert(.sessions); sessionEvent = eventIndex; activeSession = session.id
                         path = route.dropFirst().prefix { $0 != .sessions }.map { $0 } + [.sessions]
                         throw error
                     }

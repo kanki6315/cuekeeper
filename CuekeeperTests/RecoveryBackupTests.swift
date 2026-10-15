@@ -1,6 +1,7 @@
 import CloudKit
 import CoreData
 import XCTest
+import UIKit
 import ZIPFoundation
 import Darwin
 @testable import Cuekeeper
@@ -43,6 +44,55 @@ final class RecoveryBackupTests: XCTestCase {
         try PaymentDraft(amount: "25").save(in: context, invoiceID: invoiceID)
         return job
     }
+    func testBackupFilesRemainAccessibleAfterLock() async throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("The simulator does not expose iOS Data Protection attributes; run on a physical device.")
+        #else
+        let source = try await context(); let job = try fixture(source)
+        _ = try Expense.capture(Data(repeating: 73, count: 4096), jobID: job.objectID, in: source)
+        let snapshot = try BackupArchive.capture(in: source)
+        let file = try snapshot.writePackage()
+        let decoded = try BackupArchive.readPackage(file.url, model: source.persistentStoreCoordinator!.managedObjectModel)
+        for workspace in [try XCTUnwrap(snapshot.workspace), file.workspace, try XCTUnwrap(decoded.workspace)] {
+            let descendants = try XCTUnwrap(FileManager.default.enumerator(at: workspace.url, includingPropertiesForKeys: nil))
+            let urls = [workspace.url] + descendants.allObjects.compactMap { $0 as? URL }
+            for url in urls {
+                let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+                XCTAssertEqual(attributes[.protectionKey] as? FileProtectionType,
+                               .completeUntilFirstUserAuthentication, url.lastPathComponent)
+            }
+        }
+        #endif
+    }
+
+    func testBackgroundTimeEndsExactlyOnceOnCompletionAndExpiration() {
+        for expires in [false, true] {
+            var expire: (@MainActor () -> Void)?
+            var ended: [UIBackgroundTaskIdentifier] = []
+            let control = BackupControl()
+            let identifier = UIBackgroundTaskIdentifier(rawValue: 42)
+            let background = BackupBackgroundTask(begin: { _, handler in
+                expire = handler
+                return identifier
+            }, end: { ended.append($0) }, expiration: { control.cancel() })
+            XCTAssertTrue(ended.isEmpty)
+            if expires { expire?() }
+            XCTAssertEqual(background.expired, expires)
+            if expires { XCTAssertThrowsError(try control.check()) }
+            else { XCTAssertNoThrow(try control.check()) }
+            background.finish()
+            background.finish()
+            XCTAssertEqual(ended, [identifier])
+        }
+    }
+
+    func testUnavailableBackgroundTimeDoesNotEndInvalidIdentifier() {
+        let background = BackupBackgroundTask(begin: { _, _ in .invalid },
+                                              end: { _ in XCTFail("No assertion was granted") },
+                                              expiration: {})
+        background.finish()
+    }
+
     func testRestoreEventRetainsSeparatelyDeletedSessionsAndFinancialHistory() async throws {
         let context = try await context(); let job = try fixture(context)
         let session = try XCTUnwrap(job.activeSessions.first)

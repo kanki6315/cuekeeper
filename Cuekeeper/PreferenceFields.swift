@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PreferenceFields: View {
     @Environment(\.dynamicTypeSize) private var typeSize
+    @AppStorage("displayCurrencies") private var displayCurrencies = CurrencyPreferences.defaultDisplay
     @AppStorage("defaultCurrency") private var currency = "USD"
     @AppStorage("defaultRole") private var role = ""
     @AppStorage("homeTimeZone") private var homeTimeZone = TimeZone.current.identifier
@@ -13,11 +14,14 @@ struct PreferenceFields: View {
         Section("Defaults") {
             Menu {
                 Picker("Default currency", selection: $currency) {
-                    Text("USD").tag("USD"); Text("EUR").tag("EUR")
+                    ForEach(CurrencyPreferences.supported, id: \.self) { Text($0).tag($0) }
                 }
             } label: {
                 preferenceRow("Default currency", value: currency, indicator: "chevron.up.chevron.down")
             }.accessibilityIdentifier("preference-currency")
+            NavigationLink { DisplayCurrencyPicker() } label: {
+                preferenceRow("Currencies to display", value: CurrencyPreferences.displayed(displayCurrencies).joined(separator: ", "))
+            }.accessibilityIdentifier("preference-display-currencies")
             NavigationLink { DefaultRolePicker(selection: $role) } label: {
                 preferenceRow("Default role", value: role.isEmpty ? "None" : role)
             }.accessibilityIdentifier("preference-role")
@@ -96,5 +100,37 @@ private struct DefaultRolePicker: View {
             HStack { Text(title); Spacer(); if selection == value { Image(systemName: "checkmark") } }
                 .frame(minHeight: 44)
         }.accessibilityAddTraits(selection == value ? .isSelected : [])
+    }
+}
+
+private struct DisplayCurrencyPicker: View {
+    @AppStorage("displayCurrencies") private var stored = CurrencyPreferences.defaultDisplay
+    private var selected: [String] { CurrencyPreferences.displayed(stored) }
+
+    var body: some View {
+        DaybookList {
+            Section {
+                ForEach(CurrencyPreferences.supported, id: \.self) { code in
+                    Toggle(isOn: Binding(
+                        get: { selected.contains(code) },
+                        set: { enabled in
+                            var next = Set(selected)
+                            if enabled { next.insert(code) } else { next.remove(code) }
+                            if !next.isEmpty {
+                                stored = CurrencyPreferences.supported.filter { next.contains($0) }.joined(separator: ",")
+                            }
+                        }
+                    )) {
+                        Text(code)
+                    }
+                    .disabled(selected.count == 1 && selected.contains(code))
+                    .accessibilityIdentifier("display-currency-\(code)")
+                }
+            } footer: {
+                Text("Choose at least one currency for the Payments summary. Totals stay separate, with no currency conversion. You can still enter fees, invoices and expenses in any supported currency.")
+            }
+        }
+        .navigationTitle("Currencies to display")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -9,6 +9,8 @@ struct PaymentsView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)]) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \PaymentRecord.receivedAt, ascending: false)]) private var payments: FetchedResults<PaymentRecord>
     @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
+    @AppStorage("displayCurrencies") private var displayCurrencies = CurrencyPreferences.defaultDisplay
+    private var currencies: [String] { CurrencyPreferences.displayed(displayCurrencies) }
     @State private var adding = false
     var body: some View {
         // Revision arrivals must refresh eligibility even when job rows do not change.
@@ -27,25 +29,27 @@ struct PaymentsView: View {
                 .containerValue(\.daybookFlushTop, true)
             Section { PendingExpensesPrompt(alwaysVisible: true) }
             Section {
-                if typeSize.isAccessibilitySize {
+                if typeSize.isAccessibilitySize || currencies.count > 2 {
                     VStack(alignment: .leading, spacing: 20) {
                         ForEach(0..<3) { kind in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(["Expected booking fees", "Invoiced outstanding", "Payments received"][kind]).font(.headline)
-                                Text("USD · \(total("USD", kind: kind))").monospacedDigit()
-                                Text("EUR · \(total("EUR", kind: kind))").monospacedDigit()
+                                ForEach(currencies, id: \.self) { code in
+                                    Text("\(code) · \(total(code, kind: kind))").monospacedDigit()
+                                }
                             }
                         }
                     }
                 } else {
                 Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 16) {
-                    GridRow { Text(""); Text("USD"); Text("EUR") }.font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                    GridRow { Text(""); ForEach(currencies, id: \.self) { Text($0) } }.font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
                     ForEach(0..<3) { kind in
-                        if kind > 0 { Divider().gridCellColumns(3) }
+                        if kind > 0 { Divider().gridCellColumns(currencies.count + 1) }
                         GridRow {
                             Text(["Expected booking fees", "Invoiced outstanding", "Payments received"][kind]).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
-                            Text(total("USD", kind: kind)).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
-                            Text(total("EUR", kind: kind)).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
+                            ForEach(currencies, id: \.self) { code in
+                                Text(total(code, kind: kind)).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
+                            }
                         }.font(.subheadline)
                     }
                 }.fixedSize(horizontal: false, vertical: true)

@@ -1,5 +1,6 @@
 import CoreData
 import XCTest
+import SwiftUI
 @testable import Cuekeeper
 
 @MainActor
@@ -29,6 +30,43 @@ final class PersistenceTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(50))
         }
         throw NSError(domain: "Store timed out", code: 2)
+    }
+
+    func testSupportedCurrenciesThroughInvoicePaymentAndReversal() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        let defaults = UserDefaults.standard
+        let previous = defaults.object(forKey: "displayCurrencies")
+        defer {
+            if let previous { defaults.set(previous, forKey: "displayCurrencies") }
+            else { defaults.removeObject(forKey: "displayCurrencies") }
+        }
+        defaults.set("USD", forKey: "displayCurrencies")
+        for code in CurrencyPreferences.supported {
+            var draft = JobDraft(name: "Event \(code)")
+            draft.clientName = "Client \(code)"
+            draft.fee?.currency = code
+            draft.fee?.amount = "100.25"
+            let jobID = try draft.save(in: context)
+            let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
+            XCTAssertEqual(try job.currentFee().currency, code)
+            var invoiceDraft = InvoiceDraft(clientID: job.client!.id!, currency: code)
+            invoiceDraft.value.status = "sent"
+            invoiceDraft.value.reference = "INV-\(code)"
+            invoiceDraft.value.sentDay = Day.string(from: Date())
+            invoiceDraft.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 10025)]
+            let invoiceID = try invoiceDraft.save(in: context)
+            try PaymentDraft(amount: "25.10").save(in: context, invoiceID: invoiceID)
+            let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
+            XCTAssertEqual(try invoice.balance(), 7515)
+            XCTAssertEqual(try invoice.paid(), 2510)
+            XCTAssertNil(invoice.issue(in: context))
+            let receipt = try XCTUnwrap(invoice.payments?.first)
+            try PaymentLedger.reverse(receipt, in: context)
+            XCTAssertEqual(try invoice.balance(), 10025)
+        }
+        XCTAssertThrowsError(try FeeValue(currency: "INVALID").validate())
+        XCTAssertThrowsError(try InvoiceValue(clientID: UUID(), currency: "INVALID").validate())
     }
 
     func testDeletingInvoicedJobKeepsInvoiceAndPaymentHistory() async throws {
@@ -887,7 +925,7 @@ final class PersistenceTests: XCTestCase {
         let invoiceID = try draft.save(in: context)
         let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
         let revision = try XCTUnwrap(invoice.revisions?.first)
-        var invalid = draft.value; invalid.currency = "GBP"
+        var invalid = draft.value; invalid.currency = "INVALID"
         revision.valueJSON = String(decoding: try JSONEncoder().encode(invalid), as: UTF8.self)
         try context.save()
 
@@ -1357,5 +1395,68 @@ final class PersistenceTests: XCTestCase {
                 XCTAssertEqual(Day.string(from: localDate, timeZone: timeZone), day)
             }
         }
+    }
+}
+
+@MainActor
+final class EventWizardBindingTests: XCTestCase {
+    func testEventBindingsSurviveRemovalAndIgnoreLateFieldWrites() {
+        for removedIndex in 0..<3 {
+            var events = (0..<3).map { index in
+                var event = EventOutline()
+                event.details.name = "Event \(index)"
+                return event
+            }
+            let bindings = Binding(get: { events }, set: { events = $0 })
+            let removed = bindings.elementBinding(for: events[removedIndex])
+            let survivor = bindings.elementBinding(for: events[(removedIndex + 1) % 3])
+            let title = removed.details.name
+            events.remove(at: removedIndex)
+            let expected = events
+            XCTAssertEqual(title.wrappedValue, "Event \(removedIndex)")
+            title.wrappedValue = "Late edit"
+            removed.timeZoneID.wrappedValue = "Asia/Tokyo"
+            XCTAssertEqual(events, expected)
+            survivor.details.name.wrappedValue = "Still editable"
+            XCTAssertEqual(events.first { $0.id == survivor.wrappedValue.id }?.details.name, "Still editable")
+        }
+    }
+
+    func testSessionBindingsSurviveRemovalAndParentDeletion() {
+        for removedIndex in 0..<3 {
+            var outline = EventOutline()
+            outline.sessions = (0..<3).map { index in
+                var session = SessionDraft(day: "2026-10-15")
+                session.name = "Session \(index)"
+                return session
+            }
+            var events = [outline, EventOutline()]
+            let collection = Binding(get: { events }, set: { events = $0 })
+            let event = collection.elementBinding(for: outline)
+            let removed = event.sessions.elementBinding(for: outline.sessions[removedIndex])
+            let survivor = event.sessions.elementBinding(for: outline.sessions[(removedIndex + 1) % 3])
+            event.wrappedValue.sessions.remove(at: removedIndex)
+            let expected = events
+            XCTAssertEqual(removed.name.wrappedValue, "Session \(removedIndex)")
+            removed.name.wrappedValue = "Late edit"
+            removed.startTime.wrappedValue = Date()
+            XCTAssertEqual(events, expected)
+            survivor.name.wrappedValue = "Still editable"
+            XCTAssertEqual(events[0].sessions.first { $0.id == survivor.wrappedValue.id }?.name, "Still editable")
+            events.removeFirst()
+            let remaining = events
+            _ = survivor.name.wrappedValue
+            survivor.name.wrappedValue = "Write after parent removal"
+            XCTAssertEqual(events, remaining)
+        }
+    }
+
+    func testCopiedSessionsHaveDistinctIdentities() throws {
+        let session = SessionDraft(day: "2026-10-15")
+        let date = try XCTUnwrap(Day.date(from: session.day))
+        let first = try session.copied(from: date, to: date, includingTimes: false)
+        let second = try session.copied(from: date, to: date, includingTimes: false)
+        XCTAssertNotEqual(session.id, first.id)
+        XCTAssertNotEqual(first.id, second.id)
     }
 }

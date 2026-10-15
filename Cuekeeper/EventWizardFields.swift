@@ -5,6 +5,18 @@ import Combine
 
 struct EventDateFields: View {
     @Binding var draft: JobDraft
+    @State private var calendarExpanded = true
+
+    init(draft: Binding<JobDraft>) {
+        _draft = draft
+        #if DEBUG
+        if DesignFixtures.enabled,
+           ProcessInfo.processInfo.arguments.contains("--design-collapsed-event-dates") {
+            _calendarExpanded = State(initialValue: false)
+        }
+        #endif
+    }
+
     private var calendar: Calendar { Calendar.current }
     private var selection: Binding<Set<DateComponents>> {
         Binding(get: {
@@ -22,17 +34,58 @@ struct EventDateFields: View {
             draft.startDate = start; draft.endDate = end
         })
     }
+    private var multipleDays: Bool {
+        !calendar.isDate(draft.startDate, inSameDayAs: draft.endDate)
+    }
+
+    private var dateSummary: String {
+        let start = draft.startDate.formatted(date: .abbreviated, time: .omitted)
+        guard multipleDays else { return start }
+        return "\(start) – \(draft.endDate.formatted(date: .abbreviated, time: .omitted))"
+    }
+
     var body: some View {
-        MultiDatePicker("Event dates", selection: selection)
-            .accessibilityIdentifier("event-date-calendar")
-        LabeledContent("Start", value: draft.startDate.formatted(date: .abbreviated, time: .omitted))
-            .accessibilityIdentifier("event-start-summary")
-        if !calendar.isDate(draft.startDate, inSameDayAs: draft.endDate) {
-            LabeledContent("End", value: draft.endDate.formatted(date: .abbreviated, time: .omitted))
-                .accessibilityIdentifier("event-end-summary")
+        if calendarExpanded {
+            MultiDatePicker("Event dates", selection: selection)
+                .accessibilityIdentifier("event-date-calendar")
+            LabeledContent("Start", value: draft.startDate.formatted(date: .abbreviated, time: .omitted))
+                .accessibilityIdentifier("event-start-summary")
+            if multipleDays {
+                LabeledContent("End", value: draft.endDate.formatted(date: .abbreviated, time: .omitted))
+                    .accessibilityIdentifier("event-end-summary")
+            }
+            Text("Select one day, or the first and last days of your event. All days between are included. Selecting a third date starts a new selection.")
+                .font(.caption).foregroundStyle(.secondary)
+            Button { calendarExpanded = false } label: {
+                Label("Done choosing dates", systemImage: "checkmark")
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            // The form already supplies 12 points of vertical padding per edge.
+            .padding(.vertical, -12)
+            .accessibilityIdentifier("event-date-toggle")
+            .accessibilityValue("Calendar expanded")
+        } else {
+            Button { calendarExpanded = true } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "calendar").accessibilityHidden(true)
+                    TimeZoneValueLabel(title: multipleDays ? "Dates" : "Date", value: dateSummary)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color("SecondaryText"))
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(.primary)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .padding(.vertical, -12)
+            .accessibilityIdentifier("event-date-toggle")
+            .accessibilityLabel("Event dates, \(dateSummary)")
+            .accessibilityHint("Opens the calendar to change dates")
+            .accessibilityValue("Calendar collapsed")
         }
-        Text("Select one day, or the first and last days of your event. All days between are included. Selecting a third date starts a new selection.")
-            .font(.caption).foregroundStyle(.secondary)
     }
 }
 

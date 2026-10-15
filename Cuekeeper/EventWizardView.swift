@@ -93,9 +93,6 @@ struct EventWizardView: View {
         }
         .sheet(isPresented: $choosingTrack) { TrackLocationPicker(placeID: $draft.shared.trackPlaceID) }
         .saveErrorAlert($error)
-        .confirmationDialog("Discard this event draft?", isPresented: $discard, titleVisibility: .visible) {
-            Button("Discard Draft", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
-        }
         .sheet(item: Binding(get: { editingEvent.map(EventEditID.init) }, set: { editingEvent = $0?.id })) { item in
             if let index = draft.events.firstIndex(where: { $0.id == item.id }) {
                 NavigationStack {
@@ -139,7 +136,15 @@ struct EventWizardView: View {
             }
         }
         .navigationTitle(season ? "New events" : "New event").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { discard = true } } }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Cancel") { discard = true }
+                    .confirmationDialog("Discard this event draft?", isPresented: $discard, titleVisibility: .visible) {
+                        Button("Discard Draft", role: .destructive) { dismiss() }
+                        Button("Keep Editing", role: .cancel) {}
+                    }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             HStack {
                 Spacer()

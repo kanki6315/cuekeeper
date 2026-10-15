@@ -648,7 +648,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(state.message, "Receiving changes…")
         state.record(id: incoming, kind: .receiving, ended: true, succeeded: false, error: "Unavailable")
         XCTAssertTrue(state.needsAttention); XCTAssertFalse(state.receivedImport)
-        state.offline = true; XCTAssertEqual(state.message, "Offline — changes saved on this device")
+        state.offline = true; XCTAssertEqual(state.message, "iCloud needs attention")
         state.offline = false
         state.record(id: UUID(), kind: .sending, ended: true, succeeded: true, error: nil)
         XCTAssertTrue(state.needsAttention)

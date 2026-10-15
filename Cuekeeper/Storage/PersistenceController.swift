@@ -90,6 +90,9 @@ final class PersistenceController: ObservableObject {
             if arguments.contains("--ui-test-sync-receiving") {
                 syncActivity.enabled = true; syncActivity.checkingAccount = false
                 syncActivity.record(id: UUID(), kind: .receiving, ended: false, succeeded: false, error: nil)
+            } else if arguments.contains("--ui-test-sync-error") {
+                syncActivity.enabled = true; syncActivity.checkingAccount = false
+                syncActivity.record(id: UUID(), kind: .receiving, ended: true, succeeded: false, error: "Couldn’t receive changes. iCloud will try again.")
             } else if arguments.contains("--ui-test-sync-offline") {
                 syncActivity.enabled = true; syncActivity.offline = true
             }
@@ -206,9 +209,9 @@ struct SyncActivity {
     var isBusy: Bool { enabled && !offline && !needsAttention && (checkingAccount || !active.isEmpty) }
     var message: String? {
         guard enabled else { return nil }
-        if offline { return "Offline — changes saved on this device" }
         if let accountIssue { return accountIssue }
         if !failures.isEmpty { return "iCloud needs attention" }
+        if offline { return "Offline — changes saved on this device" }
         if active.values.contains(.receiving) && active.values.contains(.sending) { return "Sending and receiving changes…" }
         if active.values.contains(.receiving) { return "Receiving changes…" }
         if active.values.contains(.sending) { return "Sending changes…" }

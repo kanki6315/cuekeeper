@@ -20,6 +20,7 @@ struct RootView: View {
     @EnvironmentObject private var persistence: PersistenceController
     @State private var selection: AppSection? = .upcoming
     @State private var selectedJob: Job?
+    @State private var selectedTab: AppSection = .upcoming
 
     var body: some View {
         if sizeClass == .regular && !typeSize.isAccessibilitySize {
@@ -40,10 +41,20 @@ struct RootView: View {
                 NavigationSplitView { sidebar } detail: { NavigationStack { content(selection ?? .upcoming) } }
             }
         } else {
-            TabView {
+            TabView(selection: $selectedTab) {
                 ForEach(AppSection.allCases) { section in
-                    NavigationStack { content(section) }
-                        .tabItem { Label(section.rawValue, systemImage: section.symbol) }
+                    NavigationStack {
+                        content(section)
+                            .overlay(alignment: .bottom) {
+                                if section != .settings {
+                                    SyncFeedbackView { selectedTab = .settings }
+                                        .padding(.horizontal, 20)
+                                        .padding(.bottom, 12)
+                                }
+                            }
+                    }
+                    .tabItem { Label(section.rawValue, systemImage: section.symbol) }
+                    .tag(section)
                 }
             }
         }
@@ -61,8 +72,15 @@ struct RootView: View {
             .listStyle(.sidebar)
             .tint(Color("SidebarSelection"))
             .scrollContentBackground(.hidden)
-            Label(persistence.syncActivity.message ?? "Saved on this device", systemImage: persistence.syncActivity.needsAttention ? "icloud.slash" : "icloud")
-                .font(.footnote).foregroundStyle(Color("SecondaryText")).padding(20)
+            Button { selection = .settings } label: {
+                Label(persistence.syncActivity.message ?? "Saved on this device", systemImage: persistence.syncActivity.needsAttention ? "exclamationmark.icloud" : "icloud")
+                    .font(.footnote)
+                    .foregroundStyle(persistence.syncActivity.needsAttention ? Color("AmberText") : Color("SecondaryText"))
+                    .padding(20)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("sync-feedback")
+            .accessibilityHint("Opens storage and iCloud details")
         }
         .modifier(DaybookSidebarSurface())
         .padding(10)
@@ -185,7 +203,6 @@ private struct JobsView: View {
                 }
             }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 20).frame(maxWidth: 850).frame(maxWidth: .infinity)
         }.daybookSurface()
-            .safeAreaInset(edge: .top, spacing: 0) { SyncFeedbackView() }
             .navigationTitle("").navigationBarTitleDisplayMode(.inline)
             .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
             .sheet(isPresented: $showingAdd) { EventWizardView { id in
@@ -273,23 +290,38 @@ struct SettingsView: View {
 
 struct SyncFeedbackView: View {
     @EnvironmentObject private var persistence: PersistenceController
+    let showDetails: () -> Void
+
     var body: some View {
         if let message = persistence.syncActivity.message {
-            NavigationLink { SettingsView() } label: {
-                HStack(spacing: 10) {
-                    if persistence.syncActivity.isBusy { ProgressView().controlSize(.small) }
-                    else { Image(systemName: persistence.syncActivity.needsAttention ? "icloud.slash" : "icloud") }
+            Button(action: showDetails) {
+                HStack(spacing: 12) {
+                    if persistence.syncActivity.needsAttention {
+                        Image(systemName: "exclamationmark.icloud")
+                            .foregroundStyle(Color("AmberText"))
+                    } else if persistence.syncActivity.isBusy {
+                        ProgressView().controlSize(.small).tint(Color.accentColor)
+                    } else {
+                        Image(systemName: persistence.syncActivity.offline ? "icloud.slash" : "icloud").foregroundStyle(Color.accentColor)
+                    }
                     Text(message).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.caption)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color("SecondaryText"))
                 }
                 .foregroundStyle(.primary)
-                .padding(.horizontal).padding(.vertical, 12)
-                .frame(minHeight: 44)
-                .background(Color("PageBackground"))
+                .padding(.horizontal, 16).padding(.vertical, 12)
+                .frame(maxWidth: 540, minHeight: 48)
+                .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 16))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(persistence.syncActivity.needsAttention ? Color("AmberText").opacity(0.5) : Color.primary.opacity(0.16), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
             }
+            .buttonStyle(.plain)
             .accessibilityIdentifier("sync-feedback")
-            .accessibilityHint("Opens storage and iCloud details")
+            .accessibilityLabel(persistence.syncActivity.needsAttention ? "Warning: \(message)" : message)
+            .accessibilityHint("Opens storage and iCloud details in Settings")
         }
     }
 }

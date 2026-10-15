@@ -48,6 +48,40 @@ final class CaptureTests: XCTestCase {
         return app
     }
 
+    func testFloatingSyncFeedbackDoesNotMoveContentAndKeepsWarnings() throws {
+        guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("Floating feedback is for the tab layout") }
+        let app = XCUIApplication()
+        var headerY: CGFloat = 0
+        for state in ["idle", "receiving", "error"] {
+            app.launchArguments = ["--ui-testing", "--design-fixtures", "--design-screen=root", "--design-dark"]
+            if state != "idle" { app.launchArguments.append("--ui-test-sync-\(state)") }
+            app.launch()
+            let addButton = app.buttons["add-job"]
+            XCTAssertTrue(addButton.waitForExistence(timeout: 10))
+            if state == "idle" { headerY = addButton.frame.minY }
+            else {
+                let toast = app.buttons["sync-feedback"]
+                XCTAssertTrue(toast.waitForExistence(timeout: 10))
+                XCTAssertEqual(addButton.frame.minY, headerY, accuracy: 1)
+                XCTAssertLessThanOrEqual(toast.frame.maxY, app.tabBars.firstMatch.frame.minY)
+                if state == "error" {
+                    XCTAssertTrue(toast.label.contains("Warning"))
+                    app.tabBars.buttons["Payments"].tap()
+                    XCTAssertTrue(toast.waitForExistence(timeout: 5))
+                    XCTAssertTrue(toast.label.contains("iCloud needs attention"))
+                }
+            }
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            shot.name = "floating-sync-\(state)"; shot.lifetime = .keepAlways; add(shot)
+            if state == "error" {
+                app.buttons["sync-feedback"].tap()
+                XCTAssertTrue(app.tabBars.buttons["Settings"].isSelected)
+                XCTAssertTrue(app.staticTexts["Couldn’t receive changes. iCloud will try again."].exists)
+            }
+            app.terminate()
+        }
+    }
+
     func testSyncFeedbackRemainsNonblocking() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--ui-test-sync-receiving"]

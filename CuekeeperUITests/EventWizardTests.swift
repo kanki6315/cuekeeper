@@ -51,42 +51,28 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["event-end-summary"].exists, app.debugDescription)
     }
 
-    func testOptionalSessionTimeTypingAndClear() {
+    func testInlineNativeSessionTimesAndIndependentClear() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job", "--wizard-foreign-session", "--design-dark"]
         app.launch()
-        let schedule = app.buttons["session-schedule-times"]
-        XCTAssertTrue(schedule.waitForExistence(timeout: 10))
-        XCTAssertTrue(schedule.label.contains("Not set"))
-        schedule.tap()
-        let bar = app.navigationBars["Start & end"]
-        XCTAssertEqual(app.datePickers.allElementsBoundByIndex.filter { $0.isHittable }.count, 1)
-        for _ in 0..<4 where !app.textFields["schedule-time-Start"].isHittable { app.swipeUp() }
-        app.textFields["schedule-time-Start"].tap()
-        app.textFields["schedule-time-Start"].typeText("21:30")
-        app.textFields["schedule-time-End"].tap()
-        app.textFields["schedule-time-End"].typeText("22:30")
-        capture("combined-session-times")
-        bar.buttons["Cancel"].tap()
-        XCTAssertTrue(schedule.label.contains("Not set"))
-        schedule.tap()
-        for _ in 0..<4 where !app.textFields["schedule-time-Start"].isHittable { app.swipeUp() }
-        app.textFields["schedule-time-Start"].tap()
-        app.textFields["schedule-time-Start"].typeText("21:30")
-        app.textFields["schedule-time-End"].tap()
-        app.textFields["schedule-time-End"].typeText("22:30")
-        bar.buttons["Set"].tap()
-        XCTAssertFalse(schedule.label.contains("Not set"))
-        schedule.tap()
+        let start = app.buttons["session-time-Start-unset"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        for _ in 0..<4 where !start.isHittable { app.swipeUp() }
+        start.tap()
+        XCTAssertTrue(app.datePickers["session-time-Start"].exists)
+        XCTAssertFalse(app.navigationBars["Start & end"].exists)
+        XCTAssertFalse(app.datePickers["End date"].exists)
+        XCTAssertFalse(app.textFields["schedule-time-Start"].exists)
+        let end = app.buttons["session-time-End-unset"]
+        XCTAssertFalse(end.exists)
+        XCTAssertTrue(app.datePickers["session-time-End"].exists)
         app.buttons["Clear start"].tap()
-        bar.buttons["Set"].tap()
-        XCTAssertTrue(schedule.label.contains("Start not set"))
-        schedule.tap()
-        for _ in 0..<4 where !app.buttons["Clear start & end"].isHittable { app.swipeUp() }
-        app.buttons["Clear start & end"].tap()
-        bar.buttons["Set"].tap()
-        XCTAssertTrue(schedule.label.contains("Not set"))
+        XCTAssertTrue(start.exists)
+        XCTAssertTrue(app.datePickers["session-time-End"].exists)
+        app.buttons["Clear end"].tap()
+        XCTAssertTrue(end.exists)
+        capture("inline-native-session-times-cleared")
     }
 
     func testEventAndWorkTimezonesFollowArrangement() {

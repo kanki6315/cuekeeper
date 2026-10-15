@@ -207,6 +207,17 @@ Existing native verification artifacts are in `design/verification/single-client
 `design/verification/session-choices/`, and `design/verification/event-typeahead/`.
 This documentation refresh was checked against source; it adds no new visual validation.
 
+### Recently Deleted
+
+Use a native grouped DaybookList with a single inline navigation title and the
+intro “Restore deleted items for 30 days.” Remove the default top scroll-content margin
+and use 8-point section spacing on this screen. Keep restoration and financial-retention
+details behind the About recovery toolbar button. Rows show title, client/event,
+and a compact “Restore by” date. Leading swipe reveals Restore; trailing swipe
+reveals Delete. Both disable full-swipe execution. Delete opens the existing
+permanent-removal confirmation; it never removes a row on the initial swipe/tap.
+Context menus and named accessibility actions provide alternatives to swiping.
+
 ### First-launch setup
 
 The welcome centers the existing cue-card mark and semantic large-title text,

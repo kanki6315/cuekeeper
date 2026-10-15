@@ -118,7 +118,7 @@ struct SessionDraft: Equatable {
         if startTime != nil || endTime != nil || callTime != nil {
             guard TimeZone(identifier: timeZoneID) != nil else { throw RecordError.invalid("Choose the event timezone before adding times.") }
         }
-        if let startTime, let endTime, endTime <= startTime { throw RecordError.invalid("The end must be after the start. For overnight sessions, choose the following date.") }
+        if let startTime, let endTime, endTime <= startTime { throw RecordError.invalid("The end must be after the start. Choose different start and end times.") }
         if scheduleStatus == "confirmed" && (startTime == nil || endTime == nil) {
             throw RecordError.invalid("Add start and end times before confirming the schedule.")
         }
@@ -235,5 +235,52 @@ enum SessionTimeInput {
               calendar.component(.hour, from: date) == hour,
               calendar.component(.minute, from: date) == minute else { return nil }
         return date
+    }
+}
+
+extension SessionDraft {
+    /// Keep the initial end aligned with start until a different end has been chosen.
+    mutating func setStartTime(_ date: Date?, zone: TimeZone) {
+        let usesDefaultEnd = endTime == nil || endTime == startTime
+        startTime = date
+        if let date {
+            day = Day.string(from: date, timeZone: zone)
+            if usesDefaultEnd { endTime = date }
+        }
+        timeZoneID = zone.identifier
+        inferEndDate(zone: zone)
+    }
+
+    /// Interpret the end clock on the session day, rolling earlier times to the next civil day.
+    mutating func inferEndDate(zone: TimeZone) {
+        guard let endTime, let anchor = startTime ?? Day.date(from: day, timeZone: zone) else { return }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let endClock = calendar.dateComponents([.hour, .minute], from: endTime)
+        let hour = endClock.hour ?? 0
+        let minute = endClock.minute ?? 0
+        var endDay = calendar.startOfDay(for: anchor)
+        if let startTime {
+            let startClock = calendar.dateComponents([.hour, .minute], from: startTime)
+            if hour * 60 + minute < (startClock.hour ?? 0) * 60 + (startClock.minute ?? 0) {
+                endDay = calendar.date(byAdding: .day, value: 1, to: endDay) ?? endDay
+            }
+        }
+        self.endTime = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: endDay,
+                                     matchingPolicy: .nextTime, repeatedTimePolicy: .first)
+    }
+
+    /// Move the schedule by calendar days, retaining local times and overnight offsets.
+    mutating func moveSchedule(to date: Date, zone: TimeZone) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let previous = startTime ?? Day.date(from: day, timeZone: zone) ?? date
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: previous),
+                                           to: calendar.startOfDay(for: date)).day ?? 0
+        startTime = startTime.flatMap { calendar.date(byAdding: .day, value: days, to: $0) }
+        endTime = endTime.flatMap { calendar.date(byAdding: .day, value: days, to: $0) }
+        callTime = callTime.flatMap { calendar.date(byAdding: .day, value: days, to: $0) }
+        day = Day.string(from: date, timeZone: zone)
+        inferEndDate(zone: zone)
     }
 }

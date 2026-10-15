@@ -4,6 +4,7 @@ struct CalendarSettingsView: View {
     @EnvironmentObject private var calendar: CalendarController
     @State private var selected = ""
     @State private var disconnect = false
+    @State private var takeOver = false
     var body: some View {
         DaybookForm {
             Section {
@@ -53,6 +54,14 @@ struct CalendarSettingsView: View {
                     Button(calendar.connected ? "Use This Calendar" : "Connect This Device") { Task { await calendar.connect(selected) } }
                         .disabled(selected.isEmpty || calendar.busy)
                 }
+                if let owner = calendar.otherOwner {
+                    Section {
+                        Button("Use This Device Instead") { takeOver = true }
+                            .disabled(selected.isEmpty || calendar.busy)
+                    } footer: {
+                        Text("Managed by \(owner). If that device was replaced, reset, or reinstalled, this device can take over. Existing Cuekeeper entries are kept and updated here.")
+                    }
+                }
             }
             if calendar.connected {
                 Section {
@@ -65,6 +74,11 @@ struct CalendarSettingsView: View {
         .task { calendar.refreshCalendars(); selected = calendar.selectedID }
         .confirmationDialog("Remove Cuekeeper’s entries from this calendar and disconnect?", isPresented: $disconnect, titleVisibility: .visible) {
             Button("Disconnect & Remove Entries", role: .destructive) { Task { await calendar.disconnect() } }
+        }
+        .confirmationDialog("Make this device the calendar manager?", isPresented: $takeOver, titleVisibility: .visible) {
+            Button("Use This Device") { Task { await calendar.takeOver(selected) } }
+        } message: {
+            Text("The other device will stop updating Calendar. Choose the same calendar it used to keep entries from being duplicated.")
         }
     }
 

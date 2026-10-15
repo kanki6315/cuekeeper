@@ -1,6 +1,7 @@
 import Combine
 import CoreData
 import EventKit
+import Security
 import UIKit
 
 @MainActor
@@ -9,6 +10,8 @@ final class CalendarController: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var calendars: [EKCalendar] = []
     @Published private(set) var selectedID: String
+    /// Set when another device holds the calendar claim, so Settings can offer a takeover.
+    @Published private(set) var otherOwner: String?
     let store: EKEventStore
     private let defaults: UserDefaults
     private let deviceID: String
@@ -27,11 +30,14 @@ final class CalendarController: ObservableObject {
         default: "Not requested"
         }
     }
-    init(defaults: UserDefaults = .standard, store: EKEventStore = EKEventStore(), publisher: any CalendarPublishing = CalendarPublisher()) {
+    init(defaults: UserDefaults = .standard, store: EKEventStore = EKEventStore(), publisher: any CalendarPublishing = CalendarPublisher(), deviceID: String? = nil) {
         self.defaults = defaults; self.store = store; self.publisher = publisher
         selectedID = defaults.string(forKey: "calendar.selected") ?? ""
-        deviceID = defaults.string(forKey: "calendar.device") ?? UUID().uuidString
-        defaults.set(deviceID, forKey: "calendar.device")
+        self.deviceID = deviceID ?? CalendarDeviceIdentity.resolve(defaults: defaults, keychain: .system)
+    }
+    /// `UIDevice.name` is usually just "iPhone" on current iOS, so add when it connected.
+    private var ownerLabel: String {
+        "\(UIDevice.current.name), connected \(Date().formatted(date: .abbreviated, time: .omitted))"
     }
     func start(context: NSManagedObjectContext, enabled: Bool) {
         guard self.context == nil else { return }
@@ -60,25 +66,54 @@ final class CalendarController: ObservableObject {
         busy = true
         do {
             guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
-            try await publisher.claim(deviceID: deviceID, name: UIDevice.current.name)
-            if connected && selectedID != id { try removeManagedEvents() }
-            selectedID = id; defaults.set(id, forKey: "calendar.selected")
-            status = "Connected. Updating entries…"
+            try await publisher.claim(deviceID: deviceID, name: ownerLabel)
+            try adopt(id)
+        } catch CalendarOwnershipError.managedElsewhere(let owner) {
+            otherOwner = owner
+            status = "Calendar not connected: \(CalendarOwnershipError.managedElsewhere(owner).localizedDescription)"
         } catch { status = "Calendar not connected: \(error.localizedDescription)" }
         busy = false
         if connected { await sync() }
+    }
+    /// Claims the calendar even though another device holds it. That device stops updating
+    /// entries; this one adopts the existing Cuekeeper entries instead of duplicating them.
+    func takeOver(_ id: String) async {
+        guard !busy, !disabledForTests else { return }
+        busy = true
+        do {
+            guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
+            try await publisher.takeOver(deviceID: deviceID, name: ownerLabel)
+            try adopt(id)
+        } catch { status = "Calendar not connected: \(error.localizedDescription)" }
+        busy = false
+        if connected { await sync() }
+    }
+    private func adopt(_ id: String) throws {
+        if connected && selectedID != id { try removeManagedEvents() }
+        selectedID = id; defaults.set(id, forKey: "calendar.selected")
+        otherOwner = nil
+        status = "Connected. Updating entries…"
     }
     func disconnect() async {
         guard !busy, !disabledForTests else { return }
         busy = true; defer { busy = false }
         do {
-            try await publisher.verify(deviceID: deviceID)
+            do { try await publisher.verify(deviceID: deviceID) }
+            catch CalendarOwnershipError.notOwner {
+                // Another device took over and now owns the entries; leave them in place.
+                clearConnection()
+                status = "Disconnected. Calendar entries were left for the device that now manages them."
+                return
+            }
             try removeManagedEvents()
             try await publisher.release(deviceID: deviceID)
-            selectedID = ""; defaults.removeObject(forKey: "calendar.selected")
-            defaults.removeObject(forKey: "calendar.eventIDs")
+            clearConnection()
             status = "Disconnected. Cuekeeper’s calendar entries were removed."
         } catch { status = "Couldn’t disconnect: \(error.localizedDescription). Retry when Calendar and iCloud are available." }
+    }
+    private func clearConnection() {
+        selectedID = ""; defaults.removeObject(forKey: "calendar.selected")
+        defaults.removeObject(forKey: "calendar.eventIDs")
     }
     func scheduleSync() {
         guard !disabledForTests, connected else { return }
@@ -125,6 +160,9 @@ final class CalendarController: ObservableObject {
             for event in managedEvents(calendar: calendar) { if let key = CalendarPlan.key(from: event.url), let id = event.eventIdentifier { ids[key] = id } }
             defaults.set(ids, forKey: "calendar.eventIDs")
             status = "Updated at \(Date().formatted(date: .omitted, time: .shortened)) on this device."
+        } catch let error as CalendarOwnershipError {
+            store.reset()
+            status = "\(error.localizedDescription) Disconnect here, or connect again to take over."
         } catch {
             store.reset()
             status = "Calendar update pending: \(error.localizedDescription)"
@@ -190,4 +228,60 @@ final class CalendarController: ObservableObject {
         try store.commit()
     }
     deinit { for observer in observers { NotificationCenter.default.removeObserver(observer) } }
+}
+
+/// Identifies this physical device for the calendar claim.
+///
+/// The ID lives in a this-device-only Keychain item: it survives reinstalls, but is not
+/// carried to another phone by a device backup or restore, so two phones can't share it.
+/// A defaults marker detects a restored copy whose Keychain item didn't come along.
+struct CalendarDeviceIdentity {
+    enum Lookup { case found(String), missing, unavailable }
+    var read: () -> Lookup
+    var write: (String) -> Bool
+    static let legacyKey = "calendar.device", markerKey = "calendar.deviceInKeychain"
+
+    static func resolve(defaults: UserDefaults, keychain: CalendarDeviceIdentity) -> String {
+        let legacy = defaults.string(forKey: legacyKey)
+        switch keychain.read() {
+        case .found(let id):
+            defaults.set(id, forKey: legacyKey); defaults.set(true, forKey: markerKey)
+            return id
+        case .unavailable:
+            // Keychain is locked (e.g. before first unlock); use the cached copy for now.
+            return legacy ?? UUID().uuidString
+        case .missing:
+            // Migrate the pre-Keychain ID once; after that, a missing item with the marker
+            // set means these defaults were restored onto a different device.
+            let restoredCopy = defaults.bool(forKey: markerKey)
+            let id = restoredCopy ? UUID().uuidString : legacy ?? UUID().uuidString
+            guard keychain.write(id) else { return id }
+            defaults.set(id, forKey: legacyKey); defaults.set(true, forKey: markerKey)
+            return id
+        }
+    }
+
+    static let system: CalendarDeviceIdentity = {
+        let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                   kSecAttrService as String: "com.arjunakankipati.cuekeeper.calendar",
+                                   kSecAttrAccount as String: "device-id"]
+        return CalendarDeviceIdentity(read: {
+            var query = base
+            query[kSecReturnData as String] = true
+            var result: CFTypeRef?
+            switch SecItemCopyMatching(query as CFDictionary, &result) {
+            case errSecSuccess:
+                guard let data = result as? Data, let id = String(data: data, encoding: .utf8), !id.isEmpty else { return .missing }
+                return .found(id)
+            case errSecItemNotFound: return .missing
+            default: return .unavailable
+            }
+        }, write: { id in
+            var item = base
+            item[kSecValueData as String] = Data(id.utf8)
+            item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            SecItemDelete(base as CFDictionary)
+            return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
+        })
+    }()
 }

@@ -887,6 +887,86 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try job.feeHeads().count, 1)
     }
 
+    func testStartDefaultsEndAndPreservesCustomEnd() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "UTC"))
+        let formatter = ISO8601DateFormatter()
+        let start = try XCTUnwrap(formatter.date(from: "2026-10-14T19:00:00Z"))
+        var draft = SessionDraft(day: "2026-10-14", timeZoneID: zone.identifier)
+        draft.setStartTime(start, zone: zone)
+        XCTAssertEqual(draft.endTime, start)
+        draft.setStartTime(start.addingTimeInterval(3600), zone: zone)
+        XCTAssertEqual(draft.endTime, draft.startTime)
+        let customEnd = start.addingTimeInterval(3 * 3600)
+        draft.endTime = customEnd
+        draft.setStartTime(start, zone: zone)
+        XCTAssertEqual(draft.endTime, customEnd)
+        draft.setStartTime(nil, zone: zone)
+        XCTAssertNil(draft.startTime)
+        XCTAssertEqual(draft.endTime, customEnd)
+        draft.endTime = nil
+        draft.setStartTime(start, zone: zone)
+        XCTAssertEqual(draft.endTime, start)
+    }
+
+    func testEndDateInferenceTracksClockEditsAndOptionalTimes() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "UTC"))
+        let formatter = ISO8601DateFormatter()
+        var draft = SessionDraft(day: "2026-10-14", timeZoneID: zone.identifier)
+        draft.startTime = formatter.date(from: "2026-10-14T23:00:00Z")
+        draft.endTime = formatter.date(from: "2026-10-14T01:00:00Z")
+        draft.inferEndDate(zone: zone)
+        XCTAssertEqual(draft.endTime, formatter.date(from: "2026-10-15T01:00:00Z"))
+        // Changing start must bring the existing end back onto the same day.
+        draft.startTime = formatter.date(from: "2026-10-14T00:30:00Z")
+        draft.inferEndDate(zone: zone)
+        XCTAssertEqual(draft.endTime, formatter.date(from: "2026-10-14T01:00:00Z"))
+        draft.endTime = draft.startTime
+        draft.inferEndDate(zone: zone)
+        XCTAssertThrowsError(try draft.validate()) // Equal clocks do not imply a 24-hour session.
+        draft.startTime = nil
+        draft.inferEndDate(zone: zone)
+        XCTAssertNil(draft.startTime)
+        XCTAssertEqual(Day.string(from: try XCTUnwrap(draft.endTime), timeZone: zone), draft.day)
+        draft.endTime = nil
+        draft.inferEndDate(zone: zone)
+        XCTAssertNil(draft.endTime)
+    }
+
+    func testEndDateInferenceUsesCalendarDaysAcrossDST() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        let formatter = ISO8601DateFormatter()
+        for (day, start, endClock, expected) in [
+            ("2026-03-07", "2026-03-08T04:00:00Z", "2026-03-07T08:00:00Z", "2026-03-08T07:00:00Z"),
+            ("2026-10-31", "2026-11-01T03:00:00Z", "2026-10-31T07:00:00Z", "2026-11-01T08:00:00Z")
+        ] {
+            var draft = SessionDraft(day: day, timeZoneID: zone.identifier)
+            draft.startTime = formatter.date(from: start)
+            draft.endTime = formatter.date(from: endClock)
+            draft.inferEndDate(zone: zone)
+            XCTAssertEqual(draft.endTime, formatter.date(from: expected))
+            XCTAssertNoThrow(try draft.validate())
+        }
+    }
+
+    func testMovingSessionDatePreservesLocalTimesAcrossDSTAndMissingTimes() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        let formatter = ISO8601DateFormatter()
+        var draft = SessionDraft(day: "2026-10-30", timeZoneID: zone.identifier)
+        draft.startTime = formatter.date(from: "2026-10-31T03:30:00Z") // 23:30
+        draft.endTime = formatter.date(from: "2026-10-31T07:00:00Z") // 03:00 next day
+        draft.callTime = formatter.date(from: "2026-10-31T03:00:00Z")
+        draft.moveSchedule(to: try XCTUnwrap(Day.date(from: "2026-10-31", timeZone: zone)), zone: zone)
+        XCTAssertEqual(draft.day, "2026-10-31")
+        XCTAssertEqual(draft.startTime, formatter.date(from: "2026-11-01T03:30:00Z"))
+        XCTAssertEqual(draft.endTime, formatter.date(from: "2026-11-01T08:00:00Z"))
+        XCTAssertEqual(draft.callTime, formatter.date(from: "2026-11-01T03:00:00Z"))
+        draft.startTime = nil; draft.callTime = nil
+        draft.moveSchedule(to: try XCTUnwrap(Day.date(from: "2026-11-02", timeZone: zone)), zone: zone)
+        XCTAssertNil(draft.startTime)
+        XCTAssertNil(draft.callTime)
+        XCTAssertEqual(draft.endTime, formatter.date(from: "2026-11-02T08:00:00Z"))
+    }
+
     func testSessionsPersistIncompleteAndOvernightSchedulesWithLinks() async throws {
         let store = try await openStore()
         let context = store.container.viewContext

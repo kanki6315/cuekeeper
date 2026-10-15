@@ -4,6 +4,8 @@ import CoreData
 
 @main
 struct CuekeeperApp: App {
+    @AppStorage("firstLaunchCompleted") private var firstLaunchCompleted = false
+    @AppStorage("appearance") private var appearance = "system"
     @StateObject private var persistence: PersistenceController
     @StateObject private var handoff: EventEditorHandoff
     @StateObject private var calendar = CalendarController()
@@ -31,6 +33,17 @@ struct CuekeeperApp: App {
         storeURL = setupDirectory.appending(path: "Schema.sqlite")
         #endif
         let controller = PersistenceController(storeURL: storeURL, cloudEnabled: !testing)
+        if !testing && UserDefaults.standard.object(forKey: "firstLaunchCompleted") == nil {
+            // Capture upgrade evidence before the asynchronous store load creates a new file.
+            UserDefaults.standard.set(controller.hadExistingStore, forKey: "firstLaunchCompleted")
+        }
+        #if DEBUG
+        if arguments.contains("--ui-testing"), arguments.contains("--reset-test-store") {
+            for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "appearance", "defaultCurrency"] {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        #endif
         _persistence = StateObject(wrappedValue: controller)
         AppDependencyManager.shared.add(dependency: controller)
         let handoff = EventEditorHandoff()
@@ -51,9 +64,9 @@ struct CuekeeperApp: App {
                 } else if persistence.isLoaded {
                     Group {
                         #if DEBUG
-                        if DesignFixtures.enabled { DesignFixtureScreen().preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--design-dark") ? .dark : .light) } else { RootView() }
+                        if DesignFixtures.enabled { DesignFixtureScreen().preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--design-dark") ? .dark : .light) } else { launchContent }
                         #else
-                        RootView()
+                        launchContent
                         #endif
                     }.environment(\.managedObjectContext, persistence.container.viewContext)
                     .fullScreenCover(item: Binding(get: { handoff.pending }, set: { value in
@@ -82,6 +95,7 @@ struct CuekeeperApp: App {
                 }
             }
             .tint(Color("AccentColor"))
+            .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
             .task {
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--ui-testing"), ProcessInfo.processInfo.arguments.contains("--siri-wizard-test"), handoff.pending == nil {
@@ -99,5 +113,21 @@ struct CuekeeperApp: App {
                 if persistence.isLoaded { calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled) }
             }
         }
+    }
+
+    @ViewBuilder private var launchContent: some View {
+        if firstLaunchCompleted || bypassSetupForTests {
+            RootView()
+        } else {
+            FirstLaunchPresentation { firstLaunchCompleted = true }
+        }
+    }
+    private var bypassSetupForTests: Bool {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("--ui-testing") && !arguments.contains("--first-launch")
+        #else
+        return false
+        #endif
     }
 }

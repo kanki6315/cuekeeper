@@ -8,6 +8,7 @@ final class PersistenceController: ObservableObject {
     static let containerIdentifier = "iCloud.com.arjunakankipati.cuekeeper"
     let container: NSPersistentCloudKitContainer
     let cloudEnabled: Bool
+    let hadExistingStore: Bool
     @Published private(set) var isLoaded = false
     @Published private(set) var loadError: String?
     @Published private(set) var accountStatus = "Checking…"
@@ -41,6 +42,7 @@ final class PersistenceController: ObservableObject {
         container = NSPersistentCloudKitContainer(name: "Cuekeeper")
         let description = container.persistentStoreDescriptions[0]
         if let storeURL { description.url = storeURL }
+        hadExistingStore = description.url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
         description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
         description.shouldMigrateStoreAutomatically = true
@@ -102,6 +104,17 @@ final class PersistenceController: ObservableObject {
             Task { @MainActor [weak self] in
                 self?.loadError = error?.localizedDescription
                 #if DEBUG
+                if error == nil, let self, !cloudEnabled, arguments.contains("--ui-testing"),
+                   arguments.contains("--setup-returning") || arguments.contains("--setup-backup-fixture") {
+                    do {
+                        let id = try JobDraft(name: "Recovered broadcast").save(in: self.container.viewContext)
+                        if arguments.contains("--setup-backup-fixture") {
+                            let snapshot = try BackupArchive.capture(in: self.container.viewContext)
+                            try await FixtureBackups.shared.save(data: snapshot.encoded(), date: snapshot.createdAt, events: 1)
+                            try Job.remove(id, in: self.container.viewContext)
+                        }
+                    } catch { self.loadError = error.localizedDescription }
+                }
                 if error == nil, let self, DesignFixtures.enabled {
                     do { try DesignFixtures.seed(self.container.viewContext) }
                     catch { self.loadError = "Review fixture setup failed: \(error.localizedDescription)" }

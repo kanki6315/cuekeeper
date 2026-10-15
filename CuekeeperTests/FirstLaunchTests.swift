@@ -47,6 +47,22 @@ final class FirstLaunchTests: XCTestCase {
         XCTAssertEqual(activity.launchMessage(hasRecords: true), activity.accountIssue)
     }
 
+    func testRestoreWaitsForAllImportsAndSuccessfulRetry() {
+        var activity = SyncActivity()
+        XCTAssertTrue(activity.awaitingInitialImport)
+        XCTAssertNotNil(activity.restoreUnavailableReason)
+        let first = UUID(), second = UUID()
+        activity.record(id: first, kind: .receiving, ended: false, succeeded: false, error: nil)
+        activity.record(id: second, kind: .receiving, ended: false, succeeded: false, error: nil)
+        activity.record(id: first, kind: .receiving, ended: true, succeeded: true, error: nil)
+        XCTAssertFalse(activity.awaitingInitialImport)
+        XCTAssertNotNil(activity.restoreUnavailableReason)
+        activity.record(id: second, kind: .receiving, ended: true, succeeded: false, error: "Retry needed")
+        XCTAssertNotNil(activity.restoreUnavailableReason)
+        activity.record(id: second, kind: .receiving, ended: true, succeeded: true, error: nil)
+        XCTAssertNil(activity.restoreUnavailableReason)
+    }
+
     func testUpgradeDetectionHappensBeforeStoreCreation() async throws {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -81,7 +81,11 @@ struct DesignFixtureScreen: View {
     @Environment(\.managedObjectContext) private var context
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)]) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Invoice.createdAt, ascending: true)]) private var invoices: FetchedResults<Invoice>
-    @State private var filter = JobFilter()
+    @State private var filter: JobFilter = {
+        var filter = JobFilter()
+        filter.usesDates = DesignFixtures.route == "filters-dates"
+        return filter
+    }()
     @State private var zone = "Europe/London"
     @State private var editorPresented = true
     var body: some View {
@@ -113,7 +117,7 @@ struct DesignFixtureScreen: View {
                 case "clients": LibraryView(kind: .client)
                 case "settings": SettingsView()
                 case "calendar": CalendarSettingsView()
-                case "filters": RootView().sheet(isPresented: $editorPresented) { JobFiltersView(filter: $filter) }
+                case "filters", "filters-dates": RootView().sheet(isPresented: $editorPresented) { JobFiltersView(filter: $filter) }
                 case "timezone": TimeZonePicker(selection: $zone)
                 case "link": JobDetailView(job: job).sheet(isPresented: $editorPresented) { BroadcastLinkEditorView(job: job, session: job.activeSessions.first) }
                 default: RootView()

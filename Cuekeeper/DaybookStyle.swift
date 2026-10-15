@@ -4,16 +4,23 @@ import SwiftUI
 struct DaybookForm<Content: View>: View {
     var title: String = ""
     var subtitle: String = ""
+    var compact: Bool = false
+    var onContentHeightChange: ((CGFloat) -> Void)? = nil
     @ViewBuilder var content: Content
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 if !title.isEmpty { DaybookPageHeading(title: title, subtitle: subtitle) }
-                DaybookSections { content }
+                DaybookSections(compact: compact) { content }
             }
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 20).padding(.vertical, 20)
+                .padding(.horizontal, 20).padding(.vertical, compact ? 8 : 20)
+                .onGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.size.height
+                } action: { height in
+                    onContentHeightChange?(height)
+                }
         }
         .accessibilityIdentifier("daybook-form")
         .scrollDismissesKeyboard(.interactively)
@@ -23,11 +30,12 @@ struct DaybookForm<Content: View>: View {
 
 struct DaybookSections<Content: View>: View {
     @Environment(\.colorSchemeContrast) private var contrast
+    var compact: Bool = false
     @ViewBuilder var content: Content
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: compact ? 8 : 24) {
             ForEach(sections: content) { section in
-                VStack(alignment: .leading, spacing: 9) {
+                VStack(alignment: .leading, spacing: compact ? 4 : 9) {
                     if !section.header.isEmpty {
                         section.header.font(.headline).foregroundStyle(.primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -37,7 +45,9 @@ struct DaybookSections<Content: View>: View {
                         ForEach(Array(section.content.enumerated()), id: \.element.id) { index, row in
                             if index > 0 && !section.containerValues.daybookUnframed { Rectangle().fill(Color.primary.opacity(contrast == .increased ? 0.45 : 0.16)).frame(height: 0.5).padding(.horizontal, 16) }
                             row.frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, section.containerValues.daybookUnframed ? 0 : 16).padding(.vertical, section.containerValues.daybookUnframed ? 5 : 12)
+                                .padding(.horizontal, section.containerValues.daybookUnframed ? 0 : 16)
+                                .padding(.vertical, compact ? 0 : (section.containerValues.daybookUnframed ? 5 : 12))
+                                .frame(minHeight: compact ? 44 : nil)
                         }
                     }
                     .background(section.containerValues.daybookUnframed ? Color.clear : Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 12))

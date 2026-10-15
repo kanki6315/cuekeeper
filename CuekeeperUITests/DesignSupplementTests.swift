@@ -58,8 +58,8 @@ final class DesignSupplementTests: XCTestCase {
                 app.launch()
                 XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
                 if route == "root" {
-                    let week = app.buttons["upcoming-scope-true"]
-                    let all = app.buttons["upcoming-scope-false"]
+                    let week = app.buttons["upcoming-scope-Week"]
+                    let all = app.buttons["upcoming-scope-All"]
                     XCTAssertTrue(week.waitForExistence(timeout: 10))
                     week.tap()
                     XCTAssertTrue(week.isSelected)

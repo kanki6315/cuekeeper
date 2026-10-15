@@ -21,19 +21,21 @@ struct RootView: View {
     @State private var selection: AppSection? = .upcoming
     @State private var selectedJob: Job?
     @State private var selectedTab: AppSection = .upcoming
+    @State private var todayNavigationID = UUID()
     @FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "deletedAt == nil")) private var allJobs: FetchedResults<Job>
     private var showsSyncFeedback: Bool {
         !allJobs.isEmpty || persistence.syncActivity.needsAttention || persistence.syncActivity.offline
     }
 
     var body: some View {
+        Group {
         if sizeClass == .regular && !typeSize.isAccessibilitySize {
             if (selection == .upcoming || selection == .jobs) && !allJobs.isEmpty {
                 NavigationSplitView {
                     sidebar
                 } content: {
                     JobsView(upcomingOnly: selection == .upcoming, selectedJob: $selectedJob)
-                        .id(selection ?? .upcoming)
+                        .id("\(selection?.rawValue ?? "Upcoming")-\(todayNavigationID)")
                         .navigationSplitViewColumnWidth(min: 320, ideal: 420, max: 520)
                 } detail: {
                     NavigationStack {
@@ -57,10 +59,18 @@ struct RootView: View {
                                 }
                             }
                     }
+                    .id(section == .upcoming ? todayNavigationID : nil)
                     .tabItem { Label(section.rawValue, systemImage: section.symbol) }
                     .tag(section)
                 }
             }
+        }
+            }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CuekeeperOpenToday"))) { _ in
+            todayNavigationID = UUID()
+            selectedJob = nil
+            selectedTab = .upcoming
+            selection = .upcoming
         }
     }
     private var sidebar: some View {
@@ -117,7 +127,7 @@ private struct JobsView: View {
     @State private var query = ""
     @State private var filter = JobFilter()
     @State private var scope = "All"
-    @State private var thisWeek = false
+    @AppStorage("upcoming.scope") private var upcomingScope = "Today"
     @State private var opened: Job?
     @AppStorage("upcoming.dismissedAttention") private var dismissedAttention = ""
     private func attentionKey(_ job: Job) -> String { "\(job.id?.uuidString ?? "")/\(job.eventStartDay)/\(job.bookingStatus)/\(job.eventEndDay < Day.string(from: Date()) ? "past" : "schedule")" }
@@ -137,7 +147,7 @@ private struct JobsView: View {
             let active = !["completed", "cancelled"].contains(job.bookingStatus)
             return filter.includes(job, query: query)
                 && (!upcomingOnly || (active && (job.eventEndDay >= today || job.activeSessions.contains { ($0.endTime ?? .distantPast) >= Date() })))
-                && (!upcomingOnly || !thisWeek || job.eventStartDay <= weekEnd)
+                && (!upcomingOnly || upcomingScope != "Week" || job.eventStartDay <= weekEnd)
                 && (upcomingOnly || scope == "All" || (scope == "Active" ? active : job.bookingStatus == scope.lowercased()))
         }
         var seen = Set<NSManagedObjectID>()
@@ -150,6 +160,8 @@ private struct JobsView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if selectedJob == nil {
                     DaybookTabHeader { if !jobs.isEmpty { addButton } }
+                } else if upcomingOnly {
+                    HStack { Spacer(); addButton }
                 } else {
                     ViewThatFits(in: .horizontal) {
                         HStack { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); Spacer(); addButton }
@@ -157,14 +169,21 @@ private struct JobsView: View {
                     }
                 }
                 if !jobs.isEmpty {
-                    HStack {
+                    if !upcomingOnly || upcomingScope != "Today" { HStack {
                         DaybookTextField("Search events, clients or series", text: $query).accessibilityIdentifier("search-jobs")
                         Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
-                    }
+                    } }
                     if upcomingOnly {
-                        DaybookSegments(title: "Show upcoming", selection: $thisWeek,
-                                        options: [false, true], identifier: "upcoming-scope",
-                                        label: { $0 ? "This week" : "All upcoming" })
+                        Text(upcomingScope == "Today" ? "Today" : "Upcoming").font(.largeTitle.bold())
+                        if upcomingScope == "Today" {
+                            TimelineView(.periodic(from: .now, by: 60)) { timeline in
+                                Text(timeline.date, format: .dateTime.weekday(.wide).day().month(.wide))
+                                    .foregroundStyle(Color("SecondaryText"))
+                            }
+                        }
+                        DaybookSegments(title: "Show upcoming", selection: $upcomingScope,
+                                        options: ["Today", "Week", "All"], identifier: "upcoming-scope",
+                                        label: { $0 })
                     } else {
                         DaybookSegments(title: "Bookings", selection: $scope,
                                         options: ["All", "Active", "Completed", "Cancelled"],
@@ -183,10 +202,13 @@ private struct JobsView: View {
                             .buttonStyle(LaunchPrimaryButton()).accessibilityIdentifier("add-job")
                     }.multilineTextAlignment(.center).frame(maxWidth: 480).padding(.vertical, 48)
                         .frame(maxWidth: .infinity)
-                } else if representatives.isEmpty {
+                } else if (!upcomingOnly || upcomingScope != "Today") && representatives.isEmpty {
                     ContentUnavailableView("No events to show", systemImage: "calendar", description: Text(jobs.isEmpty && persistence.awaitingInitialImport ? "Existing work may still arrive from iCloud. You can add an event now." : "Start with dates and a client. Add the schedule when it arrives."))
                     if filter.isActive { Button("Clear Filters") { filter = JobFilter() } }
                 }
+                if upcomingOnly && upcomingScope == "Today" && !jobs.isEmpty {
+                    TodayScheduleView(selectedJob: selectedJob)
+                } else {
                 LazyVStack(spacing: 0) {
                     ForEach(representatives, id: \.eventKey) { job in
                         if let selectedJob {
@@ -197,7 +219,8 @@ private struct JobsView: View {
                         Divider()
                     }
                 }
-                if upcomingOnly && !attention.isEmpty {
+                }
+                if upcomingOnly && upcomingScope != "Today" && !attention.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Label("Needs attention", systemImage: "exclamationmark.circle").font(.headline)

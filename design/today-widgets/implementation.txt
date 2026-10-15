@@ -1,0 +1,57 @@
+Today and widgets — implementation handoff, October 15, 2026
+
+Authority and scope
+The approved concept-board-v2.png establishes the chronological day schedule,
+compact next-call strip and event/client context. small-widget-list-concept.png
+supersedes the earlier small-widget next-call-only proposal with a short list.
+These are composition references, not pixel-exact native chrome requirements.
+This extends the established Daybook / Combined Glass system: semantic SF type,
+warm reading surfaces, forest/mint accents and native navigation. No visual
+system change or new global token is required. DESIGN.md and
+.impeccable/design.json are preserved, including unrelated historical drift.
+
+Implemented surfaces
+Upcoming offers Today, Week and All. Today shows the full chronological day,
+including elapsed sessions, with start/end, call, event, client, confirmation
+and coverage information. A compact next-call strip requires booked, confirmed,
+covering work and uses the start when no call is saved. Session rows open their
+existing detail; Today adds no directions or event-notes actions. Accessibility
+text stacks the time and content columns. Empty days point to Week/All; events
+without a day's sessions remain under Schedule to come.
+
+Small widgets show up to two remaining sessions, sharing the event heading when
+possible and labelling each event otherwise. Medium shows up to four; overflow
+is counted. Inline, circular and rectangular accessories summarize the next
+commitment or remaining work. All widget taps open cuekeeper://today, resetting
+Upcoming's scope and navigation even when the app is already on a session.
+There is no session-specific widget route or live-broadcast-status claim.
+
+Time and model behavior
+Today and widgets deliberately use the device-local day and displayed time,
+labelled with the current timezone; a differing event timezone appears as a
+secondary start-time readout in Today. Event/session stored instants are unchanged.
+Calendar day boundaries account for DST; timed overnight sessions and sessions
+whose call falls today remain included. Untimed sessions use their event-zone
+day, falling back to the event date range when the session day is absent.
+Cancelled/deleted work is excluded. Today's full list retains completed and
+not-covering context; widgets exclude completed events, ended sessions and
+not-covering sessions. Unknown end times remain eligible rather than inventing
+an end. Tentative/undecided rows cannot supply the next confirmed commitment.
+
+Shared snapshot
+SchedulePublisher captures local event/session labels, dates, status and coverage
+into an atomic schedule.json in group.com.arjunakankipati.cuekeeper. Fees, notes,
+broadcast URLs and CloudKit credentials are absent. Related-record changes and
+app activation refresh the snapshot; unchanged captures avoid unnecessary reloads.
+Write failures retain the last complete snapshot. WidgetKit receives local call,
+start, end and midnight entries plus a refresh request; the OS controls actual
+reload timing. Widgets do not fetch iCloud independently or promise live sync.
+Missing snapshots ask the user to open Cuekeeper. Content is marked privacySensitive;
+actual Lock Screen redaction and tint behavior still require host verification.
+
+Sources and limits
+Cuekeeper/TodayView.swift, RootView.swift, CuekeeperApp.swift,
+SchedulePublisher.swift, Shared/DaySchedule.swift and
+CuekeeperWidgets/CuekeeperWidgets.swift are the implementation sources.
+verification/README.md records simulator evidence, the scoped ship verdict and
+remaining WidgetKit/provisioning checks. No upload or release occurred.

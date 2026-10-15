@@ -9,6 +9,7 @@ struct CuekeeperApp: App {
     @StateObject private var persistence: PersistenceController
     @StateObject private var handoff: EventEditorHandoff
     @StateObject private var calendar = CalendarController()
+    @StateObject private var schedulePublisher = SchedulePublisher()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -39,6 +40,7 @@ struct CuekeeperApp: App {
         }
         #if DEBUG
         if arguments.contains("--ui-testing"), arguments.contains("--reset-test-store") {
+            UserDefaults.standard.set(arguments.contains("--today-fixtures") ? "Today" : "All", forKey: "upcoming.scope")
             for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "appearance", "defaultCurrency"] {
                 UserDefaults.standard.removeObject(forKey: key)
             }
@@ -88,17 +90,26 @@ struct CuekeeperApp: App {
             .environmentObject(persistence)
             .environmentObject(calendar)
             .onChange(of: persistence.isLoaded) { _, loaded in
-                if loaded { calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled) }
+                if loaded {
+                    calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled)
+                    schedulePublisher.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled)
+                }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     EventWeatherStore.shared.purgeExpired()
+                    schedulePublisher.refresh()
                     calendar.refreshCalendars(); calendar.scheduleSync()
                     Task { await persistence.refreshAccountStatus() }
                 }
             }
+            .onOpenURL { url in
+                guard url.scheme == "cuekeeper", url.host == "today" else { return }
+                UserDefaults.standard.set("Today", forKey: "upcoming.scope")
+                NotificationCenter.default.post(name: Notification.Name("CuekeeperOpenToday"), object: nil)
+            }
             .tint(Color("AccentColor"))
-            .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
+            .preferredColorScheme(preferredAppearance)
             .task {
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--ui-testing"), ProcessInfo.processInfo.arguments.contains("--siri-wizard-test"), handoff.pending == nil {
@@ -113,9 +124,19 @@ struct CuekeeperApp: App {
                 }
                 #endif
                 await persistence.refreshAccountStatus()
-                if persistence.isLoaded { calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled) }
+                if persistence.isLoaded {
+                    calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled)
+                    schedulePublisher.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled)
+                }
             }
         }
+    }
+
+    private var preferredAppearance: ColorScheme? {
+        #if DEBUG
+        if DesignFixtures.enabled { return ProcessInfo.processInfo.arguments.contains("--design-dark") ? .dark : .light }
+        #endif
+        return appearance == "dark" ? .dark : appearance == "light" ? .light : nil
     }
 
     @ViewBuilder private var launchContent: some View {

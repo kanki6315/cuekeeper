@@ -84,7 +84,7 @@ final class CaptureTests: XCTestCase {
 
     func testSyncFeedbackRemainsNonblocking() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--ui-test-sync-receiving"]
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--ui-test-sync-receiving", "--setup-returning"]
         app.launch()
         XCTAssertTrue(app.buttons["sync-feedback"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Receiving changes…"].exists)

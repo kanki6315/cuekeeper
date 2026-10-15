@@ -7,6 +7,7 @@ struct RecentlyDeletedView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkSession.deletedAt, ascending: false)], predicate: NSPredicate(format: "deletedAt != nil AND recoveryDiscardedAt == nil")) private var sessions: FetchedResults<WorkSession>
     @State private var discarding: NSManagedObject?
     @State private var confirmDiscard = false
+    @State private var showRecoveryInfo = false
     @State private var error: String?
     @State private var notice: String?
 
@@ -14,11 +15,18 @@ struct RecentlyDeletedView: View {
         TimelineView(.periodic(from: .now, by: 60)) { timeline in
             let recoverableJobs = jobs.filter { Recovery.canRestore($0, now: timeline.date) }
             let recoverableSessions = sessions.filter { Recovery.canRestore($0, now: timeline.date) && $0.job?.deletedAt == nil }
-            DaybookForm(title: "Recently Deleted") {
+            DaybookList(sectionSpacing: 8) {
                 Section {
-                    Text("Restore events and sessions for 30 days after deletion. Restoring an event brings back its schedule and eligible calendar entries. Sessions deleted separately stay here until you restore them.")
-                    Text("Invoices and payments are preserved, even after recovery ends.").foregroundStyle(Color("SecondaryText"))
+                    Text("Restore deleted items for 30 days.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color("SecondaryText"))
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .environment(\.defaultMinListRowHeight, 0)
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
                 if let notice { Section { Text(notice).accessibilityIdentifier("recovery-notice") } }
                 if recoverableJobs.isEmpty && recoverableSessions.isEmpty {
                     Section { ContentUnavailableView("Nothing to recover", systemImage: "trash", description: Text("Events and sessions deleted within the last 30 days appear here.")) }
@@ -38,10 +46,21 @@ struct RecentlyDeletedView: View {
                     }
                 }
             }
+            .contentMargins(.top, 0, for: .scrollContent)
         }
         .navigationTitle("Recently Deleted").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("About recovery", systemImage: "info.circle") { showRecoveryInfo = true }
+            }
+        }
+        .alert("About recovery", isPresented: $showRecoveryInfo) {
+            Button("Done", role: .cancel) { }
+        } message: {
+            Text("Swipe right to restore or left to delete, then tap the action.\n\nRestoring an event brings back its schedule and eligible calendar entries. Restore separately deleted sessions individually.\n\nInvoices and payments are always kept.")
+        }
         .saveErrorAlert($error)
-        .confirmationDialog("Permanently remove from Recently Deleted?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+        .alert("Permanently remove from Recently Deleted?", isPresented: $confirmDiscard) {
             Button("Delete Permanently", role: .destructive) {
                 guard let record = discarding else { return }
                 do { try Recovery.discard(record.objectID, in: context); notice = "Removed from Recently Deleted." }
@@ -59,22 +78,39 @@ struct RecentlyDeletedView: View {
             Text(title).font(.headline)
             Text(subtitle).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             if let deadline = Recovery.deadline(record) {
-                Text("Recover before \(deadline.formatted(date: .abbreviated, time: .shortened))")
+                Text("Restore by \(deadline.formatted(date: .abbreviated, time: .omitted))")
                     .font(.caption).foregroundStyle(Color("SecondaryText"))
             }
-            ViewThatFits(in: .horizontal) {
-                HStack { actions(record, title: title) }
-                VStack(alignment: .leading) { actions(record, title: title) }
-            }
         }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button("Restore", systemImage: "arrow.uturn.backward") { restore(record, title: title) }
+                .tint(Color.accentColor)
+                .accessibilityLabel("Restore \(title)")
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            // Only mark the confirmation button destructive: revealing this action
+            // must not optimistically remove the row before the user confirms.
+            Button("Delete", systemImage: "trash") { requestDiscard(record) }
+                .tint(.red)
+                .accessibilityLabel("Permanently delete \(title)")
+        }
+        .contextMenu {
+            Button("Restore", systemImage: "arrow.uturn.backward") { restore(record, title: title) }
+            Button("Delete Permanently", systemImage: "trash", role: .destructive) { requestDiscard(record) }
+        }
+        .accessibilityAction(named: "Restore") { restore(record, title: title) }
+        .accessibilityAction(named: "Delete Permanently") { requestDiscard(record) }
     }
 
-    @ViewBuilder private func actions(_ record: NSManagedObject, title: String) -> some View {
-        Button("Restore", systemImage: "arrow.uturn.backward") {
-            do { try Recovery.restore(record.objectID, in: context); notice = "Restored \(title)." }
-            catch { self.error = error.localizedDescription }
-        }.frame(minHeight: 44).accessibilityLabel("Restore \(title)")
-        Button("Delete Permanently", role: .destructive) { discarding = record; confirmDiscard = true }
-            .frame(minHeight: 44).accessibilityLabel("Permanently delete \(title)")
+    private func restore(_ record: NSManagedObject, title: String) {
+        do { try Recovery.restore(record.objectID, in: context); notice = "Restored \(title)." }
+        catch { self.error = error.localizedDescription }
+    }
+
+    private func requestDiscard(_ record: NSManagedObject) {
+        discarding = record
+        confirmDiscard = true
     }
 }

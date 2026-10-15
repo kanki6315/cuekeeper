@@ -21,10 +21,14 @@ struct RootView: View {
     @State private var selection: AppSection? = .upcoming
     @State private var selectedJob: Job?
     @State private var selectedTab: AppSection = .upcoming
+    @FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "deletedAt == nil")) private var allJobs: FetchedResults<Job>
+    private var showsSyncFeedback: Bool {
+        !allJobs.isEmpty || persistence.syncActivity.needsAttention || persistence.syncActivity.offline
+    }
 
     var body: some View {
         if sizeClass == .regular && !typeSize.isAccessibilitySize {
-            if selection == .upcoming || selection == .jobs {
+            if (selection == .upcoming || selection == .jobs) && !allJobs.isEmpty {
                 NavigationSplitView {
                     sidebar
                 } content: {
@@ -46,7 +50,7 @@ struct RootView: View {
                     NavigationStack {
                         content(section)
                             .overlay(alignment: .bottom) {
-                                if section != .settings {
+                                if section != .settings && showsSyncFeedback {
                                     SyncFeedbackView { selectedTab = .settings }
                                         .padding(.horizontal, 20)
                                         .padding(.bottom, 12)
@@ -72,15 +76,17 @@ struct RootView: View {
             .listStyle(.sidebar)
             .tint(Color("SidebarSelection"))
             .scrollContentBackground(.hidden)
-            Button { selection = .settings } label: {
-                Label(persistence.syncActivity.message ?? "Saved on this device", systemImage: persistence.syncActivity.needsAttention ? "exclamationmark.icloud" : "icloud")
-                    .font(.footnote)
-                    .foregroundStyle(persistence.syncActivity.needsAttention ? Color("AmberText") : Color("SecondaryText"))
-                    .padding(20)
+            if showsSyncFeedback {
+                Button { selection = .settings } label: {
+                    Label(persistence.syncActivity.message ?? "Saved on this device", systemImage: persistence.syncActivity.needsAttention ? "exclamationmark.icloud" : "icloud")
+                        .font(.footnote)
+                        .foregroundStyle(persistence.syncActivity.needsAttention ? Color("AmberText") : Color("SecondaryText"))
+                        .padding(20)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sync-feedback")
+                .accessibilityHint("Opens storage and iCloud details")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("sync-feedback")
-            .accessibilityHint("Opens storage and iCloud details")
         }
         .modifier(DaybookSidebarSurface())
         .padding(10)
@@ -143,34 +149,48 @@ private struct JobsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if selectedJob == nil {
-                    DaybookTabHeader { addButton }
+                    DaybookTabHeader { if !jobs.isEmpty { addButton } }
                 } else {
                     ViewThatFits(in: .horizontal) {
                         HStack { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); Spacer(); addButton }
                         VStack(alignment: .leading, spacing: 12) { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); addButton }
                     }
                 }
-                HStack {
-                    DaybookTextField("Search events, clients or series", text: $query).accessibilityIdentifier("search-jobs")
-                    Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
-                }
-                if upcomingOnly {
-                    Picker("Show upcoming", selection: $thisWeek) {
-                        Text("All upcoming").tag(false)
-                        Text("This week").tag(true)
+                if !jobs.isEmpty {
+                    HStack {
+                        DaybookTextField("Search events, clients or series", text: $query).accessibilityIdentifier("search-jobs")
+                        Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
                     }
-                    .pickerStyle(.segmented)
-                    .background(Color("AccentColor").opacity(0.08), in: Capsule())
-                    .accessibilityIdentifier("upcoming-scope")
-                } else {
-                    Picker("Bookings", selection: $scope) {
-                        ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) }
+                    if upcomingOnly {
+                        Picker("Show upcoming", selection: $thisWeek) {
+                            Text("All upcoming").tag(false)
+                            Text("This week").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .background(Color("AccentColor").opacity(0.08), in: Capsule())
+                        .accessibilityIdentifier("upcoming-scope")
+                    } else {
+                        Picker("Bookings", selection: $scope) {
+                            ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .background(Color("AccentColor").opacity(0.08), in: Capsule())
+                        .accessibilityIdentifier("event-status-scope")
                     }
-                    .pickerStyle(.segmented)
-                    .background(Color("AccentColor").opacity(0.08), in: Capsule())
-                    .accessibilityIdentifier("event-status-scope")
                 }
-                if representatives.isEmpty {
+                if jobs.isEmpty {
+                    if selectedJob == nil { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()) }
+                    VStack(spacing: 24) {
+                        CuekeeperMark().fill(Color.accentColor.opacity(0.2), style: FillStyle(eoFill: true))
+                            .frame(width: 90, height: 104).accessibilityHidden(true)
+                        Text("Your next event\nstarts here").font(.title2.bold())
+                        Text("Start with a date. Add the details when you know them.")
+                            .foregroundStyle(Color("SecondaryText"))
+                        Button("Add your first event") { showingAdd = true }
+                            .buttonStyle(LaunchPrimaryButton()).accessibilityIdentifier("add-job")
+                    }.multilineTextAlignment(.center).frame(maxWidth: 480).padding(.vertical, 48)
+                        .frame(maxWidth: .infinity)
+                } else if representatives.isEmpty {
                     ContentUnavailableView("No events to show", systemImage: "calendar", description: Text(jobs.isEmpty && persistence.awaitingInitialImport ? "Existing work may still arrive from iCloud. You can add an event now." : "Start with dates and a client. Add the schedule when it arrives."))
                     if filter.isActive { Button("Clear Filters") { filter = JobFilter() } }
                 }
@@ -238,8 +258,9 @@ private struct JobsView: View {
 func dateRange(_ job: Job) -> String { job.eventDateDescription }
 
 struct SettingsView: View {
+    @ScaledMetric(relativeTo: .body) private var libraryIconWidth = 26
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @AppStorage("defaultCurrency") private var defaultCurrency = "USD"
+    @State private var showingSetup = false
     @EnvironmentObject private var persistence: PersistenceController
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
@@ -249,29 +270,50 @@ struct SettingsView: View {
             }
             .containerValue(\.daybookUnframed, true)
             .containerValue(\.daybookFlushTop, true)
-            Section("Preferences") { DaybookPicker("Currency", selection: $defaultCurrency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") } }
+            Section { PreferenceFields() }.containerValue(\.daybookUnframed, true)
+            Section {
+                Button("Run setup again") { showingSetup = true }.frame(minHeight: 44)
+                    .accessibilityIdentifier("run-setup-again")
+            }
             Section("Integrations") { DaybookLink { CalendarSettingsView() } label: { Label("Calendar", systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading) } }
             Section("Libraries") {
-                NavigationLink { LibraryView(kind: .series) } label: { HStack { Label("Series", systemImage: "rectangle.stack"); Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary) } }
-                NavigationLink { LibraryView(kind: .client) } label: { HStack { Label("Clients", systemImage: "person.2"); Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary) } }
-                NavigationLink { LibraryView(kind: .role) } label: { HStack { Label("Roles", systemImage: "person.text.rectangle"); Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary) } }
+                DaybookLink { LibraryView(kind: .series) } label: { libraryLabel("Series", symbol: "rectangle.stack") }
+                DaybookLink { LibraryView(kind: .client) } label: { libraryLabel("Clients", symbol: "person.2") }
+                DaybookLink { LibraryView(kind: .role) } label: { libraryLabel("Roles", symbol: "person.text.rectangle") }
             }
             Section {
-                LabeledContent("On this device", value: "Saved locally")
                 LabeledContent("iCloud account", value: persistence.accountStatus)
+                if let message = persistence.syncActivity.message {
+                    Text(message)
+                        .foregroundStyle(persistence.syncActivity.needsAttention ? Color("AmberText") : Color("SecondaryText"))
+                }
+                if let detail = persistence.syncActivity.errorDetails { Text(detail).font(.subheadline) }
                 if let setupStatus = persistence.schemaInitializationStatus {
                     Text(setupStatus)
                 }
-                Text(persistence.transferStatus).foregroundStyle(Color("SecondaryText"))
-                if let detail = persistence.syncActivity.errorDetails { Text(detail).font(.subheadline) }
-                if let date = persistence.lastTransfer {
-                    LabeledContent("Last operation", value: date.formatted(date: .abbreviated, time: .shortened))
+                DisclosureGroup("iCloud details") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if persistence.syncActivity.message == nil {
+                            Text(persistence.transferStatus).foregroundStyle(Color("SecondaryText"))
+                        }
+                        if let date = persistence.lastTransfer {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Last transfer")
+                                Text(date.formatted(date: .abbreviated, time: .shortened))
+                                    .foregroundStyle(Color("SecondaryText"))
+                            }
+                        }
+                        Button("Check iCloud Account") { Task { await persistence.refreshAccountStatus() } }
+                        Text("A completed transfer doesn’t mean every device has received the latest changes.")
+                            .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 12)
                 }
-                Button("Check iCloud Account") { Task { await persistence.refreshAccountStatus() } }
             } header: {
                 Text("Storage & iCloud")
             } footer: {
-                Text("Events are saved on this device first. iCloud transfers changes when available. A completed operation does not confirm that every device has received the latest changes. Sync is not a backup.")
+                Text("Events are saved on this device and sync with iCloud when available. Backups are managed separately below.")
             }
             Section("Recovery & backups") {
                 DaybookLink { BackupView() } label: { Label("iCloud Backups", systemImage: "icloud.and.arrow.up") }
@@ -286,9 +328,21 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
         .task { await persistence.refreshAccountStatus() }
+        .sheet(isPresented: $showingSetup) {
+            FirstLaunchView { showingSetup = false }
+                .presentationSizing(.form)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await persistence.refreshAccountStatus() } }
         }
+    }
+
+    private func libraryLabel(_ title: String, symbol: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).frame(width: libraryIconWidth).accessibilityHidden(true)
+            Text(title)
+        }
+        .foregroundStyle(Color.accentColor)
     }
 }
 

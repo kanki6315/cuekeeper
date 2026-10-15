@@ -61,3 +61,39 @@ struct CalendarPlan: Sendable {
         return parts.joined(separator: "/")
     }
 }
+
+/// Retained by the app while its persistent store is opening.
+struct CalendarLink: Identifiable {
+    let id: String
+    private let kind: String
+    private let recordID: UUID
+
+    init?(url: URL) {
+        guard let key = CalendarPlan.key(from: url) else { return nil }
+        let parts = key.split(separator: "/")
+        guard let recordID = UUID(uuidString: String(parts[1])) else { return nil }
+        id = key
+        kind = String(parts[0])
+        self.recordID = recordID
+    }
+
+    enum Destination {
+        case job(Job)
+        case session(WorkSession)
+    }
+
+    func resolve(in context: NSManagedObjectContext) throws -> Destination? {
+        if kind == "session" {
+            let request = NSFetchRequest<WorkSession>(entityName: "WorkSession")
+            request.predicate = NSPredicate(format: "id == %@ AND deletedAt == nil AND job != nil AND job.deletedAt == nil", recordID as NSUUID)
+            request.fetchLimit = 1
+            return try context.fetch(request).first.map(Destination.session)
+        }
+        let request = NSFetchRequest<Job>(entityName: "Job")
+        // Older grouped calendar entries refer to WorkEvent rather than Job.
+        request.predicate = NSPredicate(format: kind == "event" ? "event.id == %@ AND deletedAt == nil" : "id == %@ AND deletedAt == nil", recordID as NSUUID)
+        request.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
+        request.fetchLimit = 1
+        return try context.fetch(request).first.map(Destination.job)
+    }
+}

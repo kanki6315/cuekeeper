@@ -1,6 +1,7 @@
 import Combine
 import CoreData
 import Foundation
+import UIKit
 
 struct SiriEventDraft {
     static func make(title: String, start: Date, end: Date?, allDay: Bool,
@@ -32,6 +33,18 @@ struct SiriEventDraft {
 
 @MainActor
 final class EventEditorHandoff: ObservableObject {
+    private let isPresentingModal: @MainActor () -> Bool
+
+    init(isPresentingModal: @escaping @MainActor () -> Bool = {
+        // Include inactive scenes: Siri can temporarily deactivate the app while
+        // an existing sheet still occupies its presentation controller.
+        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .contains { $0.isKeyWindow && $0.rootViewController?.presentedViewController != nil }
+    }) {
+        self.isPresentingModal = isPresentingModal
+    }
+
     struct Request: Identifiable {
         let id = UUID()
         let jobID: NSManagedObjectID
@@ -40,6 +53,8 @@ final class EventEditorHandoff: ObservableObject {
     @Published var scanningReceipt = false
     func requestReceiptScan() throws {
         guard pending == nil else { throw RecordError.invalid("Close the current event screen before scanning a receipt from Shortcuts.") }
+        guard !scanningReceipt else { return }
+        try requireAvailablePresentation()
         scanningReceipt = true
     }
     @Published private(set) var pending: Request?
@@ -48,6 +63,7 @@ final class EventEditorHandoff: ObservableObject {
     /// never a creation draft or a continuation tied to Siri's execution lifetime.
     func create(_ draft: EventCreationDraft, in context: NSManagedObjectContext, notices: [String] = []) throws -> NSManagedObjectID {
         guard pending == nil && !scanningReceipt else { throw RecordError.invalid("Close the current event before creating another with Siri.") }
+        try requireAvailablePresentation()
         guard draft.events.count == 1 else { throw RecordError.invalid("Create one event at a time with Siri.") }
         try Task.checkCancellation()
         let ids = try draft.save(in: context)
@@ -59,5 +75,11 @@ final class EventEditorHandoff: ObservableObject {
     func close(id: UUID) {
         guard pending?.id == id else { return }
         pending = nil
+    }
+
+    private func requireAvailablePresentation() throws {
+        guard !isPresentingModal() else {
+            throw RecordError.invalid("Close the current screen in Cuekeeper, then try again.")
+        }
     }
 }

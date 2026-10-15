@@ -9,6 +9,7 @@ struct CuekeeperApp: App {
     @StateObject private var persistence: PersistenceController
     @StateObject private var expenseNotifications = ExpenseNotifications.shared
     @StateObject private var handoff: EventEditorHandoff
+    @State private var calendarLink: CalendarLink?
     @StateObject private var calendar = CalendarController()
     @StateObject private var schedulePublisher = SchedulePublisher()
     @Environment(\.scenePhase) private var scenePhase
@@ -73,6 +74,10 @@ struct CuekeeperApp: App {
                         launchContent
                         #endif
                     }.environment(\.managedObjectContext, persistence.container.viewContext)
+                    .sheet(item: $calendarLink) { link in
+                        CalendarLinkView(link: link)
+                            .environment(\.managedObjectContext, persistence.container.viewContext)
+                    }
                     .sheet(item: $expenseNotifications.route) { route in
                         ExpenseNotificationView(id: route.id).environment(\.managedObjectContext, persistence.container.viewContext)
                     }
@@ -112,7 +117,12 @@ struct CuekeeperApp: App {
                 }
             }
             .onOpenURL { url in
+                if let link = CalendarLink(url: url) {
+                    calendarLink = link
+                    return
+                }
                 guard url.scheme == "cuekeeper", url.host == "today" else { return }
+                calendarLink = nil
                 UserDefaults.standard.set("Today", forKey: "upcoming.scope")
                 NotificationCenter.default.post(name: Notification.Name("CuekeeperOpenToday"), object: nil)
             }
@@ -161,5 +171,42 @@ struct CuekeeperApp: App {
         #else
         return false
         #endif
+    }
+}
+
+private struct CalendarLinkView: View {
+    let link: CalendarLink
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @State private var destination: CalendarLink.Destination?
+    @State private var loading = true
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if loading {
+                    ProgressView("Opening calendar entry…")
+                } else if let destination {
+                    switch destination {
+                    case .job(let job): EventDetailView(anchor: job)
+                    case .session(let session): SessionDetailView(session: session)
+                    }
+                } else {
+                    ContentUnavailableView("Calendar entry unavailable", systemImage: "calendar.badge.exclamationmark",
+                        description: Text(error ?? "This event or session may have been deleted or may not have synced to this device yet."))
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+        }
+        .task(id: link.id) {
+            loading = true
+            error = nil
+            do { destination = try link.resolve(in: context) }
+            catch { destination = nil; self.error = error.localizedDescription }
+            loading = false
+        }
     }
 }

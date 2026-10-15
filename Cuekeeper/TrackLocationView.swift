@@ -179,7 +179,13 @@ struct TrackLocationPicker: View {
                 searching = false
             } catch {
                 guard !Task.isCancelled else { return }
-                self.error = "Search couldn’t connect to Apple Maps. Check your connection and try again."
+                if let mapError = error as? MKError, mapError.code == .placemarkNotFound {
+                    // MapKit can report an empty search as an error instead of an empty response.
+                    results = []
+                    self.error = nil
+                } else {
+                    self.error = "Search couldn’t connect to Apple Maps. Check your connection and try again."
+                }
                 searching = false
             }
         }

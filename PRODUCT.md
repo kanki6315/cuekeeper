@@ -282,8 +282,9 @@ archive or TestFlight upload occurred; broader product validation remains open.
 ## Receipt expenses — October 15, 2026
 
 Events now include receipt expenses. Scan or import one receipt page, extract
-proposed fields with Vision and the on-device Foundation Models model, review and
-edit, then save the expense with its photo. A persisted draft protects the photo
+proposed fields with Vision and the on-device Foundation Models model (falling back
+to Apple Private Cloud Compute for receipt text too long for the on-device model),
+review and edit, then save the expense with its photo. A persisted draft protects the photo
 before extraction; Keep Draft saves incomplete details. Manual entry remains
 available when automatic extraction fails or Apple Intelligence is unavailable.
 Draft photos can be replaced with confirmation; saved expenses reopen for editing.

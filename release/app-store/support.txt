@@ -27,7 +27,7 @@ Recently Deleted normally offers recovery for 30 days. Restored records sync to 
 Exported ZIP files are not encrypted. They contain personal and financial records and receipt images. Save them somewhere you trust and do not send a whole backup to support. Ending recovery is not secure erasure; see the privacy policy for retention details.
 
 Receipt scanning
-Open an event's Expenses and choose Scan Receipt. Review the proposed fields before saving. If camera access is unavailable, use photo import. Automatic extraction requires a compatible device with Apple Intelligence enabled and its model ready. You can enter fields manually when extraction is unavailable or inaccurate. Keep Draft preserves incomplete work.
+Open an event's Expenses and choose Scan Receipt. Review the proposed fields before saving. If camera access is unavailable, use photo import. Automatic extraction requires a compatible device with Apple Intelligence enabled and its model ready. If a receipt is too long for the on-device model, its recognized text (not the photo) is sent to Apple Private Cloud Compute, which needs an internet connection; Cuekeeper tells you when this happens. You can enter fields manually when extraction is unavailable or inaccurate. Keep Draft preserves incomplete work.
 
 Wallet automation and reminders
 Settings → Integrations → Wallet Automation explains setup in Shortcuts. Cuekeeper cannot create the personal automation for you. Available transaction fields depend on the system. Review captured drafts from Upcoming or Payments → Expenses to complete. Separate purchases with identical amounts are not automatically merged. Reminders are optional; drafts remain accessible if notifications are denied or silenced by Focus.

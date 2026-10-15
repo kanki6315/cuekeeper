@@ -20,7 +20,7 @@ Only the standard library plus the `openssl` and `security` CLIs, so it runs on
 any Mac. Usage:
 
   asc_profile.py --key-id ID --issuer-id UUID --key-path AuthKey.p8 \
-                 --team TEAMID --bundle-id com.example.app --name "Example App Store"
+                 --team TEAMID --bundle-id com.example.app --name "Example App Store" --app-group group.com.example.app
 """
 import argparse
 import base64
@@ -148,6 +148,18 @@ def supports_cloudkit(profile, team, bundle_id, container):
             and entitlements.get("com.apple.developer.weatherkit") is True)
 
 
+def supports_profile(profile, team, bundle_id, app_group, cloudkit_container=None):
+    """Validate target identity and shared storage, plus app-only capabilities."""
+    entitlements = profile_entitlements(profile)
+    groups = entitlements.get("com.apple.security.application-groups", [])
+    return (entitlements.get("com.apple.developer.team-identifier") == team
+            and entitlements.get("application-identifier") == f"{team}.{bundle_id}"
+            and isinstance(groups, list)
+            and app_group in groups
+            and (cloudkit_container is None
+                 or supports_cloudkit(profile, team, bundle_id, cloudkit_container)))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--key-id", required=True)
@@ -156,7 +168,8 @@ def main():
     ap.add_argument("--team", required=True)
     ap.add_argument("--bundle-id", required=True)
     ap.add_argument("--name", required=True, help="profile name to reuse or create")
-    ap.add_argument("--cloudkit-container", required=True)
+    ap.add_argument("--app-group", required=True)
+    ap.add_argument("--cloudkit-container", help="require app-only CloudKit, push and WeatherKit capabilities")
     a = ap.parse_args()
 
     local = local_distribution_identities()
@@ -196,7 +209,7 @@ def main():
         rel = p.get("relationships", {})
         b = (rel.get("bundleId", {}).get("data") or {}).get("id")
         certs = {c["id"] for c in rel.get("certificates", {}).get("data", [])}
-        if b == bundle["id"] and cert["id"] in certs and p["attributes"].get("profileState") == "ACTIVE" and supports_cloudkit(p, a.team, a.bundle_id, a.cloudkit_container):
+        if b == bundle["id"] and cert["id"] in certs and p["attributes"].get("profileState") == "ACTIVE" and supports_profile(p, a.team, a.bundle_id, a.app_group, a.cloudkit_container):
             usable = p
             break
     if usable is None:
@@ -212,9 +225,13 @@ def main():
     else:
         log(f"reusing profile {usable['attributes']['name']} (expires {usable['attributes'].get('expirationDate', '')[:10]})")
 
-    if not supports_cloudkit(usable, a.team, a.bundle_id, a.cloudkit_container):
-        die("profile lacks Cuekeeper's production CloudKit, push or WeatherKit entitlements. "
-            "Associate the iCloud container and enable WeatherKit for the bundle ID in Certificates, Identifiers & Profiles first.")
+    if not supports_profile(usable, a.team, a.bundle_id, a.app_group, a.cloudkit_container):
+        requirements = f"App Group {a.app_group}"
+        if a.cloudkit_container:
+            requirements += ", production CloudKit, push and WeatherKit"
+        die(f"profile for {a.bundle_id} lacks the required identity or entitlements: {requirements}. "
+            "Enable these capabilities and associate the required groups/containers for this bundle ID "
+            "in Certificates, Identifiers & Profiles first.")
 
     # 4. Install it where Xcode and xcodebuild look.
     content = base64.b64decode(usable["attributes"]["profileContent"])

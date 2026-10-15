@@ -115,6 +115,8 @@ fi
 bundle_id="$(sed -n "s/^ *PRODUCT_BUNDLE_IDENTIFIER: *[\"']\{0,1\}\([A-Za-z0-9.-]*\)[\"']\{0,1\} *$/\1/p" project.yml | head -1)"
 [ -n "$bundle_id" ] || die "PRODUCT_BUNDLE_IDENTIFIER not found in project.yml"
 profile_name="Cuekeeper App Store"
+widget_bundle_id="${bundle_id}.widgets"
+app_group="group.com.arjunakankipati.cuekeeper"
 cloudkit_container="iCloud.com.arjunakankipati.cuekeeper"
 
 pretty() { if command -v xcbeautify >/dev/null; then xcbeautify; else cat; fi; }
@@ -179,10 +181,14 @@ if [ "$upload" = 1 ]; then destination=upload; else destination=export; fi
 if [ ${#auth[@]} -gt 0 ]; then
     log "App Store profile for the keychain's Apple Distribution certificate"
     profile="$(python3 asc_profile.py --key-id "$ASC_KEY_ID" --issuer-id "$ASC_ISSUER_ID" \
-        --key-path "$key_path" --team "$team" --bundle-id "$bundle_id" --name "$profile_name" --cloudkit-container "$cloudkit_container")"
+        --key-path "$key_path" --team "$team" --bundle-id "$bundle_id" --name "$profile_name" --app-group "$app_group" --cloudkit-container "$cloudkit_container")"
+    widget_profile="$(python3 asc_profile.py --key-id "$ASC_KEY_ID" --issuer-id "$ASC_ISSUER_ID" \
+        --key-path "$key_path" --team "$team" --bundle-id "$widget_bundle_id" \
+        --name "Cuekeeper Widgets App Store" --app-group "$app_group")"
     signing="	<key>signingStyle</key><string>manual</string>
 	<key>signingCertificate</key><string>Apple Distribution</string>
-	<key>provisioningProfiles</key><dict><key>$bundle_id</key><string>$profile</string></dict>"
+	<key>provisioningProfiles</key><dict><key>$bundle_id</key><string>$profile</string>
+		<key>$widget_bundle_id</key><string>$widget_profile</string></dict>"
 else
     signing="	<key>signingStyle</key><string>automatic</string>"
 fi

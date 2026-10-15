@@ -1,4 +1,5 @@
 import CoreData
+import FoundationModels
 import XCTest
 import UIKit
 @testable import Cuekeeper
@@ -88,6 +89,89 @@ final class ExpenseTests: XCTestCase {
         let extracted = ReceiptFields(merchant: "Shop", day: "not a date", amount: "NaN", currency: "$", tax: "unknown", category: "invented").expense
         XCTAssertEqual(extracted.day, ""); XCTAssertEqual(extracted.amount, ""); XCTAssertEqual(extracted.currency, ""); XCTAssertEqual(extracted.tax, ""); XCTAssertEqual(extracted.category, "Other")
     }
+    private var contextOverflow: Error {
+        LanguageModelError.contextSizeExceeded(.init(contextSize: 4096, tokenCount: 5000, debugDescription: "test overflow"))
+    }
+
+    func testReceiptStaysOnDeviceWhenItFits() async throws {
+        let result = try await ReceiptExtractor.extract(text: "TOTAL 24.50", onDevice: { _ in self.valid }, inCloud: { _ in
+            XCTFail("A receipt that fits must not be sent to PCC")
+            return self.valid
+        }, progress: { _ in })
+        XCTAssertEqual(result.location, .device)
+        XCTAssertEqual(result.expense, valid)
+    }
+
+    func testReceiptOverflowRetriesFullTextInCloudOnce() async throws {
+        let text = String(repeating: "Item 123.45\n", count: 1500)
+        var phases: [ReceiptExtractor.ProcessingLocation] = []
+        var cloudCalls = 0
+        let result = try await ReceiptExtractor.extract(text: text, onDevice: { received in
+            XCTAssertEqual(received, text)
+            throw self.contextOverflow
+        }, inCloud: { received in
+            cloudCalls += 1
+            XCTAssertEqual(received, text)
+            return self.valid
+        }, progress: { phases.append($0) })
+        XCTAssertEqual(cloudCalls, 1)
+        XCTAssertEqual(phases, [.device, .privateCloudCompute])
+        XCTAssertEqual(result.location, .privateCloudCompute)
+        XCTAssertEqual(result.expense, valid)
+        XCTAssertTrue(result.location.completionMessage.contains("Private Cloud Compute"))
+    }
+
+    func testReceiptOtherErrorsDoNotTriggerCloud() async {
+        do {
+            _ = try await ReceiptExtractor.extract(text: "Receipt", onDevice: { _ in
+                throw RecordError.invalid("Model unavailable")
+            }, inCloud: { _ in
+                XCTFail("Only context overflow should trigger PCC")
+                return self.valid
+            }, progress: { _ in })
+            XCTFail("Expected error")
+        } catch { XCTAssertEqual(error.localizedDescription, "Model unavailable") }
+    }
+
+    func testReceiptCloudOverflowUsesFriendlyMessage() async {
+        do {
+            _ = try await ReceiptExtractor.extract(text: "Receipt", onDevice: { _ in throw self.contextOverflow },
+                inCloud: { _ in throw self.contextOverflow }, progress: { _ in })
+            XCTFail("Expected error")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, "This receipt is too long to read automatically. Enter the details below using the attached photo.")
+        }
+    }
+
+    func testReceiptCloudFailuresUseFriendlyMessages() async {
+        let errors: [(Error, String)] = [
+            (PrivateCloudComputeLanguageModel.Error.networkFailure(.init(debugDescription: "raw network error")), "Check your internet connection"),
+            (PrivateCloudComputeLanguageModel.Error.quotaLimitReached(.init(debugDescription: "raw quota error")), "usage limit"),
+            (PrivateCloudComputeLanguageModel.Error.serviceUnavailable(.init(debugDescription: "raw service error")), "unavailable right now")
+        ]
+        for (failure, expected) in errors {
+            do {
+                _ = try await ReceiptExtractor.extract(text: "Receipt", onDevice: { _ in throw self.contextOverflow },
+                    inCloud: { _ in throw failure }, progress: { _ in })
+                XCTFail("Expected error")
+            } catch { XCTAssertTrue(error.localizedDescription.contains(expected), error.localizedDescription) }
+        }
+    }
+
+    func testReceiptCancellationBeforeFallbackDoesNotSendToCloud() async {
+        let task = Task {
+            try await ReceiptExtractor.extract(text: "Receipt", onDevice: { _ in
+                withUnsafeCurrentTask { $0?.cancel() }
+                throw self.contextOverflow
+            }, inCloud: { _ in
+                XCTFail("Cancelled requests must not reach PCC")
+                return self.valid
+            }, progress: { _ in })
+        }
+        do { _ = try await task.value; XCTFail("Expected cancellation") }
+        catch { XCTAssertTrue(error is CancellationError) }
+    }
+
     func testVisionReadsReceiptImageOnDevice() async throws {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         let image = UIGraphicsImageRenderer(size: CGSize(width: 800, height: 400), format: format).image { renderer in

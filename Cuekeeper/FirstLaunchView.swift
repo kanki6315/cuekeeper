@@ -3,10 +3,11 @@ import SwiftUI
 
 /// A focused native form sheet on iPad; a full-height setup flow on iPhone.
 struct FirstLaunchPresentation: View {
-    @Environment(\.horizontalSizeClass) private var sizeClass
     let onFinish: () -> Void
     var body: some View {
-        if sizeClass == .regular {
+        // Device idiom stays stable across iPad window resizing and Split View.
+        // A size-class branch recreates the flow and loses navigation and form state.
+        if UIDevice.current.userInterfaceIdiom == .pad {
             RootView().sheet(isPresented: .constant(true)) {
                 FirstLaunchView(onFinish: onFinish)
                     .presentationSizing(.form)

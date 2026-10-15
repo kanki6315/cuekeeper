@@ -54,18 +54,17 @@ final class DesignSupplementTests: XCTestCase {
         XCUIDevice.shared.orientation = tablet ? .landscapeLeft : .portrait
         for dark in [false, true] {
             for route in ["root", "payments", "edit-job", "settings"] {
-                app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=\(route)"] + (dark ? ["--design-dark"] : [])
+                app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=\(route)"] + ["-appearance", dark ? "dark" : "light"] + (dark ? ["--design-dark"] : [])
                 app.launch()
                 XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
                 if route == "root" {
-                    let scope = app.buttons["upcoming-scope"]
-                    XCTAssertTrue(scope.waitForExistence(timeout: 10))
-                    scope.tap()
-                    app.buttons["This week"].tap()
-                    XCTAssertTrue(scope.label.contains("This week"))
-                    scope.tap()
-                    app.buttons["All upcoming"].tap()
-                    XCTAssertTrue(scope.label.contains("All upcoming"))
+                    let week = app.buttons["upcoming-scope-true"]
+                    let all = app.buttons["upcoming-scope-false"]
+                    XCTAssertTrue(week.waitForExistence(timeout: 10))
+                    week.tap()
+                    XCTAssertTrue(week.isSelected)
+                    all.tap()
+                    XCTAssertTrue(all.isSelected)
                     XCTAssertTrue(app.buttons["add-job"].isHittable)
                 }
                 Thread.sleep(forTimeInterval: 1)
@@ -83,7 +82,7 @@ final class DesignSupplementTests: XCTestCase {
         let tablet = UIDevice.current.userInterfaceIdiom == .pad
         XCUIDevice.shared.orientation = tablet ? .landscapeLeft : .portrait
         for (route, large, dark) in [("root", false, false), ("job", false, false), ("add-job", false, false), ("root", false, true), ("root", true, true), ("job", true, true), ("edit-session", true, true)] {
-            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=\(route)", "-UIPreferredContentSizeCategoryName", large ? UIContentSizeCategory.accessibilityExtraLarge.rawValue : UIContentSizeCategory.large.rawValue] + (dark ? ["--design-dark"] : [])
+            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=\(route)", "-UIPreferredContentSizeCategoryName", large ? UIContentSizeCategory.accessibilityExtraLarge.rawValue : UIContentSizeCategory.large.rawValue] + ["-appearance", dark ? "dark" : "light"] + (dark ? ["--design-dark"] : [])
             app.launch()
             XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
             Thread.sleep(forTimeInterval: 2)

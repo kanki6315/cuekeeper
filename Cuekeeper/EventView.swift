@@ -145,8 +145,9 @@ private struct EventBookingFields: View {
                 SeriesSelectionFields(names: $draft.seriesNames)
             }
             Section("Work") {
-                DaybookPicker("Status", selection: $draft.bookingStatus, identifier: "edit-booking-status") {
-                    ForEach(BookingStatus.allCases, id: \.self) { Text($0.title).tag($0) }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Status")
+                    BookingStatusSegments(selection: $draft.bookingStatus, identifier: "edit-booking-status")
                 }
                 DaybookPicker("Arrangement", selection: $draft.workArrangement, identifier: "work-arrangement") {
                     ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) }

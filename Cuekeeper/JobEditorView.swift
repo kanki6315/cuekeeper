@@ -154,10 +154,10 @@ struct JobDetailView: View {
         let _ = eventRecords.count
         DaybookForm(title: job.eventTitle, subtitle: job.client?.name ?? "Client to add") {
             Section {
-                Menu {
-                    ForEach(BookingStatus.allCases, id: \.self) { status in Button(status.title) { updateBookingStatus(status) } }
-                } label: { HStack { BookingBadge(status: job.bookingStatus); Text("Change status"); Spacer(); Image(systemName: "chevron.down") } }
-                .accessibilityIdentifier("booking-status")
+                BookingStatusSegments(selection: Binding(
+                    get: { BookingStatus(rawValue: job.bookingStatus) ?? .tentative },
+                    set: { updateBookingStatus($0) }
+                ), identifier: "booking-status")
                 Button { editing = true } label: { DaybookMetadata(symbol: "calendar", text: dateRange(job)) }.accessibilityIdentifier("edit-event-dates")
                 if !job.eventTimeZoneID.isEmpty { DaybookMetadata(symbol: "globe", text: "Event timezone: " + zoneLabel(job.eventTimeZoneID, date: Day.date(from: job.eventStartDay) ?? Date())) }
                 if !job.eventLocation.isEmpty { DaybookMetadata(symbol: "mappin", text: job.eventLocation) }

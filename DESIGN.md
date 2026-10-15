@@ -144,7 +144,7 @@ Panels and search use gently rounded rectangles. Primary and secondary actions u
 
 DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `PrimaryButtonText` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Event uses the primary style; Add Session and Add Broadcast Link use the secondary style.
 
-Event details expose the next booking-state action inline: Mark as booked for tentative events and Mark completed for booked events. Edit Event is a toolbar action; Duplicate Event and confirmed Delete Event appear in separate sections. Upcoming uses a native segmented picker for All upcoming / This week. Events uses All / Active / Completed / Cancelled. Both segmented scopes sit on a capsule with AccentColor at 0.08 opacity.
+Event details expose the next booking-state action inline: Mark as booked for tentative events and Mark completed for booked events. Edit Event is a toolbar action; Duplicate Event and confirmed Delete Event appear in separate sections. Upcoming uses DaybookSegments for All upcoming / This week. Events uses the same control for All / Active / Completed / Cancelled. These compact, text-only controls keep all choices in one row. The visible track is 36 points high at default text size (32-point segments), with a separate 44-point touch area. Selection uses a slightly stronger tinted fill, a fine outline and semibold text; inactive options keep a faint tint without individual outlines. No icons or grid fallback. At accessibility text sizes the same row scrolls horizontally rather than compressing enlarged labels.
 
 ### Panels and sections
 
@@ -186,8 +186,7 @@ and Cancelled.
 Schedule (Tentative / Confirmed), Coverage (Undecided / Covering / Not covering),
 and new-event status use DaybookChoicePicker. The label stays above the native
 segments. A labelled menu replaces them above xLarge Dynamic Type or when the
-scaled 300-point minimum width cannot fit. Existing-event status and arrangement
-retain menus for their four choices.
+scaled 300-point minimum width cannot fit. Existing-event booking status uses BookingStatusSegments in both detail and editing, with dedicated light/dark BookingTentative (amber), BookingBooked (forest/mint), BookingCompleted (blue), and BookingCancelled (muted red) tokens. Detail selections save immediately through the existing conflict-aware save path; editor selections remain draft changes until Save. Arrangement retains its menu.
 
 The event owns every session's timezone. Event setup and the wizard session list
 expose it once; session editing displays it read-only. Remote/hybrid Work fields

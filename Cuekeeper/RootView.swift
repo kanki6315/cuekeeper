@@ -181,21 +181,13 @@ private struct JobsView: View {
                                     .foregroundStyle(Color("SecondaryText"))
                             }
                         }
-                        Picker("Show upcoming", selection: $upcomingScope) {
-                            Text("Today").tag("Today")
-                            Text("Week").tag("Week")
-                            Text("All").tag("All")
-                        }
-                        .pickerStyle(.segmented)
-                        .background(Color("AccentColor").opacity(0.08), in: Capsule())
-                        .accessibilityIdentifier("upcoming-scope")
+                        DaybookSegments(title: "Show upcoming", selection: $upcomingScope,
+                                        options: ["Today", "Week", "All"], identifier: "upcoming-scope",
+                                        label: { $0 })
                     } else {
-                        Picker("Bookings", selection: $scope) {
-                            ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .background(Color("AccentColor").opacity(0.08), in: Capsule())
-                        .accessibilityIdentifier("event-status-scope")
+                        DaybookSegments(title: "Bookings", selection: $scope,
+                                        options: ["All", "Active", "Completed", "Cancelled"],
+                                        identifier: "event-status-scope", label: { $0 })
                     }
                 }
                 if jobs.isEmpty {

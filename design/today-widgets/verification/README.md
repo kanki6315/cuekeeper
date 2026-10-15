@@ -66,3 +66,10 @@ reload timing, locked-device access and widget-host tap behavior remain unverifi
 The in-app URL workflow does not establish a successful tap from a real widget.
 Physical-device sync delivery and timezone changes also remain device checks.
 No archive upload, TestFlight distribution or release occurred.
+
+## Main-branch integration
+
+Integrated the newer compact `DaybookSegments` controls from main while preserving
+Today / Week / All. The earlier layout captures show the prior native segmented
+picker; schedule and widget content are unchanged. UI test selectors were updated
+to the new string scope identifiers. The combined signed Release build passed.

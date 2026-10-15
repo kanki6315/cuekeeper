@@ -6,7 +6,7 @@ final class TodayTests: XCTestCase {
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures"]
         app.launch()
         XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 15))
-        app.segmentedControls["upcoming-scope"].buttons["All"].tap()
+        app.buttons["upcoming-scope-All"].tap()
         XCTAssertTrue(app.textFields["search-jobs"].waitForExistence(timeout: 3))
         app.open(URL(string: "cuekeeper://today")!)
         XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))

@@ -193,13 +193,16 @@ actor FixtureBackups: CloudBacking {
     static let shared = FixtureBackups()
     private var values: [String: (CloudBackupStore.Entry, Data)] = [:]
     func list() async throws -> [CloudBackupStore.Entry] { values.values.map { $0.0 }.sorted { $0.date > $1.date } }
-    func save(data: Data, date: Date, events: Int) async throws {
+    func save(file: URL, date: Date, events: Int) async throws {
+        let data = try Data(contentsOf: file)
         let id = CKRecord.ID(recordName: UUID().uuidString)
         values[id.recordName] = (CloudBackupStore.Entry(id: id, date: date, bytes: Int64(data.count), events: events), data)
     }
-    func load(_ entry: CloudBackupStore.Entry) async throws -> Data {
+    func load(_ entry: CloudBackupStore.Entry) async throws -> URL {
         guard let value = values[entry.id.recordName] else { throw RecordError.invalid("Backup not found.") }
-        return value.1
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Fixture-\(UUID()).zip")
+        try value.1.write(to: url)
+        return url
     }
     func delete(_ entry: CloudBackupStore.Entry) async throws { values[entry.id.recordName] = nil }
 }

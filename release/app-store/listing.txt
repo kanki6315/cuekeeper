@@ -36,7 +36,7 @@ CONNECT YOUR CALENDAR
 Publish event placeholders and eligible confirmed sessions to a calendar you choose. One designated device publishes changes when Cuekeeper is open and connected.
 
 YOUR DAYBOOK, ACROSS DEVICES
-Save work offline and sync through your private iCloud database when available. Create separate manual iCloud backups and recover recently deleted events. Sync and backups serve different purposes.
+Save work offline and sync through your private iCloud database when available. Create manual iCloud backups, export or import a backup in Files, and recover recently deleted events. Sync and backups serve different purposes.
 
 Requires iOS/iPadOS 27. Automatic receipt extraction requires a compatible device with Apple Intelligence enabled and its model available. iCloud features require an available Apple Account and connectivity. Wallet automation is configured by you in Shortcuts; available inputs vary. Widgets update on the system's schedule.
 

@@ -1,6 +1,7 @@
 import CloudKit
 import CoreData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Recovery-only presentation of the existing merge restore; no creation or deletion here.
 struct FirstLaunchBackupView: View {
@@ -8,14 +9,11 @@ struct FirstLaunchBackupView: View {
     @State private var entries: [CloudBackupStore.Entry] = []
     @State private var selected: CKRecord.ID?
     @State private var loaded = false
-    @State private var busy = false
-    @State private var error: String?
-    @State private var archive: BackupArchive?
-    @State private var reviewing = false
+    @StateObject private var workflow = BackupWorkflow()
+    @State private var importing = false
+    private var busy: Bool { workflow.busy }
     @State private var restored = false
     @State private var resultMessage = ""
-    @State private var generation = UUID()
-    @State private var operation: Task<Void, Never>?
     private let cloud: any CloudBacking
     let onRestore: () -> Void
 
@@ -26,7 +24,7 @@ struct FirstLaunchBackupView: View {
     var body: some View {
         LaunchPage {
             LaunchHeading("Choose a backup")
-            if busy { ProgressView(loaded ? "Loading backup…" : "Loading backups…") }
+            if busy { BackupProgressView(workflow: workflow) }
             if loaded && entries.isEmpty {
                 ContentUnavailableView("No backups found", systemImage: "archivebox")
             }
@@ -49,66 +47,61 @@ struct FirstLaunchBackupView: View {
                     }
                 }
             }
-            if !busy && (entries.isEmpty || error != nil) {
+            if !busy && (entries.isEmpty || workflow.error != nil) {
                 Button("Refresh", action: refresh).frame(minHeight: 44)
             }
+            Button("Import from Files") { importing = true }.frame(minHeight: 44).disabled(busy)
+                .accessibilityIdentifier("setup-import-backup")
+            Text("Choose a Cuekeeper ZIP backup. Exported files contain personal and financial records and are not encrypted.")
+                .font(.footnote).foregroundStyle(Color("SecondaryText"))
             Spacer(minLength: 0)
         } actions: {
             Button("Review restore", action: review).buttonStyle(LaunchPrimaryButton())
                 .disabled(selected == nil || busy).accessibilityIdentifier("setup-review-restore")
         }
         .task { if !loaded { refresh() } }
-        .onDisappear { operation?.cancel() }
+        .onDisappear { workflow.cancel() }
         .onReceive(NotificationCenter.default.publisher(for: .CKAccountChanged)) { _ in
-            operation?.cancel(); generation = UUID(); busy = false
-            entries = []; selected = nil; archive = nil; reviewing = false; loaded = false
-            error = "Your iCloud account changed. Refresh to load its backups."
+            workflow.invalidate()
+            entries = []; selected = nil; loaded = false
+            workflow.error = "Your iCloud account changed. Refresh to load its backups."
         }
-        .saveErrorAlert($error)
-        .confirmationDialog("Restore this backup?", isPresented: $reviewing, titleVisibility: .visible) {
+        .saveErrorAlert($workflow.error)
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
+            switch result {
+            case .success(let url): workflow.importFile(url, context: context)
+            case .failure(let error): workflow.error = error.localizedDescription
+            }
+        }
+        .confirmationDialog("Restore this backup?", isPresented: $workflow.reviewing, titleVisibility: .visible) {
             Button("Restore Backup") {
-                guard let archive else { return }
-                do {
-                    let result = try archive.restore(in: context)
+                workflow.restore(context: context) { result in
                     resultMessage = "Added \(result.added) records and recovered \(result.recovered) deleted records."
                     restored = true
-                } catch { self.error = error.localizedDescription }
-                self.archive = nil
+                }
             }
-            Button("Cancel", role: .cancel) { archive = nil }
-        } message: {
-            Text("This adds missing records and restores records deleted since the backup. Existing edits and payments are kept. Recovered events can return to your connected calendar. These changes sync to your other devices.")
-        }
+            Button("Cancel", role: .cancel) { workflow.archive = nil }
+        } message: { Text(workflow.reviewSummary) }
+
         .alert("Backup recovered", isPresented: $restored) {
             Button("Continue setup", action: onRestore)
         } message: { Text(resultMessage) }
     }
 
     private func refresh() {
-        run {
+        workflow.run("Loading backups…") { control in
             let values = try await cloud.list()
-            try Task.checkCancellation()
+            try control.check()
             entries = values; loaded = true; selected = values.first?.id
         }
     }
     private func review() {
         guard let entry = entries.first(where: { $0.id == selected }) else { return }
-        run {
-            let data = try await cloud.load(entry)
-            try Task.checkCancellation()
-            archive = try BackupArchive.decode(data, model: context.persistentStoreCoordinator!.managedObjectModel)
-            reviewing = true
-        }
-    }
-    private func run(_ work: @escaping @MainActor () async throws -> Void) {
-        guard !busy else { return }
-        busy = true; error = nil
-        let current = generation
-        operation = Task { @MainActor in
-            defer { if generation == current { busy = false } }
-            do { try await work() }
-            catch is CancellationError { }
-            catch { if generation == current { self.error = error.localizedDescription } }
+        workflow.run("Downloading backup…") { control in
+            let url = try await cloud.load(entry)
+            defer { try? FileManager.default.removeItem(at: url) }
+            try control.check()
+            try await workflow.read(url, context: context, control: control)
         }
     }
 }

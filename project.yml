@@ -23,6 +23,10 @@ settings:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG CLOUDKIT_SCHEMA_SETUP"
     Release:
       CLOUDKIT_ENVIRONMENT: Production
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    exactVersion: 0.9.20
 targets:
   Cuekeeper:
     type: application
@@ -76,6 +80,7 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_MACCATALYST: NO
     dependencies:
+      - package: ZIPFoundation
       - target: CuekeeperWidgets
         embed: true
   CuekeeperWidgets:

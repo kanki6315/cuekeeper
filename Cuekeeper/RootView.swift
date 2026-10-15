@@ -336,7 +336,7 @@ struct SettingsView: View {
                 Text("Events are saved on this device and sync with iCloud when available. Backups are managed separately below.")
             }
             Section("Recovery & backups") {
-                DaybookLink { BackupView() } label: { Label("iCloud Backups", systemImage: "icloud.and.arrow.up") }
+                DaybookLink { BackupView() } label: { Label("Backups", systemImage: "icloud.and.arrow.up") }
                 DaybookLink { RecentlyDeletedView() } label: { Label("Recently Deleted", systemImage: "trash") }
             }
             Section("About") {

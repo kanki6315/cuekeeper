@@ -421,7 +421,7 @@ reuse the pending selection rather than creating events or expenses.
 V12 adds the optional Expense entity and Job.expenses inverse, with externally
 stored binary receipt data. Photos and draft fields are included in explicit
 backups; pre-expense archives remain restorable. Event deletion retains its
-expenses with the event tombstone. The existing 100 MB backup limit still applies.
+expenses with the event tombstone. Backups use the ZIP format and limits described below.
 Production schema deployment and real-device camera/model, Action Button,
 and cross-device image-sync checks are required before release.
 ### Today and widgets
@@ -492,3 +492,30 @@ foreground reconciliation removes stale delivered/pending reminders. Drafts stay
 accessible when reminders are disabled or silenced by Focus. Locked-device access,
 actual Wallet payloads and cold-start notification delivery still need hardware
 validation. No server, PCC or remote notification service is used for this flow.
+
+
+### Receipt-heavy backups
+
+Backups use a version-2 ZIP: `manifest.json`, `records.json`, and `receipts/*.jpg`.
+The metadata references receipt paths, lengths and SHA-256 checksums; photo bytes
+are never base64-encoded into JSON. ZIPFoundation 0.9.20 is pinned through SwiftPM.
+No legacy JSON import is supported (there are no deployed backups to migrate).
+
+Settings → Recovery & backups → Backups supports private iCloud copies and
+Files export/import. First-launch recovery also supports Files import. Archive
+preparation, validation and restore run on private Core Data contexts. Restore
+validates before writing, preserves the existing merge rules, and commits once
+with an error merge policy so concurrent conflicts abort rather than overwrite.
+
+Limits: 512 MiB per archive/expanded contents, 32 MiB metadata, 200,000 records,
+12 MiB per receipt, 50 iCloud copies. Cloud storage splits the archive into
+16 MiB CKAssets; parts and the backup index commit atomically in the existing
+custom zone. File export is an unencrypted ZIP and needs no iCloud account.
+Temporary files are owned by the operation, protected on iOS, and removed on
+normal completion/cancellation. Keep the app open for backup and restore.
+
+Progress names the local preparation, checking, packing and restoring stages;
+iCloud operations remain indeterminate. Preparation/read cancellation leaves
+the daybook unchanged. Restore and cloud commit do not offer cancellation.
+The tests exercise corrupt/missing/unexpected files, limits, cancellation,
+merge behavior and a 128 MiB receipt round trip beyond the old limit.

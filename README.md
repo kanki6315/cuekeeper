@@ -478,6 +478,9 @@ Capture Expense is a separate, background-only App Intent with optional Merchant
 Amount, Currency, Transaction date and Transaction ID inputs. It saves an expense
 draft without a receipt or event and returns its UUID. It does not open the app or
 ask for missing fields. Scan Receipt remains the foreground Action Button action.
+It runs without unlocking so Wallet automations work after a locked-phone payment.
+For that reason it is not an App Shortcut and has no Siri phrase; add it to a
+personal automation or custom shortcut from the Shortcuts action list.
 The new behavior reuses V12; optional captured-payment metadata is stored with the
 expense value, so no further Core Data/CloudKit schema version is required.
 

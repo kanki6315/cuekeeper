@@ -21,7 +21,18 @@ struct CaptureExpenseIntent: AppIntent {
         try Task.checkCancellation()
         let input = ExpenseCaptureInput(merchant: merchant ?? "", amount: amount ?? "", currency: currency ?? "", date: transactionDate, transactionID: transactionID ?? "")
         let result = try Expense.captureBackground(input, in: persistence.container.viewContext)
+        ExpenseShortcutActivity.recordSuccess()
         if result.inserted { await ExpenseNotifications.shared.notify(id: result.id) }
         return .result(value: result.id.uuidString)
+    }
+}
+
+/// Local execution evidence only. Never infer an installed/enabled Wallet automation
+/// from this timestamp: Siri and manual shortcuts invoke the same intent.
+enum ExpenseShortcutActivity {
+    static let lastSuccessKey = "expenseShortcutLastSuccess"
+
+    static func recordSuccess(at date: Date = Date(), defaults: UserDefaults = .standard) {
+        defaults.set(date.timeIntervalSince1970, forKey: lastSuccessKey)
     }
 }

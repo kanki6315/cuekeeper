@@ -49,6 +49,12 @@ struct EventWizardView: View {
         }
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
+        if DesignFixtures.enabled, args.contains("--design-multiday-event") {
+            var sample = EventCreationDraft()
+            sample.events[0].details.startDate = Day.date(from: "2026-10-16")!
+            sample.events[0].details.endDate = Day.date(from: "2026-10-18")!
+            _draft = State(initialValue: sample)
+        }
         if args.contains("--ui-testing"), args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") || args.contains("--wizard-timezone-preview") {
             var sample = EventCreationDraft()
             sample.shared.clientName = "Northside Sports"
@@ -121,10 +127,7 @@ struct EventWizardView: View {
     }
 
     private func page(_ current: EventWizardStep) -> some View {
-        DaybookForm(title: current.rawValue) {
-            Section {
-                Text("Step \((route.firstIndex(of: current) ?? 0) + 1) of \(route.count)").font(.subheadline).foregroundStyle(.secondary)
-            }.containerValue(\.daybookUnframed, true)
+        DaybookForm(title: current == .setup ? "" : current.rawValue) {
             switch current {
             case .setup: setup
             case .events: eventsPage
@@ -147,6 +150,9 @@ struct EventWizardView: View {
         }
         .safeAreaInset(edge: .bottom) {
             HStack {
+                Text("Step \((route.firstIndex(of: current) ?? 0) + 1) of \(route.count)")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Button(current == .review ? (season && draft.events.count > 1 ? "Create \(draft.events.count) events" : "Create event") : (current == .setup && season ? "Add events" : "Continue")) {
                     if current == .review { save() } else { advance(from: current) }

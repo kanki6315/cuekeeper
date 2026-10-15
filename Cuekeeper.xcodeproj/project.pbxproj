@@ -11,11 +11,13 @@
 		062400846722C32FFC23825F /* DaybookStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */; };
 		0E1754E0F626C4A2470A77AF /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F2A2E2C9FC3521A2899B7E /* TodayView.swift */; };
 		1ED3D411CEF476412227AA25 /* SchedulePublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */; };
+		21B9B37832158DEF77AD99BC /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1CED6CB0B409CB158E465774 /* ThirdPartyNotices.txt */; };
 		2349E476E2580C0A2FBC71C1 /* SiriCreatedEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */; };
 		240C2163199761D478ECBE4B /* Expenses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3763FF11F6A434226B2DBD /* Expenses.swift */; };
 		24BEEAE21058EB26AEC57197 /* CuekeeperWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */; };
 		28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */; };
 		29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */; };
+		2B4598A753C6F385AEEC47AE /* BackupWorkflow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BDB272EC77BB927B9362A4 /* BackupWorkflow.swift */; };
 		2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
 		31296B6D5EDECA64D1FE7B8E /* CuekeeperWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */; };
 		338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */; };
@@ -80,6 +82,7 @@
 		BE38B159D7E7F755F31684D0 /* CuekeeperMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */; };
 		BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE600824A3A4DC39439FDF0 /* CalendarController.swift */; };
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
+		C69816F0A57DC9692E3A5354 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 8180F3EBCA27A4ED888D1DB7 /* ZIPFoundation */; };
 		C94502CCC6AD8B533F1DFE7A /* BackupArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4510B4441D5730C579C736AA /* BackupArchive.swift */; };
 		C98339F7FD17877747472285 /* CalendarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71531F3273F27F2929AC0EE9 /* CalendarTests.swift */; };
 		D2F5F7D4DAFBD2CB1B51CFC4 /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */; };
@@ -90,6 +93,7 @@
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 		DCF5239950C0B0CFD22B1449 /* FirstLaunchBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */; };
 		DE6839B173599AEF04121980 /* ExpenseAutomationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */; };
+		E39B5D066CD54FD2D66CBB20 /* BackupPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9459F7EEB801C95C854C005 /* BackupPackage.swift */; };
 		E87E8E7C6AECCF11ECC0FA0C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
 		EEF6F74D6395DF0098A9C424 /* EventWizardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */; };
 		F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919618A957BA6EC5BAA77600 /* EventWeather.swift */; };
@@ -151,6 +155,7 @@
 		184979F54A69B58764328050 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
 		1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardHandoff.swift; sourceTree = "<group>"; };
 		1C39653F7538932613199392 /* EventVisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventVisualTests.swift; sourceTree = "<group>"; };
+		1CED6CB0B409CB158E465774 /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundExpenseTests.swift; sourceTree = "<group>"; };
 		206A75976A88F3D6564A881F /* Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recovery.swift; sourceTree = "<group>"; };
 		242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDraft.swift; sourceTree = "<group>"; };
@@ -188,6 +193,7 @@
 		6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherTests.swift; sourceTree = "<group>"; };
 		6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateEventIntent.swift; sourceTree = "<group>"; };
 		71531F3273F27F2929AC0EE9 /* CalendarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTests.swift; sourceTree = "<group>"; };
+		74BDB272EC77BB927B9362A4 /* BackupWorkflow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupWorkflow.swift; sourceTree = "<group>"; };
 		762E08735536CF82AAD4C49D /* FirstLaunchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchView.swift; sourceTree = "<group>"; };
 		77E6DB6F2628C8A88BCDD097 /* CloudBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupStore.swift; sourceTree = "<group>"; };
 		7AC028165CC976F299783F54 /* PendingExpensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingExpensesView.swift; sourceTree = "<group>"; };
@@ -209,6 +215,7 @@
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A6F150655EBDB219023A79B0 /* CaptureExpenseIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureExpenseIntent.swift; sourceTree = "<group>"; };
 		A8242BC562D7713F5EAFAAE4 /* ExpenseNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseNotifications.swift; sourceTree = "<group>"; };
+		A9459F7EEB801C95C854C005 /* BackupPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupPackage.swift; sourceTree = "<group>"; };
 		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF513485C51BD69B238E3E80 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsView.swift; sourceTree = "<group>"; };
@@ -242,6 +249,17 @@
 		FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundExpenseTests.swift; sourceTree = "<group>"; };
 		FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriCreatedEventView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		527279FC8DB20C39C21F6EDC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C69816F0A57DC9692E3A5354 /* ZIPFoundation in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		27D261610FBDE70E33F6FD27 /* CuekeeperUITests */ = {
@@ -351,6 +369,7 @@
 			children = (
 				A6C890CABAF4353CE145B9D8 /* Assets.xcassets */,
 				E4201CFBC74D97C4425E97FD /* BackupView.swift */,
+				74BDB272EC77BB927B9362A4 /* BackupWorkflow.swift */,
 				EDE600824A3A4DC39439FDF0 /* CalendarController.swift */,
 				05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */,
 				4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */,
@@ -385,6 +404,7 @@
 				44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */,
 				994C44392560A52DE055B755 /* SessionBatchEditorView.swift */,
 				BBC535FB730F3A6A7FE4A398 /* SessionView.swift */,
+				1CED6CB0B409CB158E465774 /* ThirdPartyNotices.txt */,
 				94F2A2E2C9FC3521A2899B7E /* TodayView.swift */,
 				25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */,
 				285E6E4929F5CD01A13F37D3 /* Intents */,
@@ -406,6 +426,7 @@
 			isa = PBXGroup;
 			children = (
 				4510B4441D5730C579C736AA /* BackupArchive.swift */,
+				A9459F7EEB801C95C854C005 /* BackupPackage.swift */,
 				618C864D7A24CC9C62D1E183 /* Billing.swift */,
 				CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */,
 				9A3763FF11F6A434226B2DBD /* Expenses.swift */,
@@ -465,6 +486,7 @@
 			buildPhases = (
 				F188A65F2138C47EF72297CA /* Sources */,
 				7F320D7F11229E951718C76E /* Resources */,
+				527279FC8DB20C39C21F6EDC /* Frameworks */,
 				8A42CC8B2821BA10F7B186E9 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -474,6 +496,7 @@
 			);
 			name = Cuekeeper;
 			packageProductDependencies = (
+				8180F3EBCA27A4ED888D1DB7 /* ZIPFoundation */,
 			);
 			productName = Cuekeeper;
 			productReference = AC9EB79EE979555FDF748422 /* Cuekeeper.app */;
@@ -556,6 +579,9 @@
 			);
 			mainGroup = 57319CF8E6BF75448DE02999;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B3D31193A0E85C14AF2310D6 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5FEFC93A30BA70D94EF03E3C /* Products */;
 			projectDirPath = "";
@@ -578,6 +604,7 @@
 				039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */,
 				AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */,
 				56FD0CB1E2686A2BD6BA0266 /* PrivacyInfo.xcprivacy in Resources */,
+				21B9B37832158DEF77AD99BC /* ThirdPartyNotices.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -657,7 +684,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				C94502CCC6AD8B533F1DFE7A /* BackupArchive.swift in Sources */,
+				E39B5D066CD54FD2D66CBB20 /* BackupPackage.swift in Sources */,
 				92339E8B9B9F67BE1793652E /* BackupView.swift in Sources */,
+				2B4598A753C6F385AEEC47AE /* BackupWorkflow.swift in Sources */,
 				DAA665273A525BD7459E740C /* Billing.swift in Sources */,
 				BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */,
 				B85760704BC921A06AF76497 /* CalendarEventIntent.swift in Sources */,
@@ -1278,6 +1307,25 @@
 			defaultConfigurationName = CloudKitSetup;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B3D31193A0E85C14AF2310D6 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.9.20;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8180F3EBCA27A4ED888D1DB7 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B3D31193A0E85C14AF2310D6 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */
 		F4E805E51388000018AADFA0 /* Cuekeeper.xcdatamodeld */ = {

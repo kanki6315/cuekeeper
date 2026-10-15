@@ -5,9 +5,16 @@ import Foundation
 /// UUIDs preserve invoice snapshots and immutable financial revision identities.
 struct BackupArchive: Codable {
     var format = "com.cuekeeper.backup"
-    var version = 1
+    var version = 2
     var createdAt = Date()
     var records: [Record]
+    var workspace: BackupWorkspace? = nil
+    enum CodingKeys: String, CodingKey { case format, version, createdAt, records }
+    struct Attachment: Codable, Equatable {
+        var path: String
+        var bytes: Int64
+        var sha256: String
+    }
 
     struct Key: Codable, Hashable { var entity: String; var id: UUID }
     struct Record: Codable {
@@ -16,10 +23,10 @@ struct BackupArchive: Codable {
         var relationships: [String: [Key]]
     }
     enum Value: Codable, Equatable {
-        case data(Data), null, string(String), uuid(UUID), date(Date), integer(Int64), boolean(Bool)
+        case attachment(Attachment), null, string(String), uuid(UUID), date(Date), integer(Int64), boolean(Bool)
         var object: Any? {
             switch self {
-            case .data(let value): return value
+            case .attachment: return nil
             case .null: return nil
             case .string(let value): return value
             case .uuid(let value): return value
@@ -31,7 +38,7 @@ struct BackupArchive: Codable {
         init(_ object: Any?, attribute: NSAttributeDescription) throws {
             guard let object else { self = .null; return }
             switch attribute.attributeType {
-            case .binaryDataAttributeType: self = .data(object as! Data)
+            case .binaryDataAttributeType: throw RecordError.invalid("Receipt data must be stored as an attachment.")
             case .stringAttributeType: self = .string(object as! String)
             case .UUIDAttributeType: self = .uuid(object as! UUID)
             case .dateAttributeType: self = .date(object as! Date)
@@ -43,7 +50,7 @@ struct BackupArchive: Codable {
         func matches(_ attribute: NSAttributeDescription) -> Bool {
             switch (self, attribute.attributeType) {
             case (.null, _): return attribute.isOptional
-            case (.data, .binaryDataAttributeType), (.string, .stringAttributeType), (.uuid, .UUIDAttributeType), (.date, .dateAttributeType),
+            case (.attachment, .binaryDataAttributeType), (.string, .stringAttributeType), (.uuid, .UUIDAttributeType), (.date, .dateAttributeType),
                  (.integer, .integer64AttributeType), (.boolean, .booleanAttributeType): return true
             default: return false
             }
@@ -57,47 +64,67 @@ struct BackupArchive: Codable {
         return Key(entity: entity, id: id)
     }
 
-    static func capture(in context: NSManagedObjectContext) throws -> Self {
-        let reader = isolatedWriter(context)
+    static func capture(in context: NSManagedObjectContext, control: BackupControl = BackupControl()) throws -> Self {
+        let reader = context
+        let workspace = try BackupWorkspace()
+        var attachmentBytes: Int64 = 0
+        let originalGeneration = reader.queryGenerationToken
         try reader.setQueryGenerationFrom(.current)
+        defer { try? reader.setQueryGenerationFrom(originalGeneration) }
         let model = reader.persistentStoreCoordinator!.managedObjectModel
         var records: [Record] = []
         for entity in model.entities.sorted(by: { ($0.name ?? "") < ($1.name ?? "") }) {
             guard let name = entity.name else { continue }
-            for object in try reader.fetch(NSFetchRequest<NSManagedObject>(entityName: name)) {
-                var attributes: [String: Value] = [:]
-                var relationships: [String: [Key]] = [:]
-                for (name, attribute) in entity.attributesByName {
-                    attributes[name] = try Value(object.value(forKey: name), attribute: attribute)
+            let request = NSFetchRequest<NSManagedObject>(entityName: name)
+            request.fetchBatchSize = 50
+            for object in try reader.fetch(request) {
+                try autoreleasepool {
+                    try control.check()
+                    guard records.count < BackupLimits.records else { throw RecordError.invalid("This daybook has too many records for a backup.") }
+                    var attributes: [String: Value] = [:]
+                    var relationships: [String: [Key]] = [:]
+                    for (name, attribute) in entity.attributesByName {
+                        if attribute.attributeType == .binaryDataAttributeType, let data = object.value(forKey: name) as? Data {
+                            guard !data.isEmpty, data.count <= BackupLimits.receipt else { throw RecordError.invalid("A receipt exceeds the 12 MB image limit.") }
+                            attachmentBytes += Int64(data.count)
+                            guard attachmentBytes <= BackupLimits.archive else { throw RecordError.invalid("Receipt images exceed the 512 MB backup limit.") }
+                            let path = "receipts/\(try key(object).id.uuidString)-\(name).jpg"
+                            try BackupLimits.requireSpace(Int64(data.count))
+                            try data.write(to: workspace.url.appendingPathComponent(path), options: .atomic)
+                            attributes[name] = .attachment(Attachment(path: path, bytes: Int64(data.count), sha256: BackupFiles.digest(data)))
+                        } else {
+                            attributes[name] = try Value(object.value(forKey: name), attribute: attribute)
+                        }
+                    }
+                    for (name, relationship) in entity.relationshipsByName {
+                        let related = relationship.isToMany ? Array((object.value(forKey: name) as? Set<NSManagedObject>) ?? []) : (object.value(forKey: name) as? NSManagedObject).map { [$0] } ?? []
+                        relationships[name] = try related.map(key).sorted { $0.id.uuidString < $1.id.uuidString }
+                    }
+                    records.append(Record(key: try key(object), attributes: attributes, relationships: relationships))
+                    reader.refresh(object, mergeChanges: false)
+                    if records.count % 50 == 0 { control.report("Preparing records · \(records.count) read", nil) }
                 }
-                for (name, relationship) in entity.relationshipsByName {
-                    let related = relationship.isToMany ? Array((object.value(forKey: name) as? Set<NSManagedObject>) ?? []) : (object.value(forKey: name) as? NSManagedObject).map { [$0] } ?? []
-                    relationships[name] = try related.map(key).sorted { $0.id.uuidString < $1.id.uuidString }
-                }
-                records.append(Record(key: try key(object), attributes: attributes, relationships: relationships))
             }
         }
-        let archive = Self(records: records.sorted { ($0.key.entity, $0.key.id.uuidString) < ($1.key.entity, $1.key.id.uuidString) })
+        let archive = Self(records: records.sorted { ($0.key.entity, $0.key.id.uuidString) < ($1.key.entity, $1.key.id.uuidString) }, workspace: workspace)
         try archive.validate(model: model)
         return archive
     }
 
+    // Convenience for small model fixtures; production uses URLs end to end.
     func encoded() throws -> Data {
-        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
-        let data = try encoder.encode(self)
-        guard data.count <= 100 * 1024 * 1024 else { throw RecordError.invalid("This daybook exceeds the 100 MB backup limit.") }
-        return data
+        let file = try writePackage()
+        return try Data(contentsOf: file.url)
     }
-
     static func decode(_ data: Data, model: NSManagedObjectModel) throws -> Self {
-        guard data.count <= 100 * 1024 * 1024 else { throw RecordError.invalid("This backup is too large to restore on this device.") }
-        let archive = try JSONDecoder().decode(Self.self, from: data)
-        try archive.validate(model: model)
-        return archive
+        let file = try BackupWorkspace()
+        let url = file.url.appendingPathComponent("import.zip")
+        try data.write(to: url)
+        return try readPackage(url, model: model)
     }
 
     func validate(model: NSManagedObjectModel) throws {
-        guard format == "com.cuekeeper.backup", version == 1, records.count <= 200_000 else {
+        guard format == "com.cuekeeper.backup", version == 2, records.count <= BackupLimits.records else {
             throw RecordError.invalid("This is not a supported Cuekeeper backup. Update Cuekeeper if it was made with a newer version.")
         }
         let keys = Set(records.map(\.key))
@@ -106,7 +133,7 @@ struct BackupArchive: Codable {
         for record in records {
             guard let entity = model.entitiesByName[record.key.entity],
                   Set(record.attributes.keys) == Set(entity.attributesByName.keys),
-                  (Set(record.relationships.keys) == Set(entity.relationshipsByName.keys) || (record.key.entity == "Job" && Set(record.relationships.keys).union(["expenses"]) == Set(entity.relationshipsByName.keys))),
+                  Set(record.relationships.keys) == Set(entity.relationshipsByName.keys),
                   record.attributes["id"] == .uuid(record.key.id) else {
                 throw RecordError.invalid("The backup’s records do not match this version of Cuekeeper.")
             }
@@ -131,8 +158,13 @@ struct BackupArchive: Codable {
 
     /// Merge missing identities; never roll back live edits or overwrite receipts.
     /// An explicit restore can also recover tombstones from an active backup copy.
-    func restore(in context: NSManagedObjectContext) throws -> RestoreResult {
-        let writer = isolatedWriter(context)
+    func restore(in context: NSManagedObjectContext, control: BackupControl = BackupControl()) throws -> RestoreResult {
+        let writer = context
+        guard !writer.hasChanges else { throw RecordError.invalid("Save your current changes before restoring a backup.") }
+        var committed = false
+        defer { if !committed { writer.rollback() } }
+        try verifyAttachments(control: control)
+        try BackupLimits.requireSpace(attachments.reduce(0) { $0 + $1.bytes } * 2)
         try validate(model: writer.persistentStoreCoordinator!.managedObjectModel)
         var objects: [Key: NSManagedObject] = [:]
         var inserted = Set<Key>()
@@ -145,7 +177,9 @@ struct BackupArchive: Codable {
                 objects[key] = object
             }
         }
-        for record in records {
+        for (offset, record) in records.enumerated() {
+            try control.check()
+            if offset % 50 == 0 { control.report("Restoring records", Double(offset) / Double(max(1, records.count))) }
             if let existing = objects[record.key] {
                 if ["FeeRevision", "InvoiceRevision", "PaymentRecord"].contains(record.key.entity) {
                     for (name, value) in record.attributes {
@@ -162,11 +196,17 @@ struct BackupArchive: Codable {
                 }
             } else {
                 let object = NSEntityDescription.insertNewObject(forEntityName: record.key.entity, into: writer)
-                for (name, value) in record.attributes { object.setValue(value.object, forKey: name) }
+                for (name, value) in record.attributes {
+                    if case .attachment(let attachment) = value {
+                        guard let workspace else { throw RecordError.invalid("Receipt files are missing.") }
+                        object.setValue(try Data(contentsOf: workspace.url.appendingPathComponent(attachment.path), options: .alwaysMapped), forKey: name)
+                    } else { object.setValue(value.object, forKey: name) }
+                }
                 objects[record.key] = object; inserted.insert(record.key); result.added += 1
             }
         }
         for record in records where inserted.contains(record.key) {
+            try control.check()
             let object = objects[record.key]!
             for (name, keys) in record.relationships {
                 let relationship = object.entity.relationshipsByName[name]!
@@ -183,6 +223,7 @@ struct BackupArchive: Codable {
             }
         }
         for record in records where !inserted.contains(record.key) && record.attributes["deletedAt"] == .null {
+            try control.check()
             let object = objects[record.key]!
             if object.value(forKey: "deletedAt") != nil {
                 object.setValue(nil, forKey: "deletedAt")
@@ -190,7 +231,11 @@ struct BackupArchive: Codable {
                 result.recovered += 1
             }
         }
+        try control.check()
+        control.report("Saving restored records…", nil)
+        try control.check()
         try writer.save()
+        committed = true
         context.refreshAllObjects()
         return result
     }

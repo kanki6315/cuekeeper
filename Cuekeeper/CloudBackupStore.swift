@@ -1,11 +1,25 @@
 import CloudKit
 import Foundation
 
+enum BackupLimits {
+    static let archive: Int64 = 512 * 1024 * 1024
+    static let metadata = 32 * 1024 * 1024
+    static let receipt = 12 * 1024 * 1024
+    static let records = 200_000
+    static let cloudPart = 16 * 1024 * 1024
+    static func requireSpace(_ bytes: Int64, at url: URL = FileManager.default.temporaryDirectory) throws {
+        let values = try url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        if let available = values.volumeAvailableCapacityForImportantUsage, available < bytes + 16 * 1024 * 1024 {
+            throw RecordError.invalid("Not enough free device storage for this backup. Free some space and try again.")
+        }
+    }
+}
+
 /// Separate custom zone: Core Data sync never modifies or deletes these snapshots.
 protocol CloudBacking {
     func list() async throws -> [CloudBackupStore.Entry]
-    func save(data: Data, date: Date, events: Int) async throws
-    func load(_ entry: CloudBackupStore.Entry) async throws -> Data
+    func save(file: URL, date: Date, events: Int) async throws
+    func load(_ entry: CloudBackupStore.Entry) async throws -> URL
     func delete(_ entry: CloudBackupStore.Entry) async throws
 }
 
@@ -51,51 +65,117 @@ struct CloudBackupStore: CloudBacking {
             return Entry(id: id, date: date, bytes: bytes, events: Int(events))
         }.sorted { $0.date > $1.date }
     }
-    func save(data: Data, date: Date, events: Int) async throws {
+    private struct CloudManifest: Codable {
+        var format = "com.cuekeeper.cloud-backup"
+        var version = 2
+        let parts: Int
+        let bytes: Int64
+    }
+    private func partID(_ root: CKRecord.ID, _ index: Int) -> CKRecord.ID {
+        CKRecord.ID(recordName: "\(root.recordName)-part-\(index)", zoneID: zoneID)
+    }
+    func save(file: URL, date: Date, events: Int) async throws {
         try await prepare()
-        let file = FileManager.default.temporaryDirectory.appending(path: "cuekeeper-backup-\(UUID()).json")
+        let bytes = Int64(try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        guard bytes > 0, bytes <= BackupLimits.archive else { throw RecordError.invalid("This backup exceeds the 512 MB limit.") }
+        try BackupLimits.requireSpace(bytes)
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("CloudBackup-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         #if os(iOS)
-        try data.write(to: file, options: [.atomic, .completeFileProtection])
-        #else
-        try data.write(to: file, options: .atomic)
+        try FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: folder.path)
         #endif
-        defer { try? FileManager.default.removeItem(at: file) }
+        defer { try? FileManager.default.removeItem(at: folder) }
         let id = CKRecord.ID(recordName: UUID().uuidString, zoneID: zoneID)
+        let count = Int((bytes + Int64(BackupLimits.cloudPart) - 1) / Int64(BackupLimits.cloudPart))
+        let reader = try FileHandle(forReadingFrom: file); defer { try? reader.close() }
+        var pieces: [CKRecord] = []
+        // File IO stays off the UI actor through this nonisolated async implementation.
+        for i in 0..<count {
+            try Task.checkCancellation()
+            let data = try reader.read(upToCount: BackupLimits.cloudPart) ?? Data()
+            guard !data.isEmpty else { throw RecordError.invalid("The prepared backup is incomplete.") }
+            let url = folder.appendingPathComponent("part-\(i)")
+            try data.write(to: url)
+            let part = CKRecord(recordType: "CuekeeperBackup", recordID: partID(id, i))
+            part["payload"] = CKAsset(fileURL: url)
+            pieces.append(part)
+        }
+        let manifestURL = folder.appendingPathComponent("manifest.json")
+        try JSONEncoder().encode(CloudManifest(parts: count, bytes: bytes)).write(to: manifestURL)
         for attempt in 0..<3 {
+            try Task.checkCancellation()
             let index = try await index()
             var names = index["backupNames"] as? [String] ?? []
             guard names.count < Self.maximumBackups else { throw RecordError.invalid("You have 50 backups. Delete an older backup before creating another.") }
             names.append(id.recordName); index["backupNames"] = names as CKRecordValue
             let backup = CKRecord(recordType: "CuekeeperBackup", recordID: id)
             backup["savedAt"] = date as CKRecordValue
-            backup["byteCount"] = Int64(data.count) as CKRecordValue
+            backup["byteCount"] = bytes as CKRecordValue
             backup["eventCount"] = Int64(events) as CKRecordValue
-            backup["payload"] = CKAsset(fileURL: file)
+            backup["payload"] = CKAsset(fileURL: manifestURL)
             do {
-                try await modify(saving: [index, backup], deleting: [])
+                // Parts and catalog entry commit together: incomplete uploads are never listed.
+                try await modify(saving: [index, backup] + pieces, deleting: [])
                 return
             } catch {
-                // A simultaneous backup on another device must not replace its index.
                 if attempt == 2 || !Self.isConflict(error) { throw error }
             }
         }
     }
-    func load(_ entry: Entry) async throws -> Data {
+    private func manifest(_ entry: Entry) async throws -> CloudManifest {
         let record = try await database.record(for: entry.id)
-        guard let asset = record["payload"] as? CKAsset, let url = asset.fileURL else {
-            throw RecordError.invalid("This backup has no readable data. Choose another backup.")
+        guard let asset = record["payload"] as? CKAsset, let url = asset.fileURL,
+              (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 4096 else {
+            throw RecordError.invalid("This backup has no readable catalog.")
         }
-        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        guard size <= 100 * 1024 * 1024 else { throw RecordError.invalid("This backup is too large to restore on this device.") }
-        return try Data(contentsOf: url)
+        let value = try JSONDecoder().decode(CloudManifest.self, from: Data(contentsOf: url))
+        guard value.format == "com.cuekeeper.cloud-backup", value.version == 2,
+              value.bytes > 0, value.bytes <= BackupLimits.archive, value.bytes == entry.bytes,
+              value.parts == Int((value.bytes + Int64(BackupLimits.cloudPart) - 1) / Int64(BackupLimits.cloudPart)) else {
+            throw RecordError.invalid("This backup catalog is invalid.")
+        }
+        return value
+    }
+    /// Caller owns the returned temporary file and must remove it after use.
+    func load(_ entry: Entry) async throws -> URL {
+        let value = try await manifest(entry)
+        try BackupLimits.requireSpace(value.bytes)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("DownloadedBackup-\(UUID()).zip")
+        FileManager.default.createFile(atPath: file.path, contents: nil)
+        #if os(iOS)
+        try FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: file.path)
+        #endif
+        var success = false
+        defer { if !success { try? FileManager.default.removeItem(at: file) } }
+        let writer = try FileHandle(forWritingTo: file); defer { try? writer.close() }
+        var total: Int64 = 0
+        for i in 0..<value.parts {
+            try Task.checkCancellation()
+            let record = try await database.record(for: partID(entry.id, i))
+            guard let asset = record["payload"] as? CKAsset, let url = asset.fileURL,
+                  Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) == min(Int64(BackupLimits.cloudPart), value.bytes - total) else {
+                throw RecordError.invalid("A backup part is missing or damaged. Nothing was restored.")
+            }
+            let reader = try FileHandle(forReadingFrom: url); defer { try? reader.close() }
+            while let data = try reader.read(upToCount: 256 * 1024), !data.isEmpty {
+                try Task.checkCancellation(); total += Int64(data.count)
+                guard total <= value.bytes else { throw RecordError.invalid("A backup part is too large.") }
+                try writer.write(contentsOf: data)
+            }
+        }
+        guard total == value.bytes else { throw RecordError.invalid("The backup download is incomplete.") }
+        success = true
+        return file
     }
     func delete(_ entry: Entry) async throws {
+        let value = try await manifest(entry)
+        let ids = [entry.id] + (0..<value.parts).map { partID(entry.id, $0) }
         for attempt in 0..<3 {
             let index = try await index()
             let names = index["backupNames"] as? [String] ?? []
             guard names.contains(entry.id.recordName) else { return }
             index["backupNames"] = names.filter { $0 != entry.id.recordName } as CKRecordValue
-            do { try await modify(saving: [index], deleting: [entry.id]); return }
+            do { try await modify(saving: [index], deleting: ids); return }
             catch { if attempt == 2 || !Self.isConflict(error) { throw error } }
         }
     }
@@ -120,14 +200,20 @@ struct CloudBackupStore: CloudBacking {
     static func verifyDevelopmentBackups() async throws {
         let store = Self(zoneID: CKRecordZone.ID(zoneName: "BackupVerification-\(UUID())", ownerName: CKCurrentUserDefaultName))
         do {
-            let first = Data("first backup".utf8), second = Data("second backup".utf8)
-            async let a: Void = store.save(data: first, date: Date(), events: 1)
-            async let b: Void = store.save(data: second, date: Date(), events: 2)
+            let first = Data(repeating: 73, count: BackupLimits.cloudPart + 1024), second = Data("second backup".utf8)
+            let firstURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID()).zip")
+            let secondURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID()).zip")
+            try first.write(to: firstURL); try second.write(to: secondURL)
+            defer { try? FileManager.default.removeItem(at: firstURL); try? FileManager.default.removeItem(at: secondURL) }
+            async let a: Void = store.save(file: firstURL, date: Date(), events: 1)
+            async let b: Void = store.save(file: secondURL, date: Date(), events: 2)
             _ = try await (a, b)
             let entries = try await store.list()
             guard entries.count == 2 else { throw RecordError.invalid("Concurrent backups were not both retained.") }
             for entry in entries {
-                let data = try await store.load(entry)
+                let url = try await store.load(entry)
+                defer { try? FileManager.default.removeItem(at: url) }
+                let data = try Data(contentsOf: url)
                 guard data == (entry.events == 1 ? first : second) else { throw RecordError.invalid("Backup download differs from its original.") }
                 try await store.delete(entry)
             }

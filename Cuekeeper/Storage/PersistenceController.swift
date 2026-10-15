@@ -110,7 +110,8 @@ final class PersistenceController: ObservableObject {
                         let id = try JobDraft(name: "Recovered broadcast").save(in: self.container.viewContext)
                         if arguments.contains("--setup-backup-fixture") {
                             let snapshot = try BackupArchive.capture(in: self.container.viewContext)
-                            try await FixtureBackups.shared.save(data: snapshot.encoded(), date: snapshot.createdAt, events: 1)
+                            let file = try snapshot.writePackage()
+                            try await FixtureBackups.shared.save(file: file.url, date: snapshot.createdAt, events: 1)
                             try Job.remove(id, in: self.container.viewContext)
                         }
                     } catch { self.loadError = error.localizedDescription }

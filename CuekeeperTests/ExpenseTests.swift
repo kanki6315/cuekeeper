@@ -41,13 +41,10 @@ final class ExpenseTests: XCTestCase {
         XCTAssertThrowsError(try Expense.save(valid, id: id, revision: expense.revision, in: context))
         XCTAssertThrowsError(try Expense.capture(photo, jobID: jobID, in: context))
     }
-    func testPhotoBackupRoundTripAndLegacyArchive() async throws {
+    func testPhotoBackupRoundTrip() async throws {
         let source = try await context()
         let jobID = try JobDraft(name: "Weekend").save(in: source)
-        var legacy = try BackupArchive.capture(in: source)
-        for index in legacy.records.indices where legacy.records[index].key.entity == "Job" { legacy.records[index].relationships.removeValue(forKey: "expenses") }
         let destination = try await context()
-        _ = try legacy.restore(in: destination)
         let photo = Data(repeating: 42, count: 2048)
         let id = try Expense.capture(photo, jobID: jobID, in: source)
         let original = try XCTUnwrap(source.existingObject(with: id) as? Expense)

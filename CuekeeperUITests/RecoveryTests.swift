@@ -108,6 +108,54 @@ final class RecoveryTests: XCTestCase {
         }
     }
 
+    func testBackupFilePickersAndLayouts() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=backups"]
+        app.launch()
+        let export = app.buttons["backup-export"]
+        XCTAssertTrue(export.waitForExistence(timeout: 10))
+        if !export.isHittable { app.swipeUp() }
+        capture("backups-files-light")
+        export.tap()
+        let save = app.buttons["DOCPicker.actionButton"]
+        XCTAssertTrue(save.waitForExistence(timeout: 15))
+        capture("backup-export-picker")
+        save.tap()
+        XCTAssertTrue(app.staticTexts["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 10))
+        let importer = app.buttons["backup-import"]
+        if !importer.isHittable { app.swipeUp() }
+        importer.tap()
+        let file = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@", "Cuekeeper-")).firstMatch
+        if !file.waitForExistence(timeout: 5) {
+            let browse = app.buttons["Browse"].firstMatch
+            if browse.exists { browse.tap() }
+            let local = app.staticTexts[UIDevice.current.userInterfaceIdiom == .pad ? "On My iPad" : "On My iPhone"].firstMatch
+            if local.exists { local.tap() }
+        }
+        capture("backup-import-picker")
+        if !file.waitForExistence(timeout: 10) { print(app.debugDescription) }
+        XCTAssertTrue(file.exists)
+        file.tap()
+        XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 10))
+        capture("backup-file-confirmation")
+        app.buttons["Restore Backup"].tap()
+        let complete = NSPredicate(format: "label CONTAINS %@", "Restore complete")
+        expectation(for: complete, evaluatedWith: app.staticTexts["backup-notice"])
+        waitForExpectations(timeout: 10)
+        app.terminate()
+        app.launchArguments += ["--design-dark", "-UIPreferredContentSizeCategoryName", UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue]
+        app.launch()
+        XCTAssertTrue(app.buttons["backup-now"].waitForExistence(timeout: 10))
+        capture("backups-largest-text-dark")
+        for _ in 0..<8 {
+            if app.buttons["backup-import"].isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(app.buttons["backup-import"].isHittable)
+        capture("backups-files-largest-text-dark")
+    }
+
     private func capture(_ name: String) {
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.name = name; shot.lifetime = .keepAlways; add(shot)

@@ -1,5 +1,7 @@
 import CoreData
 import XCTest
+import ZIPFoundation
+import Darwin
 @testable import Cuekeeper
 
 @MainActor
@@ -133,4 +135,109 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertEqual(result.added, 0)
     }
 
+    func testPackageRejectsMissingUnexpectedAndCorruptAttachments() async throws {
+        let source = try await context(); let job = try fixture(source)
+        _ = try Expense.capture(Data(repeating: 73, count: 4096), jobID: job.objectID, in: source)
+        let snapshot = try BackupArchive.capture(in: source)
+        let target = try await context(); let model = target.persistentStoreCoordinator!.managedObjectModel
+        do {
+            let file = try snapshot.writePackage()
+            let zip = try Archive(url: file.url, accessMode: .update)
+            let entry = try XCTUnwrap(zip[snapshot.attachments[0].path])
+            try zip.remove(entry)
+            XCTAssertThrowsError(try BackupArchive.readPackage(file.url, model: model))
+        }
+        do {
+            let file = try snapshot.writePackage()
+            let zip = try Archive(url: file.url, accessMode: .update)
+            try zip.addEntry(with: "../outside.jpg", type: .file, uncompressedSize: Int64(1)) { _, _ in Data([1]) }
+            XCTAssertThrowsError(try BackupArchive.readPackage(file.url, model: model))
+        }
+        do {
+            let file = try snapshot.writePackage()
+            let zip = try Archive(url: file.url, accessMode: .update)
+            let path = snapshot.attachments[0].path
+            try zip.remove(try XCTUnwrap(zip[path]))
+            try zip.addEntry(with: path, type: .file, uncompressedSize: Int64(4096)) { _, size in Data(repeating: 99, count: size) }
+            XCTAssertThrowsError(try BackupArchive.readPackage(file.url, model: model))
+        }
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+    }
+
+    func testCancellationAndReceiptDamageLeaveStoreUnchanged() async throws {
+        let source = try await context(); let job = try fixture(source)
+        _ = try Expense.capture(Data(repeating: 7, count: 1024), jobID: job.objectID, in: source)
+        let snapshot = try BackupArchive.capture(in: source)
+        let target = try await context()
+        let cancelled = BackupControl(); cancelled.cancel()
+        XCTAssertThrowsError(try snapshot.restore(in: target, control: cancelled))
+        XCTAssertFalse(target.hasChanges)
+        let photo = snapshot.workspace!.url.appendingPathComponent(snapshot.attachments[0].path)
+        try Data([0]).write(to: photo)
+        XCTAssertThrowsError(try snapshot.restore(in: target))
+        XCTAssertFalse(target.hasChanges)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+    }
+
+    func testCancellationDuringRestoreRollsBackInsertedRecords() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let snapshot = try BackupArchive.capture(in: source)
+        let target = try await context()
+        // Cancel immediately before the single save, after objects have been inserted.
+        let holder = BackupCancellationHolder()
+        let control = BackupControl { stage, _ in
+            if stage == "Saving restored records…" { holder.control?.cancel() }
+        }
+        holder.control = control
+        XCTAssertThrowsError(try snapshot.restore(in: target, control: control))
+        holder.control = nil
+        XCTAssertFalse(target.hasChanges)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+    }
+
+    func testLargeFileLimitIsRejectedBeforeReading() async throws {
+        let target = try await context()
+        let url = folder.appendingPathComponent("oversized.zip")
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+        let writer = try FileHandle(forWritingTo: url)
+        try writer.truncate(atOffset: UInt64(BackupLimits.archive + 1)); try writer.close()
+        XCTAssertThrowsError(try BackupArchive.readPackage(url, model: target.persistentStoreCoordinator!.managedObjectModel))
+    }
+
+    func testReceiptHeavyPackageBeyondOldLimit() async throws {
+        let source = try await context(); let jobID = try JobDraft(name: "Receipt volume").save(in: source)
+        for i in 0..<128 {
+            try autoreleasepool {
+                let id = try Expense.capture(Data(repeating: UInt8(i), count: 1024 * 1024), jobID: jobID, in: source)
+                source.refresh(try source.existingObject(with: id), mergeChanges: false)
+            }
+        }
+        let started = Date()
+        let control = BackupControl()
+        let file = try await BackupWorker.perform(coordinator: source.persistentStoreCoordinator!, control: control) {
+            try BackupArchive.capture(in: $0, control: control).writePackage(control: control)
+        }
+        XCTAssertEqual(file.receipts, 128)
+        XCTAssertGreaterThan(file.bytes, 100 * 1024 * 1024)
+        XCTAssertLessThan(file.bytes, 130 * 1024 * 1024, "Photos must not be base64-expanded in records.json")
+        let target = try await context()
+        let result = try await BackupWorker.perform(coordinator: target.persistentStoreCoordinator!, control: control) { writer in
+            let archive = try BackupArchive.readPackage(file.url, model: writer.persistentStoreCoordinator!.managedObjectModel, control: control)
+            return try archive.restore(in: writer, control: control)
+        }
+        XCTAssertGreaterThan(result.added, 128)
+        let expenses = try target.fetch(NSFetchRequest<Expense>(entityName: "Expense"))
+        XCTAssertEqual(expenses.count, 128)
+        for expense in expenses {
+            autoreleasepool {
+                XCTAssertEqual(expense.photo?.count, 1024 * 1024)
+                target.refresh(expense, mergeChanges: false)
+            }
+        }
+        var usage = rusage(); getrusage(RUSAGE_SELF, &usage)
+        print("BACKUP_VOLUME bytes=\(file.bytes) seconds=\(Date().timeIntervalSince(started)) peakRSS=\(usage.ru_maxrss)")
+    }
+
 }
+
+private final class BackupCancellationHolder: @unchecked Sendable { var control: BackupControl? }

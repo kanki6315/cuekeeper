@@ -4,6 +4,13 @@ import XCTest
 
 @MainActor
 final class FirstLaunchTests: XCTestCase {
+    func testDisplayCurrenciesKeepStableOrderAndRecoverInvalidPreferences() {
+        XCTAssertEqual(CurrencyPreferences.displayed("CHF,GBP,GBP,INVALID"), ["GBP", "CHF"])
+        XCTAssertEqual(CurrencyPreferences.displayed(""), ["USD", "EUR"])
+        XCTAssertEqual(CurrencyPreferences.displayed("INVALID"), ["USD", "EUR"])
+        XCTAssertEqual(CurrencyPreferences.displayed("CAD"), ["CAD"])
+    }
+
     func testPreferencesOnlySeedNewDraftsAndPreserveEventTimezone() throws {
         let keys = ["defaultRole", "homeTimeZone", "defaultCurrency"]
         let saved = keys.map { UserDefaults.standard.object(forKey: $0) }
@@ -19,6 +26,7 @@ final class FirstLaunchTests: XCTestCase {
         var draft = EventCreationDraft()
         XCTAssertEqual(draft.shared.roleNames, ["Presenter"])
         XCTAssertEqual(draft.shared.fee?.currency, "EUR")
+        XCTAssertEqual(LibraryDraft().currency, "EUR")
         XCTAssertEqual(draft.shared.timeZoneID, "America/New_York")
         XCTAssertEqual(draft.events[0].timeZoneID, "")
         draft.events[0].timeZoneID = "Europe/London"

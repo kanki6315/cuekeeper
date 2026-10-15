@@ -1,6 +1,7 @@
 import CloudKit
 import CoreData
 import XCTest
+import UIKit
 import ZIPFoundation
 import Darwin
 @testable import Cuekeeper
@@ -73,6 +74,55 @@ final class RecoveryBackupTests: XCTestCase {
         try PaymentDraft(amount: "25").save(in: context, invoiceID: invoiceID)
         return job
     }
+    func testBackupFilesRemainAccessibleAfterLock() async throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("The simulator does not expose iOS Data Protection attributes; run on a physical device.")
+        #else
+        let source = try await context(); let job = try fixture(source)
+        _ = try Expense.capture(Data(repeating: 73, count: 4096), jobID: job.objectID, in: source)
+        let snapshot = try BackupArchive.capture(in: source)
+        let file = try snapshot.writePackage()
+        let decoded = try BackupArchive.readPackage(file.url, model: source.persistentStoreCoordinator!.managedObjectModel)
+        for workspace in [try XCTUnwrap(snapshot.workspace), file.workspace, try XCTUnwrap(decoded.workspace)] {
+            let descendants = try XCTUnwrap(FileManager.default.enumerator(at: workspace.url, includingPropertiesForKeys: nil))
+            let urls = [workspace.url] + descendants.allObjects.compactMap { $0 as? URL }
+            for url in urls {
+                let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+                XCTAssertEqual(attributes[.protectionKey] as? FileProtectionType,
+                               .completeUntilFirstUserAuthentication, url.lastPathComponent)
+            }
+        }
+        #endif
+    }
+
+    func testBackgroundTimeEndsExactlyOnceOnCompletionAndExpiration() {
+        for expires in [false, true] {
+            var expire: (@MainActor () -> Void)?
+            var ended: [UIBackgroundTaskIdentifier] = []
+            let control = BackupControl()
+            let identifier = UIBackgroundTaskIdentifier(rawValue: 42)
+            let background = BackupBackgroundTask(begin: { _, handler in
+                expire = handler
+                return identifier
+            }, end: { ended.append($0) }, expiration: { control.cancel() })
+            XCTAssertTrue(ended.isEmpty)
+            if expires { expire?() }
+            XCTAssertEqual(background.expired, expires)
+            if expires { XCTAssertThrowsError(try control.check()) }
+            else { XCTAssertNoThrow(try control.check()) }
+            background.finish()
+            background.finish()
+            XCTAssertEqual(ended, [identifier])
+        }
+    }
+
+    func testUnavailableBackgroundTimeDoesNotEndInvalidIdentifier() {
+        let background = BackupBackgroundTask(begin: { _, _ in .invalid },
+                                              end: { _ in XCTFail("No assertion was granted") },
+                                              expiration: {})
+        background.finish()
+    }
+
     func testRestoreEventRetainsSeparatelyDeletedSessionsAndFinancialHistory() async throws {
         let context = try await context(); let job = try fixture(context)
         let session = try XCTUnwrap(job.activeSessions.first)
@@ -152,6 +202,39 @@ final class RecoveryBackupTests: XCTestCase {
         }
         await fulfillment(of: [restored], timeout: 5)
         XCTAssertNil(workflow.error)
+    }
+
+    func testWorkflowReportsCommittedRestoreAfterAccountInvalidation() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let target = try await context()
+        let coordinator = target.persistentStoreCoordinator!
+        let workflow = BackupWorkflow()
+        workflow.archive = try BackupArchive.capture(in: source)
+        var activity = SyncActivity(); activity.enabled = false
+        let invalidated = expectation(description: "Account changed after save")
+        let restored = expectation(description: "Committed restore still reports success")
+        let observer = NotificationCenter.default.addObserver(forName: .NSManagedObjectContextDidSave, object: nil, queue: nil) { notification in
+            guard let writer = notification.object as? NSManagedObjectContext,
+                  writer.persistentStoreCoordinator === coordinator else { return }
+            // Run before the worker returns, so cancellation deterministically
+            // lands between the persistent save and the workflow's completion.
+            DispatchQueue.main.sync {
+                MainActor.assumeIsolated {
+                    workflow.invalidate()
+                    invalidated.fulfill()
+                }
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        workflow.restore(context: target, syncActivity: { activity }) { result in
+            XCTAssertGreaterThan(result.added, 0)
+            restored.fulfill()
+        }
+        await fulfillment(of: [invalidated, restored], timeout: 5)
+        XCTAssertFalse(workflow.busy)
+        XCTAssertNil(workflow.error)
+        XCTAssertTrue(workflow.notice?.hasPrefix("Restore complete.") == true)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
     }
 
     func testBackupRoundTripIntoEmptyStoreAndRepeatedRestore() async throws {

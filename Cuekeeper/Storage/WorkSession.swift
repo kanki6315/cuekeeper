@@ -85,7 +85,8 @@ struct LinkDraft: Equatable, Identifiable {
     }
 }
 
-struct SessionDraft: Equatable {
+struct SessionDraft: Identifiable, Equatable {
+    var id = UUID()
     var name = ""
     var day = ""
     var startTime: Date?
@@ -104,6 +105,7 @@ struct SessionDraft: Equatable {
     init(day: String, timeZoneID: String = "") { self.day = day; self.timeZoneID = timeZoneID }
     init(job: Job) { day = job.eventStartDay; timeZoneID = job.eventTimeZoneID }
     init(session: WorkSession) {
+        id = session.id ?? UUID()
         name = session.name; day = session.day; startTime = session.startTime; endTime = session.endTime
         callTime = session.callTime; timeZoneID = session.eventTimeZoneID; scheduleStatus = session.scheduleStatus
         if let startTime, let zone = TimeZone(identifier: timeZoneID) { day = Day.string(from: startTime, timeZone: zone) }

@@ -103,6 +103,7 @@ extension SessionDraft {
     /// Preserve local clock times across daylight-saving changes, rejecting nonexistent times.
     func copied(from sourceDate: Date, to destinationDate: Date, includingTimes: Bool, destinationTimeZoneID: String? = nil) throws -> SessionDraft {
         var copy = self
+        copy.id = UUID()
         copy.scheduleStatus = "tentative"; copy.coverage = "undecided"
         copy.links = links.map { var link = $0; link.id = UUID(); return link }
         guard includingTimes else {

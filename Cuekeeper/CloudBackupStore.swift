@@ -101,12 +101,10 @@ struct CloudBackupStore: CloudBacking {
         let bytes = Int64(try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
         guard bytes > 0, bytes <= BackupLimits.archive else { throw RecordError.invalid("This backup exceeds the 512 MB limit.") }
         try BackupLimits.requireSpace(bytes)
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("CloudBackup-\(UUID())")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        #if os(iOS)
-        try FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: folder.path)
-        #endif
-        defer { try? FileManager.default.removeItem(at: folder) }
+        let workspace = try BackupWorkspace()
+        let folder = workspace.url
+        // Keep CKAsset source files alive until CloudKit has finished with them.
+        defer { withExtendedLifetime(workspace) {} }
         let id = CKRecord.ID(recordName: UUID().uuidString, zoneID: zoneID)
         let count = Int((bytes + Int64(BackupLimits.cloudPart) - 1) / Int64(BackupLimits.cloudPart))
         let reader = try FileHandle(forReadingFrom: file); defer { try? reader.close() }
@@ -164,10 +162,10 @@ struct CloudBackupStore: CloudBacking {
         let value = try await manifest(entry)
         try BackupLimits.requireSpace(value.bytes)
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("DownloadedBackup-\(UUID()).zip")
-        FileManager.default.createFile(atPath: file.path, contents: nil)
-        #if os(iOS)
-        try FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: file.path)
-        #endif
+        guard FileManager.default.createFile(atPath: file.path, contents: nil,
+                                             attributes: BackupWorkspace.protectionAttributes) else {
+            throw RecordError.invalid("Couldn’t create the temporary backup download.")
+        }
         var success = false
         defer { if !success { try? FileManager.default.removeItem(at: file) } }
         let writer = try FileHandle(forWritingTo: file); defer { try? writer.close() }

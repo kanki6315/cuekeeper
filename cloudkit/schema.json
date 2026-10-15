@@ -5,11 +5,12 @@
   "model_files": {
     "Cuekeeper/CalendarPublisher.swift": "c303d6a9b3c01ff8a0106747d8a04b730ce8e77c1890914b5cbeef6bb91a0b02",
     "Cuekeeper/CloudBackupStore.swift": "97e5d7a5553ff55a738f6bb7c772c3080614085c054ddcc282c8da3dc53450a9",
-    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "b2d8396f3f8ef6636c740d4cd27a7a810d7b145cd79f7b2cee149e546f571ebe",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/.xccurrentversion": "47434ad2cb1246738a9f6c1ce2562319f25e8f3b6d940bf3b75faf8282362644",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/Cuekeeper.xcdatamodel/contents": "266a5735e7e410299f213394961b3b4cf9670f6b323fb3fb5fc6397193da0dff",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV10.xcdatamodel/contents": "7d9b5017bc3bb1f83fb3d16b7f89b95e54d212bb7e4fd79875509f4a47aa14a9",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV11.xcdatamodel/contents": "b3946b25e71f87e5b76a0b6a720dbfe1867796a1b36b5aa1ac55db1930dac092",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV12.xcdatamodel/contents": "f42ced0da428ab18ef4f2dce71666c565af64e0929111367632a2e9513bb2e22",
+    "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV13.xcdatamodel/contents": "d0f0e6c7da2975ea7f827180f5ad6758fead5a03b0479af229b3cf497f0a3529",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV2.xcdatamodel/contents": "428f1d885575311b82db85743d1a064c0b5c93d4f3139ab1ee6196e2f3d59161",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV3.xcdatamodel/contents": "f8baeb536b99143aa2181e7d88ce2f0052e57c7f2c1f5d11e72424af57fe8e5b",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV4.xcdatamodel/contents": "832e05a7018450e88e6fdf915fa7489efd87423b21ab1d6eb4cff60831eaae36",
@@ -19,6 +20,6 @@
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV8.xcdatamodel/contents": "c2f5f54baedcbb2a78b80776e0462231fa9cf402973bb3133709ddff12003e13",
     "Cuekeeper/Storage/Cuekeeper.xcdatamodeld/CuekeeperV9.xcdatamodel/contents": "d95a4a8df3efa613947a0e05996f42db31824056a0c99a53a78c3be04434411c"
   },
-  "schema_sha256": "10ad0a762b0d7a6374d6bb9190b834b4806741fdd1486aab26e26f6dd1ce8fac",
+  "schema_sha256": "eadbd2ad31a73232cabde7674c496a6e868a1e028f45c24d6cacf09d342cd016",
   "team": "TDBAHN96B3"
 }

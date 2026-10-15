@@ -179,5 +179,21 @@ only that test zone. It never uses the real backup index for verification.
 The release gate now checks the backup record fields and fingerprints their
 source. Export is a Development snapshot, not a Production deployment.
 
-The current snapshot is V11 in Development. Production deployment of the V11
-recovery fields and explicit backup record types is still required before release.
+## Independent metadata identities (V13)
+
+V13 adds optional `WorkEvent.ownerJobID`. New metadata records receive their own
+random UUID; the owning job UUID is stored separately. Independent offline
+promotions therefore no longer create duplicate record IDs. Existing owned
+records retain their IDs and are recognized by the legacy job-ID convention
+until their next edit writes the ownership field. Historical shared metadata
+still detaches on edit, including when other clients have not yet downloaded.
+
+Backups continue preserving existing duplicate metadata as separate records.
+Pre-V13 ZIP backups may omit the new optional field and still restore. Existing
+financial identity validation is unchanged. Older app versions can still create
+duplicates, so all devices need the updated app to prevent new collisions.
+
+On October 15, 2026, the signed Mac helper initialized V13 in Development and
+exported the generated schema. The only schema change from the previous snapshot
+is `CD_WorkEvent.CD_ownerJobID`. Deploy the reviewed schema to Production in
+CloudKit Console, then run `./cloudkit.sh check` before distribution.

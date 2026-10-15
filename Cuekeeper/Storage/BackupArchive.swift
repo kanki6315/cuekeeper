@@ -1,4 +1,5 @@
 import CoreData
+import CryptoKit
 import Foundation
 
 /// Portable data, not a copy of the live SQLite store or CloudKit bookkeeping.
@@ -57,11 +58,50 @@ struct BackupArchive: Codable {
         }
     }
 
-    private static func key(_ object: NSManagedObject) throws -> Key {
+    private static func key(_ object: NSManagedObject, eventIDs: [NSManagedObjectID: UUID] = [:]) throws -> Key {
         guard let entity = object.entity.name, let id = object.value(forKey: "id") as? UUID else {
             throw RecordError.invalid("Some records are still incomplete. Let iCloud finish syncing, then try again.")
         }
-        return Key(entity: entity, id: id)
+        return Key(entity: entity, id: eventIDs[object.objectID] ?? id)
+    }
+
+    /// Legacy WorkEvent IDs were ownership markers, not unique record identities:
+    /// two offline promotions can create separate records with the same job UUID.
+    /// Preserve every record and its actual relationships without changing live
+    /// ownership IDs. Other entities (especially financial history) stay strict.
+    private static func eventArchiveIDs(in context: NSManagedObjectContext) throws -> [NSManagedObjectID: UUID] {
+        let events = try context.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
+        let groups = Dictionary(grouping: events.filter { $0.id != nil }, by: { $0.id! })
+        var reserved = Set(groups.keys)
+        var result: [NSManagedObjectID: UUID] = [:]
+        for id in groups.keys.sorted(by: { $0.uuidString < $1.uuidString }) {
+            guard let group = groups[id], group.count > 1 else { continue }
+            let ordered = group.sorted { left, right in
+                // Keep the owning job's current metadata under its original ID.
+                let leftOwns = left.bookings?.contains { $0.id == id } ?? false
+                let rightOwns = right.bookings?.contains { $0.id == id } ?? false
+                if leftOwns != rightOwns { return leftOwns }
+                return left.objectID.uriRepresentation().absoluteString < right.objectID.uriRepresentation().absoluteString
+            }
+            for event in ordered.dropFirst() {
+                guard !event.objectID.isTemporaryID else {
+                    throw RecordError.invalid("Save your current changes before backing up.")
+                }
+                var salt = 0
+                var replacement: UUID
+                repeat {
+                    let seed = "com.cuekeeper.backup.WorkEvent/\(id)/\(event.objectID.uriRepresentation().absoluteString)/\(salt)"
+                    var bytes = Array(SHA256.hash(data: Data(seed.utf8)).prefix(16))
+                    bytes[6] = (bytes[6] & 0x0f) | 0x80
+                    bytes[8] = (bytes[8] & 0x3f) | 0x80
+                    replacement = bytes.withUnsafeBufferPointer { NSUUID(uuidBytes: $0.baseAddress!) as UUID }
+                    salt += 1
+                } while reserved.contains(replacement)
+                reserved.insert(replacement)
+                result[event.objectID] = replacement
+            }
+        }
+        return result
     }
 
     static func capture(in context: NSManagedObjectContext, control: BackupControl = BackupControl()) throws -> Self {
@@ -71,6 +111,7 @@ struct BackupArchive: Codable {
         let originalGeneration = reader.queryGenerationToken
         try reader.setQueryGenerationFrom(.current)
         defer { try? reader.setQueryGenerationFrom(originalGeneration) }
+        let eventIDs = try eventArchiveIDs(in: reader)
         let model = reader.persistentStoreCoordinator!.managedObjectModel
         var records: [Record] = []
         for entity in model.entities.sorted(by: { ($0.name ?? "") < ($1.name ?? "") }) {
@@ -98,9 +139,11 @@ struct BackupArchive: Codable {
                     }
                     for (name, relationship) in entity.relationshipsByName {
                         let related = relationship.isToMany ? Array((object.value(forKey: name) as? Set<NSManagedObject>) ?? []) : (object.value(forKey: name) as? NSManagedObject).map { [$0] } ?? []
-                        relationships[name] = try related.map(key).sorted { $0.id.uuidString < $1.id.uuidString }
+                        relationships[name] = try related.map { try key($0, eventIDs: eventIDs) }.sorted { $0.id.uuidString < $1.id.uuidString }
                     }
-                    records.append(Record(key: try key(object), attributes: attributes, relationships: relationships))
+                    let archiveKey = try key(object, eventIDs: eventIDs)
+                    attributes["id"] = .uuid(archiveKey.id)
+                    records.append(Record(key: archiveKey, attributes: attributes, relationships: relationships))
                     reader.refresh(object, mergeChanges: false)
                     if records.count % 50 == 0 { control.report("Preparing records · \(records.count) read", nil) }
                 }
@@ -131,8 +174,12 @@ struct BackupArchive: Codable {
         guard keys.count == records.count else { throw RecordError.invalid("The backup contains duplicate record identities.") }
         let indexed = Dictionary(uniqueKeysWithValues: records.map { ($0.key, $0) })
         for record in records {
+            // Pre-V13 archives lack only the new optional ownership field.
+            // Restoring those records leaves it nil for legacy ID-based ownership.
             guard let entity = model.entitiesByName[record.key.entity],
-                  Set(record.attributes.keys) == Set(entity.attributesByName.keys),
+                  Set(record.attributes.keys).isSubset(of: Set(entity.attributesByName.keys)),
+                  Set(entity.attributesByName.keys).subtracting(record.attributes.keys).isSubset(
+                    of: record.key.entity == "WorkEvent" ? ["ownerJobID"] : []),
                   Set(record.relationships.keys) == Set(entity.relationshipsByName.keys),
                   record.attributes["id"] == .uuid(record.key.id) else {
                 throw RecordError.invalid("The backup’s records do not match this version of Cuekeeper.")
@@ -166,13 +213,14 @@ struct BackupArchive: Codable {
         try verifyAttachments(control: control)
         try BackupLimits.requireSpace(attachments.reduce(0) { $0 + $1.bytes } * 2)
         try validate(model: writer.persistentStoreCoordinator!.managedObjectModel)
+        let eventIDs = try Self.eventArchiveIDs(in: writer)
         var objects: [Key: NSManagedObject] = [:]
         var inserted = Set<Key>()
         var result = RestoreResult()
         for entity in writer.persistentStoreCoordinator!.managedObjectModel.entities {
             guard let name = entity.name else { continue }
             for object in try writer.fetch(NSFetchRequest<NSManagedObject>(entityName: name)) {
-                let key = try Self.key(object)
+                let key = try Self.key(object, eventIDs: eventIDs)
                 guard objects[key] == nil else { throw RecordError.invalid("Duplicate records need review before restoring a backup.") }
                 objects[key] = object
             }

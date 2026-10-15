@@ -69,10 +69,11 @@ struct DaybookSections<Content: View>: View {
 }
 
 struct DaybookList<Content: View>: View {
+    var sectionSpacing: CGFloat = 18
     @ViewBuilder var content: Content
     var body: some View {
         List { content.listRowBackground(Color("SurfaceBackground")) }
-            .listSectionSpacing(18)
+            .listSectionSpacing(sectionSpacing)
             .daybookSurface()
     }
 }

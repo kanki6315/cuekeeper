@@ -192,7 +192,7 @@ struct DesignFixtureScreen: View {
 actor FixtureBackups: CloudBacking {
     static let shared = FixtureBackups()
     private var values: [String: (CloudBackupStore.Entry, Data)] = [:]
-    func list() async throws -> [CloudBackupStore.Entry] { values.values.map { $0.0 }.sorted { $0.date > $1.date } }
+    func list() async throws -> [CloudBackupStore.Entry] { values.values.map { $0.0 }.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) } }
     func save(file: URL, date: Date, events: Int) async throws {
         let data = try Data(contentsOf: file)
         let id = CKRecord.ID(recordName: UUID().uuidString)

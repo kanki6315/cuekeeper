@@ -131,8 +131,7 @@ struct LibraryEditor: View {
                     if kind == .client {
                         DaybookTextField("Contact details", text: $draft.contact, axis: .vertical).lineLimit(2...6)
                         DaybookPicker("Default currency", selection: $draft.currency) {
-                            Text("USD").tag("USD")
-                            Text("EUR").tag("EUR")
+                            ForEach(CurrencyPreferences.supported, id: \.self) { Text($0).tag($0) }
                         }
                         DaybookTextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...10)
                     }

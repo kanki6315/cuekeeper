@@ -44,7 +44,7 @@ struct InvoiceEditorView: View {
                         Text("Choose client").tag("")
                         ForEach(clients, id: \.objectID) { if let id = $0.id { Text($0.name).tag(id.uuidString) } }
                     }.disabled(invoice != nil).accessibilityIdentifier("invoice-client")
-                    DaybookPicker("Currency", selection: $draft.value.currency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") }.disabled(locked)
+                    DaybookPicker("Currency", selection: $draft.value.currency) { ForEach(CurrencyPreferences.supported, id: \.self) { Text($0).tag($0) } }.disabled(locked)
                     if clients.isEmpty { Text("Add a client in Settings or on a booking before creating an invoice.").foregroundStyle(Color("SecondaryText")) }
                 } header: { Text("Invoice") } footer: { Text("Track an invoice you create elsewhere. Cuekeeper does not send documents.") }
                 Section {

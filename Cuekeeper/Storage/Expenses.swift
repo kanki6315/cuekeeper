@@ -5,7 +5,7 @@ import CryptoKit
 struct ExpenseValue: Codable, Equatable {
     static let categories = ["Travel", "Accommodation", "Meals", "Parking", "Equipment", "Other"]
     // The first version uses two-decimal currencies, matching Money's exact minor units.
-    static let currencies = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF"]
+    static let currencies = CurrencyPreferences.supported
     var merchant = ""
     var day = ""
     var amount = ""

@@ -18,6 +18,52 @@ actor TestCalendarPublisher: CalendarPublishing {
 
 @MainActor
 final class CalendarTests: XCTestCase {
+    func testCalendarLinksResolveRecordsAndRejectUnavailableTargets() throws {
+        let modelURL = try XCTUnwrap(Bundle.main.url(forResource: "Cuekeeper", withExtension: "momd"))
+        let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL))
+        let container = NSPersistentContainer(name: "Cuekeeper", managedObjectModel: model)
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        container.persistentStoreDescriptions = [description]
+        container.loadPersistentStores { _, error in XCTAssertNil(error) }
+        let context = container.viewContext
+        let job = Job(entity: NSEntityDescription.entity(forEntityName: "Job", in: context)!, insertInto: context)
+        job.id = UUID()
+        let event = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: context)!, insertInto: context)
+        event.id = UUID()
+        job.event = event
+        let session = WorkSession(entity: NSEntityDescription.entity(forEntityName: "WorkSession", in: context)!, insertInto: context)
+        session.id = UUID()
+        session.job = job
+
+        func link(_ kind: String, _ id: UUID) throws -> CalendarLink {
+            try XCTUnwrap(CalendarLink(url: XCTUnwrap(URL(string: "cuekeeper://calendar/\(kind)/\(id)"))))
+        }
+        let jobLink = try link("job", XCTUnwrap(job.id))
+        let eventLink = try link("event", XCTUnwrap(event.id))
+        let sessionLink = try link("session", XCTUnwrap(session.id))
+        for route in [jobLink, eventLink] {
+            guard case .job(let resolved) = try route.resolve(in: context) else { return XCTFail("Expected event detail") }
+            XCTAssertEqual(resolved, job)
+        }
+        guard case .session(let resolved) = try sessionLink.resolve(in: context) else { return XCTFail("Expected session detail") }
+        XCTAssertEqual(resolved, session)
+        XCTAssertNil(try link("job", UUID()).resolve(in: context))
+        session.deletedAt = Date()
+        XCTAssertNil(try sessionLink.resolve(in: context))
+        session.deletedAt = nil
+        session.job = nil
+        XCTAssertNil(try sessionLink.resolve(in: context))
+        session.job = job
+        job.deletedAt = Date()
+        for route in [jobLink, eventLink, sessionLink] { XCTAssertNil(try route.resolve(in: context)) }
+
+        for url in ["cuekeeper://today", "https://calendar/job/\(UUID())", "cuekeeper://calendar/unknown/\(UUID())",
+                    "cuekeeper://calendar/job/not-a-uuid", "cuekeeper://calendar/job/\(UUID())/extra"] {
+            XCTAssertNil(CalendarLink(url: try XCTUnwrap(URL(string: url))))
+        }
+    }
+
     func testDeviceIdentitySurvivesReinstallButNotRestoreToAnotherDevice() throws {
         final class Keychain { var id: String?; var locked = false }
         func identity(_ keychain: Keychain) -> CalendarDeviceIdentity {

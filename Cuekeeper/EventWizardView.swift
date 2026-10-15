@@ -14,8 +14,11 @@ struct EventWizardView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
     let onSave: ((NSManagedObjectID) -> Void)?
     @State private var choosingTrack = false
-    @State private var draft = EventCreationDraft()
-    @State private var inactiveDraft = EventCreationDraft()
+    @State private var draft: EventCreationDraft
+    @State private var inactiveDraft: EventCreationDraft
+    @State private var initialDraft: EventCreationDraft
+    @State private var initialInactiveDraft: EventCreationDraft
+    @State private var initialSelected: Set<EventWizardStep>
     @State private var season = false
     @State private var selected: Set<EventWizardStep> = []
     @State private var path: [EventWizardStep] = []
@@ -37,6 +40,8 @@ struct EventWizardView: View {
 
     init(template: Job? = nil, onSave: ((NSManagedObjectID) -> Void)? = nil) {
         self.onSave = onSave
+        var initial = EventCreationDraft()
+        var initialSteps: Set<EventWizardStep> = []
         if let template {
             var value = EventCreationDraft()
             value.shared = JobDraft.duplicate(template)
@@ -44,8 +49,8 @@ struct EventWizardView: View {
             value.shared.trackPlaceID = template.eventTrackPlaceID
             value.events[0].timeZoneID = template.eventTimeZoneID
             value.events[0].details.name = template.eventTitle
-            _draft = State(initialValue: value)
-            _selected = State(initialValue: [.context, .work, .payment])
+            initial = value
+            initialSteps = [.context, .work, .payment]
         }
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -53,7 +58,7 @@ struct EventWizardView: View {
             var sample = EventCreationDraft()
             sample.events[0].details.startDate = Day.date(from: "2026-10-16")!
             sample.events[0].details.endDate = Day.date(from: "2026-10-18")!
-            _draft = State(initialValue: sample)
+            initial = sample
         }
         if args.contains("--ui-testing"), args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") || args.contains("--wizard-timezone-preview") {
             var sample = EventCreationDraft()
@@ -67,18 +72,33 @@ struct EventWizardView: View {
             sample.events[0].details.startDate = Day.date(from: "2026-01-15")!
             sample.events[0].details.endDate = sample.events[0].details.startDate
             sample.events[0].sessions = [SessionDraft(day: "2026-01-15", timeZoneID: "Asia/Tokyo")]
-            _draft = State(initialValue: sample)
-            _selected = State(initialValue: Set(EventWizardStep.optional))
+            initial = sample
+            initialSteps = Set(EventWizardStep.optional)
             _path = State(initialValue: args.contains("--wizard-foreign-session") ? [.sessions] : [.review])
             _activeSession = State(initialValue: args.contains("--wizard-foreign-session") ? 0 : nil)
             if args.contains("--wizard-timezone-preview") {
                 sample.events[0].timeZoneID = "Europe/Paris"
                 sample.events[0].sessions = []
-                _draft = State(initialValue: sample)
+                initial = sample
                 _path = State(initialValue: [.sessions])
             }
         }
         #endif
+        let inactive = EventCreationDraft()
+        _draft = State(initialValue: initial)
+        _inactiveDraft = State(initialValue: inactive)
+        _initialDraft = State(initialValue: initial)
+        _initialInactiveDraft = State(initialValue: inactive)
+        _selected = State(initialValue: initialSteps)
+        _initialSelected = State(initialValue: initialSteps)
+    }
+
+    private var hasChanges: Bool {
+        // Each mode keeps its own draft, including edits hidden by switching modes.
+        (season ? inactiveDraft : draft) != initialDraft
+            || (season ? draft : inactiveDraft) != initialInactiveDraft
+            || season || selected != initialSelected
+            || !newRole.isEmpty || !pastedTitles.isEmpty
     }
 
     var body: some View {
@@ -141,7 +161,9 @@ struct EventWizardView: View {
         .navigationTitle(season ? "New events" : "New event").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Cancel") { discard = true }
+                Button("Cancel") {
+                    if hasChanges { discard = true } else { dismiss() }
+                }
                     .confirmationDialog("Discard this event draft?", isPresented: $discard, titleVisibility: .visible) {
                         Button("Discard Draft", role: .destructive) { dismiss() }
                         Button("Keep Editing", role: .cancel) {}

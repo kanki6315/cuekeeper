@@ -253,13 +253,15 @@ conditions, high/low temperature, precipitation probability and wind. Expand a
 session to see hourly conditions from call time (or session start) through its end.
 Forecast dates and hours use the venue timezone; units follow device preferences.
 
-Each device makes at most one WeatherKit attempt per Place ID per rolling 24 hours,
-including failed requests. Loads are on demand; there is no background polling.
+Each device makes at most one WeatherKit attempt per Place ID per hour, with a
+shared cap of 24 attempts across all venues per rolling 24 hours, including failed
+requests. Loads are on demand, with hourly refreshes while an eligible job is
+visible; there is no background polling. Both limits persist across app restarts.
 Concurrent requests share one task. Request timestamps and forecasts persist
 locally outside iCloud and backups. Forecasts show their fetch time and are marked
 outdated after Apple’s expiry. They stop displaying after 24 hours, and expired
-payloads are purged when the app runs. If refresh fails, weather is unavailable
-until the next permitted attempt. The 24-hour stale-display policy is an explicit
+payloads are purged when the app runs. If refresh fails, an existing displayable forecast remains visible; otherwise
+weather is unavailable until the next permitted attempt. The 24-hour stale-display policy is an explicit
 initial product assumption, not a claim that Apple has approved this retention
 window. No forecasts are synced or retained as event history.
 

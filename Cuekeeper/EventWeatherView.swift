@@ -45,7 +45,7 @@ struct EventWeatherSection: View {
                         }
                     }
                 } header: { Text("Track weather") }
-                footer: { Text("Updates at most once every 24 hours on this device. Forecasts can change before the event.") }
+                footer: { Text("Updates at most hourly per venue, up to 24 times per day on this device. Forecasts can change before the event.") }
             }
         }
         .task(id: request) { loadID = UUID(); loading = false; snapshot = nil; venueZone = nil; await load() }
@@ -57,7 +57,10 @@ struct EventWeatherSection: View {
             EventWeatherStore.shared.purgeExpired()
             if let snapshot, !snapshot.canDisplay(at: date) {
                 self.snapshot = nil
-                if scenePhase == .active { Task { await load() } }
+            }
+            if scenePhase == .active, eligible,
+               EventWeatherStore.shared.nextAttempt(placeID: request.placeID) == nil {
+                Task { await load() }
             }
         }
     }
@@ -77,9 +80,10 @@ struct EventWeatherSection: View {
         if let cached = EventWeatherStore.shared.cached(placeID: requested.placeID) {
             venueZone = cached.timeZone
             snapshot = requested.eligible(now: now, timeZone: cached.timeZone) ? cached : nil
-            return
+            if EventWeatherStore.shared.nextAttempt(placeID: requested.placeID) != nil { return }
+        } else {
+            snapshot = nil
         }
-        snapshot = nil
         guard !loading else { return }
         loading = true; error = nil
         let token = UUID(); loadID = token

@@ -66,20 +66,23 @@ final class EventWeatherTests: XCTestCase {
         let location = CLLocation(latitude: 29, longitude: -81)
         let store = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in calls += 1; return self.snapshot(now: now) }
         _ = try await store.load(placeID: "track", location: location, timeZone: zone)
-        now = now.addingTimeInterval(7200)
+        now = now.addingTimeInterval(3599)
         let reused = try await store.load(placeID: "track", location: location, timeZone: zone)
-        XCTAssertTrue(reused.isOutdated(at: now)); XCTAssertEqual(calls, 1)
+        XCTAssertFalse(reused.isOutdated(at: now)); XCTAssertEqual(calls, 1)
         let reopened = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in calls += 1; return self.snapshot(now: now) }
         _ = try await reopened.load(placeID: "track", location: location, timeZone: zone)
         XCTAssertEqual(calls, 1)
-        now = now.addingTimeInterval(22 * 3600)
-        XCTAssertNil(reopened.cached(placeID: "track"))
-        let persisted = try JSONDecoder().decode([String: EventWeatherStore.Entry].self, from: Data(contentsOf: file))
-        XCTAssertNil(persisted["track"])
+        now = now.addingTimeInterval(1)
         _ = try await reopened.load(placeID: "track", location: location, timeZone: zone)
         XCTAssertEqual(calls, 2)
-        _ = try await reopened.load(placeID: "another-track", location: location, timeZone: zone)
+        now = now.addingTimeInterval(86400)
+        XCTAssertNil(reopened.cached(placeID: "track"))
+        let persisted = try JSONDecoder().decode(EventWeatherStore.State.self, from: Data(contentsOf: file))
+        XCTAssertNil(persisted.entries["track"])
+        _ = try await reopened.load(placeID: "track", location: location, timeZone: zone)
         XCTAssertEqual(calls, 3)
+        _ = try await reopened.load(placeID: "another-track", location: location, timeZone: zone)
+        XCTAssertEqual(calls, 4)
     }
 
     func testFailedRequestsAreLimitedAcrossRelaunch() async throws {
@@ -94,9 +97,57 @@ final class EventWeatherTests: XCTestCase {
         do { _ = try await reopened.load(placeID: "track", location: location, timeZone: zone); XCTFail("Expected daily limit") }
         catch { XCTAssertEqual(error as? EventWeatherStore.Failure, .dailyLimit) }
         XCTAssertEqual(calls, 1); XCTAssertNil(reopened.cached(placeID: "track"))
-        now = now.addingTimeInterval(86400)
+        now = now.addingTimeInterval(3600)
         do { _ = try await reopened.load(placeID: "track", location: location, timeZone: zone) } catch {}
         XCTAssertEqual(calls, 2)
+    }
+
+    func testDeviceBudgetIncludesFailuresAndSurvivesRelaunch() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appending(path: "cache.json")
+        var now = date("2026-10-13")
+        let start = now
+        var calls = 0
+        let location = CLLocation(latitude: 29, longitude: -81)
+        let store = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in
+            calls += 1
+            throw URLError(.notConnectedToInternet)
+        }
+        for index in 0..<24 {
+            do { _ = try await store.load(placeID: "track-\(index)", location: location, timeZone: zone) } catch {}
+        }
+        XCTAssertEqual(calls, 24)
+        let reopened = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in
+            calls += 1; return self.snapshot(now: now)
+        }
+        now = start.addingTimeInterval(86399)
+        XCTAssertEqual(reopened.nextAttempt(placeID: "new-track"), start.addingTimeInterval(86400))
+        do {
+            _ = try await reopened.load(placeID: "new-track", location: location, timeZone: zone)
+            XCTFail("Expected device budget limit")
+        } catch { XCTAssertEqual(error as? EventWeatherStore.Failure, .dailyLimit) }
+        XCTAssertEqual(calls, 24)
+        now = start.addingTimeInterval(86400)
+        _ = try await reopened.load(placeID: "new-track", location: location, timeZone: zone)
+        XCTAssertEqual(calls, 25)
+    }
+
+    func testLegacyCacheMigratesWithoutResettingBudget() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appending(path: "cache.json")
+        let now = date("2026-10-13")
+        let entries = Dictionary(uniqueKeysWithValues: (0..<24).map {
+            ("track-\($0)", EventWeatherStore.Entry(attemptedAt: now, snapshot: nil))
+        })
+        try JSONEncoder().encode(entries).write(to: file)
+        let store = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in
+            XCTFail("Migrated budget should prevent network access")
+            return self.snapshot(now: now)
+        }
+        XCTAssertEqual(store.nextAttempt(placeID: "new-track"), now.addingTimeInterval(86400))
     }
 
     func testConcurrentLoadsMakeOneRequest() async throws {

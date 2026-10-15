@@ -1,6 +1,18 @@
 import CoreData
 import Foundation
 
+enum CurrencyPreferences {
+    // Money stores hundredths; keep the catalog limited to two-decimal currencies.
+    static let supported = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF"]
+    static let defaultDisplay = "USD,EUR"
+
+    static func displayed(_ stored: String) -> [String] {
+        let selected = Set(stored.split(separator: ",").map(String.init))
+        let valid = supported.filter { selected.contains($0) }
+        return valid.isEmpty ? ["USD", "EUR"] : valid
+    }
+}
+
 /// Integer minor units are authoritative; no binary floating point in financial calculations.
 enum Money {
     static let limit: Int64 = 9_000_000_000_000
@@ -51,8 +63,8 @@ struct FeeValue: Codable, Equatable {
     var lines: [FeeLine] = []
     func total() throws -> Int64 { try Money.minorUnits(lines.reduce(Decimal(0)) { try $0 + Decimal($1.total()) }) }
     func validate() throws {
-        guard ["USD", "EUR"].contains(currency), ["unknown", "estimated", "agreed"].contains(agreement),
-              amount == nil || (amount! >= 0 && amount! <= Money.limit) else { throw RecordError.invalid("Choose USD or EUR, a fee agreement state, and a nonnegative fee.") }
+        guard CurrencyPreferences.supported.contains(currency), ["unknown", "estimated", "agreed"].contains(agreement),
+              amount == nil || (amount! >= 0 && amount! <= Money.limit) else { throw RecordError.invalid("Choose a supported currency, a fee agreement state, and a nonnegative fee.") }
         _ = try total()
     }
 }

@@ -32,6 +32,43 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testSupportedCurrenciesThroughInvoicePaymentAndReversal() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        let defaults = UserDefaults.standard
+        let previous = defaults.object(forKey: "displayCurrencies")
+        defer {
+            if let previous { defaults.set(previous, forKey: "displayCurrencies") }
+            else { defaults.removeObject(forKey: "displayCurrencies") }
+        }
+        defaults.set("USD", forKey: "displayCurrencies")
+        for code in CurrencyPreferences.supported {
+            var draft = JobDraft(name: "Event \(code)")
+            draft.clientName = "Client \(code)"
+            draft.fee?.currency = code
+            draft.fee?.amount = "100.25"
+            let jobID = try draft.save(in: context)
+            let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
+            XCTAssertEqual(try job.currentFee().currency, code)
+            var invoiceDraft = InvoiceDraft(clientID: job.client!.id!, currency: code)
+            invoiceDraft.value.status = "sent"
+            invoiceDraft.value.reference = "INV-\(code)"
+            invoiceDraft.value.sentDay = Day.string(from: Date())
+            invoiceDraft.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 10025)]
+            let invoiceID = try invoiceDraft.save(in: context)
+            try PaymentDraft(amount: "25.10").save(in: context, invoiceID: invoiceID)
+            let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
+            XCTAssertEqual(try invoice.balance(), 7515)
+            XCTAssertEqual(try invoice.paid(), 2510)
+            XCTAssertNil(invoice.issue(in: context))
+            let receipt = try XCTUnwrap(invoice.payments?.first)
+            try PaymentLedger.reverse(receipt, in: context)
+            XCTAssertEqual(try invoice.balance(), 10025)
+        }
+        XCTAssertThrowsError(try FeeValue(currency: "INVALID").validate())
+        XCTAssertThrowsError(try InvoiceValue(clientID: UUID(), currency: "INVALID").validate())
+    }
+
     func testDeletingInvoicedJobKeepsInvoiceAndPaymentHistory() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var draft = JobDraft(name: "Invoiced event")
@@ -888,7 +925,7 @@ final class PersistenceTests: XCTestCase {
         let invoiceID = try draft.save(in: context)
         let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
         let revision = try XCTUnwrap(invoice.revisions?.first)
-        var invalid = draft.value; invalid.currency = "GBP"
+        var invalid = draft.value; invalid.currency = "INVALID"
         revision.valueJSON = String(decoding: try JSONEncoder().encode(invalid), as: UTF8.self)
         try context.save()
 

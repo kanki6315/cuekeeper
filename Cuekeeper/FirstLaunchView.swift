@@ -68,7 +68,7 @@ struct FirstLaunchView: View {
 
     @ViewBuilder private var backupRecovery: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+        if ProcessInfo.processInfo.isUITesting {
             FirstLaunchBackupView(cloud: FixtureBackups.shared) { path = [.preferences] }
         } else {
             FirstLaunchBackupView { path = [.preferences] }

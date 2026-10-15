@@ -6,7 +6,7 @@ import WidgetKit
 
 /// Synthetic review records, gated to the isolated UI-test store. Never used in a normal launch.
 enum DesignFixtures {
-    static var enabled: Bool { ProcessInfo.processInfo.arguments.contains("--ui-testing") && ProcessInfo.processInfo.arguments.contains("--design-fixtures") }
+    static var enabled: Bool { ProcessInfo.processInfo.isUITesting && ProcessInfo.processInfo.arguments.contains("--design-fixtures") }
     static var route: String { ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--design-screen=") })?.replacingOccurrences(of: "--design-screen=", with: "") ?? "root" }
     @MainActor static func seed(_ context: NSManagedObjectContext) throws {
         guard enabled, try context.count(for: NSFetchRequest<Job>(entityName: "Job")) == 0 else { return }

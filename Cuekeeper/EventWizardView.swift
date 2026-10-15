@@ -60,7 +60,7 @@ struct EventWizardView: View {
             sample.events[0].details.endDate = Day.date(from: "2026-10-18")!
             initial = sample
         }
-        if args.contains("--ui-testing"), args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") || args.contains("--wizard-timezone-preview") {
+        if ProcessInfo.processInfo.isUITesting, args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") || args.contains("--wizard-timezone-preview") {
             var sample = EventCreationDraft()
             sample.shared.clientName = "Northside Sports"
             sample.shared.projectName = "Winter broadcasts"

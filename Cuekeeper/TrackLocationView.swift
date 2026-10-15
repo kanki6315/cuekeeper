@@ -9,7 +9,7 @@ final class TrackLookup {
 
     func resolve(_ placeID: String) async throws -> MKMapItem {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+        if ProcessInfo.processInfo.isUITesting {
             if ProcessInfo.processInfo.arguments.contains("--weather-fixtures"), placeID == "fixture-track" {
                 let item = MKMapItem(location: CLLocation(latitude: 29.1852, longitude: -81.0705), address: nil)
                 item.name = "Daytona International Speedway"; item.timeZone = TimeZone(identifier: "America/New_York")
@@ -146,7 +146,7 @@ struct TrackLocationPicker: View {
 
     private func identifier(for item: MKMapItem) -> String? {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") && ProcessInfo.processInfo.arguments.contains("--weather-fixtures") { return "fixture-track" }
+        if ProcessInfo.processInfo.isUITesting && ProcessInfo.processInfo.arguments.contains("--weather-fixtures") { return "fixture-track" }
         #endif
         return item.identifier?.rawValue
     }
@@ -162,7 +162,7 @@ struct TrackLocationPicker: View {
                 if debounce { try await Task.sleep(for: .milliseconds(350)) }
                 try Task.checkCancellation()
                 #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+                if ProcessInfo.processInfo.isUITesting {
                     if ProcessInfo.processInfo.arguments.contains("--weather-fixtures") {
                         let item = try await TrackLookup.shared.resolve("fixture-track")
                         try Task.checkCancellation()

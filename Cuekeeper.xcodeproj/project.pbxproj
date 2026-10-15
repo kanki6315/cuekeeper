@@ -798,7 +798,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.schemahelper;
 				PRODUCT_NAME = CuekeeperSchemaHelper;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";
@@ -855,7 +855,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.schemahelper;
 				PRODUCT_NAME = CuekeeperSchemaHelper;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";
@@ -883,6 +883,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				APS_ENVIRONMENT = production;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -993,7 +994,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.schemahelper;
 				PRODUCT_NAME = CuekeeperSchemaHelper;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";
@@ -1074,6 +1075,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				APS_ENVIRONMENT = development;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -1143,6 +1145,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				APS_ENVIRONMENT = development;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";

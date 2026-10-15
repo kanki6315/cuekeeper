@@ -17,12 +17,14 @@ settings:
     MARKETING_VERSION: 0.1.12
     CURRENT_PROJECT_VERSION: 1
     CLOUDKIT_ENVIRONMENT: Development
+    APS_ENVIRONMENT: development
   configs:
     CloudKitSetup:
       CLOUDKIT_ENVIRONMENT: Development
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG CLOUDKIT_SCHEMA_SETUP"
     Release:
       CLOUDKIT_ENVIRONMENT: Production
+      APS_ENVIRONMENT: production
 packages:
   ZIPFoundation:
     url: https://github.com/weichsel/ZIPFoundation.git
@@ -40,7 +42,8 @@ targets:
       path: Cuekeeper/Cuekeeper.entitlements
       properties:
         com.apple.security.application-groups: [group.com.arjunakankipati.cuekeeper]
-        aps-environment: development
+        aps-environment: $(APS_ENVIRONMENT)
+        com.apple.developer.private-cloud-compute: true
         com.apple.developer.weatherkit: true
         com.apple.developer.icloud-container-identifiers:
           - iCloud.com.arjunakankipati.cuekeeper
@@ -138,7 +141,7 @@ targets:
         CuekeeperCloudKitEnvironment: Development
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.cuekeeper
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.cuekeeper.schemahelper
         PRODUCT_NAME: CuekeeperSchemaHelper
         TARGETED_DEVICE_FAMILY: ''
         CLOUDKIT_ENVIRONMENT: Development

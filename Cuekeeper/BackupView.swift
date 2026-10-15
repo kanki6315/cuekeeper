@@ -42,6 +42,9 @@ struct BackupView: View {
                 if let notice = workflow.notice { Text(notice).accessibilityIdentifier("backup-notice") }
             }
             Section {
+                if let reason = persistence.syncActivity.restoreUnavailableReason {
+                    Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                }
                 Button("Export Backup", systemImage: "square.and.arrow.up") {
                     workflow.run("Preparing export…") { control in
                         let file = try await workflow.prepare(context: context, control: control)
@@ -94,9 +97,10 @@ struct BackupView: View {
             workflow.notice = "Your iCloud account changed. Refresh to load its backups."
         }
         .confirmationDialog("Restore this backup?", isPresented: $workflow.reviewing, titleVisibility: .visible) {
-            Button("Restore Backup") { workflow.restore(context: context) }
+            Button("Restore Backup") { workflow.restore(context: context, syncActivity: { persistence.syncActivity }) }
+            .disabled(persistence.syncActivity.restoreUnavailableReason != nil)
             Button("Cancel", role: .cancel) { workflow.archive = nil }
-        } message: { Text(workflow.reviewSummary) }
+        } message: { Text(persistence.syncActivity.restoreUnavailableReason ?? workflow.reviewSummary) }
         .confirmationDialog("Delete this iCloud backup?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete Backup", role: .destructive) {
                 guard let entry = deleting else { return }; deleting = nil

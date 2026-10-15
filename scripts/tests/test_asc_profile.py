@@ -13,6 +13,7 @@ class ProfileEntitlementTests(unittest.TestCase):
             "com.apple.developer.icloud-container-environment": ["Production"],
             "aps-environment": "production",
             "com.apple.developer.weatherkit": True,
+            "com.apple.developer.private-cloud-compute": True,
         }
         for services, expected in [("*", True), (["*"], True),
                                    (["CloudKit"], True), ("CloudKit", True),
@@ -49,6 +50,7 @@ class TargetProfileTests(unittest.TestCase):
             "com.apple.developer.icloud-services": ["CloudKit"],
             "aps-environment": "production",
             "com.apple.developer.weatherkit": True,
+            "com.apple.developer.private-cloud-compute": True,
         }
 
     def test_app_requires_group_and_existing_capabilities(self):

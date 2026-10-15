@@ -52,6 +52,7 @@ struct ExpenseEditorView: View {
     @State private var scanning = false
     @State private var picker: PhotosPickerItem?
     @State private var busy = false
+    @State private var processingLocation = ReceiptExtractor.ProcessingLocation.device
     @State private var task: Task<Void, Never>?
     @State private var message: String?
     @State private var error: String?
@@ -80,13 +81,13 @@ struct ExpenseEditorView: View {
                     } else { Text("Choose an event to complete this expense.").foregroundStyle(Color("SecondaryText")) }
                     Button(selectedJobID == nil ? "Choose Event" : "Change Event") { choosingEvent = true }.accessibilityIdentifier("expense-choose-event")
                 }.containerValue(\.daybookUnframed, true)
-                Section("Receipt") {
+                Section {
                     if let photo, let image = UIImage(data: photo) {
                         Button { enlarged = true } label: {
                             Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 220)
                         }.accessibilityLabel("View full receipt photo")
                         if busy {
-                            ProgressView("Reading receipt on this device…")
+                            ProgressView(processingLocation.progressMessage)
                             Button("Enter details myself") { task?.cancel(); busy = false; message = "Check the receipt and enter its details below." }
                         } else {
                             if let message { Text(message).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
@@ -102,6 +103,10 @@ struct ExpenseEditorView: View {
                         PhotosPicker(selection: $picker, matching: .images) { Label("Choose Receipt Photo", systemImage: "photo") }
                         Text("Scan one receipt. Its photo stays with this draft while you review the details.").foregroundStyle(Color("SecondaryText"))
                     }
+                } header: {
+                    Text("Receipt")
+                } footer: {
+                    Text("Receipts are read on this device first. If a receipt is too long, its recognized text is sent to Apple Private Cloud Compute. This requires an internet connection.")
                 }
                 if let captured = draft.capture {
                     Section("Captured payment") {
@@ -230,15 +235,21 @@ struct ExpenseEditorView: View {
     }
     private func extract() {
         guard let photo else { return }
-        task?.cancel(); busy = true; message = nil
+        task?.cancel(); busy = true; message = nil; processingLocation = .device
         task = Task {
             do {
-                let value = try await ReceiptExtractor.extract(photo)
+                let result = try await ReceiptExtractor.extract(photo) { location in
+                    guard !Task.isCancelled else { return }
+                    processingLocation = location
+                }
                 try Task.checkCancellation()
-                proposal = value; conflicts = draft.fillBlanks(from: value)
-                message = "Details filled on this device. Review them before saving."
+                proposal = result.expense; conflicts = draft.fillBlanks(from: result.expense)
+                message = result.location.completionMessage
             } catch is CancellationError { return }
-            catch { message = error.localizedDescription }
+            catch {
+                guard !Task.isCancelled else { return }
+                message = error.localizedDescription
+            }
             busy = false
         }
     }

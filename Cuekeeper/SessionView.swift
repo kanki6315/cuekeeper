@@ -179,6 +179,11 @@ struct SessionDetailView: View {
     @State private var error: String?
     var body: some View {
         DaybookForm(title: session.title, subtitle: session.job?.displayName ?? "") {
+            if let job = session.job {
+                Section("Event") {
+                    DaybookLink { EventDetailView(anchor: job) } label: { Label(job.eventTitle, systemImage: "bookmark") }
+                }
+            }
             Section("Series") { Text(session.effectiveSeries?.name ?? "Not added") }
             Section("Schedule") {
                 Text(session.scheduleDescription)

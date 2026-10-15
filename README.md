@@ -392,3 +392,32 @@ times in the destination event timezone and rejects nonexistent daylight-saving 
 Existing session timezone fields remain for storage compatibility; an older event
 without a timezone can recover a common zone from its sessions. Conflicting legacy
 zones require choosing an event timezone.
+
+### Today and widgets
+
+Upcoming now offers Today, Week and All. Today shows the complete day's sessions
+in device-local time, with each session's event, client and call time. Sessions
+crossing midnight remain visible on both affected days. Event-local times appear
+when the event timezone differs. Events awaiting a schedule remain useful in a
+separate section. Cancelled/deleted work is excluded. Tentative times and undecided
+coverage are labeled; only booked, confirmed, covering sessions supply Next call.
+Tap a session to open it, then its Event link to open the parent event.
+
+The widget extension supports small and medium Home Screen widgets plus inline,
+circular and rectangular Lock Screen accessories. Small widgets list two remaining
+sessions, sharing an event heading when appropriate or labeling each event separately.
+Medium widgets show up to four sessions. Widgets open Upcoming → Today. Completed
+sessions drop out of widgets while remaining in the in-app day schedule.
+
+The app writes an atomic, schedule-only JSON snapshot to App Group
+`group.com.arjunakankipati.cuekeeper`. Both the main app and
+`com.arjunakankipati.cuekeeper.widgets` extension must have that group enabled in
+Apple Developer and their signing profiles. No Core Data migration or CloudKit
+schema change is needed. Snapshots exclude notes, links and financial data and are
+protected until the first device unlock. Widget content is marked privacy-sensitive.
+The app refreshes the snapshot after local/merged changes and foreground activation;
+WidgetKit schedules time transitions and controls reload delivery. Widgets do not
+independently sync CloudKit, so they reflect the last app snapshot, not a guarantee
+of current data on every device. UI-test stores never publish widget snapshots.
+
+Design references and verification notes live in `design/today-widgets/`.

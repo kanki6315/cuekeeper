@@ -23,7 +23,7 @@
       "id": "receipt-processing",
       "title": "Receipt processing",
       "paragraphs": [
-        "Camera access is used when you choose to scan a receipt. Photo import uses Apple's photo picker to access the image you select. Text recognition uses Vision on your device. Automatic receipt-field extraction uses Apple's on-device Foundation Models model when available. Cuekeeper does not send receipt images or extracted text to a third-party AI service or Private Cloud Compute for this processing. Receipt images and saved expense fields can still sync through iCloud and be included in backups. You can review and correct suggested fields before saving an expense."
+        "Camera access is used when you choose to scan a receipt. Photo import uses Apple's photo picker to access the image you select. Text recognition uses Vision on your device. Automatic receipt-field extraction first uses Apple's on-device Foundation Models model when available. If a receipt's text is too long for the on-device model, Cuekeeper automatically sends the recognized text, not the photo, to Apple Private Cloud Compute to suggest the fields. This requires an internet connection, and the receipt screen says when Private Cloud Compute was used. Apple operates Private Cloud Compute and handles these requests under its own privacy terms; the developer does not receive the text. Cuekeeper does not send receipt images or extracted text to a third-party AI service. If you prefer that a receipt's text not leave your device, enter its details manually instead of scanning it. Receipt images and saved expense fields can still sync through iCloud and be included in backups. You can review and correct suggested fields before saving an expense."
       ]
     },
     {

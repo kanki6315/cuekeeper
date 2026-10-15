@@ -6,7 +6,7 @@ Suggested walkthrough:
 1. Complete first-launch preferences and choose Not now for Calendar.
 2. Add an event with a name and dates. Add a client and a session, then edit their details.
 3. Record a fee and use Payments to track invoices and payments. This is recordkeeping only: no banking, document sending, tax calculations or currency conversion.
-4. In the event's Expenses, scan or import a one-page receipt, review the fields and save. Automatic extraction uses Vision and on-device Foundation Models. It requires Apple Intelligence availability; manual entry is available otherwise. No remote AI endpoint is used.
+4. In the event's Expenses, scan or import a one-page receipt, review the fields and save. Automatic extraction uses Vision and on-device Foundation Models. If the recognized text exceeds the on-device context limit, that text (not the photo) is retried once with Apple Private Cloud Compute; the expense screen discloses this before scanning and the completion message says when it was used. It requires Apple Intelligence availability; manual entry is available otherwise. No third-party or developer-operated AI endpoint is used.
 5. Settings contains Calendar connection, Wallet Automation instructions, backups, Recently Deleted, support and privacy links.
 
 Optional integrations:

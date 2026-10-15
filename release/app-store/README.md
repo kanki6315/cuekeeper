@@ -37,7 +37,9 @@ Do not ship the new links until their destinations work.
 - Both manifests declare no tracking, tracking domains or collected data types.
   No developer analytics/advertising SDK or developer-operated data endpoint was
   found. Daybook and backups use the user's private CloudKit database. MapKit and
-  WeatherKit requests go to Apple. This is not a claim that nothing leaves the device.
+  WeatherKit requests go to Apple. Recognized text from receipts too long for the
+  on-device model goes to Apple Private Cloud Compute. This is not a claim that nothing
+  leaves the device.
 - The backup file-size read uses `URLResourceKey.fileSizeKey`; that key is not on
   Apple's current required-reason API list. No direct timestamp, disk-capacity,
   active-keyboard or system-uptime API calls were found in shipping source.

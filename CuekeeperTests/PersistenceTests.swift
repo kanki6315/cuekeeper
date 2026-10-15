@@ -299,6 +299,39 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
     }
 
+    func testSiriDateMappingHandlesSkippedCivilDatesWithoutCrashing() throws {
+        let zone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        // Some OS versions normalize Brazil's skipped midnight. Samoa's skipped
+        // civil date also exercises the failure path when no date is representable.
+        for (deviceZone, previousDay, skippedDay) in [
+            ("America/Sao_Paulo", "2018-11-03", "2018-11-04"),
+            ("Pacific/Apia", "2011-12-29", "2011-12-30")
+        ] {
+            let localZone = try XCTUnwrap(TimeZone(identifier: deviceZone))
+            let before = try XCTUnwrap(Day.date(from: previousDay, timeZone: zone))
+            let skipped = try XCTUnwrap(Day.date(from: skippedDay, timeZone: zone))
+            let localDate = Day.date(from: skippedDay, timeZone: localZone)
+            if deviceZone == "Pacific/Apia" { XCTAssertNil(localDate) }
+            for (start, end, allDay) in [(skipped, skipped.addingTimeInterval(3600), false),
+                                          (before, skipped, false), (skipped, skipped, true)] {
+                if let localDate {
+                    let draft = try SiriEventDraft.make(title: "DST", start: start, end: end,
+                                                       allDay: allDay, timeZone: zone, deviceTimeZone: localZone)
+                    XCTAssertEqual(draft.events[0].details.endDate, localDate)
+                    XCTAssertEqual(Day.string(from: draft.events[0].details.startDate, timeZone: localZone),
+                                   Day.string(from: start, timeZone: zone))
+                } else {
+                    XCTAssertThrowsError(try SiriEventDraft.make(title: "DST", start: start, end: end,
+                                                               allDay: allDay, timeZone: zone, deviceTimeZone: localZone)) { error in
+                        guard case RecordError.invalid = error else {
+                            return XCTFail("Expected a date validation error, got \(error)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     func testSiriDateMappingAcrossDSTAndTimedSessions() throws {
         let zone = TimeZone(identifier: "America/New_York")!
         let start = Day.date(from: "2026-10-31", timeZone: zone)!

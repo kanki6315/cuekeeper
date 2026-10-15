@@ -4,7 +4,8 @@ import Foundation
 
 struct SiriEventDraft {
     static func make(title: String, start: Date, end: Date?, allDay: Bool,
-                     location: String = "", notes: String = "", timeZone: TimeZone = .current) throws -> EventCreationDraft {
+                     location: String = "", notes: String = "", timeZone: TimeZone = .current,
+                     deviceTimeZone: TimeZone = .current) throws -> EventCreationDraft {
         if let end, end < start || (!allDay && end == start) {
             throw RecordError.invalid("The event end must follow its start.")
         }
@@ -14,10 +15,14 @@ struct SiriEventDraft {
         if allDay, let end, end > start, end == civil.startOfDay(for: end) {
             last = civil.date(byAdding: .day, value: -1, to: end) ?? end
         }
+        guard let startDate = Day.date(from: Day.string(from: start, timeZone: timeZone), timeZone: deviceTimeZone),
+              let endDate = Day.date(from: Day.string(from: last, timeZone: timeZone), timeZone: deviceTimeZone) else {
+            throw RecordError.invalid("The event dates could not be represented in your current time zone.")
+        }
         var draft = EventCreationDraft()
         draft.events[0].details.name = title
-        draft.events[0].details.startDate = Day.date(from: Day.string(from: start, timeZone: timeZone))!
-        draft.events[0].details.endDate = Day.date(from: Day.string(from: last, timeZone: timeZone))!
+        draft.events[0].details.startDate = startDate
+        draft.events[0].details.endDate = endDate
         draft.events[0].notes = notes
         draft.shared.location = location
         draft.events[0].timeZoneID = timeZone.identifier

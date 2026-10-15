@@ -39,19 +39,19 @@ struct FirstLaunchBackupView: View {
                             Button { selected = entry.id } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(entry.date.formatted(date: .abbreviated, time: .shortened)).font(.headline)
-                                        Text(entry.events == 1 ? "1 event" : "\(entry.events) events").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                                        Text(entry.title).font(.headline)
+                                        Text(entry.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                                     }
                                     Spacer()
                                     Image(systemName: selected == entry.id ? "checkmark.circle.fill" : "circle")
                                         .foregroundStyle(selected == entry.id ? Color.accentColor : Color("SecondaryText"))
                                 }.frame(minHeight: 44).contentShape(Rectangle())
-                            }.buttonStyle(.plain).accessibilityAddTraits(selected == entry.id ? .isSelected : [])
+                            }.buttonStyle(.plain).disabled(!entry.canRestore).accessibilityAddTraits(selected == entry.id ? .isSelected : [])
                         }
                     }
                 }
             }
-            if !busy && (entries.isEmpty || workflow.error != nil) {
+            if !busy && (entries.isEmpty || entries.contains { !$0.canRestore } || workflow.error != nil) {
                 Button("Refresh", action: refresh).frame(minHeight: 44)
             }
             Button("Import from Files") { importing = true }.frame(minHeight: 44).disabled(busy)
@@ -97,7 +97,7 @@ struct FirstLaunchBackupView: View {
         workflow.run("Loading backups…") { control in
             let values = try await cloud.list()
             try control.check()
-            entries = values; loaded = true; selected = values.first?.id
+            entries = values; loaded = true; selected = values.first(where: { $0.canRestore })?.id
         }
     }
     private func review() {

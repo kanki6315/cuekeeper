@@ -125,6 +125,28 @@ final class ExpenseTests: XCTestCase {
         LanguageModelError.contextSizeExceeded(.init(contextSize: 4096, tokenCount: 5000, debugDescription: "test overflow"))
     }
 
+    func testReceiptCloudAvailability() throws {
+        XCTAssertNoThrow(try ReceiptExtractor.validateCloudAvailability(.available))
+        XCTAssertThrowsError(try ReceiptExtractor.validateCloudAvailability(.unavailable(.systemNotReady))) { error in
+            XCTAssertEqual(error.localizedDescription, "Apple Private Cloud Compute is not ready yet. Try again later or enter the details below using the attached photo.")
+        }
+    }
+
+    func testReceiptIneligibleCloudDevicePreservesManualEntryMessage() async {
+        do {
+            _ = try await ReceiptExtractor.extract(text: "Receipt", onDevice: { _ in throw self.contextOverflow },
+                inCloud: { _ in
+                    try ReceiptExtractor.validateCloudAvailability(.unavailable(.deviceNotEligible))
+                    XCTFail("Ineligible devices must not proceed to a cloud request")
+                    return self.valid
+                }, progress: { _ in })
+            XCTFail("Expected ineligible-device error")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, "This device cannot use Apple Private Cloud Compute to read this receipt. Enter the details below using the attached photo.")
+            XCTAssertFalse(error.localizedDescription.localizedCaseInsensitiveContains("try again"))
+        }
+    }
+
     func testReceiptStaysOnDeviceWhenItFits() async throws {
         let result = try await ReceiptExtractor.extract(text: "TOTAL 24.50", onDevice: { _ in self.valid }, inCloud: { _ in
             XCTFail("A receipt that fits must not be sent to PCC")

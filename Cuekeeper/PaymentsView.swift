@@ -8,9 +8,14 @@ struct PaymentsView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Invoice.createdAt, ascending: false)]) private var invoices: FetchedResults<Invoice>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)]) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \PaymentRecord.receivedAt, ascending: false)]) private var payments: FetchedResults<PaymentRecord>
+    @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
     @State private var adding = false
     var body: some View {
-        DaybookForm(topPadding: 12) {
+        // Revision arrivals must refresh eligibility even when job rows do not change.
+        _ = invoiceRevisions.count
+        let index = InvoiceIndex(in: context)
+        let ready = readyJobs(index: index)
+        return DaybookForm(topPadding: 12) {
             Section {
                 DaybookTabHeader {
                     Button { adding = true } label: { Label("Invoice", systemImage: "plus") }
@@ -46,11 +51,11 @@ struct PaymentsView: View {
                 }.fixedSize(horizontal: false, vertical: true)
                 }
             }
-            if invoices.contains(where: { $0.issue(in: context) != nil }) || jobs.contains(where: { $0.deletedAt == nil && (try? $0.currentFee()) == nil }) {
+            if invoices.contains(where: { $0.issue(in: context, index: index) != nil }) || jobs.contains(where: { $0.deletedAt == nil && (try? $0.currentFee()) == nil }) {
             Section {
-                ForEach(invoices.filter { $0.issue(in: context) != nil }, id: \.objectID) { invoice in
+                ForEach(invoices.filter { $0.issue(in: context, index: index) != nil }, id: \.objectID) { invoice in
                     DaybookLink { InvoiceDetailView(invoice: invoice) } label: {
-                        VStack(alignment: .leading, spacing: 6) { Text(invoice.title); Text(invoice.issue(in: context) ?? "Needs review").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                        VStack(alignment: .leading, spacing: 6) { Text(invoice.title); Text(invoice.issue(in: context, index: index) ?? "Needs review").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                     }
                 }
                 ForEach(jobs.filter { $0.deletedAt == nil && (try? $0.currentFee()) == nil }, id: \.objectID) { job in
@@ -58,9 +63,9 @@ struct PaymentsView: View {
                 }
             } header: { Text("Needs review") }
             }
-            if !readyJobs.isEmpty {
+            if !ready.isEmpty {
             Section("Ready to invoice") {
-                ForEach(readyClientGroups, id: \.client.objectID) { group in
+                ForEach(readyClientGroups(jobs: ready), id: \.client.objectID) { group in
                     ReadyClientRow(client: group.client, jobs: group.jobs)
                 }
             }
@@ -85,7 +90,7 @@ struct PaymentsView: View {
                 ForEach(jobs.filter { !($0.payments ?? []).isEmpty }, id: \.objectID) { job in
                     if job.deletedAt == nil {
                         DaybookLink { JobDetailView(job: job) } label: {
-                            VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                            VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context, index: index)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                         }
                     } else {
                         DisclosureGroup(job.displayName + " (deleted)") {
@@ -107,11 +112,11 @@ struct PaymentsView: View {
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
         .sheet(isPresented: $adding) { InvoiceEditorView() }
     }
-    private var readyJobs: [Job] {
-        jobs.filter { $0.deletedAt == nil && $0.bookingStatus != "cancelled" && $0.client != nil && (try? $0.activeInvoices(in: context).isEmpty) == true && (try? $0.directPaid()) == 0 && (try? $0.currentFee().amount) != nil }
+    private func readyJobs(index: InvoiceIndex) -> [Job] {
+        jobs.filter { $0.deletedAt == nil && $0.bookingStatus != "cancelled" && $0.client != nil && (try? $0.activeInvoices(in: context, index: index).isEmpty) == true && (try? $0.directPaid()) == 0 && (try? $0.currentFee().amount) != nil }
     }
-    private var readyClientGroups: [(client: Client, jobs: [Job])] {
-        Dictionary(grouping: readyJobs, by: { $0.client! }).map { (client: $0.key, jobs: $0.value) }
+    private func readyClientGroups(jobs: [Job]) -> [(client: Client, jobs: [Job])] {
+        Dictionary(grouping: jobs, by: { $0.client! }).map { (client: $0.key, jobs: $0.value) }
             .sorted {
                 let order = $0.client.name.localizedStandardCompare($1.client.name)
                 return order == .orderedSame

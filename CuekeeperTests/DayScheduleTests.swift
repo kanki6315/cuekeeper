@@ -50,6 +50,52 @@ final class DayScheduleTests: XCTestCase {
 
 @MainActor
 final class ScheduleCaptureTests: XCTestCase {
+    func testCaptureExcludesCancelledSessionsAndRetainsTentativeAndConfirmedSessions() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let store = PersistenceController(storeURL: folder.appendingPathComponent("test.sqlite"), cloudEnabled: false)
+        try await store.waitUntilLoaded()
+        defer {
+            store.container.viewContext.reset()
+            for persistent in store.container.persistentStoreCoordinator.persistentStores { try? store.container.persistentStoreCoordinator.remove(persistent) }
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let context = store.container.viewContext
+        var draft = JobDraft(name: "Race weekend")
+        draft.timeZoneID = "America/New_York"
+        let id = try draft.save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        job.bookingStatus = "booked"
+        try context.save()
+        let now = ISO8601DateFormatter().date(from: "2026-11-01T16:00:00Z")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: draft.timeZoneID)!
+        for status in ["tentative", "confirmed"] {
+            var row = SessionDraft(job: job)
+            row.name = status
+            row.scheduleStatus = status
+            row.coverage = "covering"
+            row.startTime = now.addingTimeInterval(3600)
+            row.endTime = now.addingTimeInterval(7200)
+            try row.save(in: context, jobID: id)
+        }
+        let before = try DaySchedule.capture(in: context)
+        XCTAssertEqual(Set(before.sessions.map(\.title)), ["tentative", "confirmed"])
+        XCTAssertEqual(before.sessions.first { $0.title == "tentative" }?.confirmed, false)
+        XCTAssertEqual(before.sessions.first { $0.title == "confirmed" }?.confirmed, true)
+
+        let cancelled = try XCTUnwrap(job.activeSessions.first { $0.scheduleStatus == "confirmed" })
+        cancelled.scheduleStatus = "cancelled"
+        try context.save()
+        let snapshot = try DaySchedule.capture(in: context)
+        XCTAssertNotEqual(snapshot, before)
+        XCTAssertEqual(snapshot.events, before.events)
+        XCTAssertEqual(snapshot.sessions.map(\.title), ["tentative"])
+        XCTAssertEqual(snapshot.today(at: now, calendar: calendar).map(\.title), ["tentative"])
+        XCTAssertEqual(snapshot.remaining(at: now, calendar: calendar).map(\.title), ["tentative"])
+        XCTAssertNil(snapshot.nextCommitment(at: now, calendar: calendar))
+    }
+
     func testCaptureTracksRenamesAndDeletionWithoutFinancialOrPrivateFields() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

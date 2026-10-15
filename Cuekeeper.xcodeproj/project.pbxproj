@@ -240,6 +240,7 @@
 		D95E08FF1047E3666557F964 /* WorkEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkEvent.swift; sourceTree = "<group>"; };
 		DCC5C17265C5E63723173397 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
+		DEAFA099BF381810103C04D1 /* CuekeeperV13.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV13.xcdatamodel; sourceTree = "<group>"; };
 		DFCD2035B5EA406A2998B79C /* CuekeeperV10.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV10.xcdatamodel; sourceTree = "<group>"; };
 		E4201CFBC74D97C4425E97FD /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
 		E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaybookStyle.swift; sourceTree = "<group>"; };
@@ -1343,8 +1344,9 @@
 				DFCD2035B5EA406A2998B79C /* CuekeeperV10.xcdatamodel */,
 				D4AE67AB7F1A8CA326601086 /* CuekeeperV11.xcdatamodel */,
 				54BB016BE1437AC97CC962A7 /* CuekeeperV12.xcdatamodel */,
+				DEAFA099BF381810103C04D1 /* CuekeeperV13.xcdatamodel */,
 			);
-			currentVersion = 54BB016BE1437AC97CC962A7 /* CuekeeperV12.xcdatamodel */;
+			currentVersion = DEAFA099BF381810103C04D1 /* CuekeeperV13.xcdatamodel */;
 			path = Cuekeeper.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

@@ -202,6 +202,7 @@ final class PersistenceTests: XCTestCase {
         let job = try context.existingObject(with: id) as! Job
         if anchor.event == nil { try EventDraft(anchor: anchor).save(in: context, anchorID: anchor.objectID) }
         anchor.event!.id = UUID() // historical groups did not use a job-owned ID
+        anchor.event!.ownerJobID = nil
         job.event = anchor.event
         try context.save()
         return id
@@ -403,7 +404,7 @@ final class PersistenceTests: XCTestCase {
         let id = try details.save(in: context, firstBooking: first)
         let a = try context.existingObject(with: id) as! Job
         let historical = try XCTUnwrap(a.event)
-        historical.id = UUID(); try context.save()
+        historical.id = UUID(); historical.ownerJobID = nil; try context.save()
         // Only A has arrived on this device; cardinality alone cannot identify an old group.
         let baseline = EventDraft(anchor: a)
         var edited = baseline; edited.title = "A only"
@@ -540,6 +541,13 @@ final class PersistenceTests: XCTestCase {
         XCTAssertTrue(first.name.isEmpty)
         XCTAssertTrue(first.eventTitle.hasPrefix("Championship season"))
         XCTAssertNotNil(first.event); XCTAssertNotEqual(first.event, second.event)
+        XCTAssertNotEqual(first.event?.id, first.id)
+        XCTAssertNotEqual(second.event?.id, second.id)
+        XCTAssertEqual(first.event?.ownerJobID, first.id)
+        XCTAssertEqual(second.event?.ownerJobID, second.id)
+        let metadataID = first.event?.id
+        try EventDraft(anchor: first).save(in: context, anchorID: first.objectID)
+        XCTAssertEqual(first.event?.id, metadataID)
         XCTAssertEqual(first.eventSeriesNames, ["Main", "Support"])
         XCTAssertEqual(CalendarPlan(jobs: [first, second]).desired.values.filter(\.allDay).count, 2)
         var filter = JobFilter(); filter.series = "Support"
@@ -687,9 +695,42 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try first.save(in: context, editing: id))
     }
 
-    func testV2ThroughV11StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV12OwnedMetadataDuplicatesMigrateWithoutChangingIDs() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...11 {
+        let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV12.mom")))
+        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
+        let store = try coordinator.addPersistentStore(type: .sqlite, at: directory.appending(path: "owned-v12.sqlite"))
+        let old = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        old.persistentStoreCoordinator = coordinator
+        let jobID = UUID()
+        let job = NSEntityDescription.insertNewObject(forEntityName: "Job", into: old)
+        job.setValue(jobID, forKey: "id")
+        for note in ["Orphan edit", "Current edit"] {
+            let event = NSEntityDescription.insertNewObject(forEntityName: "WorkEvent", into: old)
+            event.setValue(jobID, forKey: "id"); event.setValue(note, forKey: "notes")
+            event.setValue("2026-10-15", forKey: "startDay"); event.setValue("2026-10-15", forKey: "endDay")
+            job.setValue(event, forKey: "event")
+        }
+        try old.save(); old.reset(); try coordinator.remove(store)
+        let migrated = try await openStore(fileName: "owned-v12.sqlite")
+        let context = migrated.container.viewContext
+        let saved = try XCTUnwrap(context.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        let events = try context.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
+        XCTAssertEqual(events.count, 2)
+        XCTAssertTrue(events.allSatisfy { $0.id == jobID && $0.ownerJobID == nil })
+        let metadataID = saved.event?.objectID
+        var edit = EventDraft(anchor: saved); edit.notes = "Upgraded edit"
+        try edit.save(in: context, anchorID: saved.objectID)
+        XCTAssertEqual(saved.event?.objectID, metadataID)
+        XCTAssertEqual(saved.event?.ownerJobID, jobID)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 2)
+        let archive = try BackupArchive.capture(in: context)
+        XCTAssertEqual(try archive.restore(in: context).added, 0)
+    }
+
+    func testV2ThroughV12StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+        let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
+        for version in 2...12 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"
@@ -806,6 +847,83 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try job.directPaid(), 3010)
         XCTAssertEqual(job.payments?.count, 4)
         XCTAssertThrowsError(try PaymentDraft(amount: "-10").save(in: context, jobID: job.objectID))
+    }
+
+    func testInvalidInvoiceCurrencyOnlyBlocksReferencedJobs() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let affected = try billingJob("Affected", amount: "100", in: context)
+        let unrelated = try billingJob("Unrelated", amount: "100", in: context)
+        var draft = InvoiceDraft(clientID: affected.client!.id!, currency: "USD")
+        draft.value.lines = [BilledLine(jobID: affected.id!, jobName: affected.name, amount: 10000)]
+        let invoiceID = try draft.save(in: context)
+        let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
+        let revision = try XCTUnwrap(invoice.revisions?.first)
+        var invalid = draft.value; invalid.currency = "GBP"
+        revision.valueJSON = String(decoding: try JSONEncoder().encode(invalid), as: UTF8.self)
+        try context.save()
+
+        let index = InvoiceIndex(in: context)
+        XCTAssertThrowsError(try invoice.heads())
+        XCTAssertThrowsError(try affected.activeInvoices(in: context, index: index))
+        XCTAssertEqual(affected.billingSummary(in: context, index: index), "Billing needs review")
+        XCTAssertTrue(try unrelated.activeInvoices(in: context, index: index).isEmpty)
+        XCTAssertEqual(unrelated.billingSummary(in: context, index: index), "Not invoiced")
+        XCTAssertThrowsError(try PaymentDraft(amount: "10").save(in: context, jobID: affected.objectID))
+        try PaymentDraft(amount: "10").save(in: context, jobID: unrelated.objectID)
+        XCTAssertEqual(try unrelated.directPaid(), 1000)
+        XCTAssertNotNil(invoice.issue(in: context))
+
+        revision.valueJSON = String(decoding: try JSONEncoder().encode(draft.value), as: UTF8.self)
+        try context.save()
+        XCTAssertEqual(try affected.activeInvoices(in: context).count, 1)
+    }
+
+    func testIncompleteInvoiceHistoryIsScopedAndRecheckedAfterSync() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        let affected = try billingJob("Affected", amount: "100", in: context)
+        var otherDraft = JobDraft(name: "Other client"); otherDraft.clientName = "Other network"
+        otherDraft.fee?.amount = "100"
+        let unrelated = try XCTUnwrap(context.existingObject(with: otherDraft.save(in: context)) as? Job)
+        let invoice = Invoice(entity: NSEntityDescription.entity(forEntityName: "Invoice", in: context)!, insertInto: context)
+        invoice.id = UUID(); invoice.client = affected.client; invoice.createdAt = Date()
+        try context.save()
+        XCTAssertThrowsError(try affected.activeInvoices(in: context))
+        XCTAssertTrue(try unrelated.activeInvoices(in: context).isEmpty)
+        try PaymentDraft(amount: "10").save(in: context, jobID: unrelated.objectID)
+
+        let revision = InvoiceRevision(entity: NSEntityDescription.entity(forEntityName: "InvoiceRevision", in: context)!, insertInto: context)
+        var value = InvoiceValue(clientID: affected.client!.id!)
+        value.lines = [BilledLine(jobID: affected.id!, jobName: affected.name, amount: 10000)]
+        let missingParent = UUID()
+        revision.id = UUID(); revision.invoice = invoice; revision.createdAt = Date()
+        revision.parentsJSON = String(decoding: try JSONEncoder().encode([missingParent]), as: UTF8.self)
+        revision.valueJSON = "unreadable"
+        try context.save()
+        XCTAssertThrowsError(try affected.activeInvoices(in: context))
+        XCTAssertTrue(try unrelated.activeInvoices(in: context).isEmpty)
+        revision.valueJSON = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        try context.save()
+        XCTAssertThrowsError(try affected.activeInvoices(in: context))
+        XCTAssertTrue(try unrelated.activeInvoices(in: context).isEmpty)
+        XCTAssertTrue(try affected.activeInvoices(in: context, excluding: invoice.objectID).isEmpty)
+        var newInvoice = InvoiceDraft(clientID: unrelated.client!.id!, currency: "USD")
+        newInvoice.value.lines = [BilledLine(jobID: unrelated.id!, jobName: unrelated.name, amount: 10000)]
+        let receipt = try XCTUnwrap(unrelated.payments?.first)
+        try PaymentLedger.reverse(receipt, in: context)
+        newInvoice.value.status = "sent"; newInvoice.value.reference = "Other invoice"
+        newInvoice.value.sentDay = "2026-01-01"
+        let healthyID = try newInvoice.save(in: context)
+        try PaymentDraft(amount: "10").save(in: context, invoiceID: healthyID)
+
+        let parent = InvoiceRevision(entity: NSEntityDescription.entity(forEntityName: "InvoiceRevision", in: context)!, insertInto: context)
+        parent.id = missingParent; parent.invoice = invoice; parent.createdAt = Date()
+        parent.parentsJSON = "[]"; parent.valueJSON = revision.valueJSON
+        try context.save()
+        XCTAssertEqual(try affected.activeInvoices(in: context).count, 1)
+        var void = try InvoiceDraft(invoice: invoice); void.value.status = "void"
+        try void.save(in: context, editing: invoice.objectID)
+        XCTAssertTrue(try affected.activeInvoices(in: context).isEmpty)
+        try PaymentDraft(amount: "10").save(in: context, jobID: affected.objectID)
     }
 
     func testSyncedDuplicateBillingCanBeDetectedAndVoided() async throws {

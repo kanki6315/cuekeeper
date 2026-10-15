@@ -241,5 +241,31 @@ final class CalendarTests: XCTestCase {
         await controller.disconnect()
         XCTAssertFalse(controller.connected, controller.status)
         XCTAssertEqual(events().count, 1)
+        // Deleting the selected calendar must not prevent switching to a replacement.
+        draft.bookingStatus = .booked; try draft.save(in: context, editing: jobID)
+        await controller.connect(calendar.calendarIdentifier)
+        XCTAssertTrue(controller.connected, controller.status)
+        // Ownership verification above resets the store; resolve fresh EventKit objects.
+        let selectedCalendar = try XCTUnwrap(eventStore.calendar(withIdentifier: controller.selectedID))
+        try eventStore.removeCalendar(selectedCalendar, commit: true)
+        let replacement = EKCalendar(for: .event, eventStore: eventStore)
+        replacement.title = "Cuekeeper replacement test \(UUID())"
+        replacement.source = try XCTUnwrap(eventStore.sources.first { $0.sourceType == .local })
+        try eventStore.saveCalendar(replacement, commit: true)
+        defer { try? eventStore.removeCalendar(replacement, commit: true) }
+        await controller.connect(replacement.calendarIdentifier)
+        XCTAssertEqual(controller.selectedID, replacement.calendarIdentifier, controller.status)
+        XCTAssertEqual(defaults.string(forKey: "calendar.selected"), replacement.calendarIdentifier)
+        let replacementEvents = eventStore.events(matching: eventStore.predicateForEvents(
+            withStart: Date().addingTimeInterval(-86400 * 2), end: Date().addingTimeInterval(86400 * 8), calendars: [replacement]))
+        XCTAssertEqual(replacementEvents.count, 1, controller.status)
+        // Disconnect still clears local state and releases ownership after deletion.
+        try eventStore.removeCalendar(replacement, commit: true)
+        await controller.disconnect()
+        XCTAssertFalse(controller.connected, controller.status)
+        XCTAssertNil(defaults.string(forKey: "calendar.selected"))
+        XCTAssertNil(defaults.dictionary(forKey: "calendar.eventIDs"))
+        let owner = await publisher.owner
+        XCTAssertNil(owner)
     }
 }

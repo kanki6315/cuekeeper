@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// Recovery-only presentation of the existing merge restore; no creation or deletion here.
 struct FirstLaunchBackupView: View {
     @Environment(\.managedObjectContext) private var context
+    @EnvironmentObject private var persistence: PersistenceController
     @State private var entries: [CloudBackupStore.Entry] = []
     @State private var selected: CKRecord.ID?
     @State private var loaded = false
@@ -24,6 +25,9 @@ struct FirstLaunchBackupView: View {
     var body: some View {
         LaunchPage {
             LaunchHeading("Choose a backup")
+            if let reason = persistence.syncActivity.restoreUnavailableReason {
+                Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            }
             if busy { BackupProgressView(workflow: workflow) }
             if loaded && entries.isEmpty {
                 ContentUnavailableView("No backups found", systemImage: "archivebox")
@@ -35,19 +39,19 @@ struct FirstLaunchBackupView: View {
                             Button { selected = entry.id } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(entry.date.formatted(date: .abbreviated, time: .shortened)).font(.headline)
-                                        Text(entry.events == 1 ? "1 event" : "\(entry.events) events").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                                        Text(entry.title).font(.headline)
+                                        Text(entry.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                                     }
                                     Spacer()
                                     Image(systemName: selected == entry.id ? "checkmark.circle.fill" : "circle")
                                         .foregroundStyle(selected == entry.id ? Color.accentColor : Color("SecondaryText"))
                                 }.frame(minHeight: 44).contentShape(Rectangle())
-                            }.buttonStyle(.plain).accessibilityAddTraits(selected == entry.id ? .isSelected : [])
+                            }.buttonStyle(.plain).disabled(!entry.canRestore).accessibilityAddTraits(selected == entry.id ? .isSelected : [])
                         }
                     }
                 }
             }
-            if !busy && (entries.isEmpty || workflow.error != nil) {
+            if !busy && (entries.isEmpty || entries.contains { !$0.canRestore } || workflow.error != nil) {
                 Button("Refresh", action: refresh).frame(minHeight: 44)
             }
             Button("Import from Files") { importing = true }.frame(minHeight: 44).disabled(busy)
@@ -75,13 +79,14 @@ struct FirstLaunchBackupView: View {
         }
         .confirmationDialog("Restore this backup?", isPresented: $workflow.reviewing, titleVisibility: .visible) {
             Button("Restore Backup") {
-                workflow.restore(context: context) { result in
+                workflow.restore(context: context, syncActivity: { persistence.syncActivity }) { result in
                     resultMessage = "Added \(result.added) records and recovered \(result.recovered) deleted records."
                     restored = true
                 }
             }
+            .disabled(persistence.syncActivity.restoreUnavailableReason != nil)
             Button("Cancel", role: .cancel) { workflow.archive = nil }
-        } message: { Text(workflow.reviewSummary) }
+        } message: { Text(persistence.syncActivity.restoreUnavailableReason ?? workflow.reviewSummary) }
 
         .alert("Backup recovered", isPresented: $restored) {
             Button("Continue setup", action: onRestore)
@@ -92,7 +97,7 @@ struct FirstLaunchBackupView: View {
         workflow.run("Loading backups…") { control in
             let values = try await cloud.list()
             try control.check()
-            entries = values; loaded = true; selected = values.first?.id
+            entries = values; loaded = true; selected = values.first(where: { $0.canRestore })?.id
         }
     }
     private func review() {

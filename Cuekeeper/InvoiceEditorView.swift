@@ -6,6 +6,7 @@ struct InvoiceEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Client.name, ascending: true)]) private var clients: FetchedResults<Client>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)]) private var jobs: FetchedResults<Job>
+    @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
     let invoice: Invoice?
     let locked: Bool
     @State private var draft: InvoiceDraft
@@ -32,7 +33,10 @@ struct InvoiceEditorView: View {
     private var changed: Bool { draft != initial || amounts != initialAmounts || clientID != (invoice == nil && initial.value.lines.isEmpty ? "" : initial.value.clientID.uuidString) }
     private var candidates: [Job] { jobs.filter { job in (job.deletedAt == nil || draft.value.lines.contains { $0.jobID == job.id }) && job.client?.id?.uuidString == clientID && (try? job.currentFee().currency) == draft.value.currency } }
     var body: some View {
-        NavigationStack {
+        // Revision arrivals must refresh eligibility even when job rows do not change.
+        _ = invoiceRevisions.count
+        let index = InvoiceIndex(in: context)
+        return NavigationStack {
             DaybookForm {
                 Section {
                     DaybookTextField("Invoice reference", text: $draft.value.reference).accessibilityIdentifier("invoice-reference")
@@ -53,10 +57,10 @@ struct InvoiceEditorView: View {
                                         draft.value.lines.append(BilledLine(jobID: id, jobName: job.displayName, amount: amount ?? 0)); amounts[id] = Money.text(amount)
                                     } else { draft.value.lines.removeAll { $0.jobID == id }; amounts.removeValue(forKey: id) }
                                 }))
-                                .disabled(!draft.value.lines.contains { $0.jobID == id } && !eligible(job))
+                                .disabled(!draft.value.lines.contains { $0.jobID == id } && !eligible(job, index: index))
                                 .accessibilityIdentifier("invoice-job-\(job.displayName)")
-                                if !eligible(job) && !draft.value.lines.contains(where: { $0.jobID == id }) {
-                                    Text(job.billingSummary(in: context)).font(.caption).foregroundStyle(Color("SecondaryText"))
+                                if !eligible(job, index: index) && !draft.value.lines.contains(where: { $0.jobID == id }) {
+                                    Text(job.billingSummary(in: context, index: index)).font(.caption).foregroundStyle(Color("SecondaryText"))
                                 }
                             }
                         }
@@ -114,8 +118,8 @@ struct InvoiceEditorView: View {
         .presentationDetents([.large])
         .presentationBackground(Color("PageBackground"))
     }
-    private func eligible(_ job: Job) -> Bool {
-        guard let invoices = try? job.activeInvoices(in: context, excluding: invoice?.objectID), invoices.isEmpty,
+    private func eligible(_ job: Job, index: InvoiceIndex) -> Bool {
+        guard let invoices = try? job.activeInvoices(in: context, excluding: invoice?.objectID, index: index), invoices.isEmpty,
               (try? job.directPaid()) == 0 else { return false }
         return true
     }

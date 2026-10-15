@@ -145,7 +145,8 @@ def supports_cloudkit(profile, team, bundle_id, container):
             and ("CloudKit" in services or "*" in services)
             and "Production" in environment
             and entitlements.get("aps-environment") == "production"
-            and entitlements.get("com.apple.developer.weatherkit") is True)
+            and entitlements.get("com.apple.developer.weatherkit") is True
+            and entitlements.get("com.apple.developer.private-cloud-compute") is True)
 
 
 def supports_profile(profile, team, bundle_id, app_group, cloudkit_container=None):
@@ -169,7 +170,7 @@ def main():
     ap.add_argument("--bundle-id", required=True)
     ap.add_argument("--name", required=True, help="profile name to reuse or create")
     ap.add_argument("--app-group", required=True)
-    ap.add_argument("--cloudkit-container", help="require app-only CloudKit, push and WeatherKit capabilities")
+    ap.add_argument("--cloudkit-container", help="require app-only CloudKit, push, WeatherKit and Private Cloud Compute capabilities")
     a = ap.parse_args()
 
     local = local_distribution_identities()
@@ -228,7 +229,7 @@ def main():
     if not supports_profile(usable, a.team, a.bundle_id, a.app_group, a.cloudkit_container):
         requirements = f"App Group {a.app_group}"
         if a.cloudkit_container:
-            requirements += ", production CloudKit, push and WeatherKit"
+            requirements += ", production CloudKit, push, WeatherKit and Private Cloud Compute"
         die(f"profile for {a.bundle_id} lacks the required identity or entitlements: {requirements}. "
             "Enable these capabilities and associate the required groups/containers for this bundle ID "
             "in Certificates, Identifiers & Profiles first.")

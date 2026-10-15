@@ -13,6 +13,7 @@ final class CalendarController: ObservableObject {
     /// Set when another device holds the calendar claim, so Settings can offer a takeover.
     @Published private(set) var otherOwner: String?
     let store: EKEventStore
+    private let worker: CalendarWorker
     private let defaults: UserDefaults
     private let deviceID: String
     private let publisher: any CalendarPublishing
@@ -32,6 +33,7 @@ final class CalendarController: ObservableObject {
     }
     init(defaults: UserDefaults = .standard, store: EKEventStore = EKEventStore(), publisher: any CalendarPublishing = CalendarPublisher(), deviceID: String? = nil) {
         self.defaults = defaults; self.store = store; self.publisher = publisher
+        worker = CalendarWorker(defaults: defaults)
         selectedID = defaults.string(forKey: "calendar.selected") ?? ""
         self.deviceID = deviceID ?? CalendarDeviceIdentity.resolve(defaults: defaults, keychain: .system)
     }
@@ -67,7 +69,7 @@ final class CalendarController: ObservableObject {
         do {
             guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
             try await publisher.claim(deviceID: deviceID, name: ownerLabel)
-            try adopt(id)
+            try await adopt(id)
         } catch CalendarOwnershipError.managedElsewhere(let owner) {
             otherOwner = owner
             status = "Calendar not connected: \(CalendarOwnershipError.managedElsewhere(owner).localizedDescription)"
@@ -83,13 +85,13 @@ final class CalendarController: ObservableObject {
         do {
             guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
             try await publisher.takeOver(deviceID: deviceID, name: ownerLabel)
-            try adopt(id)
+            try await adopt(id)
         } catch { status = "Calendar not connected: \(error.localizedDescription)" }
         busy = false
         if connected { await sync() }
     }
-    private func adopt(_ id: String) throws {
-        if connected && selectedID != id { try removeManagedEvents() }
+    private func adopt(_ id: String) async throws {
+        if connected && selectedID != id { try await worker.removeManagedEvents(calendarID: selectedID) }
         selectedID = id; defaults.set(id, forKey: "calendar.selected")
         otherOwner = nil
         status = "Connected. Updating entries…"
@@ -105,7 +107,7 @@ final class CalendarController: ObservableObject {
                 status = "Disconnected. Calendar entries were left for the device that now manages them."
                 return
             }
-            try removeManagedEvents()
+            try await worker.removeManagedEvents(calendarID: selectedID)
             try await publisher.release(deviceID: deviceID)
             clearConnection()
             status = "Disconnected. Cuekeeper’s calendar entries were removed."
@@ -132,33 +134,14 @@ final class CalendarController: ObservableObject {
             guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { throw RecordError.invalid("Full Calendar access is needed. Enable it in Settings; your jobs are saved locally.") }
             guard let calendar = store.calendar(withIdentifier: selectedID), calendar.allowsContentModifications else { throw RecordError.invalid("The selected calendar is unavailable. Choose another calendar in Cuekeeper Settings.") }
             try await publisher.verify(deviceID: deviceID)
-            let jobs = try context.fetch(NSFetchRequest<Job>(entityName: "Job"))
-            let historicalEvents = try context.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
-            let plan = CalendarPlan(jobs: jobs, historicalEventIDs: historicalEvents.compactMap(\.id))
-            rememberBounds(plan.bounds)
-            let existing = managedEvents(calendar: calendar)
-            var ids: [String: String] = [:]
-            for (key, events) in Dictionary(grouping: existing, by: { CalendarPlan.key(from: $0.url)! }) {
-                guard plan.knownKeys.contains(key) else {
-                    if let id = events.first?.eventIdentifier { ids[key] = id }; continue
-                }
-                if plan.desired[key] == nil { for event in events { try store.remove(event, span: .thisEvent, commit: false) } }
+            let reader = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+            reader.persistentStoreCoordinator = context.persistentStoreCoordinator
+            let plan = try await reader.perform {
+                let jobs = try reader.fetch(NSFetchRequest<Job>(entityName: "Job"))
+                let history = try reader.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
+                return CalendarPlan(jobs: jobs, historicalEventIDs: history.compactMap(\.id))
             }
-            for (key, desired) in plan.desired {
-                let matches = existing.filter { CalendarPlan.key(from: $0.url) == key }
-                let event = matches.first ?? EKEvent(eventStore: store)
-                for duplicate in matches.dropFirst() { try store.remove(duplicate, span: .thisEvent, commit: false) }
-                if event.calendar == nil { event.calendar = calendar }
-                // Save only actual changes; EventKit notifications must not create a sync loop.
-                if Self.update(event, from: desired) {
-                    try store.save(event, span: .thisEvent, commit: false)
-                }
-                if let id = event.eventIdentifier { ids[key] = id }
-            }
-            try store.commit()
-            // IDs are assigned on commit; recapture them for date changes and moved entries.
-            for event in managedEvents(calendar: calendar) { if let key = CalendarPlan.key(from: event.url), let id = event.eventIdentifier { ids[key] = id } }
-            defaults.set(ids, forKey: "calendar.eventIDs")
+            try await worker.sync(plan: plan, calendarID: selectedID)
             status = "Updated at \(Date().formatted(date: .omitted, time: .shortened)) on this device."
         } catch let error as CalendarOwnershipError {
             store.reset()
@@ -170,7 +153,7 @@ final class CalendarController: ObservableObject {
     }
     /// EventKit represents all-day dates in the device's default time zone.
     /// Preserve the job's civil dates, rather than its midnight instants, when publishing.
-    static func update(_ event: EKEvent, from desired: CalendarEntry) -> Bool {
+    nonisolated static func update(_ event: EKEvent, from desired: CalendarEntry) -> Bool {
         let timeZone = desired.allDay ? nil : TimeZone(identifier: desired.timeZoneID)
         func eventDate(_ date: Date) -> Date {
             guard desired.allDay else { return date }
@@ -197,36 +180,6 @@ final class CalendarController: ObservableObject {
         return true
     }
 
-    private func rememberBounds(_ dates: [Date]) {
-        let low = defaults.object(forKey: "calendar.earliest") as? Date ?? Date()
-        let high = defaults.object(forKey: "calendar.latest") as? Date ?? Date()
-        defaults.set(min(low, dates.min() ?? low), forKey: "calendar.earliest")
-        defaults.set(max(high, dates.max() ?? high), forKey: "calendar.latest")
-    }
-    private func managedEvents(calendar: EKCalendar) -> [EKEvent] {
-        var result: [String: EKEvent] = [:]
-        let ids = defaults.dictionary(forKey: "calendar.eventIDs") as? [String: String] ?? [:]
-        for id in ids.values {
-            if let event = store.event(withIdentifier: id), event.calendar.calendarIdentifier == calendar.calendarIdentifier,
-               CalendarPlan.key(from: event.url) != nil { result[event.eventIdentifier] = event }
-        }
-        var start = (defaults.object(forKey: "calendar.earliest") as? Date ?? Date()).addingTimeInterval(-86400)
-        let end = (defaults.object(forKey: "calendar.latest") as? Date ?? Date()).addingTimeInterval(86400)
-        while start < end {
-            let next = min(Calendar.current.date(byAdding: .year, value: 1, to: start)!, end)
-            for event in store.events(matching: store.predicateForEvents(withStart: start, end: next, calendars: [calendar])) where CalendarPlan.key(from: event.url) != nil {
-                result[event.eventIdentifier] = event
-            }
-            start = next
-        }
-        return Array(result.values).sorted { $0.eventIdentifier < $1.eventIdentifier }
-    }
-    private func removeManagedEvents() throws {
-        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess,
-              let calendar = store.calendar(withIdentifier: selectedID) else { throw RecordError.invalid("Restore Calendar access before disconnecting.") }
-        for event in managedEvents(calendar: calendar) { try store.remove(event, span: .thisEvent, commit: false) }
-        try store.commit()
-    }
     deinit { for observer in observers { NotificationCenter.default.removeObserver(observer) } }
 }
 
@@ -284,4 +237,84 @@ struct CalendarDeviceIdentity {
             return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
         })
     }()
+}
+
+/// Owns its EventKit objects away from the main actor. No EventKit objects cross
+/// this boundary; the UI store is used only for calendar selection and permission.
+private actor CalendarWorker {
+    private let store = EKEventStore()
+    private let defaults: UserDefaults
+    init(defaults: UserDefaults) { self.defaults = defaults }
+
+    func sync(plan: CalendarPlan, calendarID: String) throws {
+        do {
+            store.reset()
+            guard let calendar = store.calendar(withIdentifier: calendarID), calendar.allowsContentModifications else {
+                throw RecordError.invalid("The selected calendar is unavailable. Choose another calendar in Cuekeeper Settings.")
+            }
+            rememberBounds(plan.bounds)
+            let existing = managedEvents(calendar: calendar)
+            let grouped = Dictionary(grouping: existing, by: { CalendarPlan.key(from: $0.url)! })
+            var retained: [EKEvent] = []
+            var ids: [String: String] = [:]
+            for (key, events) in grouped {
+                guard plan.knownKeys.contains(key) else {
+                    if let id = events.first?.eventIdentifier { ids[key] = id }; continue
+                }
+                if plan.desired[key] == nil { for event in events { try store.remove(event, span: .thisEvent, commit: false) } }
+            }
+            for (key, desired) in plan.desired {
+                let matches = grouped[key] ?? []
+                let event = matches.first ?? EKEvent(eventStore: store)
+                for duplicate in matches.dropFirst() { try store.remove(duplicate, span: .thisEvent, commit: false) }
+                if event.calendar == nil { event.calendar = calendar }
+                // Save only actual changes; EventKit notifications must not create a sync loop.
+                if CalendarController.update(event, from: desired) {
+                    try store.save(event, span: .thisEvent, commit: false)
+                }
+                retained.append(event)
+            }
+            try store.commit()
+            // IDs are assigned on commit; recapture them for date changes and moved entries.
+            for event in retained { if let key = CalendarPlan.key(from: event.url), let id = event.eventIdentifier { ids[key] = id } }
+            defaults.set(ids, forKey: "calendar.eventIDs")
+        } catch {
+            store.reset()
+            throw error
+        }
+    }
+    private func rememberBounds(_ dates: [Date]) {
+        let low = defaults.object(forKey: "calendar.earliest") as? Date ?? Date()
+        let high = defaults.object(forKey: "calendar.latest") as? Date ?? Date()
+        defaults.set(min(low, dates.min() ?? low), forKey: "calendar.earliest")
+        defaults.set(max(high, dates.max() ?? high), forKey: "calendar.latest")
+    }
+    private func managedEvents(calendar: EKCalendar) -> [EKEvent] {
+        var result: [String: EKEvent] = [:]
+        let ids = defaults.dictionary(forKey: "calendar.eventIDs") as? [String: String] ?? [:]
+        for id in ids.values {
+            if let event = store.event(withIdentifier: id), event.calendar.calendarIdentifier == calendar.calendarIdentifier,
+               CalendarPlan.key(from: event.url) != nil { result[event.eventIdentifier] = event }
+        }
+        var start = (defaults.object(forKey: "calendar.earliest") as? Date ?? Date()).addingTimeInterval(-86400)
+        let end = (defaults.object(forKey: "calendar.latest") as? Date ?? Date()).addingTimeInterval(86400)
+        while start < end {
+            let next = min(Calendar.current.date(byAdding: .year, value: 1, to: start)!, end)
+            for event in store.events(matching: store.predicateForEvents(withStart: start, end: next, calendars: [calendar])) where CalendarPlan.key(from: event.url) != nil {
+                result[event.eventIdentifier] = event
+            }
+            start = next
+        }
+        return Array(result.values).sorted { $0.eventIdentifier < $1.eventIdentifier }
+    }
+    func removeManagedEvents(calendarID: String) throws {
+        store.reset()
+        defer { store.reset() }
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { throw RecordError.invalid("Restore Calendar access before disconnecting.") }
+        // With full access, a missing calendar has no entries left to remove.
+        // Let disconnect release the claim, or adopt select a replacement calendar.
+        guard let calendar = store.calendar(withIdentifier: calendarID) else { return }
+        for event in managedEvents(calendar: calendar) { try store.remove(event, span: .thisEvent, commit: false) }
+        try store.commit()
+    }
 }

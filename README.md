@@ -399,9 +399,22 @@ Event → Expenses → Scan Receipt opens the native document camera, with photo
 import available after cancelling the camera or on devices without a scanner.
 Scan one page per expense. Vision reads the image on-device and the on-device
 Foundation Models model proposes merchant, civil date, total, currency, included
-tax and category. No PCC or third-party model is used. Apple Intelligence must
+tax and category. If the on-device context limit is exceeded, the complete OCR
+text (not the photo) is retried once using Apple Private Cloud Compute (PCC).
+Progress and completion messages identify where processing happens. PCC requires
+internet access and available usage quota; failures leave the saved photo available
+for manual entry or a later retry. If PCC also exceeds its context limit, the
+friendly “too long” message is shown. No third-party model is used. Apple Intelligence must
 be available for automatic field extraction; manual review remains available
 when it is disabled, unsupported, downloading or fails.
+
+PCC requires Apple to assign the Private Cloud Compute entitlement to the developer
+account and enable it for the app identifier. Regenerate distribution profiles with
+`com.apple.developer.private-cloud-compute`; the release profile check requires it.
+See https://developer.apple.com/private-cloud-compute/ for eligibility and access.
+Verify live PCC with an entitled TestFlight or ad hoc build on a compatible device.
+Extraction runs while the receipt editor is open; it has no background queue or
+automatic retry after relaunch. Closing the editor cancels the request.
 
 The review form requires confirmation before an expense is counted as saved.
 The normalized receipt JPEG is persisted as an event-linked draft before model

@@ -1,3 +1,4 @@
+import CloudKit
 import CoreData
 import XCTest
 import ZIPFoundation
@@ -66,6 +67,63 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertFalse(Recovery.canRestore(job)); XCTAssertThrowsError(try Recovery.restore(job.objectID, in: context))
         XCTAssertEqual(try context.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 1)
     }
+    func testWorkflowWaitsForInitialImportThenMergesDownloadedIdentities() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let snapshot = try BackupArchive.capture(in: source)
+        let target = try await context()
+        let workflow = BackupWorkflow()
+        workflow.archive = snapshot
+        var activity = SyncActivity()
+        let importID = UUID()
+
+        // Setup/export success, offline status and a failed import must not unlock restore.
+        activity.record(id: UUID(), kind: .setup, ended: true, succeeded: true, error: nil)
+        activity.record(id: UUID(), kind: .sending, ended: true, succeeded: true, error: nil)
+        activity.offline = true
+        activity.record(id: importID, kind: .receiving, ended: true, succeeded: false, error: "Offline")
+        workflow.restore(context: target, syncActivity: { activity }) { _ in XCTFail("Restore must wait") }
+        XCTAssertNotNil(workflow.error)
+        XCTAssertNotNil(workflow.archive)
+        XCTAssertFalse(workflow.busy)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+
+        activity.offline = false
+        activity.record(id: importID, kind: .receiving, ended: false, succeeded: false, error: nil)
+        workflow.restore(context: target, syncActivity: { activity }) { _ in XCTFail("Import is still running") }
+        XCTAssertFalse(workflow.busy)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+
+        // Simulate iCloud delivering the same records before its successful completion.
+        _ = try snapshot.restore(in: target)
+        activity.record(id: importID, kind: .receiving, ended: true, succeeded: true, error: nil)
+        let restored = expectation(description: "Restore after initial import")
+        workflow.restore(context: target, syncActivity: { activity }) { result in
+            XCTAssertEqual(result.added, 0)
+            restored.fulfill()
+        }
+        await fulfillment(of: [restored], timeout: 5)
+        XCTAssertNil(workflow.error)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 1)
+        let invoice = try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first)
+        XCTAssertEqual(try invoice.balance(), 7500)
+        XCTAssertNoThrow(try BackupArchive.capture(in: target))
+    }
+
+    func testWorkflowAllowsLocalOnlyRestore() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let target = try await context()
+        let workflow = BackupWorkflow()
+        workflow.archive = try BackupArchive.capture(in: source)
+        var activity = SyncActivity(); activity.enabled = false
+        let restored = expectation(description: "Local restore")
+        workflow.restore(context: target, syncActivity: { activity }) { result in
+            XCTAssertGreaterThan(result.added, 0)
+            restored.fulfill()
+        }
+        await fulfillment(of: [restored], timeout: 5)
+        XCTAssertNil(workflow.error)
+    }
+
     func testBackupRoundTripIntoEmptyStoreAndRepeatedRestore() async throws {
         let source = try await context(); let original = try fixture(source)
         let archive = try BackupArchive.capture(in: source)
@@ -107,6 +165,160 @@ final class RecoveryBackupTests: XCTestCase {
         duplicate.records.append(duplicate.records[0])
         XCTAssertThrowsError(try duplicate.restore(in: target))
         XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+    }
+
+    /// Replaying the old relationship models the second offline device's view
+    /// before its independently inserted metadata arrives through CloudKit.
+    private func conflictingPromotions(in context: NSManagedObjectContext, job: Job) throws -> [WorkEvent] {
+        try EventDraft(anchor: job).save(in: context, anchorID: job.objectID)
+        let legacy = try XCTUnwrap(job.event)
+        legacy.id = UUID(); legacy.ownerJobID = nil
+        try context.save()
+        var first = EventDraft(anchor: job); first.notes = "Device A notes"
+        try first.save(in: context, anchorID: job.objectID)
+        let a = try XCTUnwrap(job.event)
+        job.event = legacy
+        try context.save()
+        var second = EventDraft(anchor: job); second.notes = "Device B notes"
+        try second.save(in: context, anchorID: job.objectID)
+        let b = try XCTUnwrap(job.event)
+        // Existing data from pre-V13 devices used the job ID on both inserts.
+        a.id = job.id; a.ownerJobID = nil
+        b.id = job.id; b.ownerJobID = nil
+        try context.save()
+        XCTAssertNotEqual(a.objectID, b.objectID)
+        XCTAssertEqual(a.id, b.id)
+        return [a, b]
+    }
+
+    func testBackupPreservesBothOfflinePromotionsAndRestoresIdempotently() async throws {
+        let source = try await context(); let job = try fixture(source)
+        let promotions = try conflictingPromotions(in: source, job: job)
+        let archive = try BackupArchive.capture(in: source)
+        let repeated = try BackupArchive.capture(in: source)
+        XCTAssertEqual(Set(archive.records.map(\.key)), Set(repeated.records.map(\.key)))
+        XCTAssertEqual(promotions[0].id, promotions[1].id, "Capture must not mutate synced ownership IDs")
+        let target = try await context()
+        let decoded = try BackupArchive.decode(archive.encoded(), model: target.persistentStoreCoordinator!.managedObjectModel)
+        _ = try decoded.restore(in: target)
+        let events = try target.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
+        XCTAssertEqual(events.count, 3)
+        XCTAssertTrue(events.contains { $0.notes == "Device A notes" })
+        XCTAssertTrue(events.contains { $0.notes == "Device B notes" })
+        let restored = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        XCTAssertEqual(restored.event?.notes, "Device B notes")
+        XCTAssertEqual(restored.event?.id, restored.id)
+        XCTAssertEqual(try decoded.restore(in: target).added, 0)
+        XCTAssertEqual(try decoded.restore(in: source).added, 0)
+    }
+
+    func testOlderBackupRestoresDespiteLivePromotionDuplicates() async throws {
+        let context = try await context(); let job = try fixture(context)
+        let archive = try BackupArchive.capture(in: context)
+        _ = try conflictingPromotions(in: context, job: job)
+        try Job.remove(job.objectID, in: context)
+        XCTAssertEqual(try archive.restore(in: context).recovered, 1)
+        XCTAssertEqual(job.event?.notes, "Device B notes")
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 3)
+    }
+
+    func testIndependentOfflinePromotionsHaveUniqueIDsAndReuseOwnedMetadata() async throws {
+        let first = try await context(); let job = try fixture(first)
+        try EventDraft(anchor: job).save(in: first, anchorID: job.objectID)
+        job.event!.id = UUID(); job.event!.ownerJobID = nil
+        try first.save()
+        let snapshot = try BackupArchive.capture(in: first)
+        let second = try await context()
+        _ = try snapshot.restore(in: second)
+        let other = try XCTUnwrap(second.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        var a = EventDraft(anchor: job); a.notes = "Offline A"
+        var b = EventDraft(anchor: other); b.notes = "Offline B"
+        try a.save(in: first, anchorID: job.objectID)
+        try b.save(in: second, anchorID: other.objectID)
+        let aID = try XCTUnwrap(job.event?.id)
+        let bID = try XCTUnwrap(other.event?.id)
+        XCTAssertNotEqual(aID, bID)
+        XCTAssertNotEqual(aID, job.id); XCTAssertNotEqual(bID, other.id)
+        XCTAssertEqual(job.event?.ownerJobID, job.id)
+        XCTAssertEqual(other.event?.ownerJobID, other.id)
+        a.notes = "Next edit"; try a.save(in: first, anchorID: job.objectID)
+        XCTAssertEqual(job.event?.id, aID)
+        XCTAssertEqual(try first.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 2)
+        // Merge the other device's archive: both identities survive independently.
+        let otherArchive = try BackupArchive.capture(in: second)
+        _ = try otherArchive.restore(in: first)
+        let events = try first.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
+        XCTAssertEqual(events.count, 3)
+        XCTAssertTrue(events.contains { $0.id == bID && $0.notes == "Offline B" })
+        XCTAssertEqual(job.event?.id, aID)
+        XCTAssertEqual(try otherArchive.restore(in: first).added, 0)
+        _ = try BackupArchive.capture(in: first)
+    }
+
+    func testPreOwnershipFieldBackupRestoresAndEditsLegacyOwnedRecordInPlace() async throws {
+        let source = try await context(); let job = try fixture(source)
+        try EventDraft(anchor: job).save(in: source, anchorID: job.objectID)
+        job.event!.id = job.id; job.event!.ownerJobID = nil
+        try source.save()
+        var oldArchive = try BackupArchive.capture(in: source)
+        for index in oldArchive.records.indices where oldArchive.records[index].key.entity == "WorkEvent" {
+            oldArchive.records[index].attributes.removeValue(forKey: "ownerJobID")
+        }
+        let target = try await context()
+        let decoded = try BackupArchive.decode(oldArchive.encoded(), model: target.persistentStoreCoordinator!.managedObjectModel)
+        _ = try decoded.restore(in: target)
+        let restored = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        XCTAssertNil(restored.event?.ownerJobID)
+        let metadataID = try XCTUnwrap(restored.event?.objectID)
+        var edit = EventDraft(anchor: restored); edit.notes = "Edited after upgrade"
+        try edit.save(in: target, anchorID: restored.objectID)
+        XCTAssertEqual(restored.event?.objectID, metadataID)
+        XCTAssertEqual(restored.event?.id, job.id)
+        XCTAssertEqual(restored.event?.ownerJobID, restored.id)
+        XCTAssertEqual(try decoded.restore(in: target).added, 0)
+        // No other missing attribute is accepted as an older schema.
+        oldArchive.records[0].attributes.removeValue(forKey: "id")
+        XCTAssertThrowsError(try oldArchive.validate(model: target.persistentStoreCoordinator!.managedObjectModel))
+    }
+
+    func testDuplicateEventMetadataKeepsDistinctBookingRelationships() async throws {
+        let source = try await context(); let first = try fixture(source)
+        try EventDraft(anchor: first).save(in: source, anchorID: first.objectID)
+        let firstEvent = try XCTUnwrap(first.event)
+        let secondID = try JobDraft(name: "Other booking").save(in: source)
+        let second = try XCTUnwrap(source.existingObject(with: secondID) as? Job)
+        try EventDraft(anchor: second).save(in: source, anchorID: secondID)
+        second.event!.id = firstEvent.id
+        firstEvent.notes = "First metadata"; second.event!.notes = "Second metadata"
+        try source.save()
+        let archive = try BackupArchive.capture(in: source)
+        let target = try await context()
+        _ = try archive.restore(in: target)
+        let jobs = try target.fetch(NSFetchRequest<Job>(entityName: "Job"))
+        let a = try XCTUnwrap(jobs.first { $0.id == first.id })
+        let b = try XCTUnwrap(jobs.first { $0.id == second.id })
+        XCTAssertEqual(a.event?.notes, "First metadata")
+        XCTAssertEqual(b.event?.notes, "Second metadata")
+        XCTAssertNotEqual(a.event, b.event)
+        XCTAssertEqual(a.event?.bookings, Set([a]))
+        XCTAssertEqual(b.event?.bookings, Set([b]))
+        XCTAssertEqual(try archive.restore(in: source).added, 0)
+    }
+
+    func testLiveFinancialDuplicateStillRejectsBackupAndRestore() async throws {
+        let context = try await context(); _ = try fixture(context)
+        let archive = try BackupArchive.capture(in: context)
+        let payment = try XCTUnwrap(context.fetch(NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")).first)
+        let duplicate = NSEntityDescription.insertNewObject(forEntityName: "PaymentRecord", into: context)
+        for name in payment.entity.attributesByName.keys {
+            duplicate.setValue(payment.value(forKey: name), forKey: name)
+        }
+        duplicate.setValue(payment.value(forKey: "invoice"), forKey: "invoice")
+        try context.save()
+        XCTAssertThrowsError(try BackupArchive.capture(in: context))
+        XCTAssertThrowsError(try archive.restore(in: context))
+        XCTAssertFalse(context.hasChanges)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 2)
     }
     func testImmutableFinancialConflictRollsBackWholeRestore() async throws {
         let context = try await context(); _ = try fixture(context)
@@ -241,3 +453,53 @@ final class RecoveryBackupTests: XCTestCase {
 }
 
 private final class BackupCancellationHolder: @unchecked Sendable { var control: BackupControl? }
+
+final class CloudBackupListingTests: XCTestCase {
+    func testUnreadableEntriesDoNotHideHealthyBackups() throws {
+        let ids = (0..<5).map { CKRecord.ID(recordName: "backup-\($0)", zoneID: CloudBackupStore.zoneID) }
+        let healthy = CKRecord(recordType: "CuekeeperBackup", recordID: ids[0])
+        healthy["savedAt"] = Date() as CKRecordValue
+        healthy["byteCount"] = Int64(123) as CKRecordValue
+        healthy["eventCount"] = Int64(2) as CKRecordValue
+        let malformed = CKRecord(recordType: "CuekeeperBackup", recordID: ids[1])
+        let entries = CloudBackupStore.entries(ids: ids, results: [
+            ids[0]: .success(healthy), ids[1]: .success(malformed),
+            ids[2]: .failure(CKError(.unknownItem)), ids[3]: .failure(CKError(.networkFailure))
+        ])
+        XCTAssertEqual(Set(entries.map(\.id)), Set(ids))
+        XCTAssertEqual(entries.filter(\.canRestore).map(\.id), [ids[0]])
+        XCTAssertEqual(entries.first?.bytes, 123)
+        XCTAssertTrue(entries.filter { !$0.canRestore }.allSatisfy { $0.issue != nil })
+    }
+
+    func testInvalidSizesAndEventCountsCannotBeRestored() {
+        let id = CKRecord.ID(recordName: "invalid", zoneID: CloudBackupStore.zoneID)
+        let record = CKRecord(recordType: "CuekeeperBackup", recordID: id)
+        record["savedAt"] = Date() as CKRecordValue
+        for (bytes, events) in [(Int64(0), Int64(1)), (BackupLimits.archive + 1, 1), (1, -1)] {
+            record["byteCount"] = bytes as CKRecordValue
+            record["eventCount"] = events as CKRecordValue
+            XCTAssertFalse(CloudBackupStore.entries(ids: [id], results: [id: .success(record)])[0].canRestore)
+        }
+    }
+
+    func testDeletionDiscoversOrphanPartsWithoutManifest() throws {
+        let store = CloudBackupStore()
+        let root = CKRecord.ID(recordName: "damaged", zoneID: store.zoneID)
+        let ids = store.deletionCandidates(root)
+        XCTAssertEqual(ids.count, 33)
+        XCTAssertEqual(ids.last?.recordName, "damaged-part-31")
+        XCTAssertTrue(ids.allSatisfy { $0.zoneID == store.zoneID })
+        var results: [CKRecord.ID: Result<CKRecord, Error>] = Dictionary(uniqueKeysWithValues:
+            ids.map { ($0, .failure(CKError(.unknownItem))) })
+        // Even if the root and manifest are gone, all surviving parts are removed.
+        for id in [ids[1], ids[32]] {
+            results[id] = .success(CKRecord(recordType: "CuekeeperBackup", recordID: id))
+        }
+        XCTAssertEqual(try CloudBackupStore.existingDeletionIDs(ids, results: results), [ids[1], ids[32]])
+        results[ids[1]] = .failure(CKError(.networkFailure))
+        XCTAssertThrowsError(try CloudBackupStore.existingDeletionIDs(ids, results: results))
+        results[ids[1]] = nil
+        XCTAssertThrowsError(try CloudBackupStore.existingDeletionIDs(ids, results: results))
+    }
+}

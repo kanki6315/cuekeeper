@@ -42,6 +42,9 @@ struct BackupView: View {
                 if let notice = workflow.notice { Text(notice).accessibilityIdentifier("backup-notice") }
             }
             Section {
+                if let reason = persistence.syncActivity.restoreUnavailableReason {
+                    Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                }
                 Button("Export Backup", systemImage: "square.and.arrow.up") {
                     workflow.run("Preparing export…") { control in
                         let file = try await workflow.prepare(context: context, control: control)
@@ -59,8 +62,8 @@ struct BackupView: View {
                 if loaded && entries.isEmpty { ContentUnavailableView("No backups yet", systemImage: "icloud", description: Text("Tap Back Up Now to save your first copy.")) }
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(entry.date.formatted(date: .abbreviated, time: .shortened)).font(.headline)
-                        Text("\(entry.events) events · \(ByteCountFormatter.string(fromByteCount: entry.bytes, countStyle: .file))").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text(entry.title).font(.headline)
+                        Text(entry.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                         ViewThatFits(in: .horizontal) {
                             HStack { actions(entry) }
                             VStack(alignment: .leading) { actions(entry) }
@@ -94,9 +97,10 @@ struct BackupView: View {
             workflow.notice = "Your iCloud account changed. Refresh to load its backups."
         }
         .confirmationDialog("Restore this backup?", isPresented: $workflow.reviewing, titleVisibility: .visible) {
-            Button("Restore Backup") { workflow.restore(context: context) }
+            Button("Restore Backup") { workflow.restore(context: context, syncActivity: { persistence.syncActivity }) }
+            .disabled(persistence.syncActivity.restoreUnavailableReason != nil)
             Button("Cancel", role: .cancel) { workflow.archive = nil }
-        } message: { Text(workflow.reviewSummary) }
+        } message: { Text(persistence.syncActivity.restoreUnavailableReason ?? workflow.reviewSummary) }
         .confirmationDialog("Delete this iCloud backup?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete Backup", role: .destructive) {
                 guard let entry = deleting else { return }; deleting = nil
@@ -118,7 +122,7 @@ struct BackupView: View {
                 try control.check()
                 try await workflow.read(url, context: context, control: control)
             }
-        }.frame(minHeight: 44).disabled(workflow.busy)
+        }.frame(minHeight: 44).disabled(workflow.busy || !entry.canRestore)
         Button("Delete Backup", role: .destructive) { deleting = entry; confirmDelete = true }.frame(minHeight: 44).disabled(workflow.busy)
     }
     private func refresh() {

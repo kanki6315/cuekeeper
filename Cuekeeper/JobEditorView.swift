@@ -260,10 +260,6 @@ struct JobFiltersView: View {
         NavigationStack {
             DaybookForm(compact: true, onContentHeightChange: { contentHeight = $0 }) {
                 Section {
-                    DaybookPicker("Booking status", selection: $filter.status) {
-                        Text("Any status").tag("")
-                        ForEach(BookingStatus.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
-                    }
                     DaybookPicker("Client", selection: $filter.client) {
                         Text("Any client").tag("")
                         ForEach(Array(Set(clients.map(\.name))).sorted(), id: \.self) { Text($0).tag($0) }

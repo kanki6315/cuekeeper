@@ -259,7 +259,6 @@ struct JobDraft: Equatable {
 }
 
 struct JobFilter {
-    var status = ""
     var client = ""
     var role = ""
     var project = ""
@@ -267,7 +266,7 @@ struct JobFilter {
     var usesDates = false
     var start = Date()
     var end = Date()
-    var isActive: Bool { !status.isEmpty || !client.isEmpty || !role.isEmpty || !project.isEmpty || !series.isEmpty || usesDates }
+    var isActive: Bool { !client.isEmpty || !role.isEmpty || !project.isEmpty || !series.isEmpty || usesDates }
 
     func includes(_ job: Job, query: String = "") -> Bool {
         let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -277,7 +276,6 @@ struct JobFilter {
                 || (job.project?.name.localizedCaseInsensitiveContains(search) ?? false)
                 || job.seriesNames.contains { $0.localizedCaseInsensitiveContains(search) }
                 || job.activeSessions.contains { $0.effectiveSeriesNames.contains { $0.localizedCaseInsensitiveContains(search) } })
-            && (status.isEmpty || job.bookingStatus == status)
             && (client.isEmpty || job.client?.name == client)
             && (project.isEmpty || job.project?.name == project)
             && (series.isEmpty || job.seriesNames.contains(series) || job.activeSessions.contains { $0.effectiveSeriesNames.contains(series) })

@@ -1024,7 +1024,6 @@ final class PersistenceTests: XCTestCase {
         let id = try draft.save(in: context)
         let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
         var filter = JobFilter()
-        filter.status = "booked"
         filter.client = "North Sports"
         filter.role = "Producer"
         filter.usesDates = true
@@ -1034,8 +1033,8 @@ final class PersistenceTests: XCTestCase {
         filter.start = Day.date(from: "2026-10-16")!
         XCTAssertFalse(filter.includes(job))
         filter.usesDates = false
-        filter.status = "cancelled"
-        XCTAssertFalse(filter.includes(job))
+        job.bookingStatus = "cancelled"
+        XCTAssertTrue(filter.includes(job))
     }
 
     func testV1StoreMigratesWithoutLosingJobs() async throws {

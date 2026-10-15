@@ -228,6 +228,7 @@ DEFINE SCHEMA
         CD_moveReceipt_ckAsset  ASSET,
         CD_notes                STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_notes_ckAsset        ASSET,
+        CD_ownerJobID           STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_startDay             STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_startDay_ckAsset     ASSET,
         CD_timeZoneID           STRING QUERYABLE SEARCHABLE SORTABLE,

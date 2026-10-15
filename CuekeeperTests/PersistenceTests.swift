@@ -1205,6 +1205,10 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try Money.parse("1.001"))
         XCTAssertThrowsError(try Money.parse("NaN"))
         XCTAssertThrowsError(try Money.parse("999999999999999999999"))
+        XCTAssertEqual(Money.text(120050), "1200.50")
+        XCTAssertEqual(Money.text(5), "0.05")
+        XCTAssertEqual(Money.text(-1999), "-19.99")
+        XCTAssertEqual(try Money.parse(Money.text(120050)), 120050)
     }
 
     func testConcurrentFeeVersionsRequireExplicitResolution() async throws {

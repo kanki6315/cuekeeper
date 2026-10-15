@@ -234,7 +234,7 @@ struct EventScheduleRow: View {
                     Text(scheduleDates(start)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
                 } else {
                     Text("Time to come").font(.title3.weight(.semibold))
-                    if !session.day.isEmpty { Text(session.day).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                    if !session.day.isEmpty { Text(Day.display(session.day)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                 }
             }.fixedSize(horizontal: false, vertical: true)
             if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color("SecondaryText")) }

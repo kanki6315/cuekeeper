@@ -388,7 +388,7 @@ extension ContainerValues {
 
 extension WorkSession {
     var compactSchedule: String {
-        guard let startTime else { return day.isEmpty ? "Schedule to come" : "Time to come · \(day)" }
+        guard let startTime else { return day.isEmpty ? "Schedule to come" : "Time to come · \(Day.display(day))" }
         var result = "\(shortDate(startTime)) · \(shortTime(startTime))"
         if let endTime {
             let zone = TimeZone(identifier: eventTimeZoneID) ?? .current

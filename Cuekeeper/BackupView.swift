@@ -49,7 +49,7 @@ struct BackupView: View {
                     workflow.run("Preparing export…") { control in
                         let file = try await workflow.prepare(context: context, control: control)
                         try control.check(); workflow.export = file
-                        workflow.notice = "Ready to export: \(file.events) events · \(file.receipts) receipts · \(ByteCountFormatter.string(fromByteCount: file.bytes, countStyle: .file))."
+                        workflow.notice = "Ready to export: \(counted(file.events, "event", "events")) · \(counted(file.receipts, "receipt", "receipts")) · \(ByteCountFormatter.string(fromByteCount: file.bytes, countStyle: .file))."
                         exporting = true
                     }
                 }.frame(minHeight: 44).disabled(workflow.busy).accessibilityIdentifier("backup-export")

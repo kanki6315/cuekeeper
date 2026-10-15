@@ -130,7 +130,7 @@ struct FeeDetailView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(value.amount.map { Money.format($0, currency: value.currency) } ?? "Unknown fee")
-                                    Text("\(value.agreement.capitalized) · \(value.lines.count) breakdown items").font(.subheadline)
+                                    Text("\(value.agreement.capitalized) · \(counted(value.lines.count, "breakdown item", "breakdown items"))").font(.subheadline)
                                     Text(revision.createdAt?.formatted() ?? "Date unknown").font(.caption)
                                 }
                             }

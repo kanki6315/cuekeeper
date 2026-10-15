@@ -199,7 +199,7 @@ final class PersistenceController: ObservableObject {
 }
 
 /// Tracks overlapping operations independently: completing an export must not hide an import.
-struct SyncActivity {
+struct SyncActivity: Equatable {
     enum Kind: Hashable { case setup, receiving, sending }
     var enabled = true
     var offline = false

@@ -72,11 +72,14 @@ final class BackupWorkflow: ObservableObject {
             try control.check(); self.archive = snapshot; self.reviewing = true
         }
     }
-    func restore(context: NSManagedObjectContext, completion: @escaping (BackupArchive.RestoreResult) -> Void = { _ in }) {
-        guard let snapshot = archive else { return }
+    func restore(context: NSManagedObjectContext, syncActivity: @escaping () -> SyncActivity, completion: @escaping (BackupArchive.RestoreResult) -> Void = { _ in }) {
+        guard !busy, let snapshot = archive else { return }
+        if let reason = syncActivity().restoreUnavailableReason { error = reason; return }
         guard !context.hasChanges else { error = "Save your current changes before restoring a backup."; return }
-        archive = nil
         run("Checking backup…", cancellable: false) { control in
+            // Read live state again: an import may have started since confirmation.
+            if let reason = syncActivity().restoreUnavailableReason { throw RecordError.invalid(reason) }
+            self.archive = nil
             let result = try await BackupWorker.perform(coordinator: context.persistentStoreCoordinator!, control: control) { writer in
                 try snapshot.restore(in: writer, control: control)
             }

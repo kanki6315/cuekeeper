@@ -1,7 +1,7 @@
 import Foundation
 import CoreData
 
-struct CalendarEntry: Equatable {
+struct CalendarEntry: Equatable, Sendable {
     let key: String
     var title: String
     var start: Date
@@ -15,7 +15,7 @@ struct CalendarEntry: Equatable {
 
 /// Every known record has a key, even when it is ineligible. Unknown remote events
 /// are left alone while a new device is still downloading its Core Data records.
-struct CalendarPlan {
+struct CalendarPlan: Sendable {
     var desired: [String: CalendarEntry] = [:]
     var knownKeys: Set<String> = []
     var bounds: [Date] = []

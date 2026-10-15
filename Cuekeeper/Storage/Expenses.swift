@@ -39,26 +39,52 @@ final class Expense: NSManagedObject, Identifiable {
     var value: ExpenseValue { (try? JSONDecoder().decode(ExpenseValue.self, from: Data(valueJSON.utf8))) ?? ExpenseValue() }
 
     static func capture(_ photo: Data, jobID: NSManagedObjectID, in context: NSManagedObjectContext) throws -> NSManagedObjectID {
+        let id = try insertPhoto(photo, jobID: jobID, writer: isolatedWriter(context))
+        context.refreshAllObjects()
+        return id
+    }
+    static func replacePhoto(_ photo: Data, id: NSManagedObjectID, revision: String, in context: NSManagedObjectContext) throws {
+        try updatePhoto(photo, id: id, revision: revision, writer: isolatedWriter(context))
+        context.refreshAllObjects()
+    }
+    /// Only values and permanent object IDs cross queues. Refresh UI objects after commit.
+    @MainActor static func capturePhoto(_ photo: Data, jobID: NSManagedObjectID, in context: NSManagedObjectContext) async throws -> NSManagedObjectID {
+        let writer = photoWriter(context)
+        let id = try await writer.perform { try insertPhoto(photo, jobID: jobID, writer: writer) }
+        context.refreshAllObjects()
+        return id
+    }
+    @MainActor static func replacePhotoAsync(_ photo: Data, id: NSManagedObjectID, revision: String, in context: NSManagedObjectContext) async throws {
+        let writer = photoWriter(context)
+        try await writer.perform { try updatePhoto(photo, id: id, revision: revision, writer: writer) }
+        context.refreshAllObjects()
+    }
+    @MainActor private static func photoWriter(_ context: NSManagedObjectContext) -> NSManagedObjectContext {
+        let writer = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        writer.persistentStoreCoordinator = context.persistentStoreCoordinator
+        // Do not overwrite a concurrent revision committed after validation.
+        writer.mergePolicy = NSErrorMergePolicy
+        return writer
+    }
+    private static func insertPhoto(_ photo: Data, jobID: NSManagedObjectID, writer: NSManagedObjectContext) throws -> NSManagedObjectID {
         guard !photo.isEmpty, photo.count <= 12 * 1024 * 1024 else { throw RecordError.invalid("Choose a receipt image smaller than 12 MB.") }
-        let writer = isolatedWriter(context)
         guard let job = try writer.existingObject(with: jobID) as? Job, job.deletedAt == nil else { throw RecordError.invalid("This event was deleted. Restore it before adding expenses.") }
         let record = Expense(context: writer)
         record.id = UUID(); record.createdAt = Date(); record.updatedAt = Date(); record.revision = UUID().uuidString
         record.photo = photo; record.job = job; record.isDraft = true
         record.valueJSON = String(decoding: try JSONEncoder().encode(ExpenseValue()), as: UTF8.self)
-        try writer.save(); context.refreshAllObjects()
+        try writer.save()
         return record.objectID
     }
-    static func replacePhoto(_ photo: Data, id: NSManagedObjectID, revision: String, in context: NSManagedObjectContext) throws {
+    private static func updatePhoto(_ photo: Data, id: NSManagedObjectID, revision: String, writer: NSManagedObjectContext) throws {
         guard !photo.isEmpty, photo.count <= 12 * 1024 * 1024 else { throw RecordError.invalid("Choose a receipt image smaller than 12 MB.") }
-        let writer = isolatedWriter(context)
         let record = try writer.existingObject(with: id) as! Expense
         guard record.isDraft, record.revision == revision, record.job?.deletedAt == nil else {
             throw RecordError.invalid("This draft changed or its event was deleted. Close and reopen it before replacing the photo.")
         }
         record.photo = photo
         record.updatedAt = Date(); record.revision = UUID().uuidString
-        try writer.save(); context.refreshAllObjects()
+        try writer.save()
     }
     static func save(_ value: ExpenseValue, id: NSManagedObjectID, revision: String, confirmed: Bool = true, jobID: NSManagedObjectID? = nil, in context: NSManagedObjectContext) throws {
         if confirmed { try value.validate() }

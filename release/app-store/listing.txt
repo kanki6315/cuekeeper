@@ -4,41 +4,31 @@ Name
 Cuekeeper
 
 Subtitle
-Your freelance work, organized
+Your broadcast work, organized
 
 Primary category suggestion
 Productivity
 
 Keywords
-broadcast,freelancer,daybook,bookings,sessions,invoices,payments,receipts,expenses,schedule
+freelance,bookings,schedule,clients,invoices,payments,receipts,expenses,commentator,presenter,crew
 
 Promotional text
-Keep bookings, sessions, fees and payments together. Plan your next call, review receipt expenses, and carry your daybook between iPhone and iPad with iCloud.
+From the first booking to the final payment. Keep your broadcast schedule, call times, clients and receipts together in one daybook for iPhone and iPad.
 
 Description
-Your next event starts here.
+Your broadcast work, from first booking to final payment.
 
-Cuekeeper is a daybook for broadcast freelancers: commentators, presenters, producers and crew. Capture dates now, then add the details as your work takes shape.
+Cuekeeper is a daybook for freelance commentators, presenters, producers and crew. Keep events, clients, call times and broadcast links together on iPhone and iPad.
 
-KEEP YOUR WORK TOGETHER
-Track tentative, booked, completed and cancelled events. Save clients, roles, locations and notes, and build a session schedule with call times and broadcast links.
+• Plan sessions and follow your schedule across timezones.
+• Track agreed fees, invoices, partial payments and outstanding balances.
+• Scan receipts and keep expenses attached to each event.
+• Connect your calendar and see upcoming work in widgets.
+• Work offline, sync with iCloud, and back up your records and receipts to iCloud or Files.
 
-SEE WHAT'S NEXT
-Use Today, Week and All to find upcoming work. Home and Lock Screen widgets show a snapshot of your schedule. Work across timezones with event times and an additional local-time display for remote or hybrid work.
+Start with the details you know and fill in the rest as plans take shape. No separate Cuekeeper account, advertising or tracking.
 
-TRACK FEES AND PAYMENTS
-Record agreed fees, track invoices and partial payments, and keep balances separate by currency. Cuekeeper tracks your records; it does not generate or send invoice documents, connect to banking, calculate tax or convert currencies.
-
-KEEP RECEIPTS WITH THE EVENT
-Scan or import a receipt, review its details, and save it as an expense. Automatic field extraction uses Apple's on-device model on compatible devices; manual entry remains available. Set up an optional Shortcuts Wallet automation to capture expense drafts for later review.
-
-CONNECT YOUR CALENDAR
-Publish event placeholders and eligible confirmed sessions to a calendar you choose. One designated device publishes changes when Cuekeeper is open and connected.
-
-YOUR DAYBOOK, ACROSS DEVICES
-Save work offline and sync through your private iCloud database when available. Create manual iCloud backups, export or import a backup in Files, and recover recently deleted events. Sync and backups serve different purposes.
-
-Requires iOS/iPadOS 27. Automatic receipt extraction requires a compatible device with Apple Intelligence enabled and its model available. iCloud features require an available Apple Account and connectivity. Wallet automation is configured by you in Shortcuts; available inputs vary. Widgets update on the system's schedule.
+Requires iOS or iPadOS 27. Automatic receipt-field extraction requires compatible hardware with Apple Intelligence available. Invoice tracking does not include invoice document creation or sending. Exported backup files are not encrypted.
 
 Support: https://cuekeeper.arjunakankipati.com/support
 Privacy: https://cuekeeper.arjunakankipati.com/privacy

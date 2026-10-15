@@ -4,6 +4,7 @@ import Foundation
 @objc(WorkEvent)
 final class WorkEvent: NSManagedObject {
     @NSManaged var id: UUID?
+    @NSManaged var ownerJobID: UUID?
     @NSManaged var title: String
     @NSManaged var startDay: String
     @NSManaged var endDay: String
@@ -107,16 +108,23 @@ struct EventDraft: Equatable {
             anchor = try booking.stage(in: writer)
         }
         guard anchor.deletedAt == nil else { throw RecordError.invalid("This event has been deleted.") }
-        // An owned metadata record uses the job UUID. This also detaches old
-        // grouped records when the other clients have not yet downloaded.
+        // Ownership is separate from record identity so independent offline
+        // promotions get distinct UUIDs. Older owned records used the job UUID;
+        // keep recognizing them without mistaking a partly downloaded legacy
+        // group for an owned record.
         let prior = EventDraft(anchor: anchor)
-        let isNew = anchor.event == nil || anchor.event?.id != anchor.id || (anchor.event?.bookings?.count ?? 0) > 1
+        let owner = anchor.event.flatMap { $0.ownerJobID ?? $0.id }
+        let isNew = anchor.event == nil || owner != anchor.id || (anchor.event?.bookings?.count ?? 0) > 1
         let event: WorkEvent
         if isNew {
             event = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer)
-            event.id = anchor.id
+            event.id = UUID()
+            event.ownerJobID = anchor.id
             for (key, value) in prior.values { event.setValue(value, forKey: key) }
-        } else { event = anchor.event! }
+        } else {
+            event = anchor.event!
+            event.ownerJobID = anchor.id
+        }
         // A concurrent promotion must not silently merge a different event.
         for (key, value) in values where baseline == nil || baseline?.values[key] != value { event.setValue(value, forKey: key) }
         guard event.startDay <= event.endDay else { throw JobDraft.ValidationError.invalidDates }

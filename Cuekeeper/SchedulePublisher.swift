@@ -11,7 +11,7 @@ extension DaySchedule {
         for job in jobs {
             guard let id = job.id else { continue }
             result.events.append(ScheduleEvent(id: id, title: job.eventTitle, client: job.client?.name ?? "Client to add", startDay: job.eventStartDay, endDay: job.eventEndDay, status: job.bookingStatus))
-            for session in job.activeSessions {
+            for session in job.activeSessions where session.scheduleStatus != "cancelled" {
                 guard let sessionID = session.id else { continue }
                 result.sessions.append(ScheduleSession(id: sessionID, eventID: id, title: session.title, day: session.day, start: session.startTime, end: session.endTime, call: session.callTime, zone: session.eventTimeZoneID, confirmed: session.scheduleStatus == "confirmed", coverage: session.coverage))
             }

@@ -202,6 +202,7 @@ final class PersistenceTests: XCTestCase {
         let job = try context.existingObject(with: id) as! Job
         if anchor.event == nil { try EventDraft(anchor: anchor).save(in: context, anchorID: anchor.objectID) }
         anchor.event!.id = UUID() // historical groups did not use a job-owned ID
+        anchor.event!.ownerJobID = nil
         job.event = anchor.event
         try context.save()
         return id
@@ -403,7 +404,7 @@ final class PersistenceTests: XCTestCase {
         let id = try details.save(in: context, firstBooking: first)
         let a = try context.existingObject(with: id) as! Job
         let historical = try XCTUnwrap(a.event)
-        historical.id = UUID(); try context.save()
+        historical.id = UUID(); historical.ownerJobID = nil; try context.save()
         // Only A has arrived on this device; cardinality alone cannot identify an old group.
         let baseline = EventDraft(anchor: a)
         var edited = baseline; edited.title = "A only"
@@ -540,6 +541,13 @@ final class PersistenceTests: XCTestCase {
         XCTAssertTrue(first.name.isEmpty)
         XCTAssertTrue(first.eventTitle.hasPrefix("Championship season"))
         XCTAssertNotNil(first.event); XCTAssertNotEqual(first.event, second.event)
+        XCTAssertNotEqual(first.event?.id, first.id)
+        XCTAssertNotEqual(second.event?.id, second.id)
+        XCTAssertEqual(first.event?.ownerJobID, first.id)
+        XCTAssertEqual(second.event?.ownerJobID, second.id)
+        let metadataID = first.event?.id
+        try EventDraft(anchor: first).save(in: context, anchorID: first.objectID)
+        XCTAssertEqual(first.event?.id, metadataID)
         XCTAssertEqual(first.eventSeriesNames, ["Main", "Support"])
         XCTAssertEqual(CalendarPlan(jobs: [first, second]).desired.values.filter(\.allDay).count, 2)
         var filter = JobFilter(); filter.series = "Support"
@@ -687,9 +695,42 @@ final class PersistenceTests: XCTestCase {
         XCTAssertThrowsError(try first.save(in: context, editing: id))
     }
 
-    func testV2ThroughV11StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV12OwnedMetadataDuplicatesMigrateWithoutChangingIDs() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...11 {
+        let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV12.mom")))
+        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
+        let store = try coordinator.addPersistentStore(type: .sqlite, at: directory.appending(path: "owned-v12.sqlite"))
+        let old = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        old.persistentStoreCoordinator = coordinator
+        let jobID = UUID()
+        let job = NSEntityDescription.insertNewObject(forEntityName: "Job", into: old)
+        job.setValue(jobID, forKey: "id")
+        for note in ["Orphan edit", "Current edit"] {
+            let event = NSEntityDescription.insertNewObject(forEntityName: "WorkEvent", into: old)
+            event.setValue(jobID, forKey: "id"); event.setValue(note, forKey: "notes")
+            event.setValue("2026-10-15", forKey: "startDay"); event.setValue("2026-10-15", forKey: "endDay")
+            job.setValue(event, forKey: "event")
+        }
+        try old.save(); old.reset(); try coordinator.remove(store)
+        let migrated = try await openStore(fileName: "owned-v12.sqlite")
+        let context = migrated.container.viewContext
+        let saved = try XCTUnwrap(context.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        let events = try context.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent"))
+        XCTAssertEqual(events.count, 2)
+        XCTAssertTrue(events.allSatisfy { $0.id == jobID && $0.ownerJobID == nil })
+        let metadataID = saved.event?.objectID
+        var edit = EventDraft(anchor: saved); edit.notes = "Upgraded edit"
+        try edit.save(in: context, anchorID: saved.objectID)
+        XCTAssertEqual(saved.event?.objectID, metadataID)
+        XCTAssertEqual(saved.event?.ownerJobID, jobID)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 2)
+        let archive = try BackupArchive.capture(in: context)
+        XCTAssertEqual(try archive.restore(in: context).added, 0)
+    }
+
+    func testV2ThroughV12StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+        let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
+        for version in 2...12 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"

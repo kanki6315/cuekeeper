@@ -1,0 +1,136 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23501" systemVersion="25A354" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="12">
+    <entity name="Job" representedClassName="Job" syncable="YES">
+        <attribute name="deletedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="recoveryDiscardedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <relationship name="additionalSeries" optional="YES" deletionRule="Nullify" destinationEntity="WorkSeries" inverseName="additionalJobs" inverseEntity="WorkSeries" toMany="YES" />
+        <relationship name="event" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="WorkEvent" inverseName="bookings" inverseEntity="WorkEvent" />
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="name" attributeType="String" defaultValueString="" />
+        <attribute name="startDay" attributeType="String" defaultValueString="" />
+        <attribute name="endDay" attributeType="String" defaultValueString="" />
+        <attribute name="bookingStatus" attributeType="String" defaultValueString="tentative" />
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="workArrangement" attributeType="String" defaultValueString="unspecified" />
+        <attribute name="location" attributeType="String" defaultValueString="" />
+        <attribute name="trackPlaceID" attributeType="String" defaultValueString="" />
+        <attribute name="timeZoneID" attributeType="String" defaultValueString="" />
+        <attribute name="notes" attributeType="String" defaultValueString="" />
+        <relationship name="client" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Client" inverseName="jobs" inverseEntity="Client" />
+        <relationship name="roles" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="WorkRole" inverseName="jobs" inverseEntity="WorkRole" />
+        <relationship name="sessions" optional="YES" deletionRule="Nullify" destinationEntity="WorkSession" inverseName="job" inverseEntity="WorkSession" toMany="YES" />
+        <relationship name="feeRevisions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FeeRevision" inverseName="job" inverseEntity="FeeRevision" />
+        <relationship name="payments" optional="YES" deletionRule="Nullify" destinationEntity="PaymentRecord" inverseName="job" inverseEntity="PaymentRecord" toMany="YES" />
+        <relationship name="project" optional="YES" deletionRule="Nullify" destinationEntity="WorkProject" inverseName="jobs" inverseEntity="WorkProject" maxCount="1" />
+        <relationship name="series" optional="YES" deletionRule="Nullify" destinationEntity="WorkSeries" inverseName="jobs" inverseEntity="WorkSeries" maxCount="1" />
+        <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="job" inverseEntity="Expense" />
+    </entity>
+    <entity name="Client" representedClassName="Client" syncable="YES">
+        <attribute name="contact" attributeType="String" defaultValueString="" />
+        <attribute name="notes" attributeType="String" defaultValueString="" />
+        <attribute name="defaultCurrency" attributeType="String" defaultValueString="USD" />
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="name" attributeType="String" defaultValueString="" />
+        <relationship name="jobs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="client" inverseEntity="Job" />
+        <relationship name="invoices" optional="YES" deletionRule="Nullify" destinationEntity="Invoice" inverseName="client" inverseEntity="Invoice" toMany="YES" />
+    </entity>
+    <entity name="WorkRole" representedClassName="WorkRole" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="name" attributeType="String" defaultValueString="" />
+        <relationship name="jobs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="roles" inverseEntity="Job" />
+        <relationship name="sessions" optional="YES" deletionRule="Nullify" destinationEntity="WorkSession" inverseName="roles" inverseEntity="WorkSession" toMany="YES" />
+    </entity>
+    <entity name="WorkSession" representedClassName="WorkSession" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="startTime" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="endTime" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="callTime" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="deletedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="recoveryDiscardedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="name" optional="NO" attributeType="String" defaultValueString="" />
+        <attribute name="day" optional="NO" attributeType="String" defaultValueString="" />
+        <attribute name="timeZoneID" optional="NO" attributeType="String" defaultValueString="" />
+        <attribute name="scheduleStatus" optional="NO" attributeType="String" defaultValueString="tentative" />
+        <attribute name="coverage" optional="NO" attributeType="String" defaultValueString="undecided" />
+        <attribute name="notes" optional="NO" attributeType="String" defaultValueString="" />
+        <attribute name="overridesRoles" optional="NO" attributeType="Boolean" defaultValueString="NO" />
+        <relationship name="job" optional="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="sessions" inverseEntity="Job" maxCount="1" />
+        <relationship name="roles" optional="YES" deletionRule="Nullify" destinationEntity="WorkRole" inverseName="sessions" inverseEntity="WorkRole" toMany="YES" />
+        <relationship name="links" optional="YES" deletionRule="Nullify" destinationEntity="BroadcastLink" inverseName="session" inverseEntity="BroadcastLink" toMany="YES" />
+        <relationship name="series" optional="YES" deletionRule="Nullify" destinationEntity="WorkSeries" inverseName="sessions" inverseEntity="WorkSeries" maxCount="1" />
+        <attribute name="overridesSeries" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES" />
+    </entity>
+    <entity name="BroadcastLink" representedClassName="BroadcastLink" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="label" optional="NO" attributeType="String" defaultValueString="" />
+        <attribute name="url" optional="NO" attributeType="String" defaultValueString="" />
+        <attribute name="notes" optional="NO" attributeType="String" defaultValueString="" />
+        <relationship name="session" optional="YES" deletionRule="Nullify" destinationEntity="WorkSession" inverseName="links" inverseEntity="WorkSession" maxCount="1" />
+    </entity>
+    <entity name="FeeRevision" representedClassName="FeeRevision" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO" />
+        <attribute name="parentsJSON" attributeType="String" defaultValueString="[]" />
+        <attribute name="valueJSON" attributeType="String" defaultValueString="" />
+        <relationship name="job" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Job" inverseName="feeRevisions" inverseEntity="Job" />
+    </entity>
+    <entity name="Invoice" representedClassName="Invoice" syncable="YES">
+        <attribute name="id" attributeType="UUID" optional="YES" usesScalarValueType="NO" />
+        <attribute name="createdAt" attributeType="Date" optional="YES" usesScalarValueType="NO" />
+        <relationship name="client" optional="YES" deletionRule="Nullify" destinationEntity="Client" inverseName="invoices" inverseEntity="Client" maxCount="1" />
+        <relationship name="revisions" optional="YES" deletionRule="Nullify" destinationEntity="InvoiceRevision" inverseName="invoice" inverseEntity="InvoiceRevision" toMany="YES" />
+        <relationship name="payments" optional="YES" deletionRule="Nullify" destinationEntity="PaymentRecord" inverseName="invoice" inverseEntity="PaymentRecord" toMany="YES" />
+    </entity>
+    <entity name="InvoiceRevision" representedClassName="InvoiceRevision" syncable="YES">
+        <attribute name="id" attributeType="UUID" optional="YES" usesScalarValueType="NO" />
+        <attribute name="createdAt" attributeType="Date" optional="YES" usesScalarValueType="NO" />
+        <attribute name="parentsJSON" attributeType="String" defaultValueString="[]" />
+        <attribute name="valueJSON" attributeType="String" defaultValueString="" />
+        <relationship name="invoice" optional="YES" deletionRule="Nullify" destinationEntity="Invoice" inverseName="revisions" inverseEntity="Invoice" maxCount="1" />
+    </entity>
+    <entity name="PaymentRecord" representedClassName="PaymentRecord" syncable="YES">
+        <attribute name="id" attributeType="UUID" optional="YES" usesScalarValueType="NO" />
+        <attribute name="createdAt" attributeType="Date" optional="YES" usesScalarValueType="NO" />
+        <attribute name="receivedAt" attributeType="Date" optional="YES" usesScalarValueType="NO" />
+        <attribute name="reversesID" attributeType="UUID" optional="YES" usesScalarValueType="NO" />
+        <attribute name="amount" attributeType="Integer 64" defaultValueString="0" />
+        <attribute name="currency" attributeType="String" defaultValueString="USD" />
+        <attribute name="note" attributeType="String" defaultValueString="" />
+        <relationship name="job" optional="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="payments" inverseEntity="Job" maxCount="1" />
+        <relationship name="invoice" optional="YES" deletionRule="Nullify" destinationEntity="Invoice" inverseName="payments" inverseEntity="Invoice" maxCount="1" />
+    </entity>
+    <entity name="WorkProject" representedClassName="WorkProject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="name" attributeType="String" defaultValueString="" />
+        <relationship name="jobs" optional="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="project" inverseEntity="Job" toMany="YES" />
+    </entity>
+    <entity name="WorkSeries" representedClassName="WorkSeries" syncable="YES">
+        <relationship name="additionalJobs" optional="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="additionalSeries" inverseEntity="Job" toMany="YES" />
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="name" attributeType="String" defaultValueString="" />
+        <relationship name="jobs" optional="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="series" inverseEntity="Job" toMany="YES" />
+        <relationship name="sessions" optional="YES" deletionRule="Nullify" destinationEntity="WorkSession" inverseName="series" inverseEntity="WorkSession" toMany="YES" />
+    </entity>
+    <entity name="WorkEvent" representedClassName="WorkEvent" syncable="YES">
+        <attribute name="ownerJobID" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO" />
+        <attribute name="title" attributeType="String" defaultValueString="" />
+        <attribute name="startDay" attributeType="String" defaultValueString="" />
+        <attribute name="endDay" attributeType="String" defaultValueString="" />
+        <attribute name="location" attributeType="String" defaultValueString="" />
+        <attribute name="trackPlaceID" attributeType="String" defaultValueString="" />
+        <attribute name="timeZoneID" attributeType="String" defaultValueString="" />
+        <attribute name="notes" attributeType="String" defaultValueString="" />
+        <relationship name="bookings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Job" inverseName="event" inverseEntity="Job" />
+    </entity>
+    <entity name="Expense" representedClassName="Expense" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" />
+        <attribute name="createdAt" optional="YES" attributeType="Date" />
+        <attribute name="updatedAt" optional="YES" attributeType="Date" />
+        <attribute name="photo" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES" />
+        <attribute name="valueJSON" attributeType="String" defaultValueString="" />
+        <attribute name="revision" attributeType="String" defaultValueString="" />
+        <attribute name="isDraft" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES" />
+        <relationship name="job" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Job" inverseName="expenses" inverseEntity="Job" />
+    </entity>
+</model>

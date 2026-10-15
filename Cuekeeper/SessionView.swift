@@ -38,7 +38,7 @@ struct SessionEditorView: View {
                 Section {
                     DaybookTextField("Session type or name (optional)", text: $draft.name).accessibilityIdentifier("session-name")
                     Toggle("Date known", isOn: Binding(get: { !draft.day.isEmpty }, set: { draft.day = $0 ? job.eventStartDay : "" }))
-                        .disabled(draft.startTime != nil)
+                        .disabled(draft.startTime != nil || draft.endTime != nil)
                     if !draft.day.isEmpty {
                         if typeSize.isAccessibilitySize {
                             VStack(alignment: .leading, spacing: 12) {
@@ -52,7 +52,7 @@ struct SessionEditorView: View {
                     SessionScheduleField(draft: $draft, zone: zone).disabled(job.eventTimeZoneID.isEmpty)
                     optionalTime("Call time", value: $draft.callTime)
                 } header: { Text("Schedule") } footer: {
-                    Text("Times can remain incomplete. For overnight work, set the end on the following date. All sessions use the event timezone.")
+                    Text("Times can remain incomplete. An end time earlier than the start falls on the next day. All sessions use the event timezone.")
                 }
                 Section {
                     DaybookChoicePicker("Schedule", selection: $draft.scheduleStatus, identifier: "session-schedule") {
@@ -123,8 +123,7 @@ struct SessionEditorView: View {
         } catch { self.error = error.localizedDescription }
     }
     private var sessionDatePicker: some View {
-        DatePicker("Session date", selection: Binding(get: { draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date() }, set: { draft.day = Day.string(from: $0, timeZone: zone) }), displayedComponents: .date)
-            .disabled(draft.startTime != nil)
+        SessionDateField(draft: $draft, zone: zone)
     }
     @ViewBuilder private func optionalTime(_ label: String, value: Binding<Date?>) -> some View {
         OptionalSessionTimeField(title: label, value: value,

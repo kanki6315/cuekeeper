@@ -139,6 +139,7 @@ private struct JobsView: View {
                         ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    .background(Color("AccentColor").opacity(0.08), in: Capsule())
                     .accessibilityIdentifier("event-status-scope")
                 }
                 if representatives.isEmpty {

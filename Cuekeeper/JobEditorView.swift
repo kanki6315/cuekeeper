@@ -137,7 +137,6 @@ private struct LinkPresentation: Identifiable { let id = UUID(); let session: Wo
 
 struct JobDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var calendar: CalendarController
     @ObservedObject var job: Job
     @FetchRequest(sortDescriptors: []) private var eventRecords: FetchedResults<WorkEvent>
     @Environment(\.managedObjectContext) private var context
@@ -217,10 +216,6 @@ struct JobDetailView: View {
                     }
                 }
             }
-            Section("Calendar") {
-                Text(job.bookingStatus == "cancelled" ? "Cancelled events have no calendar entries." : "The all-day placeholder stays alongside confirmed sessions you’re covering.")
-                Text(calendar.status).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-            }
             Section {
                 Button("Duplicate Event", systemImage: "plus.square.on.square") { duplicating = true }
                     .accessibilityIdentifier("duplicate-job")
@@ -282,10 +277,6 @@ struct JobFiltersView: View {
         NavigationStack {
             DaybookForm(compact: true, onContentHeightChange: { contentHeight = $0 }) {
                 Section {
-                    DaybookPicker("Booking status", selection: $filter.status) {
-                        Text("Any status").tag("")
-                        ForEach(BookingStatus.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
-                    }
                     DaybookPicker("Client", selection: $filter.client) {
                         Text("Any client").tag("")
                         ForEach(Array(Set(clients.map(\.name))).sorted(), id: \.self) { Text($0).tag($0) }

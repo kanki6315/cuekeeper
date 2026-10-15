@@ -32,7 +32,9 @@
 		4B17D742F2471D53225B37E4 /* WorkEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95E08FF1047E3666557F964 /* WorkEvent.swift */; };
 		4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC535FB730F3A6A7FE4A398 /* SessionView.swift */; };
 		4EA1FBAF120B261072530418 /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
+		51444908CCE08FC785E329D6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DCC5C17265C5E63723173397 /* PrivacyInfo.xcprivacy */; };
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
+		56FD0CB1E2686A2BD6BA0266 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */; };
 		5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */; };
 		5D61BFB198A9CC57CF470000 /* ExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69C16751D64E2080FCAD476 /* ExpenseTests.swift */; };
 		5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */; };
@@ -225,9 +227,11 @@
 		D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchBackupView.swift; sourceTree = "<group>"; };
 		D305E1038A9ABA4A3975A914 /* ReceiptExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptExtractor.swift; sourceTree = "<group>"; };
 		D32CAA2E3C0D27BDF3B934FD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D4AE67AB7F1A8CA326601086 /* CuekeeperV11.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV11.xcdatamodel; sourceTree = "<group>"; };
 		D682B024A3E281F66B73080A /* JobEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobEditorView.swift; sourceTree = "<group>"; };
 		D95E08FF1047E3666557F964 /* WorkEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkEvent.swift; sourceTree = "<group>"; };
+		DCC5C17265C5E63723173397 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
 		DFCD2035B5EA406A2998B79C /* CuekeeperV10.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV10.xcdatamodel; sourceTree = "<group>"; };
 		E4201CFBC74D97C4425E97FD /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
@@ -277,6 +281,7 @@
 				5281AB6F1525268F5E58336E /* CuekeeperWidgets.entitlements */,
 				3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */,
 				AF513485C51BD69B238E3E80 /* Info.plist */,
+				DCC5C17265C5E63723173397 /* PrivacyInfo.xcprivacy */,
 			);
 			path = CuekeeperWidgets;
 			sourceTree = "<group>";
@@ -373,6 +378,7 @@
 				B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */,
 				7AC028165CC976F299783F54 /* PendingExpensesView.swift */,
 				D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */,
+				D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */,
 				D305E1038A9ABA4A3975A914 /* ReceiptExtractor.swift */,
 				66BCF474DBEC80465600AB43 /* RecoveryView.swift */,
 				0AC022135F654D55A6A7311E /* RootView.swift */,
@@ -496,6 +502,7 @@
 			buildConfigurationList = EA50B6E25B2F7EA70933A956 /* Build configuration list for PBXNativeTarget "CuekeeperWidgets" */;
 			buildPhases = (
 				8E3EF948D5EC1A62B05B7218 /* Sources */,
+				EBBF3646F1179655DDCC297E /* Resources */,
 			);
 			buildRules = (
 			);
@@ -570,6 +577,15 @@
 			files = (
 				039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */,
 				AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */,
+				56FD0CB1E2686A2BD6BA0266 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EBBF3646F1179655DDCC297E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				51444908CCE08FC785E329D6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -232,7 +232,7 @@ struct JobDetailView: View {
                         }
                         Button("Cancel", role: .cancel) {}
                     } message: {
-                        Text("This removes the event and its sessions from your schedule and synced calendar. Existing invoices and payments are kept. This cannot be undone.")
+                        Text("This removes the event and its sessions from your schedule and synced calendar. Existing invoices and payments are kept. You can restore the event from Settings → Recently Deleted for 30 days.")
                     }
             }
         }

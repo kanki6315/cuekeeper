@@ -144,6 +144,7 @@ DEFINE SCHEMA
         CD_notes                   STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_notes_ckAsset           ASSET,
         CD_project                 STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_recoveryDiscardedAt     TIMESTAMP QUERYABLE SORTABLE,
         CD_series                  STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_startDay                STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_startDay_ckAsset        ASSET,
@@ -293,6 +294,7 @@ DEFINE SCHEMA
         CD_notes_ckAsset          ASSET,
         CD_overridesRoles         INT64 QUERYABLE SORTABLE,
         CD_overridesSeries        INT64 QUERYABLE SORTABLE,
+        CD_recoveryDiscardedAt    TIMESTAMP QUERYABLE SORTABLE,
         CD_scheduleStatus         STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_scheduleStatus_ckAsset ASSET,
         CD_series                 STRING QUERYABLE SEARCHABLE SORTABLE,
@@ -305,6 +307,35 @@ DEFINE SCHEMA
         "___modTime"              TIMESTAMP,
         "___modifiedBy"           REFERENCE,
         "___recordID"             REFERENCE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CuekeeperBackup (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        byteCount       INT64 QUERYABLE SORTABLE,
+        eventCount      INT64 QUERYABLE SORTABLE,
+        payload         ASSET,
+        savedAt         TIMESTAMP QUERYABLE SORTABLE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CuekeeperBackupIndex (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        backupNames     LIST<STRING> QUERYABLE SEARCHABLE,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_icloud",
         GRANT READ TO "_world"

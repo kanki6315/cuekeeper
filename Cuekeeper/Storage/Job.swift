@@ -4,6 +4,7 @@ import Foundation
 @objc(Job)
 final class Job: NSManagedObject {
     @NSManaged var deletedAt: Date?
+    @NSManaged var recoveryDiscardedAt: Date?
     @NSManaged var id: UUID?
     @NSManaged var name: String
     @NSManaged var event: WorkEvent?
@@ -31,7 +32,7 @@ final class Job: NSManagedObject {
     static func remove(_ objectID: NSManagedObjectID, in context: NSManagedObjectContext) throws {
         let writer = isolatedWriter(context)
         let job = try writer.existingObject(with: objectID) as! Job
-        if job.deletedAt == nil { job.deletedAt = Date() }
+        if job.deletedAt == nil { job.deletedAt = Date(); job.recoveryDiscardedAt = nil }
         try writer.save()
         context.refreshAllObjects()
     }

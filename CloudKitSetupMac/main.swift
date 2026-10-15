@@ -47,6 +47,11 @@ Task.detached {
     do {
         try await initializeSchema()
         try await CalendarPublisher.initializeDevelopmentSchema()
+        try await CloudBackupStore.initializeDevelopmentSchema()
+        if CommandLine.arguments.contains("--verify-backups") {
+            try await CloudBackupStore.verifyDevelopmentBackups()
+            FileHandle.standardOutput.write(Data("CLOUD_BACKUPS_VERIFIED\n".utf8))
+        }
         if CommandLine.arguments.contains("--verify-calendar-publisher") {
             try await CalendarPublisher.verifyDevelopmentCoordination()
             FileHandle.standardOutput.write(Data("CALENDAR_PUBLISHER_VERIFIED\n".utf8))

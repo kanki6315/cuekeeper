@@ -48,7 +48,7 @@ Settings now includes Recently Deleted (30 days) and explicit private iCloud
 backups. Backup restore merges missing records and recovers deleted records; it
 does not roll back newer edits or financial receipts.
 DESIGN.md and .impeccable/design.json describe the current visual implementation.
-The configured app version is 0.1.10; this documentation/version change is not a
+The configured app version is 0.1.12; this documentation/version change is not a
 TestFlight release or new device verification.
 
 First launch now introduces device-local defaults, optional Calendar connection

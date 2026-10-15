@@ -1,5 +1,6 @@
 import CoreData
 import SwiftUI
+import WebKit
 
 private enum AppSection: String, CaseIterable, Identifiable {
     case upcoming = "Upcoming", jobs = "Events", payments = "Payments", settings = "Settings"
@@ -282,6 +283,7 @@ struct SettingsView: View {
     @ScaledMetric(relativeTo: .body) private var libraryIconWidth = 26
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showingSetup = false
+    @State private var webPage: WebPageLink?
     @EnvironmentObject private var persistence: PersistenceController
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
@@ -344,11 +346,11 @@ struct SettingsView: View {
                 DaybookLink { RecentlyDeletedView() } label: { Label("Recently Deleted", systemImage: "trash") }
             }
             Section("About") {
-                Link(destination: URL(string: "https://cuekeeper.arjunakankipati.com/support")!) {
-                    Label("Help & Support", systemImage: "questionmark.circle")
+                Button("Help & Support", systemImage: "questionmark.circle") {
+                    webPage = WebPageLink(title: "Help & Support", url: URL(string: "https://cuekeeper.arjunakankipati.com/support")!)
                 }
-                Link(destination: URL(string: "https://cuekeeper.arjunakankipati.com/privacy")!) {
-                    Label("Privacy Policy", systemImage: "hand.raised")
+                Button("Privacy Policy", systemImage: "hand.raised") {
+                    webPage = WebPageLink(title: "Privacy Policy", url: URL(string: "https://cuekeeper.arjunakankipati.com/privacy")!)
                 }
                 LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"))")
             }
@@ -361,6 +363,7 @@ struct SettingsView: View {
             FirstLaunchView { showingSetup = false }
                 .presentationSizing(.form)
         }
+        .sheet(item: $webPage) { InAppWebPage(link: $0) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await persistence.refreshAccountStatus() } }
         }
@@ -372,6 +375,38 @@ struct SettingsView: View {
             Text(title)
         }
         .foregroundStyle(Color.accentColor)
+    }
+}
+
+private struct WebPageLink: Identifiable {
+    let title: String
+    let url: URL
+    var id: URL { url }
+}
+
+private struct InAppWebPage: View {
+    let link: WebPageLink
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @State private var page = WebPage()
+
+    var body: some View {
+        NavigationStack {
+            WebView(page)
+                .overlay { if page.isLoading && page.estimatedProgress < 0.1 { ProgressView() } }
+                .ignoresSafeArea(edges: .bottom)
+                .navigationTitle(link.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done", systemImage: "xmark") { dismiss() }
+                    }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Open in Browser", systemImage: "safari") { openURL(page.url ?? link.url) }
+                    }
+                }
+        }
+        .onAppear { if page.url == nil { page.load(URLRequest(url: link.url)) } }
     }
 }
 

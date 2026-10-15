@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0013320DBAFD2C12FE0291E0 /* BackupWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F671FB10FB025AD3E29BEF0 /* BackupWorkspace.swift */; };
 		039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A6C890CABAF4353CE145B9D8 /* Assets.xcassets */; };
 		062400846722C32FFC23825F /* DaybookStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */; };
 		0E1754E0F626C4A2470A77AF /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F2A2E2C9FC3521A2899B7E /* TodayView.swift */; };
@@ -25,6 +26,7 @@
 		3577724790278D35856FAC47 /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
 		38C48DD2C423DDBAF31D2F74 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184979F54A69B58764328050 /* PersistenceController.swift */; };
 		390F74DA1120AA42FC06A91E /* ExpenseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B6F1A7864EA8EF9E6647080 /* ExpenseView.swift */; };
+		399F313D88E69C82B22EA581 /* BackupWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F671FB10FB025AD3E29BEF0 /* BackupWorkspace.swift */; };
 		3A38BA8A890E9F76C0DB268A /* EventWeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */; };
 		3D34152724DEAC69AD5E7B5C /* EventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C96A98C9B9BAB0D065741A /* EventView.swift */; };
 		3F6B9BDFB7A906E3B4F8D755 /* RecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658D5107A3868AF488F32DDE /* RecoveryTests.swift */; };
@@ -149,6 +151,7 @@
 		05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlan.swift; sourceTree = "<group>"; };
 		06442705EA3E6D3F4031E809 /* CaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureTests.swift; sourceTree = "<group>"; };
 		0AC022135F654D55A6A7311E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		0F671FB10FB025AD3E29BEF0 /* BackupWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupWorkspace.swift; sourceTree = "<group>"; };
 		1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		134663AFB643D201DF4E98CF /* SchemaHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SchemaHelper.entitlements; sourceTree = "<group>"; };
 		14FCB06138FD31273B69B67C /* CuekeeperV8.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV8.xcdatamodel; sourceTree = "<group>"; };
@@ -428,6 +431,7 @@
 			children = (
 				4510B4441D5730C579C736AA /* BackupArchive.swift */,
 				A9459F7EEB801C95C854C005 /* BackupPackage.swift */,
+				0F671FB10FB025AD3E29BEF0 /* BackupWorkspace.swift */,
 				618C864D7A24CC9C62D1E183 /* Billing.swift */,
 				CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */,
 				9A3763FF11F6A434226B2DBD /* Expenses.swift */,
@@ -667,6 +671,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0013320DBAFD2C12FE0291E0 /* BackupWorkspace.swift in Sources */,
 				A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */,
 				B3245E99179AC51EDC4D2AE3 /* CalendarPublisher.swift in Sources */,
 				995D62E791EF421E35257B23 /* CloudBackupStore.swift in Sources */,
@@ -688,6 +693,7 @@
 				E39B5D066CD54FD2D66CBB20 /* BackupPackage.swift in Sources */,
 				92339E8B9B9F67BE1793652E /* BackupView.swift in Sources */,
 				2B4598A753C6F385AEEC47AE /* BackupWorkflow.swift in Sources */,
+				399F313D88E69C82B22EA581 /* BackupWorkspace.swift in Sources */,
 				DAA665273A525BD7459E740C /* Billing.swift in Sources */,
 				BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */,
 				B85760704BC921A06AF76497 /* CalendarEventIntent.swift in Sources */,
@@ -798,7 +804,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.schemahelper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
 				PRODUCT_NAME = CuekeeperSchemaHelper;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";
@@ -855,7 +861,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.schemahelper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
 				PRODUCT_NAME = CuekeeperSchemaHelper;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";
@@ -994,7 +1000,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper.schemahelper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.cuekeeper;
 				PRODUCT_NAME = CuekeeperSchemaHelper;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";

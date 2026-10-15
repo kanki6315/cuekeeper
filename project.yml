@@ -125,6 +125,7 @@ targets:
       - path: Cuekeeper/Storage/Billing.swift
       - path: Cuekeeper/CalendarPublisher.swift
       - path: Cuekeeper/CloudBackupStore.swift
+      - path: Cuekeeper/Storage/BackupWorkspace.swift
     entitlements:
       path: CloudKitSetupMac/SchemaHelper.entitlements
       properties:
@@ -141,7 +142,8 @@ targets:
         CuekeeperCloudKitEnvironment: Development
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.cuekeeper.schemahelper
+        # Use the existing CloudKit-authorized app identity for schema initialization.
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.cuekeeper
         PRODUCT_NAME: CuekeeperSchemaHelper
         TARGETED_DEVICE_FAMILY: ''
         CLOUDKIT_ENVIRONMENT: Development
@@ -186,3 +188,5 @@ schemes:
         CuekeeperSchemaHelper: [run]
     run:
       config: CloudKitSetup
+      commandLineArguments:
+        "--initialize-development-schema": true

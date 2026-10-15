@@ -174,6 +174,39 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertNil(workflow.error)
     }
 
+    func testWorkflowReportsCommittedRestoreAfterAccountInvalidation() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let target = try await context()
+        let coordinator = target.persistentStoreCoordinator!
+        let workflow = BackupWorkflow()
+        workflow.archive = try BackupArchive.capture(in: source)
+        var activity = SyncActivity(); activity.enabled = false
+        let invalidated = expectation(description: "Account changed after save")
+        let restored = expectation(description: "Committed restore still reports success")
+        let observer = NotificationCenter.default.addObserver(forName: .NSManagedObjectContextDidSave, object: nil, queue: nil) { notification in
+            guard let writer = notification.object as? NSManagedObjectContext,
+                  writer.persistentStoreCoordinator === coordinator else { return }
+            // Run before the worker returns, so cancellation deterministically
+            // lands between the persistent save and the workflow's completion.
+            DispatchQueue.main.sync {
+                MainActor.assumeIsolated {
+                    workflow.invalidate()
+                    invalidated.fulfill()
+                }
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        workflow.restore(context: target, syncActivity: { activity }) { result in
+            XCTAssertGreaterThan(result.added, 0)
+            restored.fulfill()
+        }
+        await fulfillment(of: [invalidated, restored], timeout: 5)
+        XCTAssertFalse(workflow.busy)
+        XCTAssertNil(workflow.error)
+        XCTAssertTrue(workflow.notice?.hasPrefix("Restore complete.") == true)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+    }
+
     func testBackupRoundTripIntoEmptyStoreAndRepeatedRestore() async throws {
         let source = try await context(); let original = try fixture(source)
         let archive = try BackupArchive.capture(in: source)

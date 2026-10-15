@@ -128,7 +128,8 @@ final class BackupWorkflow: ObservableObject {
             let result = try await BackupWorker.perform(coordinator: context.persistentStoreCoordinator!, control: control) { writer in
                 try snapshot.restore(in: writer, control: control)
             }
-            try control.check()
+            // A successful worker result means the restore was committed. Account
+            // invalidation after that save must not suppress its success callback.
             context.refreshAllObjects()
             self.notice = "Restore complete. Added \(result.added) records and recovered \(result.recovered) deleted records. Existing edits and payments were kept."
             completion(result)

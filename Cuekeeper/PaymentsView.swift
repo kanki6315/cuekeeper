@@ -256,9 +256,9 @@ struct InvoiceDetailView: View {
             if let value = try? invoice.currentValue() {
                 Section {
                     BookingBadge(status: value.status)
-                    if !value.sentDay.isEmpty { DaybookMetadata(symbol: "paperplane", text: "Sent · \(Day.date(from: value.sentDay)?.formatted(date: .abbreviated, time: .omitted) ?? value.sentDay)") }
+                    if !value.sentDay.isEmpty { DaybookMetadata(symbol: "paperplane", text: "Sent · \(Day.display(value.sentDay))") }
                     if !value.dueDay.isEmpty { DaybookMetadata(symbol: "calendar", text: "\(invoice.overdue ? "Overdue since" : "Due") · \(Day.date(from: value.dueDay)?.formatted(date: .abbreviated, time: .omitted) ?? value.dueDay)") }
-                    DaybookMetadata(symbol: "dollarsign.circle", text: value.currency)
+                    DaybookMetadata(symbol: CurrencyPreferences.symbol(value.currency), text: value.currency)
                 }.containerValue(\.daybookUnframed, true)
                 Section {
                     ForEach(value.lines) { line in
@@ -328,8 +328,8 @@ private struct InvoiceSnapshot: View {
     var body: some View {
         Text(value.reference.isEmpty ? "No reference" : value.reference)
         ForEach(value.lines) { line in LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
-        if !value.sentDay.isEmpty { LabeledContent("Sent", value: value.sentDay) }
-        if !value.dueDay.isEmpty { LabeledContent("Due", value: value.dueDay) }
+        if !value.sentDay.isEmpty { LabeledContent("Sent", value: Day.display(value.sentDay)) }
+        if !value.dueDay.isEmpty { LabeledContent("Due", value: Day.display(value.dueDay)) }
         if !value.notes.isEmpty { Text(value.notes) }
     }
 }

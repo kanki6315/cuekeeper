@@ -11,6 +11,16 @@ enum CurrencyPreferences {
         let valid = supported.filter { selected.contains($0) }
         return valid.isEmpty ? ["USD", "EUR"] : valid
     }
+
+    static func symbol(_ code: String) -> String {
+        switch code {
+        case "USD", "CAD", "AUD", "NZD": "dollarsign.circle"
+        case "EUR": "eurosign.circle"
+        case "GBP": "sterlingsign.circle"
+        case "CHF": "francsign.circle"
+        default: "banknote"
+        }
+    }
 }
 
 /// Integer minor units are authoritative; no binary floating point in financial calculations.
@@ -34,7 +44,10 @@ enum Money {
     }
     static func text(_ amount: Int64?) -> String {
         guard let amount else { return "" }
-        return NSDecimalNumber(decimal: Decimal(amount) / 100).stringValue
+        // Always two places, POSIX-style, so the text round-trips through `parse`.
+        let sign = amount < 0 ? "-" : ""
+        let units = amount.magnitude
+        return "\(sign)\(units / 100).\(String(format: "%02llu", units % 100))"
     }
     static func format(_ amount: Int64, currency: String) -> String {
         let formatter = NumberFormatter(); formatter.numberStyle = .currency; formatter.currencyCode = currency

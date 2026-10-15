@@ -1,6 +1,7 @@
 import SwiftUI
 import AppIntents
 import CoreData
+import UIKit
 
 @main
 struct CuekeeperApp: App {
@@ -71,7 +72,9 @@ struct CuekeeperApp: App {
                     ContentUnavailableView {
                         Label("Couldn’t open your daybook", systemImage: "externaldrive.badge.exclamationmark")
                     } description: {
-                        Text("Your saved data has not been replaced. Close and reopen Cuekeeper to try again.\n\n\(error)")
+                        Text("Your saved data has not been replaced. Close and reopen Cuekeeper to try again.")
+                    } actions: {
+                        Button("Copy Details for Support", systemImage: "doc.on.doc") { UIPasteboard.general.string = error }
                     }
                 } else if persistence.isLoaded {
                     Group {

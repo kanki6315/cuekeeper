@@ -42,7 +42,7 @@ struct CloudBackupStore: CloudBacking {
         var details: String {
             if let issue { return issue }
             guard let events, let bytes else { return "Backup details unavailable." }
-            return "\(events) events · \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))"
+            return "\(counted(events, "event", "events")) · \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))"
         }
     }
     private func prepare() async throws {

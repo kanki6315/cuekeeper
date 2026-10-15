@@ -27,8 +27,8 @@ struct TodayScheduleView: View {
         let eventCount = Set(rows.map(\.eventID)).union(pending.map(\.id)).count
         return VStack(alignment: .leading, spacing: 18) {
             ViewThatFits(in: .horizontal) {
-                HStack { Text("\(eventCount) events · \(rows.count) sessions"); Spacer(); zoneLabel(now) }
-                VStack(alignment: .leading) { Text("\(eventCount) events · \(rows.count) sessions"); zoneLabel(now) }
+                HStack { Text("\(counted(eventCount, "event", "events")) · \(counted(rows.count, "session", "sessions"))"); Spacer(); zoneLabel(now) }
+                VStack(alignment: .leading) { Text("\(counted(eventCount, "event", "events")) · \(counted(rows.count, "session", "sessions"))"); zoneLabel(now) }
             }.font(.subheadline).foregroundStyle(Color("SecondaryText"))
             if let next = schedule.nextCommitment(at: now), let time = next.call ?? next.start {
                 Text("\(next.call == nil ? "Next session" : "Next call") \(time.formatted(date: .omitted, time: .shortened)) · \(next.title)")

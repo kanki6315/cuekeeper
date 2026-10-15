@@ -162,20 +162,13 @@ private struct JobsView: View {
                         Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
                     }
                     if upcomingOnly {
-                        Picker("Show upcoming", selection: $thisWeek) {
-                            Text("All upcoming").tag(false)
-                            Text("This week").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                        .background(Color("AccentColor").opacity(0.08), in: Capsule())
-                        .accessibilityIdentifier("upcoming-scope")
+                        DaybookSegments(title: "Show upcoming", selection: $thisWeek,
+                                        options: [false, true], identifier: "upcoming-scope",
+                                        label: { $0 ? "This week" : "All upcoming" })
                     } else {
-                        Picker("Bookings", selection: $scope) {
-                            ForEach(["All", "Active", "Completed", "Cancelled"], id: \.self) { Text($0).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .background(Color("AccentColor").opacity(0.08), in: Capsule())
-                        .accessibilityIdentifier("event-status-scope")
+                        DaybookSegments(title: "Bookings", selection: $scope,
+                                        options: ["All", "Active", "Completed", "Cancelled"],
+                                        identifier: "event-status-scope", label: { $0 })
                     }
                 }
                 if jobs.isEmpty {

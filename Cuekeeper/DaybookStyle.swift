@@ -101,6 +101,86 @@ struct BookingBadge: View {
     }
 }
 
+/// Compact, text-only segments with a separate 44-point touch area.
+struct DaybookSegments<Value: Hashable>: View {
+    @ScaledMetric(relativeTo: .caption) private var segmentHeight = 32
+    let title: String
+    @Binding var selection: Value
+    let options: [Value]
+    let identifier: String
+    let label: (Value) -> String
+    var color: (Value) -> Color = { _ in Color.accentColor }
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                ScrollView(.horizontal) {
+                    row.fixedSize(horizontal: true, vertical: false)
+                }.scrollIndicators(.hidden)
+            } else {
+                row
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var row: some View {
+        HStack(spacing: 2) {
+            ForEach(options, id: \.self) { option in
+                let selected = selection == option
+                let tint = color(option)
+                Button {
+                    if !selected { selection = option }
+                } label: {
+                    Text(label(option))
+                        .font(.caption.weight(selected ? .semibold : .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .padding(.horizontal, 3)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: segmentHeight)
+                        .foregroundStyle(tint)
+                        .background(tint.opacity(selected ? 0.18 : 0.035), in: RoundedRectangle(cornerRadius: 6))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(tint.opacity(selected ? 0.45 : (contrast == .increased ? 0.35 : 0)), lineWidth: 1)
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(label(option))
+                .accessibilityAddTraits(selected ? [.isSelected] : [])
+                .accessibilityIdentifier("\(identifier)-\(String(describing: option))")
+            }
+        }
+        .padding(.horizontal, 2)
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.primary.opacity(0.045))
+                .frame(height: segmentHeight + 4)
+        }
+    }
+}
+
+extension BookingStatus {
+    var controlColor: Color { Color("Booking" + title) }
+}
+
+struct BookingStatusSegments: View {
+    @Binding var selection: BookingStatus
+    let identifier: String
+    var body: some View {
+        DaybookSegments(title: "Booking status", selection: $selection,
+                        options: BookingStatus.allCases, identifier: identifier,
+                        label: { $0.title }, color: { $0.controlColor })
+    }
+}
+
 struct DaybookMetadata: View {
     @ScaledMetric(relativeTo: .subheadline) private var iconWidth = 21
     let symbol: String

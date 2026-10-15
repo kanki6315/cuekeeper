@@ -43,11 +43,61 @@ final class BackgroundExpenseUITests: XCTestCase {
         app.buttons["Wallet automation setup"].tap()
         XCTAssertTrue(app.navigationBars["Wallet Automation"].waitForExistence(timeout: 5))
         shot("wallet-automation-steps")
+        app.buttons["Help & Options"].tap()
+        app.buttons["Completion Reminders"].tap()
         let enable = app.buttons["enable-expense-reminders"]
         for _ in 0..<6 where !enable.isHittable { app.scrollViews.firstMatch.swipeUp() }
         XCTAssertTrue(enable.exists)
         shot("wallet-automation-reminders")
     }
+    func testWalletGuideProgressAndResume() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=expense-automation"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Open Automation"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.staticTexts["Choose your cards"].exists)
+        shot("wallet-guide-step-1")
+        app.buttons["wallet-setup-next"].tap()
+        XCTAssertTrue(app.staticTexts["Choose your cards"].exists)
+        shot("wallet-guide-step-2")
+        app.buttons["wallet-setup-back"].tap()
+        XCTAssertTrue(app.staticTexts["Open Automation"].exists)
+        app.buttons["wallet-setup-next"].tap()
+        app.terminate()
+        app.launchArguments = ["--ui-testing", "--design-fixtures", "--design-screen=expense-automation"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Choose your cards"].waitForExistence(timeout: 15))
+        app.buttons["wallet-setup-next"].tap()
+        XCTAssertTrue(app.staticTexts["Run automatically"].exists)
+        shot("wallet-guide-step-3")
+        app.buttons["wallet-setup-next"].tap()
+        XCTAssertTrue(app.staticTexts["Add Capture Expense"].exists)
+        shot("wallet-guide-step-4")
+        app.buttons["wallet-setup-next"].tap()
+        for (index, title) in ["Connect the merchant", "Connect the amount", "Connect the currency", "Connect the date", "Connect a transaction ID"].enumerated() {
+            XCTAssertTrue(app.staticTexts[title].exists)
+            XCTAssertTrue(app.buttons["open-wallet-shortcuts"].exists)
+            shot("wallet-payment-field-\(index)")
+            if index == 4 {
+                let skip = app.buttons["wallet-setup-skip-field"]
+                if !skip.isHittable { app.scrollViews.firstMatch.swipeUp() }
+                skip.tap()
+            } else {
+                app.buttons["wallet-setup-next"].tap()
+            }
+        }
+        XCTAssertTrue(app.staticTexts["Save in Shortcuts"].exists)
+        shot("wallet-guide-save")
+        app.buttons["wallet-setup-next"].tap()
+        XCTAssertTrue(app.staticTexts["Check your first capture"].exists)
+        shot("wallet-guide-finished")
+        app.buttons["Review Setup Steps"].tap()
+        XCTAssertTrue(app.staticTexts["Open Automation"].exists)
+        app.buttons["Help & Options"].tap()
+        XCTAssertTrue(app.buttons["Include Payment Details"].exists)
+        shot("wallet-guide-help")
+    }
+
     func testRemoveDraftHasConfirmation() {
         let app = launch("pending-expenses")
         XCTAssertTrue(app.buttons["remove-expense-draft"].firstMatch.waitForExistence(timeout: 15))

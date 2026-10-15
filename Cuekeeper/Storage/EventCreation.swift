@@ -20,7 +20,12 @@ struct EventOutline: Identifiable, Equatable {
 /// The entire season is committed together; failures leave the editable draft intact.
 struct EventCreationDraft: Equatable {
     var events = [EventOutline()]
-    var shared = JobDraft()
+    var shared: JobDraft = {
+        var draft = JobDraft()
+        let home = UserDefaults.standard.string(forKey: "homeTimeZone") ?? TimeZone.current.identifier
+        draft.timeZoneID = TimeZone(identifier: home) == nil ? "" : home
+        return draft
+    }()
     var payment = PaymentDraft()
 
     func resolvedEvents() -> [EventOutline] {

@@ -121,6 +121,13 @@ Upcoming and Events lead with a shared brand/action header, search and filters, 
 
 Regular-width layouts at non-accessibility text sizes use a sidebar; Upcoming and Events use sidebar, agenda and selected detail columns. The sidebar ranges from 210 to 280 points (ideal 230); the agenda from 320 to 520 (ideal 420). Native split-view behavior handles width and portrait collapse. Compact widths and all accessibility text sizes use tabs and navigation stacks. Headers and payment summaries adapt vertically when text or width demands it.
 
+First-launch setup uses full-height navigation with bottom safe-area actions on
+iPhone and a compact native form sheet over the daybook at regular iPad widths.
+Its scrolling content and actions are capped at 480 points, with existing page
+margins. This is the user-approved refinement of the first-launch board; the
+earlier empty full-screen iPad composition is superseded. It extends the current
+system without changing the normative frontmatter tokens or sidecar.
+
 ## Elevation & Depth
 
 The reading layer stays opaque and quiet: surface color, spacing and inset rules establish grouping. Panels and inset dividers use a half-point primary-color stroke at 0.16 opacity, strengthening to 0.45 with Increase Contrast; selected agenda rows use a faint accent fill. Navigation and actions use native Liquid Glass. The inset sidebar uses regular glass with accent tint at 0.08 opacity, falling back to opaque `SurfaceBackground` when Reduce Transparency or Increase Contrast is active. No custom drop-shadow or motion vocabulary is implemented; refraction, pressed feedback and native control accessibility adaptations belong to the system.
@@ -199,6 +206,29 @@ Save failures are surfaced without dismissing the detail.
 Existing native verification artifacts are in `design/verification/single-client-events/`,
 `design/verification/session-choices/`, and `design/verification/event-typeahead/`.
 This documentation refresh was checked against source; it adds no new visual validation.
+
+### First-launch setup
+
+The welcome centers the existing cue-card mark and semantic large-title text,
+followed by observed iCloud status and a primary setup action. Backup recovery
+stays secondary. Preferences, Calendar and backup selection retain the native
+navigation stack and reuse BrandLockup in the principal toolbar. Setup actions
+wrap the existing primary/secondary glass styles; preference and backup rows reuse
+DaybookSections. Reading surfaces retain PageBackground and SurfaceBackground.
+
+Preferences and Settings share the same labelled fields. Appearance uses native
+segments at standard text sizes and a labelled menu at accessibility sizes;
+scrolling keeps content reachable above the action area. Backup selection shows
+date, event count and a selected-state symbol, then a native restore confirmation.
+Loading, empty and error states remain distinct. No decorative assets or new
+system tokens were introduced.
+
+Sources: `Cuekeeper/FirstLaunchView.swift`, `Cuekeeper/PreferenceFields.swift`,
+`Cuekeeper/FirstLaunchBackupView.swift` and `Cuekeeper/RootView.swift`.
+The approved board and subsequent layout decision are recorded in
+`design/first-launch/implementation-brief.md`. Current simulator evidence and
+limits are in `design/first-launch/verification/README.md`; this pass preserves
+the incumbent visual system rather than claiming a new full-product audit.
 
 ## Do's and Don'ts
 

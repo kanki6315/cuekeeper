@@ -143,6 +143,8 @@ struct JobDraft: Equatable {
         self.name = name
         self.startDate = startDate
         self.endDate = endDate
+        let defaultRole = UserDefaults.standard.string(forKey: "defaultRole")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        roleNames = defaultRole.isEmpty ? [] : [defaultRole]
     }
 
     init(job: Job) {

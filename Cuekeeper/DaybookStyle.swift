@@ -206,7 +206,7 @@ struct BrandLockup: View {
 }
 
 /// Exact outlines from design/brand/source/cuekeeper-mark-forest.svg, without its export padding.
-private struct CuekeeperMark: Shape {
+struct CuekeeperMark: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
         p.move(to: CGPoint(x:66,y:351)); p.addCurve(to: CGPoint(x:47,y:320), control1: CGPoint(x:54,y:348), control2: CGPoint(x:49,y:337))

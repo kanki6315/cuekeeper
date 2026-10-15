@@ -31,6 +31,130 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
+    func testStoreReadinessWaitsBeyondTenSecondsForAllCallers() async throws {
+        let readiness = StoreReadiness()
+        let first = Task { try await readiness.wait() }
+        let second = Task { try await readiness.wait() }
+        try await Task.sleep(for: .seconds(10.2))
+        readiness.complete(.success(()))
+        try await first.value
+        try await second.value
+        // Callers arriving after opening also succeed immediately.
+        try await readiness.wait()
+    }
+
+    func testStoreReadinessPropagatesFailureToCurrentAndFutureCallers() async {
+        let readiness = StoreReadiness()
+        let waiter = Task { try await readiness.wait() }
+        await Task.yield()
+        readiness.complete(.failure(RecordError.invalid("Opening failed")))
+        do { try await waiter.value; XCTFail("Expected load failure") }
+        catch { XCTAssertEqual(error.localizedDescription, "Opening failed") }
+        do { try await readiness.wait(); XCTFail("Expected retained load failure") }
+        catch { XCTAssertEqual(error.localizedDescription, "Opening failed") }
+    }
+
+    func testCancellingStoreWaitDoesNotCancelOtherCallers() async throws {
+        let readiness = StoreReadiness()
+        let cancelled = Task { try await readiness.wait() }
+        let remaining = Task { try await readiness.wait() }
+        await Task.yield()
+        cancelled.cancel()
+        do { try await cancelled.value; XCTFail("Expected cancellation before opening") }
+        catch is CancellationError { }
+        readiness.complete(.success(()))
+        try await remaining.value
+    }
+
+    func testAlreadyCancelledStoreWaitFailsEvenWhenLoaded() async throws {
+        let readiness = StoreReadiness()
+        readiness.complete(.success(()))
+        let waiter = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            try await readiness.wait()
+        }
+        do { try await waiter.value; XCTFail("Expected cancellation") }
+        catch is CancellationError { }
+    }
+
+    func testWaitUntilLoadedUsesStoreCompletion() async throws {
+        let store = PersistenceController(storeURL: directory.appending(path: "readiness.sqlite"), cloudEnabled: false)
+        openedStores.append(store)
+        try await store.waitUntilLoaded()
+        XCTAssertTrue(store.isLoaded)
+        XCTAssertNil(store.loadError)
+        try await store.waitUntilLoaded()
+    }
+
+    func testColdStoreCreatesSiriEventAndReopensSavedRecord() async throws {
+        let url = directory.appending(path: "cold-siri.sqlite")
+        let store = PersistenceController(storeURL: url, cloudEnabled: false)
+        openedStores.append(store)
+        XCTAssertFalse(store.hadExistingStore)
+        XCTAssertFalse(store.isLoaded, "Exercise the wait before the load callback runs")
+        let draft = try SiriEventDraft.make(title: "Cold start event", start: Date(), end: nil, allDay: true)
+        let handoff = EventEditorHandoff(isPresentingModal: { false })
+        // Same readiness/save sequence as the Siri creation intents.
+        try await store.waitUntilLoaded()
+        let id = try handoff.create(draft, in: store.container.viewContext)
+        XCTAssertEqual(handoff.pending?.jobID, id)
+        XCTAssertFalse(id.isTemporaryID)
+        store.container.viewContext.reset()
+        for persistent in store.container.persistentStoreCoordinator.persistentStores {
+            try store.container.persistentStoreCoordinator.remove(persistent)
+        }
+
+        let reopened = PersistenceController(storeURL: url, cloudEnabled: false)
+        openedStores.append(reopened)
+        XCTAssertTrue(reopened.hadExistingStore)
+        XCTAssertFalse(reopened.isLoaded)
+        try await reopened.waitUntilLoaded()
+        let request = NSFetchRequest<Job>(entityName: "Job")
+        let jobs = try reopened.container.viewContext.fetch(request)
+        XCTAssertEqual(jobs.count, 1)
+        XCTAssertEqual(jobs.first?.event?.title, "Cold start event")
+        XCTAssertNotNil(jobs.first?.event)
+    }
+
+    func testColdStoreCancellationSavesNothingAndManualRetryCreatesOnce() async throws {
+        let store = PersistenceController(storeURL: directory.appending(path: "cold-retry.sqlite"), cloudEnabled: false)
+        openedStores.append(store)
+        XCTAssertFalse(store.isLoaded)
+        let draft = try SiriEventDraft.make(title: "Retried event", start: Date(), end: nil, allDay: true)
+        let handoff = EventEditorHandoff(isPresentingModal: { false })
+        let cancelled = Task {
+            try await store.waitUntilLoaded()
+            _ = try handoff.create(draft, in: store.container.viewContext)
+        }
+        // Cancel before yielding the main actor to either the load callback or request.
+        cancelled.cancel()
+        do { try await cancelled.value; XCTFail("Expected cancellation") }
+        catch is CancellationError { }
+        try await store.waitUntilLoaded()
+        let request = NSFetchRequest<Job>(entityName: "Job")
+        XCTAssertEqual(try store.container.viewContext.count(for: request), 0)
+        XCTAssertNil(handoff.pending)
+        _ = try handoff.create(draft, in: store.container.viewContext)
+        XCTAssertEqual(try store.container.viewContext.count(for: request), 1)
+    }
+
+    func testColdStoreFailureReachesCurrentAndLaterWaiters() async throws {
+        // A regular file cannot serve as the database's parent directory.
+        let parent = directory.appending(path: "not-a-directory")
+        try Data("blocked".utf8).write(to: parent)
+        let store = PersistenceController(storeURL: parent.appending(path: "failed.sqlite"), cloudEnabled: false)
+        openedStores.append(store)
+        for _ in 0..<2 {
+            do { try await store.waitUntilLoaded(); XCTFail("Expected store load error") }
+            catch {
+                XCTAssertTrue(error.localizedDescription.hasPrefix("Couldn’t open your daybook:"))
+            }
+        }
+        XCTAssertFalse(store.isLoaded)
+        XCTAssertNotNil(store.loadError)
+        XCTAssertTrue(store.container.persistentStoreCoordinator.persistentStores.isEmpty)
+    }
+
     func testDeletingInvoicedJobKeepsInvoiceAndPaymentHistory() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var draft = JobDraft(name: "Invoiced event")

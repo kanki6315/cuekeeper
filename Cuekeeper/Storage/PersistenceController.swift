@@ -28,13 +28,10 @@ final class PersistenceController: ObservableObject {
     @Published private(set) var lastTransfer: Date?
     private var eventObserver: NSObjectProtocol?
 
+    private let storeReadiness = StoreReadiness()
+
     func waitUntilLoaded() async throws {
-        for _ in 0..<200 {
-            if let loadError { throw RecordError.invalid("Couldn’t open your daybook: \(loadError)") }
-            if isLoaded { return }
-            try await Task.sleep(for: .milliseconds(50))
-        }
-        throw RecordError.invalid("Your daybook is still opening. Please try again.")
+        try await storeReadiness.wait()
     }
 
     init(storeURL: URL? = nil, cloudEnabled: Bool = true) {
@@ -121,7 +118,14 @@ final class PersistenceController: ObservableObject {
                     catch { self.loadError = "Review fixture setup failed: \(error.localizedDescription)" }
                 }
                 #endif
-                self?.isLoaded = self?.loadError == nil
+                if let self {
+                    self.isLoaded = self.loadError == nil
+                    if let loadError = self.loadError {
+                        self.storeReadiness.complete(.failure(RecordError.invalid("Couldn’t open your daybook: \(loadError)")))
+                    } else {
+                        self.storeReadiness.complete(.success(()))
+                    }
+                }
                 #if CLOUDKIT_SCHEMA_SETUP
                 if error == nil, let self {
                     await self.initializeDevelopmentSchema()
@@ -248,5 +252,42 @@ struct SyncActivity: Equatable {
     var errorDetails: String? {
         let messages = Set(failures.values).sorted()
         return messages.isEmpty ? nil : messages.joined(separator: "\n")
+    }
+}
+
+/// Local store readiness, independent of CloudKit import and of any caller's lifetime.
+@MainActor
+final class StoreReadiness {
+    private var result: Result<Void, Error>?
+    private var waiters: [UUID: CheckedContinuation<Void, Error>] = [:]
+
+    func wait() async throws {
+        try Task.checkCancellation()
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                // Registration and completion are serialized on the main actor.
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else if let result {
+                    continuation.resume(with: result)
+                } else {
+                    waiters[id] = continuation
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in
+                self.waiters.removeValue(forKey: id)?.resume(throwing: CancellationError())
+            }
+        }
+        try Task.checkCancellation()
+    }
+
+    func complete(_ result: Result<Void, Error>) {
+        guard self.result == nil else { return }
+        self.result = result
+        let pending = waiters
+        waiters.removeAll()
+        for continuation in pending.values { continuation.resume(with: result) }
     }
 }

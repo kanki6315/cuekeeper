@@ -6,17 +6,49 @@ import XCTest
 actor TestCalendarPublisher: CalendarPublishing {
     var owner: String?
     func claim(deviceID: String, name: String) throws {
-        guard owner == nil || owner == deviceID else { throw RecordError.invalid("Another device manages this calendar.") }
+        guard owner == nil || owner == deviceID else { throw CalendarOwnershipError.managedElsewhere("Test device") }
         owner = deviceID
     }
+    func takeOver(deviceID: String, name: String) { owner = deviceID }
     func verify(deviceID: String) throws {
-        guard owner == deviceID else { throw RecordError.invalid("Not the calendar manager") }
+        guard owner == deviceID else { throw CalendarOwnershipError.notOwner(owner: owner == nil ? "" : "Test device") }
     }
     func release(deviceID: String) throws { if owner == deviceID { owner = nil } }
 }
 
 @MainActor
 final class CalendarTests: XCTestCase {
+    func testDeviceIdentitySurvivesReinstallButNotRestoreToAnotherDevice() throws {
+        final class Keychain { var id: String?; var locked = false }
+        func identity(_ keychain: Keychain) -> CalendarDeviceIdentity {
+            CalendarDeviceIdentity(read: { keychain.locked ? .unavailable : keychain.id.map { .found($0) } ?? .missing },
+                                   write: { keychain.id = $0; return true })
+        }
+        func freshDefaults() throws -> UserDefaults {
+            let suite = "calendar-identity-\(UUID())"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
+            return defaults
+        }
+        // Upgrade: the pre-Keychain ID is kept so the current owner keeps its claim.
+        let phone = Keychain(), defaults = try freshDefaults()
+        defaults.set("legacy", forKey: CalendarDeviceIdentity.legacyKey)
+        XCTAssertEqual(CalendarDeviceIdentity.resolve(defaults: defaults, keychain: identity(phone)), "legacy")
+        XCTAssertEqual(phone.id, "legacy")
+        // Reinstall wipes defaults but not the Keychain item.
+        XCTAssertEqual(CalendarDeviceIdentity.resolve(defaults: try freshDefaults(), keychain: identity(phone)), "legacy")
+        // A locked Keychain falls back to the cached copy rather than a new identity.
+        phone.locked = true
+        XCTAssertEqual(CalendarDeviceIdentity.resolve(defaults: defaults, keychain: identity(phone)), "legacy")
+        // Restoring these defaults onto another phone must not copy the identity.
+        let restored = try freshDefaults()
+        for (key, value) in defaults.dictionaryRepresentation() where key.hasPrefix("calendar.") { restored.set(value, forKey: key) }
+        let newPhone = Keychain()
+        let newID = CalendarDeviceIdentity.resolve(defaults: restored, keychain: identity(newPhone))
+        XCTAssertNotEqual(newID, "legacy")
+        XCTAssertEqual(newPhone.id, newID)
+    }
+
     func testTimeZoneChoicesPreserveDaylightSavingRules() throws {
         let winter = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T00:00:00Z"))
         let summer = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-07-01T00:00:00Z"))
@@ -135,7 +167,7 @@ final class CalendarTests: XCTestCase {
         let suite = "calendar-test-\(UUID())"; let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let publisher = TestCalendarPublisher()
-        let controller = CalendarController(defaults: defaults, store: eventStore, publisher: publisher)
+        let controller = CalendarController(defaults: defaults, store: eventStore, publisher: publisher, deviceID: "first")
         controller.start(context: context, enabled: true)
         await controller.connect(calendar.calendarIdentifier)
         XCTAssertTrue(controller.connected, controller.status)
@@ -171,9 +203,22 @@ final class CalendarTests: XCTestCase {
         // A second publisher cannot independently populate a calendar from the same records.
         let otherSuite = "calendar-other-\(UUID())"; let otherDefaults = try XCTUnwrap(UserDefaults(suiteName: otherSuite))
         defer { otherDefaults.removePersistentDomain(forName: otherSuite) }
-        let other = CalendarController(defaults: otherDefaults, store: eventStore, publisher: publisher)
+        let other = CalendarController(defaults: otherDefaults, store: eventStore, publisher: publisher, deviceID: "second")
         other.start(context: context, enabled: true); await other.connect(calendar.calendarIdentifier)
         XCTAssertFalse(other.connected); XCTAssertEqual(events().count, 1)
+        XCTAssertNotNil(other.otherOwner)
+        // A replacement device can take over and adopts the existing entries without duplicates.
+        await other.takeOver(calendar.calendarIdentifier)
+        XCTAssertTrue(other.connected, other.status); XCTAssertNil(other.otherOwner)
+        XCTAssertEqual(events().count, 1); XCTAssertEqual(events().first?.eventIdentifier, originalID)
+        await controller.sync()
+        XCTAssertTrue(controller.status.contains("now manages Calendar"), controller.status)
+        // The displaced device disconnects without removing entries the new owner manages.
+        await controller.disconnect()
+        XCTAssertFalse(controller.connected); XCTAssertEqual(events().count, 1)
+        await other.disconnect(); XCTAssertFalse(other.connected, other.status)
+        await controller.connect(calendar.calendarIdentifier)
+        XCTAssertTrue(controller.connected, controller.status)
         var sessionDraft = SessionDraft(job: job)
         sessionDraft.timeZoneID = "UTC"; sessionDraft.startTime = Date(); sessionDraft.endTime = Date().addingTimeInterval(3600)
         sessionDraft.scheduleStatus = "confirmed"; sessionDraft.coverage = "covering"

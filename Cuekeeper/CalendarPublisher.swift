@@ -5,8 +5,27 @@ import Foundation
 /// calendar publishing waits for the server instead of guessing ownership.
 protocol CalendarPublishing {
     func claim(deviceID: String, name: String) async throws
+    /// Replaces any current owner. Used when the managing device is lost, reset, or replaced.
+    func takeOver(deviceID: String, name: String) async throws
     func verify(deviceID: String) async throws
     func release(deviceID: String) async throws
+}
+
+enum CalendarOwnershipError: LocalizedError, Equatable {
+    /// Another device holds the claim; the label describes it as best it can.
+    case managedElsewhere(String)
+    /// This device is not (or no longer) the owner. `owner` is empty when nobody manages Calendar.
+    case notOwner(owner: String)
+    var errorDescription: String? {
+        switch self {
+        case .managedElsewhere(let owner):
+            "Calendar is managed by another device (\(owner)). Disconnect Calendar there, or use this device instead if that one is no longer available."
+        case .notOwner(let owner) where owner.isEmpty:
+            "This device is not the calendar manager. Connect it in Calendar settings."
+        case .notOwner(let owner):
+            "Another device (\(owner)) now manages Calendar. This device no longer updates entries."
+        }
+    }
 }
 
 struct CalendarPublisher: CalendarPublishing {
@@ -27,23 +46,30 @@ struct CalendarPublisher: CalendarPublishing {
     func claim(deviceID: String, name: String) async throws {
         let record = try await record()
         let owner = record["ownerID"] as? String ?? ""
-        guard owner.isEmpty || owner == deviceID else {
-            throw RecordError.invalid("Calendar is managed by \(record["ownerName"] as? String ?? "another device"). Disconnect Calendar there before connecting this device.")
-        }
-        record["ownerID"] = deviceID as CKRecordValue
-        record["ownerName"] = name as CKRecordValue
-        try await save(record)
+        guard owner.isEmpty || owner == deviceID else { throw CalendarOwnershipError.managedElsewhere(Self.ownerName(record)) }
+        try await save(record, owner: deviceID, name: name)
+    }
+    func takeOver(deviceID: String, name: String) async throws {
+        try await save(try await record(), owner: deviceID, name: name)
     }
     func verify(deviceID: String) async throws {
         let record = try await record()
-        guard record["ownerID"] as? String == deviceID else {
-            throw RecordError.invalid("This device is not the calendar manager. Connect it in Calendar settings, or open Cuekeeper on the device managing your calendar.")
-        }
+        let owner = record["ownerID"] as? String ?? ""
+        guard owner == deviceID else { throw CalendarOwnershipError.notOwner(owner: owner.isEmpty ? "" : Self.ownerName(record)) }
     }
     func release(deviceID: String) async throws {
         let record = try await record()
         guard record["ownerID"] as? String == deviceID else { return }
         record["ownerID"] = "" as CKRecordValue; record["ownerName"] = "" as CKRecordValue
+        try await save(record)
+    }
+    private static func ownerName(_ record: CKRecord) -> String {
+        let name = record["ownerName"] as? String ?? ""
+        return name.isEmpty ? "unnamed device" : name
+    }
+    private func save(_ record: CKRecord, owner: String, name: String) async throws {
+        record["ownerID"] = owner as CKRecordValue
+        record["ownerName"] = name as CKRecordValue
         try await save(record)
     }
     private func save(_ record: CKRecord) async throws {
@@ -65,9 +91,15 @@ struct CalendarPublisher: CalendarPublishing {
             try await publisher.verify(deviceID: winner)
             var refused = false
             do { try await publisher.claim(deviceID: "second", name: "Second test") }
-            catch is RecordError { refused = true }
+            catch is CalendarOwnershipError { refused = true }
             guard refused else { throw RecordError.invalid("A second calendar publisher was incorrectly accepted.") }
-            try await publisher.release(deviceID: winner)
+            try await publisher.takeOver(deviceID: "replacement", name: "Replacement test")
+            try await publisher.verify(deviceID: "replacement")
+            var displaced = false
+            do { try await publisher.verify(deviceID: winner) }
+            catch is CalendarOwnershipError { displaced = true }
+            guard displaced else { throw RecordError.invalid("A displaced calendar publisher still verified as owner.") }
+            try await publisher.release(deviceID: "replacement")
             try await publisher.claim(deviceID: "second", name: "Second test")
             try await publisher.verify(deviceID: "second")
             _ = try await publisher.database.deleteRecord(withID: publisher.identity)

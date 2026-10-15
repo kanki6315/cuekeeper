@@ -41,6 +41,9 @@ final class Job: NSManagedObject {
     var roleNames: [String] { (roles ?? []).map(\.name).sorted() }
 }
 
+/// "1 session", "2 sessions".
+func counted(_ n: Int, _ one: String, _ many: String) -> String { "\(n) \(n == 1 ? one : many)" }
+
 /// Placeholder dates are civil dates, not UTC instants. Device travel must not move them.
 enum Day {
     static func string(from date: Date, timeZone: TimeZone = .current) -> String {
@@ -49,6 +52,11 @@ enum Day {
 
     static func date(from value: String, timeZone: TimeZone = .current) -> Date? {
         formatter(timeZone: timeZone).date(from: value)
+    }
+
+    /// Reader-facing form of a stored day; falls back to the raw value if it doesn't parse.
+    static func display(_ value: String) -> String {
+        date(from: value)?.formatted(date: .abbreviated, time: .omitted) ?? value
     }
 
     private static func formatter(timeZone: TimeZone) -> DateFormatter {

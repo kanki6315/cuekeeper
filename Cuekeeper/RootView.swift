@@ -199,12 +199,16 @@ private struct JobsView: View {
                         Text("Your next event\nstarts here").font(.title2.bold())
                         Text("Start with a date. Add the details when you know them.")
                             .foregroundStyle(Color("SecondaryText"))
+                        if persistence.awaitingInitialImport {
+                            Label("Existing work may still arrive from iCloud. You can add an event now.", systemImage: "icloud.and.arrow.down")
+                                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        }
                         Button("Add your first event") { showingAdd = true }
                             .buttonStyle(LaunchPrimaryButton()).accessibilityIdentifier("add-job")
                     }.multilineTextAlignment(.center).frame(maxWidth: 480).padding(.vertical, 48)
                         .frame(maxWidth: .infinity)
                 } else if (!upcomingOnly || upcomingScope != "Today") && representatives.isEmpty {
-                    ContentUnavailableView("No events to show", systemImage: "calendar", description: Text(jobs.isEmpty && persistence.awaitingInitialImport ? "Existing work may still arrive from iCloud. You can add an event now." : "Start with dates and a client. Add the schedule when it arrives."))
+                    ContentUnavailableView("No events to show", systemImage: "calendar", description: Text("Start with dates and a client. Add the schedule when it arrives."))
                     if filter.isActive { Button("Clear Filters") { filter = JobFilter() } }
                 }
                 if upcomingOnly && upcomingScope == "Today" && !jobs.isEmpty {
@@ -265,7 +269,7 @@ private struct JobsView: View {
                     DaybookMetadata(symbol: "clock", text: next.compactSchedule)
                     if let call = next.callTime { DaybookMetadata(symbol: "video", text: "Call \(next.shortTime(call))") }
                 }
-                Text(job.eventSessions.isEmpty ? "Schedule to come" : "\(job.eventSessions.count) sessions").font(.caption).foregroundStyle(Color("SecondaryText"))
+                Text(job.eventSessions.isEmpty ? "Schedule to come" : counted(job.eventSessions.count, "session", "sessions")).font(.caption).foregroundStyle(Color("SecondaryText"))
             }
             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
         }.padding(.vertical, 20).contentShape(Rectangle())

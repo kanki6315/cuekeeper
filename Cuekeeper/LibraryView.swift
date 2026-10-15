@@ -67,7 +67,7 @@ struct LibraryDetailView: View {
             if let client = record as? Client {
                 Section("Client") {
                     if !client.contact.isEmpty { DaybookMetadata(symbol: "envelope", text: client.contact).textSelection(.enabled) }
-                    DaybookMetadata(symbol: "dollarsign.circle", text: "Default currency · \(client.defaultCurrency)")
+                    DaybookMetadata(symbol: CurrencyPreferences.symbol(client.defaultCurrency), text: "Default currency · \(client.defaultCurrency)")
                     if !client.notes.isEmpty { Text(client.notes).textSelection(.enabled) }
                 }
             }

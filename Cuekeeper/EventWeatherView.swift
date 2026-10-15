@@ -70,7 +70,7 @@ struct EventWeatherSection: View {
         guard potentiallyEligible else { snapshot = nil; return }
         let requested = request
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") || NSClassFromString("XCTestCase") != nil {
+        if ProcessInfo.processInfo.isUITesting || NSClassFromString("XCTestCase") != nil {
             if ProcessInfo.processInfo.arguments.contains("--weather-fixtures") {
                 snapshot = .fixture(now: now); venueZone = snapshot?.timeZone
             }

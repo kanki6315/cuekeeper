@@ -85,7 +85,7 @@ final class PersistenceController: ObservableObject {
         #if DEBUG
         // Deterministic presentation tests never enable CloudKit or touch real records.
         let arguments = ProcessInfo.processInfo.arguments
-        if !cloudEnabled && arguments.contains("--ui-testing") {
+        if !cloudEnabled && ProcessInfo.processInfo.isUITesting {
             if arguments.contains("--ui-test-sync-receiving") {
                 syncActivity.enabled = true; syncActivity.checkingAccount = false
                 syncActivity.record(id: UUID(), kind: .receiving, ended: false, succeeded: false, error: nil)
@@ -101,7 +101,7 @@ final class PersistenceController: ObservableObject {
             Task { @MainActor [weak self] in
                 self?.loadError = error?.localizedDescription
                 #if DEBUG
-                if error == nil, let self, !cloudEnabled, arguments.contains("--ui-testing"),
+                if error == nil, let self, !cloudEnabled, ProcessInfo.processInfo.isUITesting,
                    arguments.contains("--setup-returning") || arguments.contains("--setup-backup-fixture") {
                     do {
                         let id = try JobDraft(name: "Recovered broadcast").save(in: self.container.viewContext)

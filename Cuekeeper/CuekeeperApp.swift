@@ -24,7 +24,7 @@ struct CuekeeperApp: App {
         }
         // Test isolation never changes the user's production store or iCloud records.
         let arguments = ProcessInfo.processInfo.arguments
-        let testing = arguments.contains("--ui-testing") || NSClassFromString("XCTestCase") != nil
+        let testing = ProcessInfo.processInfo.isUITesting || NSClassFromString("XCTestCase") != nil
         var storeURL: URL?
         if testing {
             let directory = URL.applicationSupportDirectory.appending(path: "UITests", directoryHint: .isDirectory)
@@ -49,7 +49,7 @@ struct CuekeeperApp: App {
             UserDefaults.standard.set(controller.hadExistingStore, forKey: "firstLaunchCompleted")
         }
         #if DEBUG
-        if arguments.contains("--ui-testing"), arguments.contains("--reset-test-store") {
+        if ProcessInfo.processInfo.isUITesting, arguments.contains("--reset-test-store") {
             UserDefaults.standard.set(arguments.contains("--today-fixtures") ? "Today" : "All", forKey: "upcoming.scope")
             for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "appearance", "defaultCurrency", "displayCurrencies", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
                 UserDefaults.standard.removeObject(forKey: key)
@@ -137,7 +137,7 @@ struct CuekeeperApp: App {
             .preferredColorScheme(preferredAppearance)
             .task {
                 #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains("--ui-testing"), ProcessInfo.processInfo.arguments.contains("--siri-wizard-test"), handoff.pending == nil {
+                if ProcessInfo.processInfo.isUITesting, ProcessInfo.processInfo.arguments.contains("--siri-wizard-test"), handoff.pending == nil {
                     do {
                         try await persistence.waitUntilLoaded()
                         let context = persistence.container.viewContext
@@ -174,7 +174,7 @@ struct CuekeeperApp: App {
     private var bypassSetupForTests: Bool {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("--ui-testing") && !arguments.contains("--first-launch")
+        return ProcessInfo.processInfo.isUITesting && !arguments.contains("--first-launch")
         #else
         return false
         #endif
@@ -215,5 +215,16 @@ private struct CalendarLinkView: View {
             catch { destination = nil; self.error = error.localizedDescription }
             loading = false
         }
+    }
+}
+
+extension ProcessInfo {
+    /// Fixtures and the isolated test store are debug-only; release builds ignore `--ui-testing`.
+    var isUITesting: Bool {
+        #if DEBUG
+        arguments.contains("--ui-testing")
+        #else
+        false
+        #endif
     }
 }

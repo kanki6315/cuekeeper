@@ -79,7 +79,7 @@ struct EventWeatherSnapshot: Codable {
 @MainActor
 final class EventWeatherStore {
     static let shared: EventWeatherStore = {
-        let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing") || NSClassFromString("XCTestCase") != nil
+        let testing = ProcessInfo.processInfo.isUITesting || NSClassFromString("XCTestCase") != nil
         return EventWeatherStore(fileURL: testing ? nil : URL.applicationSupportDirectory.appending(path: "Weather/local-cache.json"))
     }()
     struct Entry: Codable {

@@ -243,6 +243,35 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions + 1)
     }
 
+    func testSiriAndReceiptRequestsRecoverAfterExistingSheetCloses() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        var sheetIsPresented = true
+        let handoff = EventEditorHandoff(isPresentingModal: { sheetIsPresented })
+        let draft = EventCreationDraft()
+
+        XCTAssertThrowsError(try handoff.create(draft, in: context))
+        XCTAssertThrowsError(try handoff.requestReceiptScan())
+        XCTAssertNil(handoff.pending)
+        XCTAssertFalse(handoff.scanningReceipt)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
+
+        sheetIsPresented = false
+        _ = try handoff.create(draft, in: context)
+        let request = try XCTUnwrap(handoff.pending)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
+        XCTAssertThrowsError(try handoff.requestReceiptScan())
+        handoff.close(id: request.id)
+        try handoff.requestReceiptScan()
+        XCTAssertTrue(handoff.scanningReceipt)
+        // A repeated scan remains idempotent even when its own sheet is visible.
+        sheetIsPresented = true
+        try handoff.requestReceiptScan()
+        XCTAssertThrowsError(try handoff.create(draft, in: context))
+        XCTAssertNil(handoff.pending)
+    }
+
     func testSiriCreatesOnceAndEnrichmentEditsSameEvent() async throws {
         let store = try await openStore()
         let context = store.container.viewContext

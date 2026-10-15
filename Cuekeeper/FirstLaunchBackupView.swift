@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// Recovery-only presentation of the existing merge restore; no creation or deletion here.
 struct FirstLaunchBackupView: View {
     @Environment(\.managedObjectContext) private var context
+    @EnvironmentObject private var persistence: PersistenceController
     @State private var entries: [CloudBackupStore.Entry] = []
     @State private var selected: CKRecord.ID?
     @State private var loaded = false
@@ -24,6 +25,9 @@ struct FirstLaunchBackupView: View {
     var body: some View {
         LaunchPage {
             LaunchHeading("Choose a backup")
+            if let reason = persistence.syncActivity.restoreUnavailableReason {
+                Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            }
             if busy { BackupProgressView(workflow: workflow) }
             if loaded && entries.isEmpty {
                 ContentUnavailableView("No backups found", systemImage: "archivebox")
@@ -75,13 +79,14 @@ struct FirstLaunchBackupView: View {
         }
         .confirmationDialog("Restore this backup?", isPresented: $workflow.reviewing, titleVisibility: .visible) {
             Button("Restore Backup") {
-                workflow.restore(context: context) { result in
+                workflow.restore(context: context, syncActivity: { persistence.syncActivity }) { result in
                     resultMessage = "Added \(result.added) records and recovered \(result.recovered) deleted records."
                     restored = true
                 }
             }
+            .disabled(persistence.syncActivity.restoreUnavailableReason != nil)
             Button("Cancel", role: .cancel) { workflow.archive = nil }
-        } message: { Text(workflow.reviewSummary) }
+        } message: { Text(persistence.syncActivity.restoreUnavailableReason ?? workflow.reviewSummary) }
 
         .alert("Backup recovered", isPresented: $restored) {
             Button("Continue setup", action: onRestore)

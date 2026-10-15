@@ -222,8 +222,10 @@ final class CalendarController: ObservableObject {
         return Array(result.values).sorted { $0.eventIdentifier < $1.eventIdentifier }
     }
     private func removeManagedEvents() throws {
-        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess,
-              let calendar = store.calendar(withIdentifier: selectedID) else { throw RecordError.invalid("Restore Calendar access before disconnecting.") }
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { throw RecordError.invalid("Restore Calendar access before disconnecting.") }
+        // With full access, a missing calendar has no entries left to remove.
+        // Let disconnect release the claim, or adopt select a replacement calendar.
+        guard let calendar = store.calendar(withIdentifier: selectedID) else { return }
         for event in managedEvents(calendar: calendar) { try store.remove(event, span: .thisEvent, commit: false) }
         try store.commit()
     }

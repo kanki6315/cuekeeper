@@ -14,7 +14,7 @@ final class PersistenceController: ObservableObject {
     @Published private(set) var accountStatus = "Checking…"
     @Published private(set) var syncActivity = SyncActivity()
     var transferStatus: String { cloudEnabled ? (syncActivity.message ?? "No iCloud transfer in progress") : "Local storage only" }
-    var awaitingInitialImport: Bool { syncActivity.enabled && !syncActivity.receivedImport }
+    var awaitingInitialImport: Bool { syncActivity.awaitingInitialImport }
     private let networkMonitor = NWPathMonitor()
     @Published private(set) var schemaInitializationStatus: String? {
         didSet {
@@ -219,6 +219,17 @@ struct SyncActivity: Equatable {
                 if kind == .receiving { receivedImport = true }
             } else { failures[kind] = error ?? "The transfer did not complete. iCloud will try again." }
         }
+    }
+    var awaitingInitialImport: Bool { enabled && !receivedImport }
+    var restoreUnavailableReason: String? {
+        guard enabled else { return nil }
+        if awaitingInitialImport {
+            return "Wait for iCloud to finish its first download before restoring a backup. Connect to the internet and resolve any iCloud errors, then try again."
+        }
+        if active.values.contains(.receiving) || failures[.receiving] != nil {
+            return "Wait for iCloud to finish receiving changes before restoring a backup, then try again."
+        }
+        return nil
     }
     var needsAttention: Bool { accountIssue != nil || !failures.isEmpty }
     var isBusy: Bool { enabled && !offline && !needsAttention && (checkingAccount || !active.isEmpty) }

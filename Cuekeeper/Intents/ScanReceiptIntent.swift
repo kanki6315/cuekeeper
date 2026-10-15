@@ -16,7 +16,8 @@ struct ScanReceiptIntent: AppIntent {
 
 struct CuekeeperShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
-        AppShortcut(intent: CaptureExpenseIntent(), phrases: ["Capture an expense with \(.applicationName)"], shortTitle: "Capture Expense", systemImageName: "tray.and.arrow.down")
+        // Capture Expense runs while locked for Wallet automations, so it has no
+        // spoken phrase; it stays available as a Shortcuts action.
         AppShortcut(intent: ScanReceiptIntent(), phrases: ["Scan a receipt with \(.applicationName)"], shortTitle: "Scan Receipt", systemImageName: "doc.viewfinder")
     }
 }

@@ -80,6 +80,7 @@ struct RootView: View {
 }
 
 private struct JobsView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.managedObjectContext) private var context
     @EnvironmentObject private var persistence: PersistenceController
     let upcomingOnly: Bool
@@ -123,10 +124,13 @@ private struct JobsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                if selectedJob == nil { BrandLockup() }
-                ViewThatFits(in: .horizontal) {
-                    HStack { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); Spacer(); addButton }
-                    VStack(alignment: .leading, spacing: 12) { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); addButton }
+                if selectedJob == nil {
+                    DaybookTabHeader { addButton }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); Spacer(); addButton }
+                        VStack(alignment: .leading, spacing: 12) { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); addButton }
+                    }
                 }
                 HStack {
                     DaybookTextField("Search events, clients or series", text: $query).accessibilityIdentifier("search-jobs")
@@ -172,10 +176,11 @@ private struct JobsView: View {
                         }
                     }.padding(16).foregroundStyle(Color("AmberText")).background(.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 12))
                 }
-            }.padding(20).frame(maxWidth: 850).frame(maxWidth: .infinity)
+            }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 20).frame(maxWidth: 850).frame(maxWidth: .infinity)
         }.daybookSurface()
             .safeAreaInset(edge: .top, spacing: 0) { SyncFeedbackView() }
             .navigationTitle("").navigationBarTitleDisplayMode(.inline)
+            .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
             .sheet(isPresented: $showingAdd) { EventWizardView { id in
                 if let job = try? context.existingObject(with: id) as? Job {
                     if let selectedJob { selectedJob.wrappedValue = job } else { opened = job }
@@ -209,11 +214,17 @@ private struct JobsView: View {
 func dateRange(_ job: Job) -> String { job.eventDateDescription }
 
 struct SettingsView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @AppStorage("defaultCurrency") private var defaultCurrency = "USD"
     @EnvironmentObject private var persistence: PersistenceController
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
-        DaybookForm(title: "Settings") {
+        DaybookForm(topPadding: 12) {
+            Section {
+                DaybookTabHeader { EmptyView() }
+            }
+            .containerValue(\.daybookUnframed, true)
+            .containerValue(\.daybookFlushTop, true)
             Section("Preferences") { DaybookPicker("Currency", selection: $defaultCurrency) { Text("USD").tag("USD"); Text("EUR").tag("EUR") } }
             Section("Integrations") { DaybookLink { CalendarSettingsView() } label: { Label("Calendar", systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading) } }
             Section("Libraries") {
@@ -245,6 +256,7 @@ struct SettingsView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
         .task { await persistence.refreshAccountStatus() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await persistence.refreshAccountStatus() } }

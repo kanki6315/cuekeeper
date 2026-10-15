@@ -10,12 +10,16 @@ struct PaymentsView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \PaymentRecord.receivedAt, ascending: false)]) private var payments: FetchedResults<PaymentRecord>
     @State private var adding = false
     var body: some View {
-        DaybookForm {
+        DaybookForm(topPadding: 12) {
             Section {
-                let headerLayout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout())
-                headerLayout { BrandLockup(); if !typeSize.isAccessibilitySize { Spacer() }; Button { adding = true } label: { Label("Invoice", systemImage: "plus") }.buttonStyle(DaybookPrimaryButton()).accessibilityLabel("Add Invoice").accessibilityIdentifier("add-invoice-overview") }
-                DaybookPageHeading(title: "Payments", subtitle: "Track invoices and payments, all in one place.").padding(.top, 12)
+                DaybookTabHeader {
+                    Button { adding = true } label: { Label("Invoice", systemImage: "plus") }
+                        .buttonStyle(DaybookPrimaryButton())
+                        .accessibilityLabel("Add Invoice")
+                        .accessibilityIdentifier("add-invoice-overview")
+                }
             }.containerValue(\.daybookUnframed, true)
+                .containerValue(\.daybookFlushTop, true)
             Section {
                 if typeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 20) {
@@ -40,8 +44,6 @@ struct PaymentsView: View {
                     }
                 }.fixedSize(horizontal: false, vertical: true)
                 }
-            } footer: {
-                Text("Currencies are tracked separately. Expected fees include invoiced bookings; they are not added to outstanding balances. Records needing review are excluded.")
             }
             if invoices.contains(where: { $0.issue(in: context) != nil }) || jobs.contains(where: { (try? $0.currentFee()) == nil }) {
             Section {

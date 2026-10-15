@@ -5,6 +5,7 @@ struct DaybookForm<Content: View>: View {
     var title: String = ""
     var subtitle: String = ""
     var compact: Bool = false
+    var topPadding: CGFloat? = nil
     var onContentHeightChange: ((CGFloat) -> Void)? = nil
     @ViewBuilder var content: Content
     var body: some View {
@@ -15,7 +16,9 @@ struct DaybookForm<Content: View>: View {
             }
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 20).padding(.vertical, compact ? 8 : 20)
+                .padding(.horizontal, 20)
+                .padding(.top, topPadding ?? (compact ? 8 : 20))
+                .padding(.bottom, compact ? 8 : 20)
                 .onGeometryChange(for: CGFloat.self) { geometry in
                     geometry.size.height
                 } action: { height in
@@ -46,7 +49,8 @@ struct DaybookSections<Content: View>: View {
                             if index > 0 && !section.containerValues.daybookUnframed { Rectangle().fill(Color.primary.opacity(contrast == .increased ? 0.45 : 0.16)).frame(height: 0.5).padding(.horizontal, 16) }
                             row.frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, section.containerValues.daybookUnframed ? 0 : 16)
-                                .padding(.vertical, compact ? 0 : (section.containerValues.daybookUnframed ? 5 : 12))
+                                .padding(.top, section.containerValues.daybookFlushTop && index == 0 ? 0 : (compact ? 0 : (section.containerValues.daybookUnframed ? 5 : 12)))
+                                .padding(.bottom, compact ? 0 : (section.containerValues.daybookUnframed ? 5 : 12))
                                 .frame(minHeight: compact ? 44 : nil)
                         }
                     }
@@ -156,6 +160,38 @@ struct DaybookDateRail: View {
                 Text(date.formatted(.dateTime.month(.abbreviated))).font(.caption)
             }.foregroundStyle(Color.accentColor).frame(width: railWidth).accessibilityElement(children: .combine)
         }
+    }
+}
+
+/// A consistent first row for tab pages, with room for larger accessibility text.
+struct DaybookTabHeader<Action: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ViewBuilder var action: Action
+
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                stacked
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 16) {
+                        BrandLockup().fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 0)
+                        action.fixedSize(horizontal: true, vertical: false)
+                    }
+                    stacked
+                }
+            }
+        }
+        .frame(minHeight: 48, alignment: .leading)
+    }
+
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BrandLockup()
+            action
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -279,6 +315,7 @@ extension DaybookLink where Label == Text {
 
 extension ContainerValues {
     @Entry var daybookUnframed = false
+    @Entry var daybookFlushTop = false
 }
 
 extension WorkSession {

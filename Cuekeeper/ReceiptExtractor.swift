@@ -125,9 +125,21 @@ enum ReceiptExtractor {
         return try await session.respond(to: "Receipt text:\n\(text)", generating: ReceiptFields.self).content.expense
     }
 
+    static func validateCloudAvailability(_ availability: PrivateCloudComputeLanguageModel.Availability) throws {
+        switch availability {
+        case .available: break
+        case .unavailable(.deviceNotEligible):
+            throw RecordError.invalid("This device cannot use Apple Private Cloud Compute to read this receipt. Enter the details below using the attached photo.")
+        case .unavailable(.systemNotReady):
+            throw RecordError.invalid("Apple Private Cloud Compute is not ready yet. Try again later or enter the details below using the attached photo.")
+        case .unavailable:
+            throw RecordError.invalid(cloudUnavailableMessage)
+        }
+    }
+
     private static func extractInCloud(_ text: String) async throws -> ExpenseValue {
         let model = PrivateCloudComputeLanguageModel()
-        guard model.isAvailable else { throw RecordError.invalid(cloudUnavailableMessage) }
+        try validateCloudAvailability(model.availability)
         guard !model.quotaUsage.isLimitReached else { throw RecordError.invalid(cloudLimitMessage) }
         try Task.checkCancellation()
         let session = LanguageModelSession(model: model, instructions: instructions)

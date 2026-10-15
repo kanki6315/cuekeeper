@@ -57,14 +57,8 @@ struct PaymentsView: View {
             }
             if !readyJobs.isEmpty {
             Section("Ready to invoice") {
-                ForEach(readyJobs, id: \.objectID) { job in
-                    DaybookLink { JobDetailView(job: job) } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "doc.text").foregroundStyle(Color("SecondaryText"))
-                            VStack(alignment: .leading, spacing: 5) { Text(job.displayName).font(.headline); Text(job.client?.name ?? "").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                            Spacer(); Text(job.feeSummary).font(.subheadline).monospacedDigit()
-                        }
-                    }
+                ForEach(readyClientGroups, id: \.client.objectID) { group in
+                    ReadyClientRow(client: group.client, jobs: group.jobs)
                 }
             }
             }
@@ -104,6 +98,15 @@ struct PaymentsView: View {
     }
     private var readyJobs: [Job] {
         jobs.filter { $0.bookingStatus != "cancelled" && $0.client != nil && (try? $0.activeInvoices(in: context).isEmpty) == true && (try? $0.directPaid()) == 0 && (try? $0.currentFee().amount) != nil }
+    }
+    private var readyClientGroups: [(client: Client, jobs: [Job])] {
+        Dictionary(grouping: readyJobs, by: { $0.client! }).map { (client: $0.key, jobs: $0.value) }
+            .sorted {
+                let order = $0.client.name.localizedStandardCompare($1.client.name)
+                return order == .orderedSame
+                    ? $0.client.objectID.uriRepresentation().absoluteString < $1.client.objectID.uriRepresentation().absoluteString
+                    : order == .orderedAscending
+            }
     }
     @ViewBuilder private func invoiceSection(_ title: String, status: String) -> some View {
         if invoices.contains(where: { (try? $0.currentValue().status) == status }) {
@@ -145,6 +148,62 @@ struct PaymentsView: View {
             }
             return Money.format(try Money.minorUnits(sum), currency: currency)
         } catch { return "Needs review" }
+    }
+}
+
+private struct ReadyClientRow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ObservedObject var client: Client
+    let jobs: [Job]
+    @State private var expanded = false
+
+    private var totals: [(currency: String, amount: String)] {
+        let fees = jobs.compactMap { try? $0.currentFee() }
+        return Dictionary(grouping: fees, by: \.currency).sorted { $0.key < $1.key }.map { currency, fees in
+            let sum = fees.reduce(Decimal(0)) { $0 + Decimal($1.amount ?? 0) }
+            let amount = (try? Money.minorUnits(sum)).map { Money.format($0, currency: currency) } ?? "Needs review"
+            return (currency, amount)
+        }
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded) {
+            VStack(spacing: 0) {
+                ForEach(jobs, id: \.objectID) { job in
+                    Divider().padding(.vertical, 10)
+                    DaybookLink { JobDetailView(job: job) } label: {
+                        let layout = typeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                            : AnyLayout(HStackLayout(spacing: 12))
+                        layout {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(job.displayName).font(.headline)
+                                Text(dateRange(job)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            }
+                            if !typeSize.isAccessibilitySize { Spacer() }
+                            Text(job.feeSummary).font(.subheadline).monospacedDigit()
+                        }.frame(minHeight: 44)
+                    }
+                }
+            }
+        } label: {
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                : AnyLayout(HStackLayout(spacing: 12))
+            layout {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(client.name).font(.headline)
+                    Text("\(jobs.count) \(jobs.count == 1 ? "event" : "events")")
+                        .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                }
+                if !typeSize.isAccessibilitySize { Spacer() }
+                VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 4) {
+                    ForEach(totals, id: \.currency) { total in
+                        Text("\(total.currency) · \(total.amount)").font(.subheadline.weight(.semibold)).monospacedDigit()
+                    }
+                }
+            }.foregroundStyle(Color.primary).frame(minHeight: 44)
+        }
     }
 }
 

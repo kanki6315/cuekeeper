@@ -16,9 +16,10 @@ struct BackupArchive: Codable {
         var relationships: [String: [Key]]
     }
     enum Value: Codable, Equatable {
-        case null, string(String), uuid(UUID), date(Date), integer(Int64), boolean(Bool)
+        case data(Data), null, string(String), uuid(UUID), date(Date), integer(Int64), boolean(Bool)
         var object: Any? {
             switch self {
+            case .data(let value): return value
             case .null: return nil
             case .string(let value): return value
             case .uuid(let value): return value
@@ -30,6 +31,7 @@ struct BackupArchive: Codable {
         init(_ object: Any?, attribute: NSAttributeDescription) throws {
             guard let object else { self = .null; return }
             switch attribute.attributeType {
+            case .binaryDataAttributeType: self = .data(object as! Data)
             case .stringAttributeType: self = .string(object as! String)
             case .UUIDAttributeType: self = .uuid(object as! UUID)
             case .dateAttributeType: self = .date(object as! Date)
@@ -41,7 +43,7 @@ struct BackupArchive: Codable {
         func matches(_ attribute: NSAttributeDescription) -> Bool {
             switch (self, attribute.attributeType) {
             case (.null, _): return attribute.isOptional
-            case (.string, .stringAttributeType), (.uuid, .UUIDAttributeType), (.date, .dateAttributeType),
+            case (.data, .binaryDataAttributeType), (.string, .stringAttributeType), (.uuid, .UUIDAttributeType), (.date, .dateAttributeType),
                  (.integer, .integer64AttributeType), (.boolean, .booleanAttributeType): return true
             default: return false
             }
@@ -104,7 +106,7 @@ struct BackupArchive: Codable {
         for record in records {
             guard let entity = model.entitiesByName[record.key.entity],
                   Set(record.attributes.keys) == Set(entity.attributesByName.keys),
-                  Set(record.relationships.keys) == Set(entity.relationshipsByName.keys),
+                  (Set(record.relationships.keys) == Set(entity.relationshipsByName.keys) || (record.key.entity == "Job" && Set(record.relationships.keys).union(["expenses"]) == Set(entity.relationshipsByName.keys))),
                   record.attributes["id"] == .uuid(record.key.id) else {
                 throw RecordError.invalid("The backup’s records do not match this version of Cuekeeper.")
             }

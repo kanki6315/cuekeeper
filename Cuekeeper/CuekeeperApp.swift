@@ -7,6 +7,7 @@ struct CuekeeperApp: App {
     @AppStorage("firstLaunchCompleted") private var firstLaunchCompleted = false
     @AppStorage("appearance") private var appearance = "system"
     @StateObject private var persistence: PersistenceController
+    @StateObject private var expenseNotifications = ExpenseNotifications.shared
     @StateObject private var handoff: EventEditorHandoff
     @StateObject private var calendar = CalendarController()
     @StateObject private var schedulePublisher = SchedulePublisher()
@@ -33,6 +34,7 @@ struct CuekeeperApp: App {
         try? FileManager.default.createDirectory(at: setupDirectory, withIntermediateDirectories: true)
         storeURL = setupDirectory.appending(path: "Schema.sqlite")
         #endif
+        ExpenseNotifications.shared.installDelegate()
         let controller = PersistenceController(storeURL: storeURL, cloudEnabled: !testing)
         if !testing && UserDefaults.standard.object(forKey: "firstLaunchCompleted") == nil {
             // Capture upgrade evidence before the asynchronous store load creates a new file.
@@ -71,6 +73,12 @@ struct CuekeeperApp: App {
                         launchContent
                         #endif
                     }.environment(\.managedObjectContext, persistence.container.viewContext)
+                    .sheet(item: $expenseNotifications.route) { route in
+                        ExpenseNotificationView(id: route.id).environment(\.managedObjectContext, persistence.container.viewContext)
+                    }
+                    .sheet(isPresented: $handoff.scanningReceipt) {
+                        ReceiptEventPicker().environment(\.managedObjectContext, persistence.container.viewContext)
+                    }
                     .fullScreenCover(item: Binding(get: { handoff.pending }, set: { value in
                         if value == nil, let id = handoff.pending?.id { handoff.close(id: id) }
                     })) { request in
@@ -97,7 +105,10 @@ struct CuekeeperApp: App {
                     EventWeatherStore.shared.purgeExpired()
                     schedulePublisher.refresh()
                     calendar.refreshCalendars(); calendar.scheduleSync()
-                    Task { await persistence.refreshAccountStatus() }
+                    Task {
+                        await persistence.refreshAccountStatus()
+                        if persistence.isLoaded { await expenseNotifications.reconcile(in: persistence.container.viewContext) }
+                    }
                 }
             }
             .onOpenURL { url in

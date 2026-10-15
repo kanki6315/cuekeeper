@@ -20,6 +20,7 @@ struct PaymentsView: View {
                 }
             }.containerValue(\.daybookUnframed, true)
                 .containerValue(\.daybookFlushTop, true)
+            Section { PendingExpensesPrompt(alwaysVisible: true) }
             Section {
                 if typeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 20) {

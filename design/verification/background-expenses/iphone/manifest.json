@@ -1,0 +1,98 @@
+[
+  {
+    "attachments": [
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "completed-draft-removed.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "completed-draft-removed_0_70AA677C-60E8-4457-AF4E-2366C708FD76.png",
+        "timestamp": 1792043667.67
+      },
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "background-draft.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "background-draft_0_DB679FD1-94FD-4B3D-AF73-2ED0460D0F61.png",
+        "timestamp": 1792043661.996
+      },
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "pending-expenses.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "pending-expenses_0_F27A4FDF-E69F-4E62-9856-F9EC3D477F34.png",
+        "timestamp": 1792043660.389
+      }
+    ],
+    "testIdentifier": "BackgroundExpenseUITests/testCompleteDraftWithAttachedReceiptAndChooseEvent()",
+    "testIdentifierURL": "test://com.apple.xcode/Cuekeeper/CuekeeperUITests/BackgroundExpenseUITests/testCompleteDraftWithAttachedReceiptAndChooseEvent"
+  },
+  {
+    "attachments": [
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "notification-draft.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "notification-draft_0_D29361D9-30EB-4201-AD42-0A3660E21864.png",
+        "timestamp": 1792043673.628
+      }
+    ],
+    "testIdentifier": "BackgroundExpenseUITests/testNotificationRouteOpensExactPhotoLessDraftAndKeepsIt()",
+    "testIdentifierURL": "test://com.apple.xcode/Cuekeeper/CuekeeperUITests/BackgroundExpenseUITests/testNotificationRouteOpensExactPhotoLessDraftAndKeepsIt"
+  },
+  {
+    "attachments": [
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "remove-draft-confirmation.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "remove-draft-confirmation_0_75EA0390-8437-4FF9-8A2C-C6D95B6811D7.png",
+        "timestamp": 1792043684.315
+      }
+    ],
+    "testIdentifier": "BackgroundExpenseUITests/testRemoveDraftHasConfirmation()",
+    "testIdentifierURL": "test://com.apple.xcode/Cuekeeper/CuekeeperUITests/BackgroundExpenseUITests/testRemoveDraftHasConfirmation"
+  },
+  {
+    "attachments": [
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "wallet-automation-reminders.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "wallet-automation-reminders_0_FEE435C0-7656-4E32-BC79-43C7AB1AD8C5.png",
+        "timestamp": 1792043698.665
+      },
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "wallet-automation-steps.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "wallet-automation-steps_0_F642CED9-9F41-4252-A36D-15EB7BD3FC80.png",
+        "timestamp": 1792043695.027
+      },
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "DA5400AF-498A-4D66-837F-4EA759F957FD",
+        "deviceName": "Cuekeeper Job Management iPhone",
+        "exportedFileName": "pending-upcoming-prompt.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "pending-upcoming-prompt_0_A5E44BCE-63F8-4104-B0FC-6611B8F5C762.png",
+        "timestamp": 1792043691.346
+      }
+    ],
+    "testIdentifier": "BackgroundExpenseUITests/testSettingsInstructionsAndPendingPrompt()",
+    "testIdentifierURL": "test://com.apple.xcode/Cuekeeper/CuekeeperUITests/BackgroundExpenseUITests/testSettingsInstructionsAndPendingPrompt"
+  }
+]

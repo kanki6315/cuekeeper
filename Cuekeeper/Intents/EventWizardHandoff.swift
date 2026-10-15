@@ -37,12 +37,17 @@ final class EventEditorHandoff: ObservableObject {
         let jobID: NSManagedObjectID
         let notices: [String]
     }
+    @Published var scanningReceipt = false
+    func requestReceiptScan() throws {
+        guard pending == nil else { throw RecordError.invalid("Close the current event screen before scanning a receipt from Shortcuts.") }
+        scanningReceipt = true
+    }
     @Published private(set) var pending: Request?
 
     /// Save exactly once before routing. The editor receives only a permanent ID,
     /// never a creation draft or a continuation tied to Siri's execution lifetime.
     func create(_ draft: EventCreationDraft, in context: NSManagedObjectContext, notices: [String] = []) throws -> NSManagedObjectID {
-        guard pending == nil else { throw RecordError.invalid("Close the current event before creating another with Siri.") }
+        guard pending == nil && !scanningReceipt else { throw RecordError.invalid("Close the current event before creating another with Siri.") }
         guard draft.events.count == 1 else { throw RecordError.invalid("Create one event at a time with Siri.") }
         try Task.checkCancellation()
         let ids = try draft.save(in: context)

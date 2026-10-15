@@ -393,6 +393,37 @@ Existing session timezone fields remain for storage compatibility; an older even
 without a timezone can recover a common zone from its sessions. Conflicting legacy
 zones require choosing an event timezone.
 
+## Receipt expenses (V12)
+
+Event → Expenses → Scan Receipt opens the native document camera, with photo
+import available after cancelling the camera or on devices without a scanner.
+Scan one page per expense. Vision reads the image on-device and the on-device
+Foundation Models model proposes merchant, civil date, total, currency, included
+tax and category. No PCC or third-party model is used. Apple Intelligence must
+be available for automatic field extraction; manual review remains available
+when it is disabled, unsupported, downloading or fails.
+
+The review form requires confirmation before an expense is counted as saved.
+The normalized receipt JPEG is persisted as an event-linked draft before model
+processing. Keep Draft preserves incomplete fields; reopen Review receipt in the
+event to continue. A process interruption preserves the photo, but form edits
+since the last save may be lost. Saved expenses can be reopened and edited, with
+stale edits rejected locally. Expenses do not change fees, invoices or payments.
+This version supports positive totals in USD, EUR, GBP, CAD, AUD, NZD and CHF;
+it does not split receipts or perform currency conversion or tax calculation.
+
+The discoverable Scan Receipt App Intent and App Shortcut open event selection
+and then receipt capture. Assign it through Settings → Action Button → Shortcut
+→ Cuekeeper → Scan Receipt (or create a shortcut containing that action).
+It requires foreground interaction and authentication. Repeated invocations
+reuse the pending selection rather than creating events or expenses.
+
+V12 adds the optional Expense entity and Job.expenses inverse, with externally
+stored binary receipt data. Photos and draft fields are included in explicit
+backups; pre-expense archives remain restorable. Event deletion retains its
+expenses with the event tombstone. The existing 100 MB backup limit still applies.
+Production schema deployment and real-device camera/model, Action Button,
+and cross-device image-sync checks are required before release.
 ### Today and widgets
 
 Upcoming now offers Today, Week and All. Today shows the complete day's sessions
@@ -421,3 +452,43 @@ independently sync CloudKit, so they reflect the last app snapshot, not a guaran
 of current data on every device. UI-test stores never publish widget snapshots.
 
 Design references and verification notes live in `design/today-widgets/`.
+
+## Background expense capture (0.1.10)
+
+Capture Expense is a separate, background-only App Intent with optional Merchant,
+Amount, Currency, Transaction date and Transaction ID inputs. It saves an expense
+draft without a receipt or event and returns its UUID. It does not open the app or
+ask for missing fields. Scan Receipt remains the foreground Action Button action.
+The new behavior reuses V12; optional captured-payment metadata is stored with the
+expense value, so no further Core Data/CloudKit schema version is required.
+
+Set up the Wallet personal automation on the iPhone using Settings → Integrations
+→ Wallet Automation. The guide explains mapping available Shortcut Input fields,
+Run Immediately, optional completion reminders, and the separate Scan Receipt
+Action Button use case. Cuekeeper cannot install the personal automation itself.
+Unknown or unparseable transaction values remain available in Captured payment;
+review fields stay blank rather than assuming a currency, date or total.
+
+Upcoming shows a completion prompt when drafts exist; Payments always links to
+Expenses to complete. Choose a draft, attach a receipt and assign an active event.
+Keep Draft saves incomplete work. Confirming still requires a receipt, event and
+valid expense details. Receipt extraction fills blanks and shows explicit choices
+for conflicts instead of overwriting payment values. Original payment evidence
+remains unchanged after editing. Personal/duplicate drafts can be removed with
+confirmation; their capture identity remains retained to prevent re-import.
+
+Deduplication uses only an explicit stable source Transaction ID (stored as a hash).
+Re-delivery of that ID does not modify a completed, edited or removed record. If
+no source ID is supplied, captures are kept separately; equal merchant/amount/date
+values are not sufficient evidence to discard a genuine second purchase. Local
+intent saves are serialized on the main actor; independently captured duplicates
+on offline devices are not globally deduplicated by CloudKit.
+
+Reminders are opt-in and local to the capturing device. Notification denial or
+scheduling failure never undoes a saved draft. Generic notification text avoids
+putting merchant/amount details on the lock screen. Tapping routes by persisted
+expense UUID after store loading. Completion/removal clears its reminder, and
+foreground reconciliation removes stale delivered/pending reminders. Drafts stay
+accessible when reminders are disabled or silenced by Focus. Locked-device access,
+actual Wallet payloads and cold-start notification delivery still need hardware
+validation. No server, PCC or remote notification service is used for this flow.

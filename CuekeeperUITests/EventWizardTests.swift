@@ -113,8 +113,11 @@ final class EventWizardTests: XCTestCase {
                 + (large ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
             app.launch()
             XCTAssertTrue(app.buttons["save-session"].waitForExistence(timeout: 10))
-            let zone = app.staticTexts["Event timezone"]
-            for _ in 0..<5 where !zone.isHittable { app.swipeUp() }
+            // LabeledContent exposes a combined label at standard text sizes.
+            let forms = app.scrollViews.matching(identifier: "daybook-form")
+            let editor = forms.element(boundBy: forms.count - 1)
+            let zone = editor.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Event timezone")).firstMatch
+            for _ in 0..<5 where !zone.isHittable { editor.swipeUp() }
             XCTAssertTrue(zone.isHittable)
             XCTAssertFalse(app.buttons["event-timezone"].exists)
             XCTAssertFalse(app.buttons["work-timezone"].exists)

@@ -49,7 +49,7 @@ struct EventWizardView: View {
         }
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("--ui-testing"), args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") {
+        if args.contains("--ui-testing"), args.contains("--wizard-populated-review") || args.contains("--wizard-foreign-session") || args.contains("--wizard-timezone-preview") {
             var sample = EventCreationDraft()
             sample.shared.clientName = "Northside Sports"
             sample.shared.projectName = "Winter broadcasts"
@@ -65,6 +65,12 @@ struct EventWizardView: View {
             _selected = State(initialValue: Set(EventWizardStep.optional))
             _path = State(initialValue: args.contains("--wizard-foreign-session") ? [.sessions] : [.review])
             _activeSession = State(initialValue: args.contains("--wizard-foreign-session") ? 0 : nil)
+            if args.contains("--wizard-timezone-preview") {
+                sample.events[0].timeZoneID = "Europe/Paris"
+                sample.events[0].sessions = []
+                _draft = State(initialValue: sample)
+                _path = State(initialValue: [.sessions])
+            }
         }
         #endif
     }

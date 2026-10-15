@@ -213,11 +213,29 @@ struct TimeZoneValueLabel: View {
     let value: String
     var body: some View {
         if typeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                Text(value).foregroundStyle(Color("SecondaryText"))
+            stackedLabel
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) {
+                    Text(title).fixedSize()
+                    Spacer(minLength: 0)
+                    Text(value)
+                        .foregroundStyle(Color("SecondaryText"))
+                        .fixedSize()
+                }
+                stackedLabel
             }
-        } else { LabeledContent(title, value: value) }
+        }
+    }
+
+    private var stackedLabel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+            Text(value).foregroundStyle(Color("SecondaryText"))
+        }
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

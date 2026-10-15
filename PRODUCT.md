@@ -51,6 +51,11 @@ DESIGN.md and .impeccable/design.json describe the current visual implementation
 The configured app version is 0.1.8; this documentation/version change is not a
 TestFlight release or new device verification.
 
+First launch now introduces device-local defaults, optional Calendar connection
+and explicit backup recovery. Existing installations skip setup; Settings offers
+Run setup again and the same editable preferences. Current first-launch behavior
+and simulator evidence are recorded below.
+
 The sections below are dated implementation history. Later single-client behavior
 supersedes the earlier grouped-client flows; historical verification counts and
 release/schema statements describe their own milestones, not the current build.
@@ -241,3 +246,35 @@ V11 adds optional recoveryDiscardedAt fields to Job and WorkSession. Development
 schema initialization and a live disposable-zone backup test passed, including
 concurrent uploads, exact downloads and deletion. Production deployment remains
 a release prerequisite; no TestFlight release was made in this task.
+
+## First launch — October 14, 2026
+
+New installations show a brief welcome, preferences, then optional Calendar setup
+using the existing permission and ownership flow. Completion is saved locally;
+unfinished setup remains available on relaunch. Existing-store detection skips
+setup on upgrade. Records arriving during setup change the welcome to a returning
+user state while iCloud continues independently.
+
+Currency and role defaults prefill new entries, retaining existing client currency
+precedence. Home timezone seeds only the secondary local-time display for new
+remote/hybrid work; it does not change event/session timezones or existing records.
+Preferences remain device-local and editable in Settings; appearance applies
+immediately. Settings also offers Run setup again.
+
+Recover from a backup opens selection and explicit confirmation for the existing
+merge restore, preserving current edits and payments. Setup does not create or
+delete backups. Local emptiness never asserts an empty iCloud account. The empty
+daybook hides search, filters and routine sync feedback, retaining offline/error
+feedback and the iPad sidebar.
+
+The approved `design/first-launch/concept-board-v3.png` was refined to bottom
+actions on iPhone, compact native form-sheet setup on iPad and branded subpage
+navigation after the user rejected the initial empty full-screen iPad composition.
+The contract is `design/first-launch/implementation-brief.md`; current evidence is
+`design/first-launch/verification/README.md` and its 24 native simulator screenshots.
+The model suite passed 64 tests with one existing EventKit skip. Four onboarding
+workflows passed on each device, alongside sync-feedback and event/work-timezone
+regressions. The fresh native finish review returned `ship` for the supplied evidence.
+This establishes simulator behavior, not live cross-device iCloud delivery,
+VoiceOver gestures or physical-device ergonomics. No schema deployment, release
+archive or TestFlight upload occurred; broader product validation remains open.

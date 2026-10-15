@@ -136,7 +136,6 @@ struct TimeZonePicker: View {
 private struct LinkPresentation: Identifiable { let id = UUID(); let session: WorkSession? }
 
 struct JobDetailView: View {
-    @EnvironmentObject private var calendar: CalendarController
     @ObservedObject var job: Job
     @FetchRequest(sortDescriptors: []) private var eventRecords: FetchedResults<WorkEvent>
     @Environment(\.managedObjectContext) private var context
@@ -214,10 +213,6 @@ struct JobDetailView: View {
                         DaybookLink { LibraryDetailView(record: series, kind: .series) } label: { LabeledContent("Series", value: series.name) }
                     }
                 }
-            }
-            Section("Calendar") {
-                Text(job.bookingStatus == "cancelled" ? "Cancelled events have no calendar entries." : "The all-day placeholder stays alongside confirmed sessions you’re covering.")
-                Text(calendar.status).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             }
             Section {
                 Button("Duplicate Event", systemImage: "plus.square.on.square") { duplicating = true }

@@ -15,6 +15,7 @@ final class WorkSession: NSManagedObject {
     @NSManaged var overridesRoles: Bool
     @NSManaged var notes: String
     @NSManaged var deletedAt: Date?
+    @NSManaged var recoveryDiscardedAt: Date?
     @NSManaged var series: WorkSeries?
     @NSManaged var overridesSeries: Bool
     var effectiveSeries: WorkSeries? { overridesSeries ? series : (job?.allSeries.count == 1 ? job?.allSeries.first : nil) }

@@ -273,6 +273,10 @@ struct SettingsView: View {
             } footer: {
                 Text("Events are saved on this device first. iCloud transfers changes when available. A completed operation does not confirm that every device has received the latest changes. Sync is not a backup.")
             }
+            Section("Recovery & backups") {
+                DaybookLink { BackupView() } label: { Label("iCloud Backups", systemImage: "icloud.and.arrow.up") }
+                DaybookLink { RecentlyDeletedView() } label: { Label("Recently Deleted", systemImage: "trash") }
+            }
             Section("About") {
                 LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"))")
                 Text("Personal beta").foregroundStyle(Color("SecondaryText"))

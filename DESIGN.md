@@ -107,7 +107,7 @@ The palette combines restrained forest and mint accents with warm paper and gree
 
 **Display and Body Font:** SF Pro through SwiftUI semantic text styles, as approved for this native application. The brand lockup uses native title3 bold text; the exact raster wordmark font is not asserted.
 
-Page headings use largeTitle bold; primary record titles and amount entry use title2 bold or semibold; agenda day numbers use title semibold with monospaced digits. Section headers and job titles use headline. Body rows retain the native body style. Metadata and summaries use subheadline; badges use caption semibold and footers use footnote. Sizes resolve through Dynamic Type, so there is no fixed pixel type scale in the token layer.
+Page headings use largeTitle bold; primary record titles and amount entry use title2 bold or semibold; agenda day numbers use title semibold with monospaced digits. Section headers and event titles use headline. Body rows retain the native body style. Metadata and summaries use subheadline; badges use caption semibold and footers use footnote. Sizes resolve through Dynamic Type, so there is no fixed pixel type scale in the token layer.
 
 Dates and amounts use monospaced digits where alignment aids scanning. Metadata symbols use SF Symbols and a width scaled relative to subheadline; the date rail width scales relative to body. Text remains able to grow vertically.
 
@@ -117,13 +117,13 @@ Dates and amounts use monospaced digits where alignment aids scanning. Metadata 
 
 The shared form is a custom ScrollView with titled content, vertical section groups and ruled panels; it is more than a recolored native Form. It centers content up to 760 points with page padding and section spacing from the tokens. Section headers sit above panels; rows use shared horizontal and vertical padding, inset dividers and optional footers. Explicitly unframed sections omit their fill, border and horizontal padding. Native lists remain available through DaybookList, with matching row surfaces and 18-point section spacing.
 
-Upcoming and Jobs lead with branding/title, a primary add action, search and filters, then date-led records. Job details place status and icon-led metadata before sessions, broadcast links and fee/billing content. The quick job editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
+Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details keep schedule and work context ahead of broadcast links and fee/billing content. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
 
-Regular-width layouts at non-accessibility text sizes use a sidebar; Upcoming and Jobs use sidebar, agenda and selected detail columns. The sidebar ranges from 210 to 280 points (ideal 230); the agenda from 320 to 520 (ideal 420). Native split-view behavior handles width and portrait collapse. Compact widths and all accessibility text sizes use tabs and navigation stacks. Headers and payment summaries adapt vertically when text or width demands it.
+Regular-width layouts at non-accessibility text sizes use a sidebar; Upcoming and Events use sidebar, agenda and selected detail columns. The sidebar ranges from 210 to 280 points (ideal 230); the agenda from 320 to 520 (ideal 420). Native split-view behavior handles width and portrait collapse. Compact widths and all accessibility text sizes use tabs and navigation stacks. Headers and payment summaries adapt vertically when text or width demands it.
 
 ## Elevation & Depth
 
-The reading layer stays opaque and quiet: surface color, spacing and inset rules establish grouping. Panels use a half-point primary-color stroke at low opacity; selected agenda rows use a faint accent fill. Navigation and actions use native Liquid Glass. The inset sidebar uses regular glass with accent tint at 0.08 opacity, falling back to opaque `SurfaceBackground` when Reduce Transparency or Increase Contrast is active. No custom drop-shadow or motion vocabulary is implemented; refraction, pressed feedback and native control accessibility adaptations belong to the system.
+The reading layer stays opaque and quiet: surface color, spacing and inset rules establish grouping. Panels and inset dividers use a half-point primary-color stroke at 0.16 opacity, strengthening to 0.45 with Increase Contrast; selected agenda rows use a faint accent fill. Navigation and actions use native Liquid Glass. The inset sidebar uses regular glass with accent tint at 0.08 opacity, falling back to opaque `SurfaceBackground` when Reduce Transparency or Increase Contrast is active. No custom drop-shadow or motion vocabulary is implemented; refraction, pressed feedback and native control accessibility adaptations belong to the system.
 
 **The Quiet Reading Rule.** Keep agenda rows, forms, status badges and financial panels matte; reserve expressive glass for navigation and actions.
 
@@ -135,9 +135,9 @@ Panels and search use gently rounded rectangles. Primary and secondary actions u
 
 ### Primary and secondary actions
 
-DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `PrimaryButtonText` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Job and Mark completed use the primary style; Add Session and Add Broadcast Link use the secondary style.
+DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `PrimaryButtonText` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Event uses the primary style; Add Session and Add Broadcast Link use the secondary style.
 
-Job detail completion actions live in a native bottom `safeAreaBar`, with horizontal page padding and 10-point vertical padding. Mark completed appears only for jobs that are neither completed nor cancelled. The circular glass More menu retains Edit Job and Duplicate Job. Upcoming scope uses a native menu picker; Jobs status retains its native segmented picker.
+Event details expose the next booking-state action inline: Mark as booked for tentative events and Mark completed for booked events. Edit Event is a toolbar action; Duplicate Event and confirmed Delete Event appear in separate sections. Upcoming uses a native segmented picker for All upcoming / This week. Events uses All / Active / Completed / Cancelled. Both segmented scopes sit on a capsule with AccentColor at 0.08 opacity.
 
 ### Panels and sections
 
@@ -157,7 +157,48 @@ DaybookDateRail stacks abbreviated weekday, day number and month in accent color
 
 ### Native shell
 
-Upcoming, Jobs, Payments and Settings form the tab/sidebar destinations. The regular-width selected-record layout keeps agenda and details visible together. The sidebar groups the brand, native sidebar list and sync feedback into one floating glass surface with an opaque accessibility fallback. Native navigation and tab bar backgrounds use automatic material behavior. Sync feedback leads to Settings and describes observed activity without claiming that every device is current.
+Upcoming, Events, Payments and Settings form the tab/sidebar destinations. The regular-width selected-record layout keeps agenda and details visible together. The sidebar groups the brand, native sidebar list and sync feedback into one floating glass surface with an opaque accessibility fallback. Native navigation and tab bar backgrounds use automatic material behavior. Sync feedback leads to Settings and describes observed activity without claiming that every device is current.
+
+### Event capture and editing
+
+Each event has at most one client, with client/status, schedule, broadcast links,
+fee and payment history, notes, project and championships on one detail surface.
+Edit Event shows Client / Work / Fee fields directly, without booking accordions
+or add-client controls. Historical booking notes remain labelled and editable;
+new notes belong to the event. Former grouped bookings appear independently with
+their client names. Bulk session editing stays within the selected event.
+
+The new-event wizard retains optional steps, with Back leading and Cancel trailing.
+Client entry is a labelled typeahead of saved clients; new text stays in the draft
+until Save. Championship entry uses inline search, explicit Add for a new name,
+and removable selected rows. Searches show up to five saved matches while focused;
+championship matches also remain visible for an uncommitted query after keyboard
+dismissal. New events offer Tentative / Booked; existing events also allow Completed
+and Cancelled.
+
+Schedule (Tentative / Confirmed), Coverage (Undecided / Covering / Not covering),
+and new-event status use DaybookChoicePicker. The label stays above the native
+segments. A labelled menu replaces them above xLarge Dynamic Type or when the
+scaled 300-point minimum width cannot fit. Existing-event status and arrangement
+retain menus for their four choices.
+
+The event owns every session's timezone. Event setup and the wizard session list
+expose it once; session editing displays it read-only. Remote/hybrid Work fields
+include Your timezone for secondary local-time readouts, including call time.
+On-site work inherits the event zone. Event-zone changes preserve scheduled instants.
+
+### Payment disclosures and deletion
+
+Ready to invoice groups events into initially collapsed client disclosures, with
+event counts and separate currency totals. Expanded rows show event names, dates
+and fees and open the event detail. Accessibility text stacks the row content.
+Delete Event requires a destructive confirmation explaining that the event and
+sessions leave the schedule and synced calendar while invoices and payments remain.
+Save failures are surfaced without dismissing the detail.
+
+Existing native verification artifacts are in `design/verification/single-client-events/`,
+`design/verification/session-choices/`, and `design/verification/event-typeahead/`.
+This documentation refresh was checked against source; it adds no new visual validation.
 
 ## Do's and Don'ts
 
@@ -173,74 +214,3 @@ Upcoming, Jobs, Payments and Settings form the tab/sidebar destinations. The reg
 - **Don't** substitute sample board data for financial or calendar truth.
 - **Don't** force three columns at accessibility text sizes.
 - **Don't** treat conceptual system chrome as a pixel-exact native requirement.
-
-
-## Unified event hierarchy — October 14, 2026
-
-The event overview leads with sessions, separating prominent local times from dates
-and timezone context. Client bookings are compact client/status/fee disclosures
-into the unified Event editor. A separate Payments section retains access to each
-booking’s billing history. Add-client actions sit outside existing booking rows.
-
-Edit Event keeps event details, dates and event notes visible, followed by expandable
-client bookings grouped into Client, Work, Fee and Booking notes. A single booking
-opens expanded; multi-client events start with concise status/fee summaries. Direct
-booking and fee entry points scroll within this same editor. New client bookings
-remain drafts, can be removed, and commit atomically with existing edits on Save.
-Cancellation discards all pending changes. No schema change is required.
-
-Saved-library selection is integrated with the field label using Choose saved or
-Change, preserving direct typing. The wizard reuses this control and retains its
-existing optional-step sequence. Dark reading surfaces are #2C352F, and dividers
-and panel boundaries strengthen with Increase Contrast. Main navigation labels and
-booking names use primary text; action tint is reserved for controls and statuses.
-
-Verification evidence is recorded in design/verification/event-hierarchy/README.md.
-
-### Short choice fields
-
-Schedule (Tentative / Confirmed) and Coverage (Undecided / Covering / Not covering)
-use the shared DaybookChoicePicker in session editing, wizard session entry and
-bulk coverage editing. The field label remains visible above the native segmented
-control. When the scaled minimum width cannot fit, or Dynamic Type exceeds xLarge,
-the same binding uses a labelled native menu. Booking status and arrangement retain
-menus because both currently have four choices. Library and multi-selection fields
-remain unchanged.
-
-## Single-client events — October 14, 2026
-
-Supersedes the unified multi-booking editor above. Event details and the previous
-booking detail now share one full-feature event surface: client/status, schedule,
-broadcast links, fee and payments, notes, project and championships. One editor
-shows event metadata plus Client / Work / Fee fields directly, without booking
-accordions, add-client controls or grouping links. Existing historical booking
-notes remain explicitly labelled and editable; new notes live on the event.
-
-Each former group member appears independently in the agenda with its client name.
-Bulk session editing is limited to this event; client reassignment is removed.
-Short Schedule/Coverage choices retain their adaptive segmented controls. The
-wizard sequence is unchanged; it creates independent one-client events.
-
-Verification and native screenshots: [single-client events](design/verification/single-client-events/README.md).
-
-## Event timezone ownership — October 14, 2026
-
-The event owns the timezone for every session. The wizard exposes it in event
-setup and once above the session list; the session editor shows it read-only.
-Remote and hybrid work expose “Your timezone” in Work for secondary local-time
-readouts, including call time. On-site work inherits the event zone. Event-zone
-changes preserve scheduled instants and update the displayed civil dates.
-
-## Event capture fields — October 14, 2026
-
-The new-event wizard keeps Back on the leading side and Cancel on the trailing
-side throughout the flow. Client entry is one labelled typeahead: suggestions
-come from saved clients only, and new text remains in the draft until saving.
-Championship selection uses the same inline search, with explicit Add for a new
-name and removable selected rows. Both searches show up to five matching saved
-names while focused and support keyboard submission. Championship matches remain
-visible for an uncommitted query when scrolling dismisses the keyboard.
-
-New events offer Tentative and Booked through DaybookChoicePicker, with its native
-menu fallback for larger Dynamic Type or narrow layouts. Completed and Cancelled
-remain available in the existing event editor.

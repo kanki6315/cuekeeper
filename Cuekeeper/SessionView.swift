@@ -216,12 +216,12 @@ struct SessionDetailView: View {
         .sheet(isPresented: $editing) { if let job = session.job { SessionEditorView(job: job, session: session) } }
         .sheet(isPresented: $duplicating) { if let job = session.job { SessionEditorView(job: job, session: session, duplicating: true) } }
         .saveErrorAlert($error)
-        .confirmationDialog("Remove this session and its links from the booking?", isPresented: $removing, titleVisibility: .visible) {
+        .confirmationDialog("Remove this session? You can restore it from Recently Deleted for 30 days.", isPresented: $removing, titleVisibility: .visible) {
             Button("Remove Session", role: .destructive) {
                 do {
                     let writer = isolatedWriter(context)
                     let record = try writer.existingObject(with: session.objectID) as! WorkSession
-                    record.deletedAt = Date(); try writer.save(); context.refreshAllObjects(); dismiss()
+                    record.deletedAt = Date(); record.recoveryDiscardedAt = nil; try writer.save(); context.refreshAllObjects(); dismiss()
                 } catch { self.error = error.localizedDescription }
             }
         }

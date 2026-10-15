@@ -43,14 +43,14 @@ struct PaymentsView: View {
             } footer: {
                 Text("Currencies are tracked separately. Expected fees include invoiced bookings; they are not added to outstanding balances. Records needing review are excluded.")
             }
-            if invoices.contains(where: { $0.issue(in: context) != nil }) || jobs.contains(where: { (try? $0.currentFee()) == nil }) {
+            if invoices.contains(where: { $0.issue(in: context) != nil }) || jobs.contains(where: { $0.deletedAt == nil && (try? $0.currentFee()) == nil }) {
             Section {
                 ForEach(invoices.filter { $0.issue(in: context) != nil }, id: \.objectID) { invoice in
                     DaybookLink { InvoiceDetailView(invoice: invoice) } label: {
                         VStack(alignment: .leading, spacing: 6) { Text(invoice.title); Text(invoice.issue(in: context) ?? "Needs review").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                     }
                 }
-                ForEach(jobs.filter { (try? $0.currentFee()) == nil }, id: \.objectID) { job in
+                ForEach(jobs.filter { $0.deletedAt == nil && (try? $0.currentFee()) == nil }, id: \.objectID) { job in
                     DaybookLink("\(job.displayName) · Fee needs review") { FeeDetailView(job: job) }
                 }
             } header: { Text("Needs review") }
@@ -86,8 +86,16 @@ struct PaymentsView: View {
             if jobs.contains(where: { !($0.payments ?? []).isEmpty }) {
             Section("Direct payments") {
                 ForEach(jobs.filter { !($0.payments ?? []).isEmpty }, id: \.objectID) { job in
-                    DaybookLink { JobDetailView(job: job) } label: {
-                        VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                    if job.deletedAt == nil {
+                        DaybookLink { JobDetailView(job: job) } label: {
+                            VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                        }
+                    } else {
+                        DisclosureGroup(job.displayName + " (deleted)") {
+                            ForEach(Array(job.payments ?? []).sorted { ($0.receivedAt ?? .distantPast) > ($1.receivedAt ?? .distantPast) }, id: \.objectID) { payment in
+                                DaybookLink { ReceiptDetailView(payment: payment) } label: { Text(Money.format(payment.amount, currency: payment.currency)) }
+                            }
+                        }
                     }
                 }
             }
@@ -103,7 +111,7 @@ struct PaymentsView: View {
         .sheet(isPresented: $adding) { InvoiceEditorView() }
     }
     private var readyJobs: [Job] {
-        jobs.filter { $0.bookingStatus != "cancelled" && $0.client != nil && (try? $0.activeInvoices(in: context).isEmpty) == true && (try? $0.directPaid()) == 0 && (try? $0.currentFee().amount) != nil }
+        jobs.filter { $0.deletedAt == nil && $0.bookingStatus != "cancelled" && $0.client != nil && (try? $0.activeInvoices(in: context).isEmpty) == true && (try? $0.directPaid()) == 0 && (try? $0.currentFee().amount) != nil }
     }
     @ViewBuilder private func invoiceSection(_ title: String, status: String) -> some View {
         if invoices.contains(where: { (try? $0.currentValue().status) == status }) {
@@ -120,7 +128,7 @@ struct PaymentsView: View {
         do {
             var sum = Decimal(0)
             if kind == 0 {
-                for job in jobs where job.bookingStatus != "cancelled" {
+                for job in jobs where job.deletedAt == nil && job.bookingStatus != "cancelled" {
                     guard let fee = try? job.currentFee(), fee.currency == currency, let amount = fee.amount else { continue }
                     sum += Decimal(amount)
                 }
@@ -183,7 +191,7 @@ struct InvoiceDetailView: View {
                 }.containerValue(\.daybookUnframed, true)
                 Section {
                     ForEach(value.lines) { line in
-                        if let job = jobs.first(where: { $0.id == line.jobID }) {
+                        if let job = jobs.first(where: { $0.id == line.jobID && $0.deletedAt == nil }) {
                             DaybookLink { JobDetailView(job: job) } label: { LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
                         } else { LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
                     }

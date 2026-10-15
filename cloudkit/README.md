@@ -108,16 +108,15 @@ schema by hand.
 
 ## Current schema status
 
-On October 14, 2026, the signed macOS helper successfully initialized the V9
-model in Development and exported the actual schema. The schema export is
-byte-for-byte unchanged from V8; only the current-model fingerprint and V9 model
-entry changed in `schema.json`. Core Data's existing generic many-to-many
-relationship record (`CDMR`) accommodates the additional series relationship.
+On October 14, 2026, the signed macOS helper initialized the V10 model in
+Development and exported the generated schema. The only schema addition is
+`CD_Job.CD_deletedAt`, a queryable, sortable timestamp used to retain deletion
+records for calendar cleanup and financial history.
 
-Both `./cloudkit.sh check --local-only` and the live `./cloudkit.sh check` passed.
-Production already matches the V9 Development export, so no schema promotion was
-needed for V9. No Production mutation or TestFlight upload was performed during
-this initialization. Logs are under `build/cloudkit-initialize-mac/`.
+The schema was deployed to Production through CloudKit Console by the user.
+The terminal command `./cloudkit.sh check` subsequently passed, confirming that
+the current V10 snapshot matches the live Production schema. The local fingerprint
+check also passed. No TestFlight upload was performed.
 
 Schema agreement does not prove cross-device data delivery or conflict behavior;
 those still require device validation.

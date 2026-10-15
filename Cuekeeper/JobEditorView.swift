@@ -136,12 +136,14 @@ struct TimeZonePicker: View {
 private struct LinkPresentation: Identifiable { let id = UUID(); let session: WorkSession? }
 
 struct JobDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var calendar: CalendarController
     @ObservedObject var job: Job
     @FetchRequest(sortDescriptors: []) private var eventRecords: FetchedResults<WorkEvent>
     @Environment(\.managedObjectContext) private var context
     @State private var error: String?
     @State private var editing = false
+    @State private var confirmingDeletion = false
     @State private var duplicating = false
     @State private var batch = false
     @State private var addingSession = false
@@ -223,6 +225,21 @@ struct JobDetailView: View {
                 Button("Duplicate Event", systemImage: "plus.square.on.square") { duplicating = true }
                     .accessibilityIdentifier("duplicate-job")
             } footer: { Text("Create a new event with this client and fee. Existing sessions and payment history stay here.") }
+            Section {
+                Button("Delete Event", systemImage: "trash", role: .destructive) { confirmingDeletion = true }
+                    .accessibilityIdentifier("delete-job")
+                    .alert("Delete this event?", isPresented: $confirmingDeletion) {
+                        Button("Delete Event", role: .destructive) {
+                            do {
+                                try Job.remove(job.objectID, in: context)
+                                dismiss()
+                            } catch { self.error = error.localizedDescription }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This removes the event and its sessions from your schedule and synced calendar. Existing invoices and payments are kept. This cannot be undone.")
+                    }
+            }
         }
         .saveErrorAlert($error)
         .navigationTitle("Event")

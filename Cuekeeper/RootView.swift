@@ -84,7 +84,7 @@ private struct JobsView: View {
     @EnvironmentObject private var persistence: PersistenceController
     let upcomingOnly: Bool
     var selectedJob: Binding<Job?>? = nil
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)]) private var jobs: FetchedResults<Job>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)], predicate: NSPredicate(format: "deletedAt == nil")) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: []) private var events: FetchedResults<WorkEvent>
     @FetchRequest(sortDescriptors: []) private var sessions: FetchedResults<WorkSession>
     @State private var showingAdd = false

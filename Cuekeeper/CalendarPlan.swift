@@ -36,7 +36,7 @@ struct CalendarPlan {
                let last = Day.date(from: job.eventEndDay, timeZone: zone),
                let end = calendar.date(byAdding: .day, value: 1, to: last) {
                 bounds += [start, end]
-                if job.bookingStatus != "cancelled" {
+                if job.deletedAt == nil && job.bookingStatus != "cancelled" {
                     desired[key] = CalendarEntry(key: key, title: job.eventTitle + (job.client.map { " · " + $0.name } ?? ""), start: start, end: end, allDay: true,
                                                  timeZoneID: zone.identifier, notes: job.event == nil ? "Cuekeeper · \(job.bookingStatus.capitalized)\n\(job.notes)" : job.eventBookings.map { "\($0.client?.name ?? "Client to add") · \($0.bookingStatus.capitalized)" }.joined(separator: "\n") + "\n" + job.eventNotes, location: job.eventLocation)
                 }

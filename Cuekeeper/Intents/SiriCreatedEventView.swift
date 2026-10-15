@@ -13,7 +13,7 @@ struct SiriCreatedEventView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let job = try? context.existingObject(with: request.jobID) as? Job, !job.isDeleted {
+                if let job = try? context.existingObject(with: request.jobID) as? Job, !job.isDeleted, job.deletedAt == nil {
                     EventDetailView(anchor: job)
                 } else {
                     ContentUnavailableView("Event unavailable", systemImage: "calendar", description: Text("This event could not be opened. Check your event list."))

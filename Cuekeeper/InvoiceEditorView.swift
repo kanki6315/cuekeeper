@@ -30,7 +30,7 @@ struct InvoiceEditorView: View {
         _amounts = State(initialValue: amounts); _initialAmounts = State(initialValue: amounts)
     }
     private var changed: Bool { draft != initial || amounts != initialAmounts || clientID != (invoice == nil && initial.value.lines.isEmpty ? "" : initial.value.clientID.uuidString) }
-    private var candidates: [Job] { jobs.filter { $0.client?.id?.uuidString == clientID && (try? $0.currentFee().currency) == draft.value.currency } }
+    private var candidates: [Job] { jobs.filter { job in (job.deletedAt == nil || draft.value.lines.contains { $0.jobID == job.id }) && job.client?.id?.uuidString == clientID && (try? job.currentFee().currency) == draft.value.currency } }
     var body: some View {
         NavigationStack {
             DaybookForm {

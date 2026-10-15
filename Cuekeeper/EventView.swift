@@ -203,7 +203,10 @@ private struct EventBookingFields: View {
 /// Existing navigation routes all open the same single-client event detail.
 struct EventDetailView: View {
     @ObservedObject var anchor: Job
-    var body: some View { JobDetailView(job: anchor) }
+    var body: some View {
+        if anchor.deletedAt == nil { JobDetailView(job: anchor) }
+        else { ContentUnavailableView("Event deleted", systemImage: "trash", description: Text("Select another event to continue.")).daybookSurface() }
+    }
 }
 
 struct EventScheduleRow: View {

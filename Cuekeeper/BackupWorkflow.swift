@@ -2,6 +2,37 @@ import Combine
 import CoreData
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
+
+/// One finite background assertion per operation, ended on completion or expiration.
+@MainActor
+final class BackupBackgroundTask {
+    typealias Begin = @MainActor (String, @escaping @MainActor @Sendable () -> Void) -> UIBackgroundTaskIdentifier
+    private var identifier = UIBackgroundTaskIdentifier.invalid
+    private let endTask: @MainActor (UIBackgroundTaskIdentifier) -> Void
+    private(set) var expired = false
+
+    init(begin: Begin = { name, expiration in
+        UIApplication.shared.beginBackgroundTask(withName: name, expirationHandler: expiration)
+    }, end: @escaping @MainActor (UIBackgroundTaskIdentifier) -> Void = {
+        UIApplication.shared.endBackgroundTask($0)
+    }, expiration: @escaping @MainActor () -> Void) {
+        endTask = end
+        identifier = begin("Cuekeeper backup") { [weak self] in
+            guard let self, self.identifier != .invalid else { return }
+            self.expired = true
+            expiration()
+            self.finish()
+        }
+    }
+
+    func finish() {
+        guard identifier != .invalid else { return }
+        let value = identifier
+        identifier = .invalid
+        endTask(value)
+    }
+}
 
 @MainActor
 final class BackupWorkflow: ObservableObject {
@@ -29,10 +60,24 @@ final class BackupWorkflow: ObservableObject {
             }
         }
         let control = control
+        let background = BackupBackgroundTask { [weak self] in
+            control.cancel()
+            guard let self, self.token == current else { return }
+            self.task?.cancel()
+        }
         task = Task {
-            defer { if token == current { busy = false; canCancel = false; fraction = nil } }
-            do { try await work(control) }
-            catch is CancellationError { if token == current { notice = "Cancelled. Your daybook is unchanged." } }
+            defer {
+                background.finish()
+                if token == current { busy = false; canCancel = false; fraction = nil; task = nil }
+            }
+            do { try control.check(); try await work(control) }
+            catch is CancellationError {
+                if token == current {
+                    notice = background.expired
+                        ? "Background time expired. Reopen Cuekeeper and retry. If you were saving to iCloud, refresh the backup list first to check whether it finished."
+                        : "Cancelled. Your daybook is unchanged."
+                }
+            }
             catch { if token == current { self.error = error.localizedDescription } }
         }
     }
@@ -83,7 +128,8 @@ final class BackupWorkflow: ObservableObject {
             let result = try await BackupWorker.perform(coordinator: context.persistentStoreCoordinator!, control: control) { writer in
                 try snapshot.restore(in: writer, control: control)
             }
-            try control.check()
+            // A successful worker result means the restore was committed. Account
+            // invalidation after that save must not suppress its success callback.
             context.refreshAllObjects()
             self.notice = "Restore complete. Added \(result.added) records and recovered \(result.recovered) deleted records. Existing edits and payments were kept."
             completion(result)

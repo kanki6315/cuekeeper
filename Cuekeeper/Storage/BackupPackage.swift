@@ -3,14 +3,47 @@ import CryptoKit
 import Foundation
 import ZIPFoundation
 
+enum BackupTemporaryFiles {
+    /// Call synchronously at process launch, before any backup work can begin.
+    /// Never run on scene activation: a live export or upload may still own these files.
+    /// Attempt every removal even if one fails; report failures so they are not silent.
+    static func removeInterruptedBackups(in directory: URL = FileManager.default.temporaryDirectory) throws -> [URL] {
+        let manager = FileManager.default
+        let children = try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        let uuid = "[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}"
+        let pattern = "^(?:(?:CuekeeperBackup-|CloudBackup-)\(uuid)|DownloadedBackup-\(uuid)\\.zip)$"
+        var failures: [URL] = []
+        for child in children where child.lastPathComponent.range(of: pattern, options: .regularExpression) != nil {
+            do { try manager.removeItem(at: child) }
+            catch { failures.append(child) }
+        }
+        return failures
+    }
+}
+
 /// All paths from an archive are validated against a generated allowlist, never extracted blindly.
 final class BackupWorkspace {
     let url: URL
     init() throws {
         url = FileManager.default.temporaryDirectory.appendingPathComponent("CuekeeperBackup-\(UUID())", isDirectory: true)
-        try FileManager.default.createDirectory(at: url.appendingPathComponent("receipts"), withIntermediateDirectories: true)
+        // Apply protection before creating descendants so receipts, metadata and ZIPs
+        // inherit access after the first unlock, including while the phone is locked.
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true,
+                                                attributes: Self.protectionAttributes)
+        do {
+            try FileManager.default.createDirectory(at: url.appendingPathComponent("receipts"),
+                                                    withIntermediateDirectories: false,
+                                                    attributes: Self.protectionAttributes)
+        } catch {
+            try? FileManager.default.removeItem(at: url)
+            throw error
+        }
+    }
+    static var protectionAttributes: [FileAttributeKey: Any] {
         #if os(iOS)
-        try FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: url.path)
+        return [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+        #else
+        return [:]
         #endif
     }
     deinit { try? FileManager.default.removeItem(at: url) }

@@ -15,6 +15,13 @@ struct CuekeeperApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        // Termination skips the normal deinit/defer cleanup of plaintext backup files.
+        do {
+            let failures = try BackupTemporaryFiles.removeInterruptedBackups()
+            if !failures.isEmpty { NSLog("Could not remove %ld interrupted backup artifacts; will retry next launch.", failures.count) }
+        } catch {
+            NSLog("Could not enumerate temporary backup artifacts; will retry next launch.")
+        }
         // Test isolation never changes the user's production store or iCloud records.
         let arguments = ProcessInfo.processInfo.arguments
         let testing = arguments.contains("--ui-testing") || NSClassFromString("XCTestCase") != nil
@@ -44,7 +51,7 @@ struct CuekeeperApp: App {
         #if DEBUG
         if arguments.contains("--ui-testing"), arguments.contains("--reset-test-store") {
             UserDefaults.standard.set(arguments.contains("--today-fixtures") ? "Today" : "All", forKey: "upcoming.scope")
-            for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "appearance", "defaultCurrency", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
+            for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "appearance", "defaultCurrency", "displayCurrencies", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
                 UserDefaults.standard.removeObject(forKey: key)
             }
         }

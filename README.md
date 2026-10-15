@@ -73,6 +73,12 @@ Other devices can edit records; calendar updates catch up when the publishing
 device opens Cuekeeper in the foreground and receives those changes. To transfer
 publishing, disconnect Calendar on the old device, then connect on the new one.
 Offline job capture remains available; calendar publishing waits for connectivity.
+Writable shared calendars are supported as publishing destinations; read-only
+calendars are excluded. The publisher claim is per iCloud account, not per shared
+calendar. Sync, disconnect, and calendar switching only modify entries whose keys
+match this account's locally available Cuekeeper records. Unknown Cuekeeper entries
+are preserved, including colleagues' entries and records still downloading on a
+replacement device; disconnect may therefore leave entries until those records arrive.
 
 Step 7 (recovery, export and Recently Deleted) and step 8 (broader physical-device
 beta testing, first-run and App Store polish) remain. Invoice tracking does not

@@ -2,7 +2,7 @@
 version: 1
 slug: "cuekeeper-rootview-swift"
 primary_target: "Cuekeeper/RootView.swift"
-related_targets: ["Cuekeeper/DaybookStyle.swift","Cuekeeper/JobEditorView.swift","Cuekeeper/SessionView.swift","Cuekeeper/PaymentsView.swift"]
+related_targets: ["Cuekeeper/DaybookStyle.swift","Cuekeeper/JobEditorView.swift","Cuekeeper/SessionView.swift","Cuekeeper/PaymentsView.swift","Cuekeeper/EventView.swift","Cuekeeper/EventWizardView.swift","Cuekeeper/EventWizardFields.swift"]
 ---
 
 # Combined Glass implementation
@@ -15,9 +15,9 @@ THESIS: Quiet reading surfaces with expressive glass reserved for navigation and
 
 OWN-WORLD: Cuekeeper cue-card mark, SF semantic typography, forest/mint accents, ivory and warm charcoal. Matte badges and financial panels; rounded native glass buttons and a floating glass iPad sidebar.
 
-STORY: A freelancer scans upcoming dates, opens a job, captures incomplete details and tracks invoices and receipts independently.
+STORY: A freelancer scans upcoming dates, opens an event, captures incomplete details and tracks invoices and receipts independently.
 
-FIRST VIEWPORT: iPhone shows the brand and Add Job above the title, search/filter and date-led list, with quiet native tabs below. iPad keeps sidebar, agenda and selected detail columns; sidebar carries the pronounced material. Details keep sessions and links ahead of billing.
+FIRST VIEWPORT: iPhone shows the shared brand/Add Event header, search/filter, segmented scope and date-led list, with quiet native tabs below. Payments and Settings share the same adaptive brand header. iPad keeps sidebar, agenda and selected detail columns; sidebar carries the pronounced material. Single-client event details keep sessions and links ahead of billing; one editor exposes Client / Work / Fee fields directly.
 
 FORM: User-pinned combination of boards 04 and 05. Existing native structure retained. No randomized direction selection: user explicitly selected the visual treatment. System glass is implemented with native APIs, never baked raster material. The boards are conceptual references with the previously recorded illustrative deviations, not device screenshots.
 

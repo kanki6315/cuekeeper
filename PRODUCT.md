@@ -12,9 +12,9 @@ Broadcast freelancers: commentators, presenters, producers, and crew. iPhone and
 Track freelance engagements from tentative booking through completed work and payment, with very little upkeep. Capture event dates and a client now; enrich the record later.
 
 ## Capabilities and Constraints
-- Events, client bookings, sessions, clients, fees, invoices, payments, and broadcast links.
+- Single-client events, sessions, clients, fees, invoices, payments, and broadcast links. Each event has at most one client; incomplete events may have none.
 - Booking confirmation, session schedule confirmation, coverage, invoicing, and payment are independent states.
-- Client bookings can have no sessions; unknown fees differ from zero fees.
+- Events can have no sessions; unknown fees differ from zero fees.
 - Calendar placeholders remain alongside eligible confirmed, covering sessions.
 - Local offline storage and iCloud sync; recovery and export remain separate from sync.
 - USD and EUR balances stay separate. Invoice balances are authoritative for grouped jobs and partial payments.
@@ -36,7 +36,23 @@ Brand identity reference: `design/brand/cuekeeper-brand-identity.png`. Approved 
 ## Evidence on Hand
 User supplied Broadcast Work Tracker product specification in Product Specification.txt. Any jobs shown in concepts are fictional demonstration data.
 
-## Current Design Scope
+## Current implementation — October 14, 2026
+
+Current source uses Upcoming, Events, Payments and Settings with consistent brand
+headers, native segmented agenda scopes and a single-client event editor. Saved
+client/championship typeaheads and adaptive short-choice controls support capture.
+The event owns session timezones; remote/hybrid work can display a second timezone.
+Ready-to-invoice rows expand by client while keeping currency totals separate.
+Confirmed event deletion removes scheduled work while preserving financial history.
+DESIGN.md and .impeccable/design.json describe the current visual implementation.
+The configured app version is 0.1.8; this documentation/version change is not a
+TestFlight release or new device verification.
+
+The sections below are dated implementation history. Later single-client behavior
+supersedes the earlier grouped-client flows; historical verification counts and
+release/schema statements describe their own milestones, not the current build.
+
+## Historical implementation scope
 The first six implementation steps now cover the native foundation, complete job management, sessions and broadcast links, EventKit calendar integration, fees and breakdowns, and invoices/payments. The UI extends the existing native SwiftUI identity: iPhone tabs and iPad sidebar, native lists, navigation, forms and sheets, SF typography, and forest/mint accents with ivory/charcoal backgrounds. The approved brand assets remain authoritative; branded mockups are direction references, not a claim of a pixel-matched implementation or a new visual world.
 
 Job management includes tentative/booked/completed/cancelled states, clients and roles, arrangement/location/timezone/notes, duplication with date confirmation, and combined search/filters. Libraries support renaming, contact/currency defaults and related records. Sessions permit incomplete schedules, distinguish confirmed time from coverage, support timezones/call times/role overrides and retain broadcast links. Changed editors require explicit discard; save errors preserve drafts.

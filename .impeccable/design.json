@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-13T15:53:17.489688+00:00",
+  "generatedAt": "2026-10-15T00:39:50.630179+00:00",
   "title": "Design System: Cuekeeper",
   "extensions": {
     "colorMeta": {
@@ -211,20 +211,28 @@
         "Cuekeeper/RootView.swift",
         "Cuekeeper/Assets.xcassets",
         "Cuekeeper/JobEditorView.swift",
-        "Cuekeeper/SessionView.swift"
+        "Cuekeeper/SessionView.swift",
+        "Cuekeeper/EventView.swift",
+        "Cuekeeper/EventWizardView.swift",
+        "Cuekeeper/EventWizardFields.swift",
+        "Cuekeeper/PaymentsView.swift"
       ],
       "previewCaveat": "HTML previews are illustrative light-mode shape and color translations, not native Liquid Glass simulations or pixel-exact iOS rendering. Browser focus and hover rules support the preview only. SwiftUI, native glass optics and SF typography remain authoritative. Comparison boards are conceptual multi-device images.",
       "rampCaveat": "Tonal ramps are synthesized OKLCH panel previews, not implemented application color scales.",
       "units": "Geometry uses native points; semantic type sizes resolve at runtime.",
-      "panelStroke": "0.5pt primary at 0.09 opacity",
+      "panelStroke": "0.5pt primary at 0.16 opacity; 0.45 with Increase Contrast (including inset dividers)",
       "accessibilitySessionEditor": "At accessibility text sizes, date/time labels stack above controls, clear actions have independent rows with 44pt minimum height, and timezone labels and values stack.",
       "primaryButton": "PrimitiveButtonStyle wrapping .glassProminent; .capsule; .large; semibold subheadline; explicit PrimaryButtonText foreground. Native sizing and states.",
       "secondaryButton": "PrimitiveButtonStyle wrapping .glass; .capsule; .large; semibold subheadline; explicit AccentColor foreground.",
       "sidebarMaterial": "Regular glass with AccentColor at 0.08 opacity, 26pt rounded rectangle and 10pt outer inset; opaque SurfaceBackground when Reduce Transparency or Increase Contrast is active.",
       "navigationMaterial": "Automatic system navigation and tab bar backgrounds.",
-      "completionActions": "Job detail uses native bottom safeAreaBar with 20pt horizontal and 10pt vertical padding; primary completion action and circular glass More menu.",
-      "scopeControls": "Upcoming uses native menu picker; Jobs status retains native segmented picker.",
-      "sidebarSymbols": "Unselected sidebar symbols explicitly use appearance-aware AccentColor; selected symbols use Color.white. Native selection tint remains forest SidebarSelection."
+      "completionActions": "Inline next-state action in event details; Edit Event in toolbar; separate Duplicate Event and confirmed Delete Event sections.",
+      "scopeControls": "Upcoming: All upcoming / This week. Events: All / Active / Completed / Cancelled. Native segmented pickers on AccentColor at 0.08 opacity.",
+      "sidebarSymbols": "Unselected sidebar symbols explicitly use appearance-aware AccentColor; selected symbols use Color.white. Native selection tint remains forest SidebarSelection.",
+      "tabHeaders": "DaybookTabHeader: brand and optional action, 48pt minimum height; stacked at accessibility sizes or narrow widths. Tab content top padding 12pt.",
+      "eventEditor": "Single-client event with direct Client / Work / Fee fields. Event-owned session timezone, saved-client/championship typeaheads and adaptive short-choice pickers.",
+      "choicePicker": "Label above native segments; labelled menu above xLarge Dynamic Type or when scaled 300pt minimum width cannot fit.",
+      "payments": "Ready-to-invoice client disclosures start collapsed and show event counts and separate currency totals; expanded rows navigate to event details."
     }
   },
   "components": [
@@ -233,7 +241,7 @@
       "kind": "button",
       "refersTo": "button-primary",
       "description": "Native glassProminent capsule with appearance-aware foreground; browser preview illustrates shape and color only.",
-      "html": "<button class=\"ds-primary\">Add Job</button>",
+      "html": "<button class=\"ds-primary\">Add Event</button>",
       "css": ".ds-primary{font:600 15px system-ui;background:#073E27;color:#fff;border:0;border-radius:999px;padding:0 15px;min-height:44px}.ds-primary:hover{cursor:pointer}.ds-primary:focus-visible{outline:2px solid #073E27;outline-offset:3px}.ds-primary:active{filter:brightness(.9)}"
     },
     {
@@ -249,7 +257,7 @@
       "kind": "input",
       "refersTo": "text-field-prompt",
       "description": "Illustrative light-mode browser translation; native SwiftUI is authoritative.",
-      "html": "<input class=\"ds-field\" aria-label=\"Job name\" placeholder=\"Job name\">",
+      "html": "<input class=\"ds-field\" aria-label=\"Event name\" placeholder=\"Event name\">",
       "css": ".ds-field{font:17px system-ui;color:CanvasText;background:transparent;border:0;padding:12px 16px}.ds-field::placeholder{color:#626860;opacity:1}.ds-field:hover{cursor:text}.ds-field:focus-visible{outline:2px solid #073E27;outline-offset:2px}"
     },
     {
@@ -258,7 +266,7 @@
       "refersTo": "panel",
       "description": "Illustrative light-mode browser translation; native SwiftUI is authoritative.",
       "html": "<div class=\"ds-panel\"><div>Session details</div><div>Schedule to come</div></div>",
-      "css": ".ds-panel{font:17px system-ui;background:#fff;color:#171E19;border:.5px solid rgba(0,0,0,.09);border-radius:12px}.ds-panel>div{padding:12px 16px}.ds-panel>div+div{border-top:.5px solid rgba(0,0,0,.15)}"
+      "css": ".ds-panel{font:17px system-ui;background:#fff;color:#171E19;border:.5px solid rgba(0,0,0,.16);border-radius:12px}.ds-panel>div{padding:12px 16px}.ds-panel>div+div{border-top:.5px solid rgba(0,0,0,.16)}"
     },
     {
       "name": "Booking badge",
@@ -286,7 +294,7 @@
       "kind": "nav",
       "refersTo": "sidebar-fallback",
       "description": "Illustrates the opaque accessibility fallback. Native regular glass, selection and adaptive split-view behavior are authoritative.",
-      "html": "<nav class=\"ds-sidebar\" aria-label=\"Main\"><strong>Cuekeeper</strong><a href=\"#upcoming\" aria-current=\"page\">Upcoming</a><a href=\"#jobs\">Jobs</a><a href=\"#payments\">Payments</a><a href=\"#settings\">Settings</a></nav>",
+      "html": "<nav class=\"ds-sidebar\" aria-label=\"Main\"><strong>Cuekeeper</strong><a href=\"#upcoming\" aria-current=\"page\">Upcoming</a><a href=\"#events\">Events</a><a href=\"#payments\">Payments</a><a href=\"#settings\">Settings</a></nav>",
       "css": ".ds-sidebar{display:flex;flex-direction:column;gap:8px;margin:10px;padding:20px;background:#fff;color:#073E27;border-radius:26px;font:17px system-ui}.ds-sidebar strong{padding-bottom:12px}.ds-sidebar a{color:inherit;padding:10px;text-decoration:none;border-radius:10px}.ds-sidebar a[aria-current]{background:#073E27;color:#fff}.ds-sidebar a:hover{cursor:pointer}.ds-sidebar a:focus-visible{outline:2px solid #073E27;outline-offset:2px}.ds-sidebar a:active{opacity:.8}"
     }
   ],

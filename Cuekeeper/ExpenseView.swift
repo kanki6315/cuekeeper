@@ -52,6 +52,7 @@ struct ExpenseEditorView: View {
     @State private var scanning = false
     @State private var picker: PhotosPickerItem?
     @State private var busy = false
+    @State private var savingPhoto = false
     @State private var processingLocation = ReceiptExtractor.ProcessingLocation.device
     @State private var task: Task<Void, Never>?
     @State private var message: String?
@@ -88,7 +89,7 @@ struct ExpenseEditorView: View {
                         }.accessibilityLabel("View full receipt photo")
                         if busy {
                             ProgressView(processingLocation.progressMessage)
-                            Button("Enter details myself") { task?.cancel(); busy = false; message = "Check the receipt and enter its details below." }
+                            Button("Enter details myself") { task?.cancel(); busy = false; message = "Check the receipt and enter its details below." }.disabled(savingPhoto)
                         } else {
                             if let message { Text(message).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
                             if isDraft {
@@ -152,7 +153,7 @@ struct ExpenseEditorView: View {
             }
             .navigationTitle(isDraft ? "Receipt" : "Expense").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(isDraft && recordID != nil ? "Keep Draft" : "Close") { close() } }
+                ToolbarItem(placement: .cancellationAction) { Button(isDraft && recordID != nil ? "Keep Draft" : "Close") { close() }.disabled(savingPhoto) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save(confirmed: true) }.disabled(photo == nil || busy || !conflicts.isEmpty).accessibilityIdentifier("save-expense")
                 }
@@ -195,7 +196,7 @@ struct ExpenseEditorView: View {
             }
             .task { if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported { scanning = true } }
             .onDisappear { task?.cancel() }
-            .interactiveDismissDisabled(recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID)
+            .interactiveDismissDisabled(savingPhoto || recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID)
             .saveErrorAlert($error)
             .confirmationDialog("Discard your changes?", isPresented: $discard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
@@ -214,24 +215,33 @@ struct ExpenseEditorView: View {
         }
     }
     private func capture(_ image: UIImage) {
-        do {
-            let scale = min(1, 2400 / max(image.size.width, image.size.height))
-            let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-            let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
-            let normalized = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
-            guard let data = normalized.jpegData(compressionQuality: 0.88) else { throw RecordError.invalid("The receipt photo could not be saved. Please try again.") }
-            let id: NSManagedObjectID
-            if let recordID {
-                try Expense.replacePhoto(data, id: recordID, revision: revision, in: context)
-                id = recordID
-            } else {
-                guard let selectedJobID else { throw RecordError.invalid("Choose an event before scanning a new receipt.") }
-                id = try Expense.capture(data, jobID: selectedJobID, in: context)
-            }
-            let record = try context.existingObject(with: id) as! Expense
-            recordID = id; revision = record.revision; photo = data
-            extract()
-        } catch { self.error = error.localizedDescription }
+        guard !busy else { return }
+        busy = true; savingPhoto = true
+        task = Task {
+            defer { savingPhoto = false }
+            do {
+                let data = try await Task.detached(priority: .userInitiated) {
+                    let scale = min(1, 2400 / max(image.size.width, image.size.height))
+                    let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+                    let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+                    let normalized = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+                    guard let data = normalized.jpegData(compressionQuality: 0.88) else { throw RecordError.invalid("The receipt photo could not be saved. Please try again.") }
+                    return data
+                }.value
+                try Task.checkCancellation()
+                let id: NSManagedObjectID
+                if let recordID {
+                    try await Expense.replacePhotoAsync(data, id: recordID, revision: revision, in: context)
+                    id = recordID
+                } else {
+                    guard let selectedJobID else { throw RecordError.invalid("Choose an event before scanning a new receipt.") }
+                    id = try await Expense.capturePhoto(data, jobID: selectedJobID, in: context)
+                }
+                let record = try context.existingObject(with: id) as! Expense
+                recordID = id; revision = record.revision; photo = data
+                if !Task.isCancelled { extract() } else { busy = false }
+            } catch { busy = false; self.error = error.localizedDescription }
+        }
     }
     private func extract() {
         guard let photo else { return }

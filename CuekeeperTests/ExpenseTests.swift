@@ -42,6 +42,38 @@ final class ExpenseTests: XCTestCase {
         XCTAssertThrowsError(try Expense.save(valid, id: id, revision: expense.revision, in: context))
         XCTAssertThrowsError(try Expense.capture(photo, jobID: jobID, in: context))
     }
+    func testAsyncPhotoWritesUsePrivateQueueAndRefreshUIObjects() async throws {
+        let context = try await context()
+        let jobID = try JobDraft(name: "Receipt background writes").save(in: context)
+        let saved = expectation(description: "Photo transactions save off the main thread")
+        saved.expectedFulfillmentCount = 2
+        let observer = NotificationCenter.default.addObserver(forName: .NSManagedObjectContextDidSave, object: nil, queue: nil) { notification in
+            guard let writer = notification.object as? NSManagedObjectContext,
+                  writer.concurrencyType == .privateQueueConcurrencyType else { return }
+            XCTAssertFalse(Thread.isMainThread)
+            saved.fulfill()
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let photo = Data(repeating: 42, count: 12 * 1024 * 1024)
+        let id = try await Expense.capturePhoto(photo, jobID: jobID, in: context)
+        XCTAssertFalse(id.isTemporaryID)
+        let expense = try XCTUnwrap(context.existingObject(with: id) as? Expense)
+        XCTAssertEqual(expense.photo, photo)
+        let revision = expense.revision
+        try await Expense.replacePhotoAsync(Data([4, 5, 6]), id: id, revision: revision, in: context)
+        XCTAssertEqual(expense.photo, Data([4, 5, 6]))
+        XCTAssertNotEqual(expense.revision, revision)
+        do {
+            try await Expense.replacePhotoAsync(Data([7]), id: id, revision: revision, in: context)
+            XCTFail("Stale replacement must fail")
+        } catch { XCTAssertEqual(expense.photo, Data([4, 5, 6])) }
+        do {
+            _ = try await Expense.capturePhoto(Data(repeating: 0, count: photo.count + 1), jobID: jobID, in: context)
+            XCTFail("Oversized receipt must fail")
+        } catch { XCTAssertEqual(try context.count(for: NSFetchRequest<Expense>(entityName: "Expense")), 1) }
+        await fulfillment(of: [saved], timeout: 5)
+    }
+
     func testPhotoBackupRoundTrip() async throws {
         let source = try await context()
         let jobID = try JobDraft(name: "Weekend").save(in: source)

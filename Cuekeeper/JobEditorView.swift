@@ -254,6 +254,8 @@ struct JobDetailView: View {
 
 struct JobFiltersView: View {
     @Binding var filter: JobFilter
+    @State private var contentHeight: CGFloat = 360
+    @State private var navigationHeight: CGFloat = 56
     @Environment(\.dismiss) private var dismiss
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Client.name, ascending: true)]) private var clients: FetchedResults<Client>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkProject.name, ascending: true)]) private var projects: FetchedResults<WorkProject>
@@ -261,7 +263,7 @@ struct JobFiltersView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
     var body: some View {
         NavigationStack {
-            DaybookForm {
+            DaybookForm(compact: true, onContentHeightChange: { contentHeight = $0 }) {
                 Section {
                     DaybookPicker("Booking status", selection: $filter.status) {
                         Text("Any status").tag("")
@@ -290,12 +292,27 @@ struct JobFiltersView: View {
                         DatePicker("From", selection: $filter.start, displayedComponents: .date)
                         DatePicker("Through", selection: $filter.end, in: filter.start..., displayedComponents: .date)
                     }
-                } footer: { Text("Includes events with matching client bookings in these dates. Upcoming excludes completed and cancelled bookings.") }
-                Button("Clear Filters") { filter = JobFilter() }.disabled(!filter.isActive)
+                }
             }.navigationTitle("Filter Events").navigationBarTitleDisplayMode(.inline)
-                .toolbar { Button("Done") { dismiss() } }
+                .onGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.safeAreaInsets.top
+                } action: { height in
+                    navigationHeight = height
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Reset") { filter = JobFilter() }
+                            .disabled(!filter.isActive)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }
+                    }
+                }
                 .onChange(of: filter.start) { _, start in if filter.end < start { filter.end = start } }
         }
+        .presentationDetents([.height(contentHeight + navigationHeight), .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Color("PageBackground"))
     }
 }
 

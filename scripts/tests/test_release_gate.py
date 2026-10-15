@@ -58,6 +58,36 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn('<string>export</string>', export.read_text())
         self.assertIn('production readiness is unverified', result.stdout)
 
+    def test_api_key_export_provisions_and_maps_both_targets(self):
+        import json
+        import plistlib
+
+        key = self.root / "key.p8"
+        key.write_text("test key")
+        self.env.update(ASC_KEY_ID="KEY", ASC_ISSUER_ID="ISSUER", ASC_KEY_PATH=str(key))
+        (self.root / "asc_profile.py").write_text(
+            'import json, sys\n'
+            'from pathlib import Path\n'
+            'args = dict(zip(sys.argv[1::2], sys.argv[2::2]))\n'
+            'with Path("profile-calls").open("a") as f: f.write(json.dumps(args) + "\\n")\n'
+            'print(args["--name"])\n')
+        result = self.run_release('--no-upload', '--skip-cloudkit-check')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.root / "profile-calls").read_text().splitlines()]
+        self.assertEqual(len(calls), 2)
+        app, widget = calls
+        self.assertEqual(app['--bundle-id'], 'com.arjunakankipati.cuekeeper')
+        self.assertEqual(widget['--bundle-id'], 'com.arjunakankipati.cuekeeper.widgets')
+        for call in calls:
+            self.assertEqual(call['--app-group'], 'group.com.arjunakankipati.cuekeeper')
+        self.assertIn('--cloudkit-container', app)
+        self.assertNotIn('--cloudkit-container', widget)
+        export = next((self.root / 'build/release').glob('*/ExportOptions.plist'))
+        options = plistlib.loads(export.read_bytes())
+        self.assertEqual(options['signingStyle'], 'manual')
+        self.assertEqual(options['provisioningProfiles'], {
+            app['--bundle-id']: app['--name'], widget['--bundle-id']: widget['--name']})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -117,7 +117,7 @@ Dates and amounts use monospaced digits where alignment aids scanning. Metadata 
 
 The shared form is a custom ScrollView with titled content, vertical section groups and ruled panels; it is more than a recolored native Form. It centers content up to 760 points with page padding and section spacing from the tokens. Section headers sit above panels; rows use shared horizontal and vertical padding, inset dividers and optional footers. Explicitly unframed sections omit their fill, border and horizontal padding. Native lists remain available through DaybookList, with matching row surfaces and 18-point section spacing.
 
-Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details keep schedule and work context ahead of fee/billing content. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
+Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments, Expenses and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details keep schedule and work context ahead of fee/billing content. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
 
 Regular-width layouts at non-accessibility text sizes use a sidebar; Upcoming and Events use sidebar, agenda and selected detail columns. The sidebar ranges from 210 to 280 points (ideal 230); the agenda from 320 to 520 (ideal 420). Native split-view behavior handles width and portrait collapse. Compact widths and all accessibility text sizes use tabs and navigation stacks. Headers and payment summaries adapt vertically when text or width demands it.
 
@@ -164,7 +164,21 @@ DaybookDateRail stacks abbreviated weekday, day number and month in accent color
 
 ### Native shell
 
-Upcoming, Events, Payments and Settings form the tab/sidebar destinations. The regular-width selected-record layout keeps agenda and details visible together. The sidebar groups the brand, native sidebar list and sync feedback into one floating glass surface with an opaque accessibility fallback. Native navigation and tab bar backgrounds use automatic material behavior. Sync feedback leads to Settings and describes observed activity without claiming that every device is current.
+Upcoming, Events, Payments, Expenses and Settings form the tab/sidebar destinations. The regular-width selected-record layout keeps agenda and details visible together. The sidebar groups the brand, native sidebar list and sync feedback into one floating glass surface with an opaque accessibility fallback. Native navigation and tab bar backgrounds use automatic material behavior. Sync feedback leads to Settings and describes observed activity without claiming that every device is current.
+
+### Expenses overview
+
+Expenses reuses DaybookForm and DaybookTabHeader with a primary Scan Receipt action,
+followed directly by All / Saved / Needs review segments, without a repeated title or search field. Rows lead with merchant
+and amount, then subdued event/client, date/category and reimbursement metadata;
+drafts carry an amber Needs review label. Records sort by expense date, newest
+first. Rows open the existing expense editor; expenses linked to deleted events
+remain visible with restoration guidance and cannot be opened. Scan Receipt asks
+for an event before capture. The empty state offers capture guidance or suggests
+changing the filter. This extension was source-reviewed and passed
+build-for-testing plus all 22 ExpenseTests and BackgroundExpenseTests. iPhone and
+iPad simulator captures verified the compact rows; those captures predate removal
+of the heading and search field. The final heading removal also passed a build.
 
 ### Event capture and editing
 

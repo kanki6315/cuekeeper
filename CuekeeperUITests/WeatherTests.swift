@@ -45,7 +45,8 @@ final class WeatherTests: XCTestCase {
             reveal(status, in: app)
             positionNearTop(status, in: app)
             capture(dark ? "forecast-dark-large" : "forecast-light")
-            let session = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Hourly from call time")).firstMatch
+            // Hourly forecasts live on the session's own page.
+            let session = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Race coverage")).firstMatch
             reveal(session, in: app)
             session.tap()
             let hour = app.descendants(matching: .any)["weather-hour"].firstMatch

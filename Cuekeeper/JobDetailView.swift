@@ -26,6 +26,7 @@ struct JobDetailView: View {
     @AppStorage("eventTimeDisplay") private var storedTime = ""
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var width: CGFloat = 0
+    @StateObject private var weather = EventWeatherLoader()
     /// Columns replace tabs when the detail column itself is wide, not merely on regular size classes:
     /// an iPad showing the sidebar and agenda leaves too little room.
     private var wide: Bool { width >= 820 && !typeSize.isAccessibilitySize }
@@ -100,6 +101,7 @@ struct JobDetailView: View {
             .padding(.bottom, 24)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .eventWeather(weather, request: job.weatherRequest)
         .accessibilityIdentifier("daybook-form")
         .daybookSurface()
         .saveErrorAlert($error)
@@ -148,7 +150,8 @@ struct JobDetailView: View {
             if let next = summary.nextCall {
                 NextCallPanel(next: next, zone: zone,
                               otherZone: summary.offersTimeChoice ? summary.zone(for: choice == .yours ? .track : .yours) : nil,
-                              showsYourTime: choice == .yours, series: job.eventSeriesNames)
+                              showsYourTime: choice == .yours, series: job.eventSeriesNames,
+                              weather: weather.day(next.session.day, request: job.weatherRequest).map(WeatherFormat.headline))
             }
             VStack(alignment: .leading, spacing: 14) {
                 EventSectionTitle(title: "Run of show") {
@@ -163,7 +166,7 @@ struct JobDetailView: View {
                         .font(.subheadline).foregroundStyle(Color("SecondaryText"))
                 }
                 ForEach(summary.days) { day in
-                    RunOfShowDayView(day: day) { fact in
+                    RunOfShowDayView(day: day, weather: weather.day(day.key, request: job.weatherRequest).map(WeatherFormat.headline)) { fact in
                         sessionRow(fact, zone: zone, trackZone: wide && choice == .yours ? summary.zone(for: .track) : nil)
                     }
                 }
@@ -177,8 +180,7 @@ struct JobDetailView: View {
                     }
                 }
             }
-            // Weather moves into the day headers in a later phase.
-            DaybookSections { EventWeatherSection(job: job) }
+            WeatherStatusFooter(loader: weather, request: job.weatherRequest)
         }
     }
 

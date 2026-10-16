@@ -1,0 +1,39 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-16T12:00:00Z"},
+  "title": "Event Page Concepts",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Current.dc.html": {"x": 0, "y": 0, "w": 390, "h": 848, "title": "Today's event page"},
+    "Main.dc.html": {"x": 590, "y": 0, "w": 390, "h": 1840, "title": "A1 · Run of Show — day before"},
+    "RunOfShowLive.dc.html": {"x": 1060, "y": 0, "w": 390, "h": 844, "title": "A2 · Run of Show — on the day"},
+    "OpenItemsBefore.dc.html": {"x": 1650, "y": 0, "w": 390, "h": 1700, "title": "B1 · Open Items — two weeks out"},
+    "OpenItemsAfter.dc.html": {"x": 2120, "y": 0, "w": 390, "h": 1500, "title": "B2 · Open Items — after the weekend"},
+    "BlendSchedule.dc.html": {"x": 590, "y": 2300, "w": 390, "h": 1280, "title": "C1 · Schedule tab — day before, all settled"},
+    "BlendMoney.dc.html": {"x": 1060, "y": 2300, "w": 390, "h": 1300, "title": "C2 · Money tab — after the weekend"},
+    "BlendDetails.dc.html": {"x": 1530, "y": 2300, "w": 390, "h": 1060, "title": "C3 · Details tab"},
+    "BlendIPad.dc.html": {"x": 2000, "y": 2300, "w": 1366, "h": 1200, "title": "C4 · iPad — two columns, no tabs"},
+    "UpDaybook.dc.html": {"x": 590, "y": 3940, "w": 390, "h": 1860, "title": "D1 · Upcoming Daybook — the night before"},
+    "UpDaybookLive.dc.html": {"x": 1060, "y": 3940, "w": 390, "h": 844, "title": "D2 · Upcoming Daybook — race morning"},
+    "UpDesk.dc.html": {"x": 1650, "y": 3940, "w": 390, "h": 1720, "title": "E1 · Upcoming Desk — the night before"},
+    "UpDeskQuiet.dc.html": {"x": 2120, "y": 3940, "w": 390, "h": 1000, "title": "E2 · Upcoming Desk — quiet fortnight, all settled"},
+    "UpBlend.dc.html": {"x": 590, "y": 6100, "w": 390, "h": 1980, "title": "F1 · Upcoming blend — the night before"},
+    "UpNow.dc.html": {"x": 590, "y": 8460, "w": 390, "h": 1560, "title": "G1 · Now — one job in flight"},
+    "UpNowTwo.dc.html": {"x": 1060, "y": 8460, "w": 390, "h": 1700, "title": "G2 · Now — two jobs in flight"},
+    "UpPlanCompact.dc.html": {"x": 1530, "y": 8460, "w": 390, "h": 1300, "title": "G3 · Plan — To settle collapsed"},
+    "UpPlan.dc.html": {"x": 2000, "y": 8460, "w": 390, "h": 1860, "title": "G4 · Plan — To settle expanded"},
+    "UpNowIdle.dc.html": {"x": 2470, "y": 8460, "w": 390, "h": 844, "title": "G5 · Now — nothing in the next 72 hours"},
+    "UpIPad.dc.html": {"x": 2940, "y": 8460, "w": 1366, "h": 1024, "title": "G6 · iPad — Now beside the selected event"}
+  },
+  "order": ["Current.dc.html", "Main.dc.html", "RunOfShowLive.dc.html", "OpenItemsBefore.dc.html", "OpenItemsAfter.dc.html", "BlendSchedule.dc.html", "BlendMoney.dc.html", "BlendDetails.dc.html", "BlendIPad.dc.html", "UpDaybook.dc.html", "UpDaybookLive.dc.html", "UpDesk.dc.html", "UpDeskQuiet.dc.html", "UpBlend.dc.html", "UpNow.dc.html", "UpNowTwo.dc.html", "UpPlanCompact.dc.html", "UpPlan.dc.html", "UpNowIdle.dc.html", "UpIPad.dc.html"],
+  "notes": {
+    "titleA": {"x": 590, "y": -300, "text": "A · Run of Show", "kind": "title1", "maxW": 860},
+    "titleB": {"x": 1650, "y": -300, "text": "B · Open Items", "kind": "title1", "maxW": 860},
+    "titleC": {"x": 590, "y": 2000, "text": "C · Blend: Run of Show + To settle, in tabs", "kind": "title1", "maxW": 2776},
+    "titleD": {"x": 590, "y": 3660, "text": "D · Upcoming: Daybook", "kind": "title1", "maxW": 860},
+    "titleE": {"x": 1650, "y": 3660, "text": "E · Upcoming: Desk", "kind": "title1", "maxW": 860},
+    "titleG": {"x": 590, "y": 8160, "text": "G · Upcoming: Now / Plan", "kind": "title1", "maxW": 3716}
+  },
+  "designSystems": []
+}

@@ -119,7 +119,7 @@ widgets' snapshot format and is unchanged.
 ## Phase 4 — shell and iPad
 
 - `DaybookTabHeader` holds a circular **Scan receipt** button (44 pt, `scan-receipt-header`) beside Add Event, in both modes and in the iPad agenda column. It replaces the per-job scan buttons. It opens the existing capture flow with the event picker preselected to the first in-flight job, if there is one; otherwise the user picks the event as today. The Now / Plan control is `DaybookSegments` with a badge, identifier `upcoming-mode`.
-- On a regular-width iPad, the agenda column hosts `UpcomingView`. Selecting an in-flight job, run-of-show session or Coming up row sets the detail column's selected event, which is highlighted with the existing faint accent fill (G6). Accessibility text sizes keep the tab/stack layout.
+- iPad uses the app's sidebar-adaptable tab view (main replaced the split view), so Upcoming pushes the event detail onto its own navigation stack, exactly as on iPhone. Board G6's side-by-side layout is not built.
 - Delete `TodayScheduleView`. Keep `DaySchedule`, because widgets and `SchedulePublisher` use it.
 
 ## Phase 5 — tests and verification

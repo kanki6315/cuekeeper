@@ -65,8 +65,11 @@ final class RecoveryBackupTests: XCTestCase {
         var session = SessionDraft(day: job.startDay, timeZoneID: "Europe/London")
         session.startTime = Date(); session.endTime = Date().addingTimeInterval(3600)
         session.scheduleStatus = "confirmed"; session.coverage = "covering"
-        session.links = [LinkDraft(label: "Programme", url: "https://example.com/live", notes: "Feed")]
-        try session.save(in: context, jobID: id)
+        let sessionID = try session.save(in: context, jobID: id)
+        // Links can no longer be added in the app, but existing records must still round-trip.
+        let link = NSEntityDescription.insertNewObject(forEntityName: "BroadcastLink", into: context)
+        link.setValue(UUID(), forKey: "id"); link.setValue("https://example.com/live", forKey: "url")
+        link.setValue(context.object(with: sessionID), forKey: "session"); try context.save()
         var invoice = InvoiceDraft(clientID: job.client!.id!, currency: "USD")
         invoice.value.reference = "INV-RECOVERY"; invoice.value.status = "sent"; invoice.value.sentDay = Day.string(from: Date())
         invoice.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 10000)]
@@ -247,7 +250,7 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertEqual(first.added, archive.records.count)
         let job = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
         XCTAssertEqual(job.id, original.id); XCTAssertEqual(job.client?.name, "Network")
-        XCTAssertEqual(job.activeSessions.first?.sortedLinks.first?.url, "https://example.com/live")
+        XCTAssertEqual(job.activeSessions.first?.links?.first?.url, "https://example.com/live")
         XCTAssertEqual(job.activeSessions.count, 1); XCTAssertEqual(try job.currentFee().amount, 10000)
         let invoice = try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first)
         XCTAssertEqual(try invoice.balance(), 7500); XCTAssertNil(invoice.issue(in: target))

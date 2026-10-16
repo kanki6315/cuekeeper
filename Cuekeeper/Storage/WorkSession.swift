@@ -30,7 +30,6 @@ final class WorkSession: NSManagedObject {
     }
     var title: String { name.isEmpty ? "Session" : name }
     var roleNames: [String] { overridesRoles ? (roles ?? []).map(\.name).sorted() : job?.roleNames ?? [] }
-    var sortedLinks: [BroadcastLink] { (links ?? []).sorted { ($0.label, $0.url) < ($1.label, $1.url) } }
     var calendarEligible: Bool {
         deletedAt == nil && job != nil && job?.deletedAt == nil && job?.bookingStatus != "cancelled" && scheduleStatus == "confirmed"
             && coverage == "covering" && startTime != nil && endTime != nil
@@ -63,6 +62,8 @@ final class WorkSession: NSManagedObject {
     }
 }
 
+/// Broadcast links are no longer shown or edited. The entity stays so existing
+/// stores, backups and the CloudKit schema remain compatible.
 @objc(BroadcastLink)
 final class BroadcastLink: NSManagedObject {
     @NSManaged var id: UUID?
@@ -70,19 +71,6 @@ final class BroadcastLink: NSManagedObject {
     @NSManaged var url: String
     @NSManaged var notes: String
     @NSManaged var session: WorkSession?
-}
-
-struct LinkDraft: Equatable, Identifiable {
-    var id = UUID()
-    var label = ""
-    var url = ""
-    var notes = ""
-    var validURL: URL? {
-        guard let value = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
-              ["https", "http"].contains(value.scheme?.lowercased() ?? ""),
-              let host = value.host, !host.isEmpty else { return nil }
-        return value
-    }
 }
 
 struct SessionDraft: Identifiable, Equatable {
@@ -100,7 +88,6 @@ struct SessionDraft: Identifiable, Equatable {
     var overridesRoles = false
     var roleNames: Set<String> = []
     var notes = ""
-    var links: [LinkDraft] = []
 
     init(day: String, timeZoneID: String = "") { self.day = day; self.timeZoneID = timeZoneID }
     init(job: Job) { day = job.eventStartDay; timeZoneID = job.eventTimeZoneID }
@@ -112,7 +99,6 @@ struct SessionDraft: Identifiable, Equatable {
         coverage = session.coverage; overridesRoles = session.overridesRoles
         overridesSeries = session.overridesSeries; seriesName = session.series?.name ?? ""
         roleNames = Set((session.roles ?? []).map(\.name)); notes = session.notes
-        links = session.sortedLinks.map { LinkDraft(id: $0.id ?? UUID(), label: $0.label, url: $0.url, notes: $0.notes) }
     }
     func validate() throws {
         if !day.isEmpty && Day.date(from: day) == nil { throw RecordError.invalid("Choose a valid session date.") }
@@ -127,7 +113,6 @@ struct SessionDraft: Identifiable, Equatable {
         guard ["tentative", "confirmed"].contains(scheduleStatus), ["undecided", "covering", "notCovering"].contains(coverage) else {
             throw RecordError.invalid("Choose a valid schedule and coverage status.")
         }
-        for link in links where link.validURL == nil { throw RecordError.invalid("Enter a complete http or https address for each broadcast link.") }
     }
     @discardableResult
     func save(in context: NSManagedObjectContext, jobID: NSManagedObjectID, editing id: NSManagedObjectID? = nil, baseline: SessionDraft? = nil, transaction: NSManagedObjectContext? = nil) throws -> NSManagedObjectID {
@@ -173,19 +158,6 @@ struct SessionDraft: Identifiable, Equatable {
                 roles.insert(role)
             }
             session.roles = roles
-        }
-        if baseline?.links != links {
-            // Retain stable link identities; untouched remote additions survive this editor.
-            let oldIDs = Set(baseline?.links.map(\.id) ?? [])
-            let newIDs = Set(links.map(\.id))
-            for link in session.links ?? [] where oldIDs.contains(link.id ?? UUID()) && !newIDs.contains(link.id ?? UUID()) { writer.delete(link) }
-            for value in links {
-                let previous = baseline?.links.first { $0.id == value.id }
-                if previous == value { continue }
-                let link = session.links?.first { $0.id == value.id } ?? BroadcastLink(entity: NSEntityDescription.entity(forEntityName: "BroadcastLink", in: writer)!, insertInto: writer)
-                link.id = value.id; link.session = session
-                link.label = value.label; link.url = value.validURL!.absoluteString; link.notes = value.notes
-            }
         }
         // Recheck the merged result before persisting independent incoming changes.
         var merged = SessionDraft(session: session)

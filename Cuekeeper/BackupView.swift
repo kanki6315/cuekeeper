@@ -21,7 +21,7 @@ struct BackupView: View {
         DaybookForm(title: "Backups") {
             Section {
                 Text("Save a separate copy of your daybook to iCloud or Files. Each ZIP backup keeps your records and receipt images together.")
-                Text("Includes events, sessions, clients, links, fees, invoices, payments, expenses and receipt photos on this device. Calendar connections and device preferences are not included.")
+                Text("Includes events, sessions, clients, fees, invoices, payments, expenses and receipt photos on this device. Calendar connections and device preferences are not included.")
                     .font(.subheadline).foregroundStyle(Color("SecondaryText"))
                 if persistence.syncActivity.message != nil {
                     Text("iCloud may still have changes to deliver. A backup includes only records already on this device.").font(.subheadline).foregroundStyle(Color("AmberText"))

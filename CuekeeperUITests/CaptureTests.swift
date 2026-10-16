@@ -103,28 +103,6 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Storage & iCloud"].waitForExistence(timeout: 5))
     }
 
-    func testBroadcastLinkCanBeCapturedBeforeScheduling() {
-        let app = createEvent("Archive broadcast")
-        let addLink = app.buttons["job-add-link"]
-        reveal(addLink, in: app)
-        addLink.tap()
-        let url = app.textFields["quick-broadcast-url"]
-        XCTAssertTrue(url.waitForExistence(timeout: 5))
-        url.tap(); url.typeText("https://example.com/archive")
-        app.buttons["save-broadcast-link"].tap()
-        XCTAssertTrue(app.buttons["save-broadcast-link"].waitForNonExistence(timeout: 5))
-        // Open the newly created session: no date/time or fee was required.
-        let session = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND identifier != %@", "Session", "add-session")).firstMatch
-        reveal(session, in: app)
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
-        session.tap()
-        let link = app.links["https://example.com/archive"]
-        if !link.exists {
-            reveal(link, in: app)
-        }
-        XCTAssertTrue(link.waitForExistence(timeout: 5))
-    }
-
     func testInvoiceAndPartialPaymentWorkflow() {
         let app = createEvent("Invoiced show")
         let addInvoice = app.buttons["add-job-invoice"]
@@ -220,7 +198,7 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["$100.00"].firstMatch.waitForExistence(timeout: 5))
     }
 
-    func testSessionCaptureLinksAndConfirmationValidation() {
+    func testSessionCaptureAndConfirmationValidation() {
         let app = createEvent("Studio finals")
         let addSession = app.buttons["add-session"]
         reveal(addSession, in: app)
@@ -243,18 +221,10 @@ final class CaptureTests: XCTestCase {
         app.segmentedControls["session-schedule"].buttons["Tentative"].tap()
         let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         editor.name = "Session editor"; editor.lifetime = .keepAlways; add(editor)
-        let more = app.buttons["Roles, notes & links"]; reveal(more, in: app); more.tap()
-        let addLink = app.buttons["add-broadcast-link"]
-        reveal(addLink, in: app)
-        addLink.tap()
-        let url = app.textFields["broadcast-url"]
-        reveal(url, in: app)
-        url.tap(); url.typeText("https://example.com/finals")
         app.buttons["save-session"].tap()
         if !app.buttons["save-session"].waitForNonExistence(timeout: 5) { print("SAVE_SESSION_FAILURE\n" + app.debugDescription); XCTFail("Session save did not dismiss") }
-        XCTAssertTrue(app.links["https://example.com/finals"].waitForExistence(timeout: 5))
         let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        details.name = "Session details and link"; details.lifetime = .keepAlways; add(details)
+        details.name = "Session details"; details.lifetime = .keepAlways; add(details)
     }
 
     func testClientLibraryAndFilters() {

@@ -75,7 +75,6 @@ enum DesignFixtures {
             session.day = Day.string(from: session.startTime!, timeZone: TimeZone(identifier: session.timeZoneID)!)
         }
         session.scheduleStatus = "confirmed"; session.coverage = "covering"
-        session.links = [LinkDraft(label: "Programme feed", url: "https://example.com/live", notes: "Producer’s programme feed")]
         try session.save(in: context, jobID: created[0].objectID)
         var invoice = InvoiceDraft(clientID: created[0].client!.id!, currency: "USD")
         invoice.value.reference = "INV-2026-042"; invoice.value.status = "sent"
@@ -180,7 +179,6 @@ struct DesignFixtureScreen: View {
                 case "calendar": CalendarSettingsView()
                 case "filters", "filters-dates": RootView().sheet(isPresented: $editorPresented) { JobFiltersView(filter: $filter) }
                 case "timezone": TimeZonePicker(selection: $zone)
-                case "link": JobDetailView(job: job).sheet(isPresented: $editorPresented) { BroadcastLinkEditorView(job: job, session: job.activeSessions.first) }
                 default: RootView()
                 }
             }

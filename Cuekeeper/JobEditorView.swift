@@ -133,8 +133,6 @@ struct TimeZonePicker: View {
     }
 }
 
-private struct LinkPresentation: Identifiable { let id = UUID(); let session: WorkSession? }
-
 struct JobDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var job: Job
@@ -148,8 +146,6 @@ struct JobDetailView: View {
     @State private var addingSession = false
     @State private var addingInvoice = false
     @State private var addingPayment = false
-    @State private var choosingLinkSession = false
-    @State private var linkEditor: LinkPresentation?
     var body: some View {
         let _ = eventRecords.count
         DaybookForm(title: job.eventTitle, subtitle: job.client?.name ?? "Client to add") {
@@ -179,21 +175,6 @@ struct JobDetailView: View {
                 if !["completed", "cancelled"].contains(job.bookingStatus) {
                     Button(job.bookingStatus == "tentative" ? "Mark as booked" : "Mark completed") { updateBookingStatus(job.bookingStatus == "tentative" ? .booked : .completed) }.accessibilityIdentifier("advance-booking-status")
                 }
-            }
-            Section("Broadcast links") {
-                ForEach(job.activeSessions.filter { !$0.sortedLinks.isEmpty }, id: \.objectID) { session in
-                    DisclosureGroup(session.title) {
-                        ForEach(session.sortedLinks, id: \.objectID) { link in
-                            if let url = LinkDraft(url: link.url).validURL {
-                                Link(link.label.isEmpty ? link.url : link.label, destination: url)
-                                if !link.notes.isEmpty { Text(link.notes).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                            }
-                        }
-                    }
-                }
-                Button("Add Broadcast Link", systemImage: "link.badge.plus") {
-                    if job.activeSessions.isEmpty { linkEditor = LinkPresentation(session: nil) } else { choosingLinkSession = true }
-                }.buttonStyle(DaybookSecondaryButton()).accessibilityIdentifier("job-add-link")
             }
             Section("Fee") {
                 DaybookLink { FeeDetailView(job: job) } label: {
@@ -247,13 +228,6 @@ struct JobDetailView: View {
         .sheet(isPresented: $addingSession) { SessionEditorView(job: job) }
         .sheet(isPresented: $addingInvoice) { InvoiceEditorView(job: job) }
          .sheet(isPresented: $addingPayment) { PaymentEditorView(job: job) }
-        .sheet(item: $linkEditor) { BroadcastLinkEditorView(job: job, session: $0.session) }
-        .confirmationDialog("Choose a session for this link", isPresented: $choosingLinkSession, titleVisibility: .visible) {
-            ForEach(job.activeSessions, id: \.objectID) { session in
-                Button(session.title) { linkEditor = LinkPresentation(session: session) }
-            }
-            Button("New Session") { linkEditor = LinkPresentation(session: nil) }
-        }
     }
 
     private func updateBookingStatus(_ status: BookingStatus) {

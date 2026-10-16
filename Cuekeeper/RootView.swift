@@ -294,6 +294,8 @@ struct SettingsView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showingSetup = false
     @State private var webPage: WebPageLink?
+    @State private var latestBackup: String?
+    private let backups: any CloudBacking = CloudBackupStore()
     @EnvironmentObject private var persistence: PersistenceController
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
@@ -317,42 +319,35 @@ struct SettingsView: View {
                 DaybookLink { LibraryView(kind: .client) } label: { libraryLabel("Clients", symbol: "person.2") }
                 DaybookLink { LibraryView(kind: .role) } label: { libraryLabel("Roles", symbol: "person.text.rectangle") }
             }
-            Section {
-                LabeledContent("iCloud account", value: persistence.accountStatus)
-                if let message = persistence.syncActivity.message {
-                    Text(message)
-                        .foregroundStyle(persistence.syncActivity.needsAttention ? Color("AmberText") : Color("SecondaryText"))
+            Section("Your data") {
+                let activity = persistence.syncActivity
+                SyncSummaryRow(summary: activity.summary(accountStatus: persistence.accountStatus, lastTransfer: persistence.lastTransfer))
+                SyncLedgerRow(title: UIDevice.current.userInterfaceIdiom == .pad ? "This iPad" : "This iPhone", value: "Saved", status: .ok)
+                if let account = activity.accountSummary {
+                    SyncLedgerRow(title: "iCloud account", value: account,
+                                  status: activity.accountIssue != nil ? .warning : (activity.checkingAccount ? .pending : .ok))
                 }
-                if let detail = persistence.syncActivity.errorDetails { Text(detail).font(.subheadline) }
+                if activity.accountIssue != nil {
+                    Button("Check Again") { Task { await persistence.refreshAccountStatus() } }
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("check-icloud-account")
+                }
                 if let setupStatus = persistence.schemaInitializationStatus {
                     Text(setupStatus)
                 }
-                DisclosureGroup("iCloud details") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if persistence.syncActivity.message == nil {
-                            Text(persistence.transferStatus).foregroundStyle(Color("SecondaryText"))
-                        }
-                        if let date = persistence.lastTransfer {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Last transfer")
-                                Text(date.formatted(date: .abbreviated, time: .shortened))
-                                    .foregroundStyle(Color("SecondaryText"))
-                            }
-                        }
-                        Button("Check iCloud Account") { Task { await persistence.refreshAccountStatus() } }
-                        Text("A completed transfer doesn’t mean every device has received the latest changes.")
-                            .font(.footnote).foregroundStyle(Color("SecondaryText"))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 12)
-                }
-            } header: {
-                Text("Storage & iCloud")
-            } footer: {
-                Text("Events are saved on this device and sync with iCloud when available. Backups are managed separately below.")
             }
             Section("Recovery & backups") {
-                DaybookLink { BackupView() } label: { Label("Backups", systemImage: "icloud.and.arrow.up") }
+                DaybookLink { BackupView() } label: {
+                    HStack {
+                        Label("Backups", systemImage: "icloud.and.arrow.up")
+                        Spacer(minLength: 8)
+                        if let latestBackup {
+                            Text(latestBackup).foregroundStyle(Color("SecondaryText"))
+                                .accessibilityLabel("Latest manual backup \(latestBackup)")
+                        }
+                    }
+                }
+                .accessibilityIdentifier("backups-link")
                 DaybookLink { RecentlyDeletedView() } label: { Label("Recently Deleted", systemImage: "trash") }
             }
             Section("About") {
@@ -369,6 +364,11 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
         .task { await persistence.refreshAccountStatus() }
+        .onAppear { Task { await loadLatestBackup() } }
+        .onReceive(NotificationCenter.default.publisher(for: .CKAccountChanged)) { _ in
+            latestBackup = nil
+            Task { await loadLatestBackup() }
+        }
         .sheet(isPresented: $showingSetup) {
             FirstLaunchView { showingSetup = false }
                 .presentationSizing(.form)
@@ -377,6 +377,22 @@ struct SettingsView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await persistence.refreshAccountStatus() } }
         }
+    }
+
+    /// Latest manual backup, read without creating the backup zone. Failures leave the row unlabelled.
+    private func loadLatestBackup() async {
+        guard persistence.cloudEnabled else { return }
+        do {
+            latestBackup = try await backups.latestDate().map { Self.backupDate($0) } ?? "None yet"
+        } catch {
+            latestBackup = nil
+        }
+    }
+
+    static func backupDate(_ date: Date, now: Date = Date()) -> String {
+        Calendar.current.isDate(date, equalTo: now, toGranularity: .year)
+            ? date.formatted(.dateTime.month(.abbreviated).day())
+            : date.formatted(.dateTime.month(.abbreviated).day().year())
     }
 
     private func libraryLabel(_ title: String, symbol: String) -> some View {
@@ -470,6 +486,75 @@ struct SyncFeedbackView: View {
             }
             guard !Task.isCancelled else { return }
             displayedActivity = activity.message == nil ? nil : activity
+        }
+    }
+}
+
+/// Settings headline for live sync. Backups are reported separately on the Backups row.
+struct SyncSummaryRow: View {
+    let summary: SyncSummary
+    @ScaledMetric(relativeTo: .title3) private var badge = 44
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private var tint: Color { summary.warning ? Color("AmberText") : Color.accentColor }
+
+    var body: some View {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 14))
+        layout {
+            Image(systemName: summary.symbol)
+                .font(.title3.weight(.medium))
+                .foregroundStyle(tint)
+                .symbolEffect(.pulse, options: .repeating, isActive: summary.busy)
+                .frame(width: badge, height: badge)
+                .background(tint.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(summary.headline).font(.title3.weight(.semibold))
+                if let detail = summary.detail {
+                    Text(detail).font(.subheadline)
+                        .foregroundStyle(summary.warning ? Color("AmberText") : Color("SecondaryText"))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 2)
+        .animation(.easeOut(duration: 0.2), value: summary)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(summary.warning ? "Warning: \(summary.headline)" : summary.headline)
+        .accessibilityValue(summary.detail ?? "")
+        .accessibilityIdentifier("sync-summary")
+    }
+}
+
+struct SyncLedgerRow: View {
+    enum Status { case ok, pending, warning }
+    let title: String
+    let value: String
+    let status: Status
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 10))
+        layout {
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: symbol).foregroundStyle(status == .ok ? Color.accentColor : (status == .warning ? Color("AmberText") : Color("SecondaryText")))
+            }
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
+            Text(value).foregroundStyle(status == .warning ? Color("AmberText") : Color("SecondaryText"))
+        }
+        .frame(minHeight: 28)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(status == .warning ? "Warning: \(value)" : value)
+    }
+
+    private var symbol: String {
+        switch status {
+        case .ok: "checkmark.circle.fill"
+        case .pending: "circle.dotted"
+        case .warning: "exclamationmark.circle.fill"
         }
     }
 }

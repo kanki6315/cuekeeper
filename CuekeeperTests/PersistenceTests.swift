@@ -945,6 +945,48 @@ final class PersistenceTests: XCTestCase {
         state.enabled = false; state.offline = true; XCTAssertNil(state.message)
     }
 
+    func testSyncSummaryMirrorsActivityWithoutClaimingOtherDevices() {
+        var state = SyncActivity()
+        let account = "Sign in to iCloud in device Settings"
+        func summary(_ last: Date? = nil) -> SyncSummary { state.summary(accountStatus: account, lastTransfer: last) }
+        XCTAssertEqual(summary().headline, "Connecting to iCloud"); XCTAssertEqual(state.accountSummary, "Checking…")
+        state.checkingAccount = false
+        XCTAssertEqual(summary().headline, "Waiting for iCloud"); XCTAssertEqual(state.accountSummary, "Available")
+        let incoming = UUID()
+        state.record(id: incoming, kind: .receiving, ended: false, succeeded: false, error: nil)
+        XCTAssertEqual(summary().headline, "Receiving changes"); XCTAssertTrue(summary().busy)
+        state.record(id: UUID(), kind: .sending, ended: false, succeeded: false, error: nil)
+        XCTAssertEqual(summary().headline, "Syncing changes")
+        state.offline = true
+        XCTAssertEqual(summary().headline, "Offline"); XCTAssertFalse(summary().busy)
+        state.offline = false
+        state.record(id: incoming, kind: .receiving, ended: true, succeeded: false, error: "Couldn’t receive changes. iCloud will try again.")
+        XCTAssertEqual(summary(), SyncSummary(headline: "Sync paused", detail: "Couldn’t receive changes. iCloud will try again.", symbol: "exclamationmark", warning: true))
+        state.accountIssue = "iCloud needs attention"
+        XCTAssertEqual(summary().headline, "Not syncing"); XCTAssertEqual(summary().detail, account)
+        XCTAssertEqual(state.accountSummary, "Unavailable")
+        state.accountIssue = nil
+        var done = SyncActivity(); done.checkingAccount = false
+        done.record(id: UUID(), kind: .receiving, ended: true, succeeded: true, error: nil)
+        let now = Date()
+        XCTAssertEqual(done.summary(accountStatus: "Available", lastTransfer: nil).detail, nil)
+        let today = done.summary(accountStatus: "Available", lastTransfer: now)
+        XCTAssertEqual(today.headline, "Synced")
+        XCTAssertEqual(today.detail, "Last exchange \(now.formatted(date: .omitted, time: .shortened))")
+        done.enabled = false
+        XCTAssertEqual(done.summary(accountStatus: "", lastTransfer: now).headline, "Saved on this device")
+        XCTAssertNil(done.accountSummary)
+    }
+
+    @MainActor func testBackupRowDateOmitsCurrentYear() throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let recent = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let older = try XCTUnwrap(calendar.date(from: DateComponents(year: 2025, month: 12, day: 30)))
+        XCTAssertEqual(SettingsView.backupDate(recent, now: now), recent.formatted(.dateTime.month(.abbreviated).day()))
+        XCTAssertEqual(SettingsView.backupDate(older, now: now), older.formatted(.dateTime.month(.abbreviated).day().year()))
+    }
+
     private func billingJob(_ name: String, amount: String, currency: String = "USD", in context: NSManagedObjectContext) throws -> Job {
         var draft = JobDraft(name: name); draft.clientName = "Studio Network"
         draft.fee?.amount = amount; draft.fee?.currency = currency

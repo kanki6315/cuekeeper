@@ -253,6 +253,38 @@ struct SyncActivity: Equatable {
         let messages = Set(failures.values).sorted()
         return messages.isEmpty ? nil : messages.joined(separator: "\n")
     }
+
+    /// Settings headline. Mirrors `message` priority; "Last exchange" describes this device only.
+    func summary(accountStatus: String, lastTransfer: Date?) -> SyncSummary {
+        let exchange = lastTransfer.map { date in
+            "Last exchange \(date.formatted(date: Calendar.current.isDateInToday(date) ? .omitted : .abbreviated, time: .shortened))"
+        }
+        guard enabled else { return SyncSummary(headline: "Saved on this device", detail: "iCloud sync is off", symbol: "iphone") }
+        if accountIssue != nil { return SyncSummary(headline: "Not syncing", detail: accountStatus, symbol: "exclamationmark", warning: true) }
+        if let errorDetails { return SyncSummary(headline: "Sync paused", detail: errorDetails, symbol: "exclamationmark", warning: true) }
+        if offline { return SyncSummary(headline: "Offline", detail: "Syncs when you reconnect", symbol: "icloud.slash") }
+        let kinds = Set(active.values)
+        if kinds.isSuperset(of: [.receiving, .sending]) { return SyncSummary(headline: "Syncing changes", detail: exchange, symbol: "arrow.up.arrow.down", busy: true) }
+        if kinds.contains(.receiving) { return SyncSummary(headline: "Receiving changes", detail: exchange, symbol: "arrow.down", busy: true) }
+        if kinds.contains(.sending) { return SyncSummary(headline: "Sending changes", detail: exchange, symbol: "arrow.up", busy: true) }
+        if kinds.contains(.setup) || checkingAccount { return SyncSummary(headline: "Connecting to iCloud", detail: nil, symbol: "icloud", busy: true) }
+        if !receivedImport { return SyncSummary(headline: "Waiting for iCloud", detail: "Events may still arrive", symbol: "icloud.and.arrow.down") }
+        return SyncSummary(headline: "Synced", detail: exchange, symbol: "checkmark")
+    }
+
+    var accountSummary: String? {
+        guard enabled else { return nil }
+        if checkingAccount { return "Checking…" }
+        return accountIssue == nil ? "Available" : "Unavailable"
+    }
+}
+
+struct SyncSummary: Equatable {
+    let headline: String
+    let detail: String?
+    let symbol: String
+    var warning = false
+    var busy = false
 }
 
 /// Local store readiness, independent of CloudKit import and of any caller's lifetime.

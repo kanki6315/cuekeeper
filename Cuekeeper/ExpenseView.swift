@@ -94,8 +94,8 @@ struct ExpensesView: View {
                 Text(value.merchant.isEmpty ? "Expense to complete" : value.merchant)
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if let amount = try? Money.parse(value.amount), !value.currency.isEmpty {
-                    Text(Money.format(amount, currency: value.currency))
+                if let amount = ExpenseValue.displayAmount(value.amount, currency: value.currency) {
+                    Text(amount)
                         .font(.subheadline.weight(.semibold)).monospacedDigit()
                         .fixedSize(horizontal: true, vertical: false)
                 }
@@ -133,7 +133,7 @@ struct EventExpensesSection: View {
                         Text(expense.isDraft ? "Review receipt" : expense.value.merchant).font(.headline)
                         if expense.isDraft { Text(expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm").font(.subheadline) }
                         else {
-                            Text("\(Money.format((try? Money.parse(expense.value.amount)) ?? 0, currency: expense.value.currency)) · \(Day.display(expense.value.day))").font(.subheadline)
+                            Text("\(ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) ?? "Total to check") · \(Day.display(expense.value.day))").font(.subheadline)
                         }
                     }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }.accessibilityIdentifier("expense-row")
@@ -235,7 +235,7 @@ struct ExpenseEditorView: View {
                 if let captured = draft.capture {
                     Section("Captured payment") {
                         if !captured.merchant.isEmpty { Text(captured.merchant) }
-                        if !captured.amount.isEmpty { Text([captured.amount, captured.currency].filter { !$0.isEmpty }.joined(separator: " ")) }
+                        if !captured.amount.isEmpty { Text(ExpenseValue.displayAmount(captured.amount, currency: captured.currency) ?? [captured.amount, captured.currency].filter { !$0.isEmpty }.joined(separator: " ")) }
                         if let date = captured.date { Text(date.formatted(date: .abbreviated, time: .shortened)) }
                         Text("Payment details are kept here for comparison. Review the fields below before saving.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
                     }

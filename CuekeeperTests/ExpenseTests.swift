@@ -121,6 +121,34 @@ final class ExpenseTests: XCTestCase {
         let extracted = ReceiptFields(merchant: "Shop", day: "not a date", amount: "NaN", currency: "$", tax: "unknown", category: "invented").expense
         XCTAssertEqual(extracted.day, ""); XCTAssertEqual(extracted.amount, ""); XCTAssertEqual(extracted.currency, ""); XCTAssertEqual(extracted.tax, ""); XCTAssertEqual(extracted.category, "Other")
     }
+    func testWiderCurrenciesAndDisplayFallbacks() throws {
+        var value = valid; value.currency = "JPY"; value.amount = "1200"; value.tax = ""
+        XCTAssertNoThrow(try value.validate())
+        value.amount = "1200.50"; XCTAssertThrowsError(try value.validate())
+        value.currency = "KWD"; value.amount = "12.345"; XCTAssertNoThrow(try value.validate())
+        value.currency = "SEK"; value.amount = "89.90"; XCTAssertNoThrow(try value.validate())
+        XCTAssertNil(ExpenseValue.displayAmount("abc", currency: "USD"))
+        XCTAssertNil(ExpenseValue.displayAmount("12.50", currency: ""))
+        XCTAssertNil(ExpenseValue.displayAmount("12.50", currency: "JPY"))
+        XCTAssertEqual(ExpenseValue.displayAmount("1234.5", currency: "USD"), Money.format(123450, currency: "USD"))
+        // An amount captured without a currency is kept for review; saving checks it against the chosen currency.
+        XCTAssertEqual(ExpenseCaptureInput(merchant: "Shop", amount: "12.345").draft.amount, "12.345")
+        XCTAssertEqual(ExpenseCaptureInput(merchant: "Shop", amount: "12.345", currency: "jpy").draft.amount, "")
+        XCTAssertEqual(ReceiptFields(merchant: "Shop", day: "", amount: "4500", currency: "JPY", tax: "", category: "Meals").expense.amount, "4500")
+    }
+
+    func testCancelledRecognitionStops() async throws {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 800, height: 400), format: format).image { renderer in
+            UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 800, height: 400))
+            ("TOTAL EUR 24.50" as NSString).draw(in: CGRect(x: 40, y: 40, width: 720, height: 320), withAttributes: [.font: UIFont.systemFont(ofSize: 40), .foregroundColor: UIColor.black])
+        }
+        let data = try XCTUnwrap(image.pngData())
+        let task = Task { try await ReceiptExtractor.recognize(data) }
+        task.cancel()
+        do { _ = try await task.value; XCTFail("Cancelled recognition returned text") } catch {}
+    }
+
     private var contextOverflow: Error {
         LanguageModelError.contextSizeExceeded(.init(contextSize: 4096, tokenCount: 5000, debugDescription: "test overflow"))
     }

@@ -174,7 +174,7 @@ final class PersistenceTests: XCTestCase {
             var draft = JobDraft(name: "Event \(code)")
             draft.clientName = "Client \(code)"
             draft.fee?.currency = code
-            draft.fee?.amount = "100.25"
+            draft.fee?.amount = Money.text(10025, currency: code)
             let jobID = try draft.save(in: context)
             let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
             XCTAssertEqual(try job.currentFee().currency, code)
@@ -184,7 +184,7 @@ final class PersistenceTests: XCTestCase {
             invoiceDraft.value.sentDay = Day.string(from: Date())
             invoiceDraft.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 10025)]
             let invoiceID = try invoiceDraft.save(in: context)
-            try PaymentDraft(amount: "25.10").save(in: context, invoiceID: invoiceID)
+            try PaymentDraft(amount: Money.text(2510, currency: code)).save(in: context, invoiceID: invoiceID)
             let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
             XCTAssertEqual(try invoice.balance(), 7515)
             XCTAssertEqual(try invoice.paid(), 2510)
@@ -1326,14 +1326,32 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try duplicate.currentFee().amount, 30012)
         XCTAssertEqual(duplicate.feeRevisions?.count, 1)
         XCTAssertNotEqual(try duplicate.feeHeads().first?.id, try job.feeHeads().first?.id)
-        XCTAssertEqual(try Money.parse("0.10"), 10)
-        XCTAssertThrowsError(try Money.parse("1.001"))
-        XCTAssertThrowsError(try Money.parse("NaN"))
-        XCTAssertThrowsError(try Money.parse("999999999999999999999"))
-        XCTAssertEqual(Money.text(120050), "1200.50")
-        XCTAssertEqual(Money.text(5), "0.05")
-        XCTAssertEqual(Money.text(-1999), "-19.99")
-        XCTAssertEqual(try Money.parse(Money.text(120050)), 120050)
+        XCTAssertEqual(try Money.parse("0.10", currency: "USD"), 10)
+        XCTAssertThrowsError(try Money.parse("1.001", currency: "USD"))
+        XCTAssertThrowsError(try Money.parse("NaN", currency: "USD"))
+        XCTAssertThrowsError(try Money.parse("999999999999999999999", currency: "USD"))
+        XCTAssertEqual(Money.text(120050, currency: "USD"), "1200.50")
+        XCTAssertEqual(Money.text(5, currency: "USD"), "0.05")
+        XCTAssertEqual(Money.text(-1999, currency: "USD"), "-19.99")
+        XCTAssertEqual(try Money.parse(Money.text(120050, currency: "USD"), currency: "USD"), 120050)
+    }
+
+    func testMoneyUsesEachCurrencysMinorUnit() throws {
+        XCTAssertEqual(try Money.parse("1200", currency: "JPY"), 1200)
+        XCTAssertThrowsError(try Money.parse("1200.5", currency: "JPY"))
+        XCTAssertEqual(Money.text(1200, currency: "JPY"), "1200")
+        XCTAssertEqual(try Money.parse("12.345", currency: "KWD"), 12345)
+        XCTAssertEqual(try Money.parse("12.3", currency: "KWD"), 12300)
+        XCTAssertThrowsError(try Money.parse("12.3456", currency: "KWD"))
+        XCTAssertEqual(Money.text(5, currency: "KWD"), "0.005")
+        XCTAssertEqual(Money.text(-12345, currency: "KWD"), "-12.345")
+        for currency in CurrencyPreferences.supported {
+            let amount: Int64 = 123456
+            XCTAssertEqual(try Money.parse(Money.text(amount, currency: currency), currency: currency), amount, currency)
+            XCTAssertTrue(Money.format(amount, currency: currency).contains(Money.decimals(currency) == 0 ? "456" : "23"), currency)
+        }
+        XCTAssertEqual(try FeeValue(currency: "JPY", lines: [FeeLine(quantity: "2.5", rate: "1001")]).total(), 2503)
+        XCTAssertThrowsError(try FeeValue(currency: "JPY", lines: [FeeLine(quantity: "1", rate: "10.5")]).total())
     }
 
     func testConcurrentFeeVersionsRequireExplicitResolution() async throws {

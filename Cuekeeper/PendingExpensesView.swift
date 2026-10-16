@@ -53,8 +53,8 @@ struct PendingExpensesView: View {
                         Button { selected = expense } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(expense.value.merchant.isEmpty ? "Expense to complete" : expense.value.merchant).font(.headline)
-                                if let amount = try? Money.parse(expense.value.amount), !expense.value.currency.isEmpty {
-                                    Text(Money.format(amount, currency: expense.value.currency)).monospacedDigit()
+                                if let amount = ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) {
+                                    Text(amount).monospacedDigit()
                                 }
                                 Text(expense.job?.eventTitle ?? "Event to choose").font(.subheadline).foregroundStyle(Color("SecondaryText"))
                                 Text(expense.photo == nil ? "Receipt to add" : "Receipt attached").font(.caption).foregroundStyle(Color("SecondaryText"))
@@ -64,6 +64,7 @@ struct PendingExpensesView: View {
                     }
                 }
             }
+            ExpenseRemindersSection(header: "Reminders")
             Section { DaybookLink("Wallet automation setup") { ExpenseAutomationSettingsView() } }
         }
         .navigationTitle("Expenses to complete").navigationBarTitleDisplayMode(.inline)

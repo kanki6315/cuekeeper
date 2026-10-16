@@ -142,7 +142,11 @@ UI test classes run in parallel on clones of that simulator, so grant Calendar
 access before the first run (clones copy it). Screenshot-only classes
 (`DesignCaptureTests`, `DesignSupplementTests`, `EventCaptureTests`,
 `TodayCaptureTests`) are skipped here; run the `Cuekeeper - Design Capture`
-scheme the same way when reviewing design changes. For a quick loop, add
+scheme the same way when reviewing design changes. `BackupFilePickerTests`
+drives the out-of-process Files picker, which drops taps on parallel clones; run
+the `Cuekeeper - System Pickers` scheme (one test, serial) when backup files change.
+The parallel suite covers the same export, import and restore through
+`--ui-test-backup-files`. For a quick loop, add
 `-only-testing:CuekeeperTests` to run just the unit tests.
 
 Without the Calendar grant, the real EventKit integration test skips; a green

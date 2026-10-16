@@ -92,6 +92,7 @@
 		BC7F0A4CEFBE7ED67362CE1E /* PreferenceFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */; };
 		BE38B159D7E7F755F31684D0 /* CuekeeperMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */; };
 		BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE600824A3A4DC39439FDF0 /* CalendarController.swift */; };
+		C241DA2A9C4FCB52A7E010DA /* BackupFilePickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92B309550AE08411BE070DF /* BackupFilePickerTests.swift */; };
 		C3DF345DEEC1D08BFE9907A0 /* EventDetailSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889BBC22D059E874E9A6D96A /* EventDetailSummary.swift */; };
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		C69816F0A57DC9692E3A5354 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 8180F3EBCA27A4ED888D1DB7 /* ZIPFoundation */; };
@@ -240,6 +241,7 @@
 		A6C890CABAF4353CE145B9D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A6F150655EBDB219023A79B0 /* CaptureExpenseIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureExpenseIntent.swift; sourceTree = "<group>"; };
 		A8242BC562D7713F5EAFAAE4 /* ExpenseNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseNotifications.swift; sourceTree = "<group>"; };
+		A92B309550AE08411BE070DF /* BackupFilePickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupFilePickerTests.swift; sourceTree = "<group>"; };
 		A9459F7EEB801C95C854C005 /* BackupPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupPackage.swift; sourceTree = "<group>"; };
 		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF513485C51BD69B238E3E80 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -297,6 +299,7 @@
 			isa = PBXGroup;
 			children = (
 				FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */,
+				A92B309550AE08411BE070DF /* BackupFilePickerTests.swift */,
 				06442705EA3E6D3F4031E809 /* CaptureTests.swift */,
 				7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */,
 				A18C63D866B45BB607D10721 /* DesignSupplementTests.swift */,
@@ -669,6 +672,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D2F5F7D4DAFBD2CB1B51CFC4 /* BackgroundExpenseTests.swift in Sources */,
+				C241DA2A9C4FCB52A7E010DA /* BackupFilePickerTests.swift in Sources */,
 				DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */,
 				FDD509EF1DD0A6EB9599AB76 /* DesignCaptureTests.swift in Sources */,
 				64CB0FB599DFC111ADCBB6EE /* DesignSupplementTests.swift in Sources */,

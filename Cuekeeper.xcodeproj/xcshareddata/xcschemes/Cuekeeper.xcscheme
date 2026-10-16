@@ -74,6 +74,9 @@
                <Test
                   Identifier = "TodayCaptureTests">
                </Test>
+               <Test
+                  Identifier = "BackupFilePickerTests">
+               </Test>
             </SkippedTests>
          </TestableReference>
       </Testables>

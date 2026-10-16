@@ -74,7 +74,13 @@ struct EventEditorView: View {
             }
             .navigationTitle(anchor == nil ? "Add Event" : "Edit Event").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if changed { discard = true } else { dismiss() } } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { if changed { discard = true } else { dismiss() } }
+                        .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
+                            Button("Discard Changes", role: .destructive) { dismiss() }
+                            Button("Keep Editing", role: .cancel) {}
+                        }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         do {
@@ -94,7 +100,6 @@ struct EventEditorView: View {
                 if booking.fee?.amount.isEmpty == true, let client = try? context.fetch(request).first { booking.fee?.currency = client.defaultCurrency }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
-            .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) { Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {} }
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
     }
 }

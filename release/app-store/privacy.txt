@@ -4,7 +4,7 @@ Last updated: October 15, 2026
 Cuekeeper is developed by Arjuna Kankipati. Questions about this policy can be sent to cuekeeper@arjunakankipati.com.
 
 Your daybook
-Cuekeeper stores the information you enter on your device: events, clients and contact details, sessions, locations, notes, broadcast links, fees, invoices, payments, expenses and receipt photos. You do not create a separate Cuekeeper account. The app does not include advertising, tracking, or a third-party analytics SDK. Cuekeeper does not send your daybook to a developer-operated server.
+Cuekeeper stores the information you enter on your device: events, clients and contact details, sessions, locations, notes, fees, invoices, payments, expenses and receipt photos. You do not create a separate Cuekeeper account. The app does not include advertising, tracking, or a third-party analytics SDK. Cuekeeper does not send your daybook to a developer-operated server.
 
 iCloud sync and backups
 When iCloud is available, Cuekeeper uses Apple's CloudKit service to sync your daybook, including receipt photos and expense drafts, through your private iCloud database. Explicit backups are also stored in your private iCloud storage. The developer does not have access to these private daybook records through Cuekeeper. Apple's services are governed by Apple's privacy policy and your Apple Account settings. Sync is separate from backup, and a backup includes only the records already available on the device creating it.
@@ -15,7 +15,7 @@ Camera access is used when you choose to scan a receipt. Photo import uses Apple
 
 Calendar, Maps and weather
 Calendar access is optional. If connected, Cuekeeper reads calendar information needed to find and reconcile its entries and publishes event placeholders and eligible sessions to your selected calendar. Published entries can include event and client names, times, locations and notes. Those entries are subject to that calendar provider's storage and sharing settings.
-Place search and maps use Apple Maps. Search terms and place identifiers are sent to Apple to retrieve results. Weather uses Apple Weather for the selected venue's coordinates. Cuekeeper does not request your device's GPS location for these features. Apple handles these requests under its own privacy terms. Opening a broadcast link or another external link takes you to the relevant app or website, whose privacy practices apply.
+Place search and maps use Apple Maps. Search terms and place identifiers are sent to Apple to retrieve results. Weather uses Apple Weather for the selected venue's coordinates. Cuekeeper does not request your device's GPS location for these features. Apple handles these requests under its own privacy terms. Opening an external link takes you to the relevant app or website, whose privacy practices apply.
 
 Shortcuts, Siri and notifications
 Cuekeeper receives the event or expense fields supplied to its App Intents. It does not receive a recording or full transcript of your Siri conversation. A Wallet personal automation you configure can pass transaction fields to Cuekeeper; Cuekeeper does not independently read your Wallet or banking history. Supplied payment evidence is saved with the draft. If a stable transaction ID is provided, a hash is retained to help prevent repeat imports, including after a draft is removed. Local completion reminders are optional and use generic text without merchant or amount details. Apple's Siri, Shortcuts and Wallet services have their own privacy practices.

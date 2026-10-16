@@ -731,7 +731,7 @@ final class PersistenceTests: XCTestCase {
         let zone = TimeZone(identifier: draft.timeZoneID)!
         draft.day = "2026-10-31"; draft.startTime = Day.date(from: draft.day, timeZone: zone)!.addingTimeInterval(12 * 3600)
         draft.endTime = draft.startTime!.addingTimeInterval(3600); draft.callTime = draft.startTime!.addingTimeInterval(-1800)
-        draft.scheduleStatus = "confirmed"; draft.coverage = "covering"; draft.links = [LinkDraft(url: "https://example.com/feed")]
+        draft.scheduleStatus = "confirmed"; draft.coverage = "covering"
         let id = try draft.save(in: context, jobID: aID)
         XCTAssertThrowsError(try SessionBatchChange(day: "2026-11-01", bookingID: bID).save(ids: [id], anchorID: aID, in: context))
         try SessionBatchChange(day: "2026-11-01").save(ids: [id], anchorID: aID, in: context)
@@ -739,7 +739,7 @@ final class PersistenceTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
         XCTAssertEqual(calendar.component(.hour, from: session.startTime!), 12)
         XCTAssertEqual(session.day, "2026-11-01"); XCTAssertEqual(session.job?.objectID, aID)
-        XCTAssertEqual(session.effectiveSeries?.name, "Inherited series"); XCTAssertEqual(session.sortedLinks.count, 1)
+        XCTAssertEqual(session.effectiveSeries?.name, "Inherited series")
         XCTAssertEqual(try a.currentFee().amount, 10000); XCTAssertEqual(try session.job?.currentFee().amount, 10000)
         let outsider = try billingJob("Elsewhere", amount: "1", in: context)
         XCTAssertThrowsError(try SessionBatchChange(series: "Changed", bookingID: outsider.objectID).save(ids: [id], anchorID: aID, in: context))
@@ -1008,9 +1008,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try archive.restore(in: context).added, 0)
     }
 
-    func testV2ThroughV12StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV2ThroughV13StoresMigrateWithRelationshipsAndFeeHistory() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...12 {
+        for version in 2...13 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"
@@ -1060,7 +1060,8 @@ final class PersistenceTests: XCTestCase {
             XCTAssertEqual(saved.series?.name, version >= 6 ? "Existing series" : nil)
             XCTAssertEqual(saved.trackPlaceID, version >= 7 ? "existing-track" : "")
             XCTAssertEqual(saved.id, jobID); XCTAssertEqual(saved.client?.name, "Existing client")
-            if version >= 3 { XCTAssertEqual(saved.activeSessions.first?.sortedLinks.first?.url, "https://example.com/old") }
+            if version >= 3 { XCTAssertEqual(saved.activeSessions.first?.name, "Existing session") }
+            XCTAssertNil(saved.managedObjectContext?.persistentStoreCoordinator?.managedObjectModel.entitiesByName["BroadcastLink"])
             if version >= 4 { XCTAssertEqual(try saved.currentFee().amount, 12345) }
             XCTAssertEqual(try saved.directPaid(), 0)
             if version >= 5 {
@@ -1369,7 +1370,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(draft.endTime, formatter.date(from: "2026-11-02T08:00:00Z"))
     }
 
-    func testSessionsPersistIncompleteAndOvernightSchedulesWithLinks() async throws {
+    func testSessionsPersistIncompleteAndOvernightSchedules() async throws {
         let store = try await openStore()
         let context = store.container.viewContext
         var jobDraft = JobDraft(name: "Overnight broadcast")
@@ -1388,7 +1389,6 @@ final class PersistenceTests: XCTestCase {
         draft.endTime = ISO8601DateFormatter().date(from: "2026-11-01T08:00:00Z")!
         draft.callTime = draft.startTime!.addingTimeInterval(-1800)
         draft.scheduleStatus = "confirmed"; draft.coverage = "covering"
-        draft.links = [LinkDraft(label: "Replay", url: "https://example.com/replay", notes: "Final segment")]
         try draft.save(in: context, jobID: jobID, editing: sessionID)
         XCTAssertTrue(session.calendarEligible)
         XCTAssertEqual(session.day, "2026-10-31")
@@ -1396,11 +1396,10 @@ final class PersistenceTests: XCTestCase {
         XCTAssertTrue(session.compactSchedule.contains(session.shortDate(draft.startTime!)))
         XCTAssertTrue(session.compactSchedule.contains(session.shortDate(draft.endTime!)))
         XCTAssertNotEqual(session.shortDate(draft.startTime!), session.shortDate(draft.endTime!))
-        XCTAssertEqual(session.sortedLinks.first?.notes, "Final segment")
         XCTAssertEqual(session.endTime!.timeIntervalSince(session.startTime!), 16200)
         context.reset()
         let reopened = try XCTUnwrap(context.existingObject(with: sessionID) as? WorkSession)
-        XCTAssertEqual(reopened.sortedLinks.first?.url, "https://example.com/replay")
+        XCTAssertEqual(reopened.endTime, draft.endTime)
         var editedJob = JobDraft(job: try XCTUnwrap(context.existingObject(with: jobID) as? Job))
         editedJob.roleNames = ["Presenter"]
         try editedJob.save(in: context, editing: jobID)
@@ -1425,10 +1424,7 @@ final class PersistenceTests: XCTestCase {
         draft.timeZoneID = "UTC"; draft.endTime = draft.startTime!.addingTimeInterval(-1)
         XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
         draft.endTime = draft.startTime!.addingTimeInterval(3600)
-        draft.links = [LinkDraft(url: "javascript:alert(1)")]
-        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
         XCTAssertEqual(try context.count(for: NSFetchRequest<WorkSession>(entityName: "WorkSession")), 0)
-        draft.links = []
         let id = try draft.save(in: context, jobID: jobID)
         let session = try XCTUnwrap(context.existingObject(with: id) as? WorkSession)
         let baseline = SessionDraft(session: session)

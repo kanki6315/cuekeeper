@@ -140,7 +140,13 @@ struct LibraryEditor: View {
             .navigationTitle("\(record == nil ? "Add" : "Edit") \(kind.singular)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if draft != initial { discard = true } else { dismiss() } } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { if draft != initial { discard = true } else { dismiss() } }
+                        .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
+                            Button("Discard Changes", role: .destructive) { dismiss() }
+                            Button("Keep Editing", role: .cancel) {}
+                        }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         do { try draft.save(entity: kind.entity, editing: record?.objectID, baseline: initial, in: context); dismiss() }
@@ -150,10 +156,6 @@ struct LibraryEditor: View {
             }
             .saveErrorAlert($error)
             .interactiveDismissDisabled(draft != initial)
-            .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
-                Button("Discard Changes", role: .destructive) { dismiss() }
-                Button("Keep Editing", role: .cancel) {}
-            }
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

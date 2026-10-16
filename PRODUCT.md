@@ -12,13 +12,13 @@ Broadcast freelancers: commentators, presenters, producers, and crew. iPhone and
 Track freelance engagements from tentative booking through completed work and payment, with very little upkeep. Capture event dates and a client now; enrich the record later.
 
 ## Capabilities and Constraints
-- Single-client events, sessions, clients, fees, invoices, payments, and broadcast links. Each event has at most one client; incomplete events may have none.
+- Single-client events, sessions, clients, fees, invoices, and payments. Each event has at most one client; incomplete events may have none.
 - Booking confirmation, session schedule confirmation, coverage, invoicing, and payment are independent states.
 - Events can have no sessions; unknown fees differ from zero fees.
 - Calendar placeholders remain alongside eligible confirmed, covering sessions.
 - Local offline storage and iCloud sync; recovery and export remain separate from sync.
 - USD and EUR balances stay separate. Invoice balances are authoritative for grouped jobs and partial payments.
-- Primary navigation: Upcoming, Events, Payments, Settings. iPad uses a sidebar.
+- Primary navigation: Upcoming, Events, Payments, Expenses, Settings. iPad uses a sidebar.
 - Invoice tracking only; no document generation, sending, banking, tax calculations, or currency conversion.
 
 ## Product Principles
@@ -38,7 +38,7 @@ User supplied Broadcast Work Tracker product specification in Product Specificat
 
 ## Current implementation — October 14, 2026
 
-Current source uses Upcoming, Events, Payments and Settings with consistent brand
+Current source uses Upcoming, Events, Payments, Expenses and Settings with consistent brand
 headers, native segmented agenda scopes and a single-client event editor. Saved
 client/championship typeaheads and adaptive short-choice controls support capture.
 The event owns session timezones; remote/hybrid work can display a second timezone.
@@ -63,7 +63,7 @@ release/schema statements describe their own milestones, not the current build.
 ## Historical implementation scope
 The first six implementation steps now cover the native foundation, complete job management, sessions and broadcast links, EventKit calendar integration, fees and breakdowns, and invoices/payments. The UI extends the existing native SwiftUI identity: iPhone tabs and iPad sidebar, native lists, navigation, forms and sheets, SF typography, and forest/mint accents with ivory/charcoal backgrounds. The approved brand assets remain authoritative; branded mockups are direction references, not a claim of a pixel-matched implementation or a new visual world.
 
-Job management includes tentative/booked/completed/cancelled states, clients and roles, arrangement/location/timezone/notes, duplication with date confirmation, and combined search/filters. Libraries support renaming, contact/currency defaults and related records. Sessions permit incomplete schedules, distinguish confirmed time from coverage, support timezones/call times/role overrides and retain broadcast links. Changed editors require explicit discard; save errors preserve drafts.
+Job management includes tentative/booked/completed/cancelled states, clients and roles, arrangement/location/timezone/notes, duplication with date confirmation, and combined search/filters. Libraries support renaming, contact/currency defaults and related records. Sessions permit incomplete schedules, distinguish confirmed time from coverage, and support timezones/call times/role overrides. Changed editors require explicit discard; save errors preserve drafts.
 
 Calendar publishing retains placeholders alongside eligible confirmed, covering sessions. One device owns publishing through an online CloudKit ownership check. Other devices edit records normally; calendar publishing catches up when the owner opens the app in the foreground and receives those changes. Transfer requires disconnecting the old device before connecting the new one. Offline capture does not imply offline calendar publishing.
 
@@ -108,7 +108,7 @@ validation of delivery remains outstanding.
 The existing app screens now implement the approved Daybook composition with
 Call Sheet warmth. Upcoming and Jobs use a date-led agenda, booking badges,
 search/filters and a focused add action. Job details put status and icon-led
-metadata before sessions, broadcast links, fees and billing. Quick capture keeps
+metadata before sessions, fees and billing. Quick capture keeps
 optional detail available; Payments separates USD/EUR summaries, review items,
 invoices and balances. Settings and libraries use titled, icon-led groups.
 

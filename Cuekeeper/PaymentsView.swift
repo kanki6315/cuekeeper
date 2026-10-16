@@ -372,7 +372,13 @@ struct PaymentEditorView: View {
             }
             .navigationTitle("Record Payment").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if draft != initial { discard = true } else { dismiss() } } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { if draft != initial { discard = true } else { dismiss() } }
+                        .confirmationDialog("Discard payment?", isPresented: $discard, titleVisibility: .visible) {
+                            Button("Discard Changes", role: .destructive) { dismiss() }
+                            Button("Keep Editing", role: .cancel) {}
+                        }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         do { try draft.save(in: context, invoiceID: invoice?.objectID, jobID: job?.objectID); dismiss() }
@@ -382,9 +388,6 @@ struct PaymentEditorView: View {
             }
             .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
             .onAppear { if initial == nil { initial = draft } }
-            .confirmationDialog("Discard payment?", isPresented: $discard, titleVisibility: .visible) {
-                Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
-            }
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

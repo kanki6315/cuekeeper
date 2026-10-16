@@ -74,7 +74,13 @@ struct FeeEditorView: View {
             }
             .navigationTitle("Edit Fee").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if draft != initial { discard = true } else { dismiss() } } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { if draft != initial { discard = true } else { dismiss() } }
+                        .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
+                            Button("Discard Changes", role: .destructive) { dismiss() }
+                            Button("Keep Editing", role: .cancel) {}
+                        }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         do { try draft.save(in: context, jobID: job.objectID); dismiss() }
@@ -83,9 +89,6 @@ struct FeeEditorView: View {
                 }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
-            .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
-                Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
-            }
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

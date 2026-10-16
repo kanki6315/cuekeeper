@@ -11,6 +11,23 @@ struct BackupArchive: Codable {
     var records: [Record]
     var workspace: BackupWorkspace? = nil
     enum CodingKeys: String, CodingKey { case format, version, createdAt, records }
+    init(format: String = "com.cuekeeper.backup", version: Int = 2, createdAt: Date = Date(), records: [Record], workspace: BackupWorkspace? = nil) {
+        self.format = format; self.version = version; self.createdAt = createdAt; self.records = records; self.workspace = workspace
+    }
+    /// Pre-V14 archives may contain broadcast links, which V14 removed.
+    /// Drop those records and their session relationship so older backups still restore.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        format = try container.decode(String.self, forKey: .format)
+        version = try container.decode(Int.self, forKey: .version)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        records = try container.decode([Record].self, forKey: .records).compactMap { record in
+            guard record.key.entity != "BroadcastLink" else { return nil }
+            var record = record
+            if record.key.entity == "WorkSession" { record.relationships["links"] = nil }
+            return record
+        }
+    }
     struct Attachment: Codable, Equatable {
         var path: String
         var bytes: Int64

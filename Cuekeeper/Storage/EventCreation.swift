@@ -127,7 +127,6 @@ extension SessionDraft {
         var copy = self
         copy.id = UUID()
         copy.scheduleStatus = "tentative"; copy.coverage = "undecided"
-        copy.links = links.map { var link = $0; link.id = UUID(); return link }
         guard includingTimes else {
             copy.day = Day.string(from: destinationDate)
             copy.startTime = nil; copy.endTime = nil; copy.callTime = nil

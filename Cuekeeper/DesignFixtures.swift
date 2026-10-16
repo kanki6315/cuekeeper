@@ -39,7 +39,7 @@ enum DesignFixtures {
             let id = try draft.save(in: context)
             created.append(try context.existingObject(with: id) as! Job)
         }
-        if ["expense", "pending-expenses", "expense-notification", "pending-root"].contains(route) {
+        if ["expense", "pending-expenses", "expense-notification", "pending-root", "expenses-overview"].contains(route) {
             let format = UIGraphicsImageRendererFormat(); format.scale = 1
             let image = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 700), format: format).image { renderer in
                 UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 600, height: 700))
@@ -55,6 +55,17 @@ enum DesignFixtures {
                 let expense = try context.existingObject(with: captured.objectID) as! Expense
                 try Expense.replacePhoto(image.jpegData(compressionQuality: 0.9)!, id: expense.objectID, revision: expense.revision, in: context)
                 _ = try Expense.captureBackground(ExpenseCaptureInput(merchant: "Hotel", amount: "120", currency: "EUR", transactionID: "fixture-hotel"), in: context)
+            }
+        }
+        if route == "expenses-overview" {
+            let image = UIGraphicsImageRenderer(size: CGSize(width: 300, height: 400)).image { renderer in
+                UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 300, height: 400))
+                ("SYNTHETIC RECEIPT" as NSString).draw(at: CGPoint(x: 20, y: 30), withAttributes: [.foregroundColor: UIColor.black])
+            }
+            for (index, merchant) in ["Trackside Cafe", "Rail Europe"].enumerated() {
+                let id = try Expense.capture(image.jpegData(compressionQuality: 0.9)!, jobID: created[index].objectID, in: context)
+                let expense = try context.existingObject(with: id) as! Expense
+                try Expense.save(ExpenseValue(merchant: merchant, day: "2026-10-14", amount: index == 0 ? "18.50" : "86.00", currency: index == 0 ? "USD" : "EUR", category: index == 0 ? "Meals" : "Travel", reimbursable: index == 1), id: id, revision: expense.revision, in: context)
             }
         }
         if let client = created[0].client {
@@ -75,7 +86,6 @@ enum DesignFixtures {
             session.day = Day.string(from: session.startTime!, timeZone: TimeZone(identifier: session.timeZoneID)!)
         }
         session.scheduleStatus = "confirmed"; session.coverage = "covering"
-        session.links = [LinkDraft(label: "Programme feed", url: "https://example.com/live", notes: "Producer’s programme feed")]
         try session.save(in: context, jobID: created[0].objectID)
         var invoice = InvoiceDraft(clientID: created[0].client!.id!, currency: "USD")
         invoice.value.reference = "INV-2026-042"; invoice.value.status = "sent"
@@ -135,7 +145,7 @@ struct DesignFixtureScreen: View {
     @State private var editorPresented = true
     var body: some View {
         if ["widgets", "accessories"].contains(DesignFixtures.route) { WidgetFixtureGallery() }
-        else if ["root", "pending-root"].contains(DesignFixtures.route) { RootView() }
+        else if ["root", "pending-root", "expenses-overview"].contains(DesignFixtures.route) { RootView() }
         else if let job = jobs.first, let invoice = invoices.first {
             NavigationStack {
                 switch DesignFixtures.route {
@@ -178,7 +188,6 @@ struct DesignFixtureScreen: View {
                 case "settings": SettingsView()
                 case "calendar": CalendarSettingsView()
                 case "filters", "filters-dates": RootView().sheet(isPresented: $editorPresented) { JobFiltersView(filter: $filter) }
-                case "link": JobDetailView(job: job).sheet(isPresented: $editorPresented) { BroadcastLinkEditorView(job: job, session: job.activeSessions.first) }
                 default: RootView()
                 }
             }

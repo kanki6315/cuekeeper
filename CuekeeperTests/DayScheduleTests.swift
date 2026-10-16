@@ -115,13 +115,12 @@ final class ScheduleCaptureTests: XCTestCase {
         var row = SessionDraft(job: job)
         row.name = "Qualifying"; row.notes = "PRIVATE_SESSION"
         row.startTime = Date().addingTimeInterval(3600); row.endTime = Date().addingTimeInterval(7200)
-        row.links = [LinkDraft(url: "https://example.com/private-feed")]
         try row.save(in: context, jobID: id)
         var snapshot = try DaySchedule.capture(in: context)
         XCTAssertEqual(snapshot.events.first?.title, "Race weekend")
         XCTAssertEqual(snapshot.sessions.count, 1)
         let data = try XCTUnwrap(String(data: JSONEncoder().encode(snapshot), encoding: .utf8))
-        for secret in ["PRIVATE_NOTES", "PRIVATE_SESSION", "private-feed", "12345"] { XCTAssertFalse(data.contains(secret)) }
+        for secret in ["PRIVATE_NOTES", "PRIVATE_SESSION", "12345"] { XCTAssertFalse(data.contains(secret)) }
         job.client?.name = "Renamed network"
         try context.save()
         XCTAssertEqual(try DaySchedule.capture(in: context).events.first?.client, "Renamed network")

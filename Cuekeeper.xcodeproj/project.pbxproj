@@ -30,6 +30,7 @@
 		3A38BA8A890E9F76C0DB268A /* EventWeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */; };
 		3D34152724DEAC69AD5E7B5C /* EventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C96A98C9B9BAB0D065741A /* EventView.swift */; };
 		3F6B9BDFB7A906E3B4F8D755 /* RecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658D5107A3868AF488F32DDE /* RecoveryTests.swift */; };
+		40CC77A126552FDDBE397EC0 /* EventDetailSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EADBC2E574A8868BC2101485 /* EventDetailSummaryTests.swift */; };
 		41B304D19B61465775986906 /* DesignFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AEB83E7804374638D4D0136 /* DesignFixtures.swift */; };
 		471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42AD7432BF268805135A824 /* CalendarSettingsView.swift */; };
 		4931AA30BA71C6966D2D1CDB /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
@@ -83,6 +84,7 @@
 		BC7F0A4CEFBE7ED67362CE1E /* PreferenceFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */; };
 		BE38B159D7E7F755F31684D0 /* CuekeeperMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */; };
 		BEFE999F70334603E1B2851E /* CalendarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE600824A3A4DC39439FDF0 /* CalendarController.swift */; };
+		C3DF345DEEC1D08BFE9907A0 /* EventDetailSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889BBC22D059E874E9A6D96A /* EventDetailSummary.swift */; };
 		C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C80D913C2F1C3287CFD3DF /* LibraryView.swift */; };
 		C69816F0A57DC9692E3A5354 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 8180F3EBCA27A4ED888D1DB7 /* ZIPFoundation */; };
 		C94502CCC6AD8B533F1DFE7A /* BackupArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4510B4441D5730C579C736AA /* BackupArchive.swift */; };
@@ -203,6 +205,7 @@
 		7AEB83E7804374638D4D0136 /* DesignFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignFixtures.swift; sourceTree = "<group>"; };
 		7B072BFF35B273D519BDDF42 /* CuekeeperV14.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV14.xcdatamodel; sourceTree = "<group>"; };
 		7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignCaptureTests.swift; sourceTree = "<group>"; };
+		889BBC22D059E874E9A6D96A /* EventDetailSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailSummary.swift; sourceTree = "<group>"; };
 		893F1EA4F4B4BB063F301463 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		919618A957BA6EC5BAA77600 /* EventWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeather.swift; sourceTree = "<group>"; };
 		91C80D913C2F1C3287CFD3DF /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
@@ -248,6 +251,7 @@
 		DFCD2035B5EA406A2998B79C /* CuekeeperV10.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV10.xcdatamodel; sourceTree = "<group>"; };
 		E4201CFBC74D97C4425E97FD /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
 		E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaybookStyle.swift; sourceTree = "<group>"; };
+		EADBC2E574A8868BC2101485 /* EventDetailSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailSummaryTests.swift; sourceTree = "<group>"; };
 		EDE600824A3A4DC39439FDF0 /* CalendarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarController.swift; sourceTree = "<group>"; };
 		F26B1DE5EBB870F41896D3CC /* WorkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSession.swift; sourceTree = "<group>"; };
 		F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTests.swift; sourceTree = "<group>"; };
@@ -360,6 +364,7 @@
 				1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */,
 				71531F3273F27F2929AC0EE9 /* CalendarTests.swift */,
 				B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */,
+				EADBC2E574A8868BC2101485 /* EventDetailSummaryTests.swift */,
 				01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */,
 				F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */,
 				5A1A3615096553A427E9202D /* FirstLaunchTests.swift */,
@@ -384,6 +389,7 @@
 				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
 				E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */,
 				7AEB83E7804374638D4D0136 /* DesignFixtures.swift */,
+				889BBC22D059E874E9A6D96A /* EventDetailSummary.swift */,
 				C9C96A98C9B9BAB0D065741A /* EventView.swift */,
 				919618A957BA6EC5BAA77600 /* EventWeather.swift */,
 				6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */,
@@ -650,6 +656,7 @@
 				5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */,
 				C98339F7FD17877747472285 /* CalendarTests.swift in Sources */,
 				9DC58F2C1AE2C2F5D7730D8E /* DayScheduleTests.swift in Sources */,
+				40CC77A126552FDDBE397EC0 /* EventDetailSummaryTests.swift in Sources */,
 				F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */,
 				6F10F9A23FA535E443F05AAB /* ExpenseTests.swift in Sources */,
 				A933C1120214E017ABB6DABE /* FirstLaunchTests.swift in Sources */,
@@ -712,6 +719,7 @@
 				062400846722C32FFC23825F /* DaybookStyle.swift in Sources */,
 				41B304D19B61465775986906 /* DesignFixtures.swift in Sources */,
 				F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */,
+				C3DF345DEEC1D08BFE9907A0 /* EventDetailSummary.swift in Sources */,
 				3D34152724DEAC69AD5E7B5C /* EventView.swift in Sources */,
 				F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */,
 				3A38BA8A890E9F76C0DB268A /* EventWeatherView.swift in Sources */,

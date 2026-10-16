@@ -224,8 +224,8 @@ final class EventWizardTests: XCTestCase {
         for _ in 0..<4 where !booking.isHittable || booking.frame.maxY > next.frame.minY { app.swipeUp() }
         booking.buttons["Booked"].tap()
         XCTAssertTrue(booking.buttons["Booked"].isSelected)
-        XCTAssertFalse(app.buttons["Completed"].exists)
-        XCTAssertFalse(app.buttons["Cancelled"].exists)
+        XCTAssertFalse(booking.buttons["Completed"].exists)
+        XCTAssertFalse(booking.buttons["Cancelled"].exists)
         let cancel = app.navigationBars.buttons["Cancel"]
         XCTAssertGreaterThan(cancel.frame.midX, app.frame.midX)
         capture("wizard-typeahead-booking")

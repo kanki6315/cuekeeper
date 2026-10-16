@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-15T00:40:04.687793+00:00",
+  "generatedAt": "2026-10-16T17:36:04.963612+00:00",
   "title": "Design System: Cuekeeper",
   "extensions": {
     "colorMeta": {
@@ -296,6 +296,22 @@
       "description": "Illustrates the opaque accessibility fallback. Native regular glass, selection and adaptive split-view behavior are authoritative.",
       "html": "<nav class=\"ds-sidebar\" aria-label=\"Main\"><strong>Cuekeeper</strong><a href=\"#upcoming\" aria-current=\"page\">Upcoming</a><a href=\"#events\">Events</a><a href=\"#payments\">Payments</a><a href=\"#settings\">Settings</a></nav>",
       "css": ".ds-sidebar{display:flex;flex-direction:column;gap:8px;margin:10px;padding:20px;background:#fff;color:#073E27;border-radius:26px;font:17px system-ui}.ds-sidebar strong{padding-bottom:12px}.ds-sidebar a{color:inherit;padding:10px;text-decoration:none;border-radius:10px}.ds-sidebar a[aria-current]{background:#073E27;color:#fff}.ds-sidebar a:hover{cursor:pointer}.ds-sidebar a:focus-visible{outline:2px solid #073E27;outline-offset:2px}.ds-sidebar a:active{opacity:.8}"
+    },
+    {
+      "name": "To settle panel",
+      "kind": "panel",
+      "refersTo": "open-items",
+      "description": "Derived open items on the event page; each row has a tinted symbol, title, detail and its own action. Hidden when nothing is open.",
+      "html": "<div class=\"ds-settle\"><p class=\"ds-settle-h\">To settle · 1</p><div class=\"ds-settle-row\"><span class=\"ds-settle-icon\">€</span><span><b>€900 owed</b><br><small>INV-0412 · due Nov 19</small></span><button class=\"ds-primary\">Record payment</button></div></div>",
+      "css": ".ds-settle{background:#fff;border:.5px solid rgba(23,30,25,.16);border-radius:12px;padding:8px 12px 8px 16px;font:15px system-ui;color:#171E19}.ds-settle-h{margin:4px 0;font-size:13px;font-weight:600;color:#626860}.ds-settle-row{display:flex;align-items:center;gap:10px}.ds-settle-row span:nth-child(2){flex:1}.ds-settle-row small{color:#626860}.ds-settle-icon{width:28px;height:28px;border-radius:50%;background:rgba(7,62,39,.1);color:#073E27;display:flex;align-items:center;justify-content:center;font-weight:700}"
+    },
+    {
+      "name": "Next call panel",
+      "kind": "panel",
+      "refersTo": "next-call",
+      "description": "Covered work within seven days: forest fill in light mode, raised surface with mint hairline in dark mode; countdown inside 90 minutes.",
+      "html": "<div class=\"ds-call\"><p>Tomorrow · Practice 1</p><p class=\"ds-call-t\">5:30 AM</p><p>10:30 at the track (BST)</p></div>",
+      "css": ".ds-call{background:#073E27;color:#FAF8F2;border-radius:12px;padding:18px;font:15px system-ui}.ds-call p{margin:4px 0}.ds-call p:first-child{color:#A7DCB4;font-weight:600}.ds-call-t{font-size:34px;font-weight:600}"
     }
   ],
   "narrative": {
@@ -326,7 +342,7 @@
       }
     ],
     "dos": [
-      "**Do** preserve the date-led hierarchy and sessions-before-billing detail order.",
+      "**Do** preserve the date-led hierarchy; event details open on Schedule and promote Money once the event is completed with money still to settle.",
       "**Do** use named appearance-aware color assets and semantic text styles.",
       "**Do** keep USD and EUR separate and show real partial balances and pending schedules.",
       "**Do** retain native controls, navigation and accessibility adaptation.",

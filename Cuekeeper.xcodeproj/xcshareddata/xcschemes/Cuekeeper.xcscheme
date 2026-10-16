@@ -53,7 +53,7 @@
          </TestableReference>
          <TestableReference
             skipped = "NO"
-            parallelizable = "NO">
+            parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "9C7672FB0F82A2EBCBA77A94"
@@ -61,6 +61,20 @@
                BlueprintName = "CuekeeperUITests"
                ReferencedContainer = "container:Cuekeeper.xcodeproj">
             </BuildableReference>
+            <SkippedTests>
+               <Test
+                  Identifier = "DesignCaptureTests">
+               </Test>
+               <Test
+                  Identifier = "DesignSupplementTests">
+               </Test>
+               <Test
+                  Identifier = "EventCaptureTests">
+               </Test>
+               <Test
+                  Identifier = "TodayCaptureTests">
+               </Test>
+            </SkippedTests>
          </TestableReference>
       </Testables>
       <CommandLineArguments>

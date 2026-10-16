@@ -172,8 +172,23 @@ schemes:
       targets:
         Cuekeeper: all
     test:
-      targets: [CuekeeperTests, CuekeeperUITests]
+      targets:
+        - CuekeeperTests
+        # UI test classes run in parallel on simulator clones. Screenshot-only
+        # classes run from the Design Capture scheme instead.
+        - name: CuekeeperUITests
+          parallelizable: true
+          skippedTests: [DesignCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests]
       gatherCoverageData: true
+  Cuekeeper - Design Capture:
+    build:
+      targets:
+        Cuekeeper: all
+    test:
+      targets:
+        - name: CuekeeperUITests
+          parallelizable: true
+          selectedTests: [DesignCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests]
   Cuekeeper - Initialize CloudKit:
     build:
       targets:

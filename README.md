@@ -132,10 +132,18 @@ xcrun simctl install "$SIMULATOR_ID" build/tests/Build/Products/Debug-iphonesimu
 xcrun simctl privacy "$SIMULATOR_ID" grant calendar com.arjunakankipati.cuekeeper
 xcodebuild test-without-building -project Cuekeeper.xcodeproj -scheme Cuekeeper \
   -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+  -parallel-testing-worker-count 4 \
   -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO
 python3 -m unittest discover -s scripts/tests
 ./cloudkit.sh check --local-only
 ```
+
+UI test classes run in parallel on clones of that simulator, so grant Calendar
+access before the first run (clones copy it). Screenshot-only classes
+(`DesignCaptureTests`, `DesignSupplementTests`, `EventCaptureTests`,
+`TodayCaptureTests`) are skipped here; run the `Cuekeeper - Design Capture`
+scheme the same way when reviewing design changes. For a quick loop, add
+`-only-testing:CuekeeperTests` to run just the unit tests.
 
 Without the Calendar grant, the real EventKit integration test skips; a green
 suite alone does not prove that check ran. Repeat the UI suite on an iPad by

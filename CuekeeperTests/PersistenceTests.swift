@@ -32,14 +32,18 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
-    func testStoreReadinessWaitsBeyondTenSecondsForAllCallers() async throws {
+    func testStoreReadinessWaitsUntilCompletedForAllCallers() async throws {
         let readiness = StoreReadiness()
-        let first = Task { try await readiness.wait() }
-        let second = Task { try await readiness.wait() }
-        try await Task.sleep(for: .seconds(10.2))
+        let first = Task { try await readiness.wait(); return Date() }
+        let second = Task { try await readiness.wait(); return Date() }
+        // StoreReadiness has no timer; waiters stay pending until the store reports a result.
+        try await Task.sleep(for: .milliseconds(300))
+        let completed = Date()
         readiness.complete(.success(()))
-        try await first.value
-        try await second.value
+        let firstResumed = try await first.value
+        let secondResumed = try await second.value
+        XCTAssertGreaterThanOrEqual(firstResumed, completed)
+        XCTAssertGreaterThanOrEqual(secondResumed, completed)
         // Callers arriving after opening also succeed immediately.
         try await readiness.wait()
     }

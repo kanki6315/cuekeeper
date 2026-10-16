@@ -92,7 +92,13 @@ struct InvoiceEditorView: View {
             }
             .navigationTitle(invoice == nil ? "Add Invoice" : "Edit Invoice").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if changed { discard = true } else { dismiss() } } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { if changed { discard = true } else { dismiss() } }
+                        .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
+                            Button("Discard Changes", role: .destructive) { dismiss() }
+                            Button("Keep Editing", role: .cancel) {}
+                        }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         do {
@@ -110,9 +116,6 @@ struct InvoiceEditorView: View {
             .onChange(of: draft.value.currency) { _, _ in if !locked { draft.value.lines = []; amounts = [:] } }
             .onChange(of: draft.value.status) { _, status in if status == "sent" && draft.value.sentDay.isEmpty { draft.value.sentDay = Day.string(from: Date()) } }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
-            .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
-                Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
-            }
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

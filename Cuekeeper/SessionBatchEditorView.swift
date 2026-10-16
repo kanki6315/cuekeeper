@@ -91,7 +91,13 @@ struct SessionBatchEditorView: View {
                 } header: { Text("Apply to selected sessions") } footer: { Text("Only enabled changes apply. Moving dates keeps each session’s local times.") }
             }.navigationTitle("Edit Sessions").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if changed { discard = true } else { dismiss() } } }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { if changed { discard = true } else { dismiss() } }
+                            .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
+                                Button("Discard Changes", role: .destructive) { dismiss() }
+                                Button("Keep Editing", role: .cancel) {}
+                            }
+                    }
                     ToolbarItem(placement: .confirmationAction) { Button("Apply") {
                         do {
                             try SessionBatchChange(day: changeDate ? Day.string(from: date) : nil, series: changeSeries ? series : nil, coverage: changeCoverage ? coverage : nil).save(ids: selected, anchorID: anchor.objectID, in: context)
@@ -100,7 +106,6 @@ struct SessionBatchEditorView: View {
                     }.disabled(selected.isEmpty || !changed).accessibilityIdentifier("apply-session-changes") }
                 }
                 .saveErrorAlert($error).interactiveDismissDisabled(changed)
-                .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) { Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {} }
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
     }
 }

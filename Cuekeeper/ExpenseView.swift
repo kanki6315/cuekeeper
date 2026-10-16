@@ -153,7 +153,13 @@ struct ExpenseEditorView: View {
             }
             .navigationTitle(isDraft ? "Receipt" : "Expense").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(isDraft && recordID != nil ? "Keep Draft" : "Close") { close() }.disabled(savingPhoto) }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isDraft && recordID != nil ? "Keep Draft" : "Close") { close() }.disabled(savingPhoto)
+                        .confirmationDialog("Discard your changes?", isPresented: $discard, titleVisibility: .visible) {
+                            Button("Discard Changes", role: .destructive) { dismiss() }
+                            Button("Keep Editing", role: .cancel) {}
+                        }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save(confirmed: true) }.disabled(photo == nil || busy || !conflicts.isEmpty).accessibilityIdentifier("save-expense")
                 }
@@ -198,10 +204,6 @@ struct ExpenseEditorView: View {
             .onDisappear { task?.cancel() }
             .interactiveDismissDisabled(savingPhoto || recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID)
             .saveErrorAlert($error)
-            .confirmationDialog("Discard your changes?", isPresented: $discard, titleVisibility: .visible) {
-                Button("Discard Changes", role: .destructive) { dismiss() }
-                Button("Keep Editing", role: .cancel) {}
-            }
             .confirmationDialog("Read the receipt again?", isPresented: $retry, titleVisibility: .visible) {
                 Button("Read Receipt Again") { extract() }
                 Button("Keep Editing", role: .cancel) {}

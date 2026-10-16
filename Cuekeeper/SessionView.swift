@@ -82,7 +82,13 @@ struct SessionEditorView: View {
             .environment(\.timeZone, zone)
             .navigationTitle(session == nil ? "Add Session" : "Edit Session").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if draft != initial { discard = true } else { dismiss() } } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { if draft != initial { discard = true } else { dismiss() } }
+                        .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
+                            Button("Discard Changes", role: .destructive) { dismiss() }
+                            Button("Keep Editing", role: .cancel) {}
+                        }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         save(another: false)
@@ -90,9 +96,6 @@ struct SessionEditorView: View {
                 }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
-            .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) {
-                Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
-            }
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

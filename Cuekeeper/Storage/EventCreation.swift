@@ -4,7 +4,13 @@ import Foundation
 struct EventOutline: Identifiable, Equatable {
     var id = UUID()
     var details = JobDraft()
-    var timeZoneID = TimeZone.home.identifier
+    /// Sessions keep their wall-clock times when the place changes the zone.
+    var timeZoneID = TimeZone.home.identifier {
+        didSet {
+            guard oldValue != timeZoneID else { return }
+            sessions = sessions.map { $0.rezoned(from: oldValue, to: timeZoneID) }
+        }
+    }
     var usesSharedSeries = true
     var seriesOverrideInitialized = false
     var sessions: [SessionDraft] = []

@@ -41,6 +41,7 @@
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
 		56FD0CB1E2686A2BD6BA0266 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */; };
 		5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */; };
+		5D5DD623104E7B66B2527BEC /* EventDetailComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1263D4943E5C2184F3EADD2 /* EventDetailComponents.swift */; };
 		5D61BFB198A9CC57CF470000 /* ExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69C16751D64E2080FCAD476 /* ExpenseTests.swift */; };
 		5E8FC966E94637F0418E181C /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */; };
 		5EA2B0F8414CAB369A9845D7 /* SessionBatchEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994C44392560A52DE055B755 /* SessionBatchEditorView.swift */; };
@@ -237,6 +238,7 @@
 		C9C96A98C9B9BAB0D065741A /* EventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventView.swift; sourceTree = "<group>"; };
 		CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCreation.swift; sourceTree = "<group>"; };
+		D1263D4943E5C2184F3EADD2 /* EventDetailComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailComponents.swift; sourceTree = "<group>"; };
 		D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferenceFields.swift; sourceTree = "<group>"; };
 		D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchBackupView.swift; sourceTree = "<group>"; };
 		D305E1038A9ABA4A3975A914 /* ReceiptExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptExtractor.swift; sourceTree = "<group>"; };
@@ -389,6 +391,7 @@
 				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
 				E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */,
 				7AEB83E7804374638D4D0136 /* DesignFixtures.swift */,
+				D1263D4943E5C2184F3EADD2 /* EventDetailComponents.swift */,
 				889BBC22D059E874E9A6D96A /* EventDetailSummary.swift */,
 				C9C96A98C9B9BAB0D065741A /* EventView.swift */,
 				919618A957BA6EC5BAA77600 /* EventWeather.swift */,
@@ -719,6 +722,7 @@
 				062400846722C32FFC23825F /* DaybookStyle.swift in Sources */,
 				41B304D19B61465775986906 /* DesignFixtures.swift in Sources */,
 				F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */,
+				5D5DD623104E7B66B2527BEC /* EventDetailComponents.swift in Sources */,
 				C3DF345DEEC1D08BFE9907A0 /* EventDetailSummary.swift in Sources */,
 				3D34152724DEAC69AD5E7B5C /* EventView.swift in Sources */,
 				F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */,

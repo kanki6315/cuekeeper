@@ -117,6 +117,7 @@ extension OpenItem {
     var actionTitle: String {
         switch action {
         case .markBooked: return "Mark booked"
+        case .markCompleted: return "Mark completed"
         case .editSession: return kind == .sessionTime ? "Add time" : kind == .sessionConfirmation ? "Confirm" : "Decide"
         case .editEvent: return "Add client"
         case .openFee: return kind == .feeConflict ? "Review" : "Add fee"
@@ -127,7 +128,7 @@ extension OpenItem {
         }
     }
     /// The step that moves the event forward gets the prominent button.
-    var isPrimary: Bool { kind == .tentativeBooking || kind == .balanceOwed || kind == .readyToInvoice }
+    var isPrimary: Bool { kind == .tentativeBooking || kind == .balanceOwed || kind == .readyToInvoice || kind == .eventOver }
     var needsAttention: Bool { [.tentativeBooking, .feeConflict, .clientDetails, .billingReview, .expenseDraft].contains(kind) }
     var symbol: String {
         switch kind {
@@ -139,6 +140,7 @@ extension OpenItem {
         case .feeConflict, .feeUnknown, .readyToInvoice, .balanceOwed: return "banknote"
         case .invoiceDraft, .billingReview: return "doc.text"
         case .expenseDraft: return "receipt"
+        case .eventOver: return "checkmark"
         }
     }
 }
@@ -210,6 +212,8 @@ struct NextCallPanel: View {
     let showsYourTime: Bool
     var series: [String] = []
     var weather: String? = nil
+    /// Names the event when the panel sits outside the event's own page.
+    var subtitle: String? = nil
     @Environment(\.colorScheme) private var scheme
     private static let mint = Color(red: 167 / 255, green: 220 / 255, blue: 180 / 255)
     private var fill: Color { scheme == .dark ? Color("SurfaceBackground") : Color.accentColor }
@@ -225,6 +229,7 @@ struct NextCallPanel: View {
                     Spacer(minLength: 8)
                     if let weather { Text(weather).font(.subheadline).foregroundStyle(secondary) }
                 }
+                if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(secondary).padding(.top, -8) }
                 if let countdown = countdown(now: context.date) {
                     Text(countdown).font(.largeTitle.weight(.semibold)).monospacedDigit().foregroundStyle(primary)
                     Text(callAndAir).font(.subheadline).foregroundStyle(secondary)
@@ -328,7 +333,9 @@ struct RunOfShowRow: View {
     /// Series every session shares; a session's own series shows only when it differs.
     var eventSeries: [String] = []
     var onAddTime: (() -> Void)? = nil
-    @ScaledMetric(relativeTo: .body) private var timeWidth = 76
+    /// Leads the subtitle when rows from several events share one run of show.
+    var context: String? = nil
+    @ScaledMetric(relativeTo: .body) private var timeWidth = 90
     @Environment(\.dynamicTypeSize) private var typeSize
     private var skipped: Bool { session.coverage == "notCovering" }
 
@@ -357,6 +364,7 @@ struct RunOfShowRow: View {
     @ViewBuilder private var time: some View {
         if let start = session.start {
             Text(EventTimeText.time(start, in: zone)).font(.headline.weight(skipped ? .regular : .semibold)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.8)
                 .frame(width: typeSize.isAccessibilitySize ? nil : timeWidth, alignment: .leading)
         } else {
             Text("TBC").font(.footnote.weight(.semibold)).foregroundStyle(Color("AmberText"))
@@ -366,8 +374,8 @@ struct RunOfShowRow: View {
         }
     }
     private var subtitle: String? {
-        if skipped { return "Not covering" }
-        var parts: [String] = []
+        if skipped { return [context, "Not covering"].compactMap { $0 }.joined(separator: " · ") }
+        var parts: [String] = context.map { [$0] } ?? []
         if session.start == nil || !session.confirmed { parts.append("Tentative") }
         if session.coverage == "undecided" { parts.append("coverage undecided") }
         if let call = session.call { parts.append("Call " + EventTimeText.time(call, in: zone)) }

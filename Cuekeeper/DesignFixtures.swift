@@ -43,6 +43,15 @@ enum DesignFixtures {
             let id = try draft.save(in: context)
             created.append(try context.existingObject(with: id) as! Job)
         }
+        if ProcessInfo.processInfo.arguments.contains("--upcoming-past-fixture") {
+            // A booked event that has ended, so Upcoming asks to mark it completed.
+            let day = start.addingTimeInterval(-2 * 86400)
+            var past = JobDraft(name: "Cup replay", startDate: day, endDate: day)
+            past.clientName = "Northside Sports"; past.roleNames = ["Commentator"]; past.bookingStatus = .booked
+            past.timeZoneID = TimeZone.current.identifier
+            past.fee?.amount = "300"; past.fee?.agreement = "agreed"
+            _ = try past.save(in: context)
+        }
         if ["expense", "pending-expenses", "expense-notification", "pending-root", "expenses-overview"].contains(route) {
             let format = UIGraphicsImageRendererFormat(); format.scale = 1
             let image = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 700), format: format).image { renderer in

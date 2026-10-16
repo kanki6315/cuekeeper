@@ -89,11 +89,25 @@ struct ExpenseEventSelection: View {
     @Environment(\.dismiss) private var dismiss
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)], predicate: NSPredicate(format: "deletedAt == nil")) private var jobs: FetchedResults<Job>
     @State private var search = ""
+    /// Events in flight, offered first so a receipt from today's work is one tap away.
+    var suggested: [Job] = []
     let select: (NSManagedObjectID) -> Void
     var body: some View {
         NavigationStack {
             List {
                 if jobs.isEmpty { Text("Create an event from Upcoming, then return here to choose it.") }
+                if search.isEmpty && !suggested.isEmpty {
+                    Section("In flight") {
+                        ForEach(suggested, id: \.objectID) { job in
+                            Button { select(job.objectID) } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(job.eventTitle).font(.headline)
+                                    Text([job.client?.name, job.eventStartDay].compactMap { $0 }.joined(separator: " · ")).font(.subheadline)
+                                }.frame(minHeight: 44)
+                            }.accessibilityIdentifier("choose-expense-suggested-row")
+                        }
+                    }
+                }
                 ForEach(jobs.filter { search.isEmpty || $0.eventTitle.localizedCaseInsensitiveContains(search) || ($0.client?.name ?? "").localizedCaseInsensitiveContains(search) }, id: \.objectID) { job in
                     Button { select(job.objectID) } label: {
                         VStack(alignment: .leading, spacing: 4) {

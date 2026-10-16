@@ -5,15 +5,17 @@ final class TodayTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 15))
-        app.buttons["upcoming-scope-All"].tap()
-        XCTAssertTrue(app.textFields["search-jobs"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["upcoming-mode-now"].isSelected)
+        app.buttons["upcoming-mode-plan"].tap()
+        XCTAssertTrue(app.staticTexts["Coming up"].firstMatch.waitForExistence(timeout: 3))
         XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["upcoming-mode-now"].isSelected)
         app.staticTexts["Qualifying"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Qualifying"].waitForExistence(timeout: 3))
         XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
     }
     func testTodayLinkPreservesWizardUntilUserClosesIt() {
         continueAfterFailure = false
@@ -34,7 +36,7 @@ final class TodayTests: XCTestCase {
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.buttons["Discard Draft"].waitForExistence(timeout: 3))
         app.buttons["Discard Draft"].tap()
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
     }
 
     func testTodayLinkWaitsForSessionEditorBeforePoppingDetail() {
@@ -56,7 +58,7 @@ final class TodayTests: XCTestCase {
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.buttons["Discard Changes"].waitForExistence(timeout: 3))
         app.buttons["Discard Changes"].tap()
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
     }
 
     func testFirstEventWizardSurvivesIncomingEventAndRotation() {
@@ -76,7 +78,6 @@ final class TodayTests: XCTestCase {
         XCTAssertTrue(next.waitForExistence(timeout: 5))
         XCUIDevice.shared.orientation = .portrait
         app.buttons["Cancel"].tap()
-        app.buttons["upcoming-scope-All"].tap()
         XCTAssertTrue(app.staticTexts["Arrived from another device"].firstMatch.waitForExistence(timeout: 5))
     }
 
@@ -138,7 +139,7 @@ final class TodayTests: XCTestCase {
         XCUIDevice.shared.orientation = tablet ? .landscapeLeft : .portrait
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures", "--design-screen=root"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["Qualifying"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)
         // Scrolling to later sessions is checked on iPhone only, as in TodayCaptureTests.
@@ -150,19 +151,19 @@ final class TodayTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Evening review"].waitForExistence(timeout: 3))
     }
 
-    func testUpcomingScopeSelection() {
+    func testUpcomingModeSelection() {
         continueAfterFailure = false
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=root"]
         app.launch()
-        let week = app.buttons["upcoming-scope-Week"]
-        let all = app.buttons["upcoming-scope-All"]
-        XCTAssertTrue(week.waitForExistence(timeout: 10))
-        week.tap()
-        XCTAssertTrue(week.isSelected)
-        all.tap()
-        XCTAssertTrue(all.isSelected)
+        let plan = app.buttons["upcoming-mode-plan"]
+        let now = app.buttons["upcoming-mode-now"]
+        XCTAssertTrue(plan.waitForExistence(timeout: 10))
+        plan.tap()
+        XCTAssertTrue(plan.isSelected)
+        now.tap()
+        XCTAssertTrue(now.isSelected)
         XCTAssertTrue(app.buttons["add-job"].isHittable)
     }
 }

@@ -292,6 +292,7 @@ final class CalendarTests: XCTestCase {
         XCTAssertEqual(events().count, 1, controller.status)
         let originalID = try XCTUnwrap(events().first?.eventIdentifier)
         XCTAssertEqual(events().first?.isAllDay, true)
+        XCTAssertEqual(events().first?.alarms ?? [], [])
         XCTAssertNil(events().first?.timeZone)
         XCTAssertEqual(events().first?.startDate, Day.date(from: job.startDay, timeZone: .current))
         let lastDay = try XCTUnwrap(Day.date(from: job.endDay, timeZone: .current))

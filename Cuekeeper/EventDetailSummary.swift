@@ -85,9 +85,12 @@ struct OpenItem: Equatable, Identifiable {
     enum Kind: String, Equatable {
         case tentativeBooking, sessionTime, sessionConfirmation, sessionCoverage, clientMissing
         case feeConflict, feeUnknown, clientDetails, readyToInvoice, invoiceDraft, balanceOwed, billingReview, expenseDraft
+        /// Raised by Upcoming only: a booked or tentative event whose last day has passed.
+        case eventOver
     }
     enum Action: Equatable {
         case markBooked
+        case markCompleted
         case editSession(UUID)
         case editEvent
         case openFee

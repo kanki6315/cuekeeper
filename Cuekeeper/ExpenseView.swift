@@ -3,6 +3,118 @@ import PhotosUI
 import SwiftUI
 import VisionKit
 
+struct ExpensesView: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Expense.createdAt, ascending: false)]) private var expenses: FetchedResults<Expense>
+    // Observe event changes too, including deletion/restoration and renamed clients.
+    @FetchRequest(sortDescriptors: []) private var jobs: FetchedResults<Job>
+    @FetchRequest(sortDescriptors: []) private var clients: FetchedResults<Client>
+    @State private var scope = "All"
+    @State private var selected: Expense?
+    @State private var choosingEvent = false
+    @State private var captureJob: Job?
+
+    private var visibleExpenses: [Expense] {
+        _ = jobs.count + clients.count
+        return expenses.filter { expense in
+            let value = expense.value
+            let matchesScope = scope == "All" || (scope == "Saved" ? !expense.isDraft : expense.isDraft)
+            return value.discarded != true && matchesScope
+        }.sorted {
+            let lhs = $0.value.day, rhs = $1.value.day
+            if lhs != rhs { return lhs > rhs }
+            return ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast)
+        }
+    }
+
+    var body: some View {
+        let records = visibleExpenses
+        DaybookForm(topPadding: 12) {
+            Section {
+                DaybookTabHeader {
+                    Button("Scan Receipt", systemImage: "doc.viewfinder") { choosingEvent = true }
+                        .buttonStyle(DaybookPrimaryButton())
+                        .accessibilityIdentifier("scan-receipt-overview")
+                }
+            }.containerValue(\.daybookUnframed, true)
+                .containerValue(\.daybookFlushTop, true)
+            Section {
+                DaybookSegments(title: "Show expenses", selection: $scope,
+                                options: ["All", "Saved", "Needs review"],
+                                identifier: "expense-scope", label: { $0 })
+            }.containerValue(\.daybookUnframed, true)
+            Section { PendingExpensesPrompt() }
+            if records.isEmpty {
+                Section {
+                    ContentUnavailableView("No expenses to show", systemImage: "receipt",
+                        description: Text(scope == "All"
+                            ? "Scan a receipt to record an expense for an event. Captured payment drafts appear here too."
+                            : "Choose a different expense filter."))
+                }
+            } else {
+                Section {
+                    ForEach(records, id: \.objectID) { expense in
+                        if expense.job?.deletedAt != nil {
+                            expenseRow(expense)
+                        } else {
+                            Button { selected = expense } label: { expenseRow(expense) }
+                                .accessibilityIdentifier("all-expense-row")
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("").navigationBarTitleDisplayMode(.inline)
+        .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
+        .sheet(item: $selected) { ExpenseEditorView(expense: $0) }
+        .sheet(isPresented: $choosingEvent, onDismiss: {
+            if let job = captureJob { selectedCaptureJob = job; captureJob = nil }
+        }) {
+            ExpenseEventSelection { id in
+                captureJob = jobs.first { $0.objectID == id }
+                choosingEvent = false
+            }
+        }
+        .sheet(isPresented: Binding(get: { selectedCaptureJob != nil }, set: { if !$0 { selectedCaptureJob = nil } })) {
+            if let job = selectedCaptureJob { ExpenseEditorView(job: job) }
+        }
+    }
+
+    @State private var selectedCaptureJob: Job?
+
+    private func expenseRow(_ expense: Expense) -> some View {
+        let value = expense.value
+        let headingLayout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+        return VStack(alignment: .leading, spacing: 4) {
+            headingLayout {
+                Text(value.merchant.isEmpty ? "Expense to complete" : value.merchant)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let amount = try? Money.parse(value.amount), !value.currency.isEmpty {
+                    Text(Money.format(amount, currency: value.currency))
+                        .font(.subheadline.weight(.semibold)).monospacedDigit()
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+            }
+            Text([expense.job?.eventTitle ?? "Event to choose", expense.job?.client?.name]
+                .compactMap { $0 }.joined(separator: " · "))
+                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Text([expense.isDraft ? "Needs review" : "", value.day, value.category,
+                  value.reimbursable ? "Reimbursable" : ""]
+                .filter { !$0.isEmpty }.joined(separator: " · "))
+                .font(.caption)
+                .foregroundStyle(Color(expense.isDraft ? "AmberText" : "SecondaryText"))
+            if expense.job?.deletedAt != nil {
+                Text("Deleted event · Restore the event in Settings to open this expense.")
+                    .font(.caption).foregroundStyle(Color("SecondaryText"))
+            }
+        }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    }
+}
+
 struct EventExpensesSection: View {
     @ObservedObject var job: Job
     @FetchRequest private var expenses: FetchedResults<Expense>

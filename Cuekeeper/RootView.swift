@@ -3,13 +3,14 @@ import SwiftUI
 import WebKit
 
 private enum AppSection: String, CaseIterable, Identifiable {
-    case upcoming = "Upcoming", jobs = "Events", payments = "Payments", settings = "Settings"
+    case upcoming = "Upcoming", jobs = "Events", payments = "Payments", expenses = "Expenses", settings = "Settings"
     var id: String { rawValue }
     var symbol: String {
         switch self {
         case .upcoming: "calendar"
         case .jobs: "text.book.closed"
         case .payments: "creditcard"
+        case .expenses: "receipt"
         case .settings: "gearshape"
         }
     }
@@ -67,6 +68,14 @@ struct RootView: View {
             }
         }
             }
+        #if DEBUG
+        .onAppear {
+            if DesignFixtures.enabled && DesignFixtures.route == "expenses-overview" {
+                selection = .expenses
+                selectedTab = .expenses
+            }
+        }
+        #endif
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CuekeeperOpenToday"))) { _ in
             todayNavigationID = UUID()
             selectedJob = nil
@@ -109,6 +118,7 @@ struct RootView: View {
         case .upcoming: JobsView(upcomingOnly: true)
         case .jobs: JobsView(upcomingOnly: false)
         case .payments: PaymentsView()
+        case .expenses: ExpensesView()
         case .settings: SettingsView()
         }
     }

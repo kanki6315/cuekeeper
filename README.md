@@ -541,3 +541,14 @@ iCloud operations remain indeterminate. Preparation/read cancellation leaves
 the daybook unchanged. Restore and cloud commit do not offer cancellation.
 The tests exercise corrupt/missing/unexpected files, limits, cancellation,
 merge behavior and a 128 MiB receipt round trip beyond the old limit.
+
+### All expenses
+
+Expenses is a dedicated iPhone tab and iPad sidebar destination. It shows saved
+expenses and drafts across events, newest receipt date first, with All, Saved and
+Needs review filters.
+Each row keeps its original currency and opens the existing receipt editor.
+Scan Receipt starts with event selection; Expenses to complete retains draft
+completion and removal. Removed drafts stay hidden. Expenses retained with deleted
+events remain listed with a restore instruction and cannot be edited until the
+event is restored in Settings. This navigation change adds no storage schema.

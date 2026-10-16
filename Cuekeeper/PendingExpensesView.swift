@@ -79,7 +79,7 @@ struct ExpenseEventSelection: View {
     var body: some View {
         NavigationStack {
             List {
-                if jobs.isEmpty { Text("Create an event from Upcoming, then return to this draft. Your expense stays saved.") }
+                if jobs.isEmpty { Text("Create an event from Upcoming, then return here to choose it.") }
                 ForEach(jobs.filter { search.isEmpty || $0.eventTitle.localizedCaseInsensitiveContains(search) || ($0.client?.name ?? "").localizedCaseInsensitiveContains(search) }, id: \.objectID) { job in
                     Button { select(job.objectID) } label: {
                         VStack(alignment: .leading, spacing: 4) {
@@ -108,7 +108,7 @@ struct ExpenseNotificationView: View {
             if let expense = expenses.first, expense.needsCompletion { ExpenseEditorView(expense: expense) }
             else {
                 NavigationStack {
-                    ContentUnavailableView("Expense already handled or unavailable", systemImage: "tray", description: Text("Check Expenses to complete in Payments for your remaining drafts."))
+                    ContentUnavailableView("Expense already handled or unavailable", systemImage: "tray", description: Text("Open the Expenses tab for your remaining drafts."))
                         .toolbar { Button("Done") { dismiss() } }
                 }
             }

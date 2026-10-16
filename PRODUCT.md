@@ -18,7 +18,7 @@ Track freelance engagements from tentative booking through completed work and pa
 - Calendar placeholders remain alongside eligible confirmed, covering sessions.
 - Local offline storage and iCloud sync; recovery and export remain separate from sync.
 - USD and EUR balances stay separate. Invoice balances are authoritative for grouped jobs and partial payments.
-- Primary navigation: Upcoming, Events, Payments, Settings. iPad uses a sidebar.
+- Primary navigation: Upcoming, Events, Payments, Expenses, Settings. iPad uses a sidebar.
 - Invoice tracking only; no document generation, sending, banking, tax calculations, or currency conversion.
 
 ## Product Principles
@@ -38,7 +38,7 @@ User supplied Broadcast Work Tracker product specification in Product Specificat
 
 ## Current implementation — October 14, 2026
 
-Current source uses Upcoming, Events, Payments and Settings with consistent brand
+Current source uses Upcoming, Events, Payments, Expenses and Settings with consistent brand
 headers, native segmented agenda scopes and a single-client event editor. Saved
 client/championship typeaheads and adaptive short-choice controls support capture.
 The event owns session timezones; remote/hybrid work can display a second timezone.

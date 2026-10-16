@@ -91,7 +91,7 @@ struct SiriEventEntity {
     @MainActor init(event: WorkEvent) throws {
         guard let id = event.id else { throw RecordError.invalid("The saved event has no identifier.") }
         self.id = id; calendar = .daybook; title = event.title
-        let zone = TimeZone(identifier: event.timeZoneID) ?? .current
+        let zone = TimeZone.effective(event.timeZoneID)
         startDate = Day.date(from: event.startDay, timeZone: zone) ?? Date()
         var civil = Calendar(identifier: .gregorian); civil.timeZone = zone
         let last = Day.date(from: event.endDay, timeZone: zone) ?? startDate

@@ -22,7 +22,7 @@ struct SessionBatchChange {
             guard session.deletedAt == nil, let job = session.job, bookings.contains(job.objectID) else { throw RecordError.invalid("A selected session changed. Close this editor and select the sessions again.") }
             if let day {
                 // Shift all timed fields together in the event timezone (DST included).
-                let zone = TimeZone(identifier: session.eventTimeZoneID) ?? .current
+                let zone = TimeZone.effective(session.eventTimeZoneID)
                 var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
                 guard let destination = Day.date(from: day, timeZone: zone) else { throw RecordError.invalid("Choose a valid date.") }
                 let source = session.startTime.map { calendar.startOfDay(for: $0) } ?? Day.date(from: session.day, timeZone: zone)

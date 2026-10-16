@@ -52,7 +52,7 @@ struct CuekeeperApp: App {
         #if DEBUG
         if ProcessInfo.processInfo.isUITesting, arguments.contains("--reset-test-store") {
             UserDefaults.standard.set(arguments.contains("--today-fixtures") ? "Today" : "All", forKey: "upcoming.scope")
-            for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "appearance", "defaultCurrency", "displayCurrencies", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
+            for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "homeLocation", "appearance", "defaultCurrency", "displayCurrencies", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
                 UserDefaults.standard.removeObject(forKey: key)
             }
         }

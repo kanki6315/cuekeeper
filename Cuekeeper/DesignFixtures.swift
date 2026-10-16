@@ -142,7 +142,6 @@ struct DesignFixtureScreen: View {
         filter.usesDates = DesignFixtures.route == "filters-dates"
         return filter
     }()
-    @State private var zone = "Europe/London"
     @State private var editorPresented = true
     var body: some View {
         if ["widgets", "accessories"].contains(DesignFixtures.route) { WidgetFixtureGallery() }
@@ -189,7 +188,6 @@ struct DesignFixtureScreen: View {
                 case "settings": SettingsView()
                 case "calendar": CalendarSettingsView()
                 case "filters", "filters-dates": RootView().sheet(isPresented: $editorPresented) { JobFiltersView(filter: $filter) }
-                case "timezone": TimeZonePicker(selection: $zone)
                 default: RootView()
                 }
             }

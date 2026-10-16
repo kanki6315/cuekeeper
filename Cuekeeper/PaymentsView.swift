@@ -11,6 +11,7 @@ struct PaymentsView: View {
     @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
     @AppStorage("displayCurrencies") private var displayCurrencies = CurrencyPreferences.defaultDisplay
     private var currencies: [String] { CurrencyPreferences.displayed(displayCurrencies) }
+    @ScaledMetric(relativeTo: .subheadline) private var totalsLabelWidth = 96
     @State private var adding = false
     var body: some View {
         // Revision arrivals must refresh eligibility even when job rows do not change.
@@ -29,11 +30,11 @@ struct PaymentsView: View {
                 .containerValue(\.daybookFlushTop, true)
             Section { PendingExpensesPrompt(alwaysVisible: true) }
             Section {
-                if typeSize.isAccessibilitySize || currencies.count > 2 {
+                if typeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 20) {
                         ForEach(0..<3) { kind in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(["Expected booking fees", "Invoiced outstanding", "Payments received"][kind]).font(.headline)
+                                Text(["Expected", "Invoiced", "Received"][kind]).font(.headline)
                                 ForEach(currencies, id: \.self) { code in
                                     Text("\(code) · \(total(code, kind: kind))").monospacedDigit()
                                 }
@@ -41,18 +42,12 @@ struct PaymentsView: View {
                         }
                     }
                 } else {
-                Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 16) {
-                    GridRow { Text(""); ForEach(currencies, id: \.self) { Text($0) } }.font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
-                    ForEach(0..<3) { kind in
-                        if kind > 0 { Divider().gridCellColumns(currencies.count + 1) }
-                        GridRow {
-                            Text(["Expected booking fees", "Invoiced outstanding", "Payments received"][kind]).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
-                            ForEach(currencies, id: \.self) { code in
-                                Text(total(code, kind: kind)).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
-                            }
-                        }.font(.subheadline)
+                    ViewThatFits(in: .horizontal) {
+                        totalsTable
+                        ScrollView(.horizontal) {
+                            totalsTable.fixedSize(horizontal: true, vertical: true)
+                        }
                     }
-                }.fixedSize(horizontal: false, vertical: true)
                 }
             }
             if invoices.contains(where: { $0.issue(in: context, index: index) != nil }) || jobs.contains(where: { $0.deletedAt == nil && (try? $0.currentFee()) == nil }) {
@@ -116,6 +111,24 @@ struct PaymentsView: View {
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
         .sheet(isPresented: $adding) { InvoiceEditorView() }
     }
+    private var totalsTable: some View {
+        Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 16) {
+            GridRow { Text(""); ForEach(currencies, id: \.self) { Text($0) } }.font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+            ForEach(0..<3) { kind in
+                if kind > 0 { Divider().gridCellColumns(currencies.count + 1) }
+                GridRow {
+                    Text(["Expected", "Invoiced", "Received"][kind])
+                        .font(.subheadline)
+                        .frame(width: sizeClass == .compact ? totalsLabelWidth : nil, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(currencies, id: \.self) { code in
+                        Text(total(code, kind: kind)).fixedSize(horizontal: true, vertical: false).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
+                    }
+                }.font(.subheadline)
+            }
+        }.fixedSize(horizontal: false, vertical: true)
+    }
+
     private func readyJobs(index: InvoiceIndex) -> [Job] {
         jobs.filter { $0.deletedAt == nil && $0.bookingStatus != "cancelled" && $0.client != nil && (try? $0.activeInvoices(in: context, index: index).isEmpty) == true && (try? $0.directPaid()) == 0 && (try? $0.currentFee().amount) != nil }
     }

@@ -44,6 +44,16 @@ final class Job: NSManagedObject {
 /// "1 session", "2 sessions".
 func counted(_ n: Int, _ one: String, _ many: String) -> String { "\(n) \(n == 1 ? one : many)" }
 
+extension TimeZone {
+    /// The zone of the user's home location, used whenever an event has no zone of its own.
+    static var home: TimeZone {
+        UserDefaults.standard.string(forKey: "homeTimeZone").flatMap(TimeZone.init(identifier:)) ?? .current
+    }
+
+    /// A stored zone when valid, otherwise the home zone.
+    static func effective(_ identifier: String) -> TimeZone { TimeZone(identifier: identifier) ?? .home }
+}
+
 /// Placeholder dates are civil dates, not UTC instants. Device travel must not move them.
 enum Day {
     static func string(from date: Date, timeZone: TimeZone = .current) -> String {
@@ -142,6 +152,7 @@ struct JobDraft: Equatable {
     }
     var roleNames: Set<String> = []
     var workArrangement = WorkArrangement.unspecified
+    var worksRemotely: Bool { workArrangement == .remote || workArrangement == .hybrid }
     var location = ""
     var trackPlaceID = ""
     var timeZoneID = ""

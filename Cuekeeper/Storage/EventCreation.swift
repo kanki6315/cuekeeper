@@ -4,7 +4,7 @@ import Foundation
 struct EventOutline: Identifiable, Equatable {
     var id = UUID()
     var details = JobDraft()
-    var timeZoneID = ""
+    var timeZoneID = TimeZone.home.identifier
     var usesSharedSeries = true
     var seriesOverrideInitialized = false
     var sessions: [SessionDraft] = []
@@ -36,15 +36,15 @@ struct EventCreationDraft: Equatable {
             if event.usesSharedSeries { result.details.seriesNames = shared.seriesNames }
             result.details.roleNames = shared.roleNames
             result.details.workArrangement = shared.workArrangement
-            result.details.timeZoneID = [.remote, .hybrid].contains(shared.workArrangement) ? shared.timeZoneID : event.timeZoneID
+            // An event without a zone uses the home zone, and saving persists it.
+            let zone = TimeZone.effective(event.timeZoneID)
+            result.timeZoneID = zone.identifier
+            result.details.timeZoneID = shared.worksRemotely ? shared.timeZoneID : zone.identifier
             result.sessions = event.sessions.map { session in
-                var value = session; value.timeZoneID = event.timeZoneID
-                if let start = value.startTime, let zone = TimeZone(identifier: event.timeZoneID) {
-                    value.day = Day.string(from: start, timeZone: zone)
-                }
+                var value = session; value.timeZoneID = zone.identifier
+                if let start = value.startTime { value.day = Day.string(from: start, timeZone: zone) }
                 return value
             }
-            if result.details.location.isEmpty { result.details.location = shared.location; result.details.trackPlaceID = shared.trackPlaceID }
             result.details.bookingStatus = shared.bookingStatus
             result.details.fee = shared.fee
             return result
@@ -61,12 +61,17 @@ struct EventCreationDraft: Equatable {
                 guard event.timeZoneID.isEmpty || TimeZone(identifier: event.timeZoneID) != nil else { throw JobDraft.ValidationError.invalidTimeZone }
                 var booking = event.details
                 booking.name = ""
+                // The venue belongs to the event; remote and hybrid bookings keep where the user works.
+                if shared.worksRemotely {
+                    booking.location = shared.location; booking.trackPlaceID = ""
+                }
                 let job = try booking.stage(in: writer)
                 let grouped = WorkEvent(entity: NSEntityDescription.entity(forEntityName: "WorkEvent", in: writer)!, insertInto: writer)
                 grouped.id = UUID(); grouped.ownerJobID = job.id
                 grouped.title = event.displayTitle
                 grouped.startDay = job.startDay; grouped.endDay = job.endDay
-                grouped.location = job.location; grouped.trackPlaceID = job.trackPlaceID
+                grouped.location = event.details.location.trimmingCharacters(in: .whitespacesAndNewlines)
+                grouped.trackPlaceID = event.details.trackPlaceID
                 grouped.timeZoneID = event.timeZoneID; grouped.notes = event.notes
                 job.event = grouped
                 try writer.obtainPermanentIDs(for: [job, grouped])
@@ -99,6 +104,23 @@ struct EventCreationDraft: Equatable {
     }
 }
 
+/// Zones follow the most recently chosen place. Lookups can finish out of order,
+/// so a result applies only if no newer choice or edit happened since it began.
+struct PlaceSelection: Equatable {
+    private(set) var revision = 0
+    private(set) var pending = false
+    private(set) var failed = false
+
+    mutating func begin() -> Int { revision += 1; pending = true; failed = false; return revision }
+    mutating func cancel() { revision += 1; pending = false; failed = false }
+    /// Returns the zone to apply, or nil when the result is stale or missing.
+    mutating func finish(_ token: Int, zone: TimeZone?) -> TimeZone? {
+        guard token == revision else { return nil }
+        pending = false; failed = zone == nil
+        return zone
+    }
+}
+
 extension SessionDraft {
     /// Preserve local clock times across daylight-saving changes, rejecting nonexistent times.
     func copied(from sourceDate: Date, to destinationDate: Date, includingTimes: Bool, destinationTimeZoneID: String? = nil) throws -> SessionDraft {
@@ -111,7 +133,7 @@ extension SessionDraft {
             return copy
         }
         try validate()
-        let zone = TimeZone(identifier: timeZoneID) ?? .current
+        let zone = TimeZone.effective(timeZoneID)
         var civil = Calendar(identifier: .gregorian); civil.timeZone = TimeZone(secondsFromGMT: 0)!
         let source = Day.date(from: Day.string(from: sourceDate), timeZone: civil.timeZone)!
         let destination = Day.date(from: Day.string(from: destinationDate), timeZone: civil.timeZone)!

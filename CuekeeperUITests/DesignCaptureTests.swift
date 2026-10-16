@@ -7,7 +7,7 @@ final class DesignCaptureTests: XCTestCase {
         let app = XCUIApplication()
         let tablet = UIDevice.current.userInterfaceIdiom == .pad
         XCUIDevice.shared.orientation = tablet ? .landscapeLeft : .portrait
-        let routes = ["root", "job", "add-job", "edit-job", "session", "edit-session", "fee", "edit-fee", "payments", "invoice", "edit-invoice", "payment", "client", "project", "series", "clients", "settings", "calendar", "filters", "timezone", "link"]
+        let routes = ["root", "job", "add-job", "edit-job", "session", "edit-session", "fee", "edit-fee", "payments", "invoice", "edit-invoice", "payment", "client", "project", "series", "clients", "settings", "calendar", "filters", "link"]
         for theme in ["light", "dark"] {
         for route in routes {
             app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=\(route)"] + (theme == "dark" ? ["--design-dark"] : [])

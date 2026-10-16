@@ -28,7 +28,7 @@ final class FirstLaunchTests: XCTestCase {
         XCTAssertEqual(draft.shared.fee?.currency, "EUR")
         XCTAssertEqual(LibraryDraft().currency, "EUR")
         XCTAssertEqual(draft.shared.timeZoneID, "America/New_York")
-        XCTAssertEqual(draft.events[0].timeZoneID, "")
+        XCTAssertEqual(draft.events[0].timeZoneID, "America/New_York")
         draft.events[0].timeZoneID = "Europe/London"
         draft.shared.workArrangement = .remote
         XCTAssertEqual(draft.resolvedEvents()[0].details.timeZoneID, "America/New_York")

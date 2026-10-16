@@ -163,9 +163,89 @@ struct LibraryTypeaheadField: View {
     }
 }
 
+struct PlaceSuggestion {
+    let title: String
+    let subtitle: String
+    var completion: MKLocalSearchCompletion? = nil
+    var fixtureZoneID: String? = nil
+    var text: String { [title, subtitle].filter { !$0.isEmpty }.joined(separator: ", ") }
+
+    #if DEBUG
+    static let fixtures = [
+        PlaceSuggestion(title: "Vancouver Convention Centre", subtitle: "Vancouver, BC, Canada", fixtureZoneID: "America/Vancouver"),
+        PlaceSuggestion(title: "Silverstone Circuit", subtitle: "Towcester, England", fixtureZoneID: "Europe/London"),
+        PlaceSuggestion(title: "Daytona International Speedway", subtitle: "Daytona Beach, FL, United States", fixtureZoneID: "America/New_York"),
+    ]
+    #endif
+}
+
+@MainActor
+enum PlaceZone {
+    static func resolve(_ suggestion: PlaceSuggestion) async throws -> TimeZone? {
+        #if DEBUG
+        if let id = suggestion.fixtureZoneID {
+            let delay = ProcessInfo.processInfo.arguments.contains("--slow-location-fixtures") ? 3000 : 300
+            try await Task.sleep(for: .milliseconds(delay))
+            return TimeZone(identifier: id)
+        }
+        #endif
+        guard let completion = suggestion.completion else { return nil }
+        return try await MKLocalSearch(request: MKLocalSearch.Request(completion: completion)).start().mapItems.first?.timeZone
+    }
+
+    static func resolve(query: String) async throws -> TimeZone? {
+        let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        #if DEBUG
+        if ProcessInfo.processInfo.isUITesting {
+            return PlaceSuggestion.fixtures.first { $0.text.localizedCaseInsensitiveContains(text) }?.fixtureZoneID.flatMap(TimeZone.init(identifier:))
+        }
+        #endif
+        let request = MKLocalSearch.Request(); request.naturalLanguageQuery = text
+        return try await MKLocalSearch(request: request).start().mapItems.first?.timeZone
+    }
+
+    static func resolve(trackPlaceID: String) async throws -> TimeZone? {
+        try await TrackLookup.shared.resolve(trackPlaceID).timeZone
+    }
+
+    /// Nil on failure or after the timeout; the caller keeps the previous zone.
+    static func withTimeout(_ lookup: @escaping @MainActor () async throws -> TimeZone?) async -> TimeZone? {
+        await withTaskGroup(of: TimeZone?.self) { group in
+            group.addTask { @MainActor in try? await lookup() }
+            group.addTask { try? await Task.sleep(for: .seconds(10)); return nil }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+    }
+}
+
+/// Tracks every place-to-zone lookup on one screen, keyed by what it sets.
+@MainActor
+final class PlaceZones: ObservableObject {
+    @Published private var selections: [String: PlaceSelection] = [:]
+    var pending: Bool { selections.values.contains(where: \.pending) }
+    func pending(_ key: String) -> Bool { selections[key]?.pending ?? false }
+    func failed(_ key: String) -> Bool { selections[key]?.failed ?? false }
+
+    func choose(_ key: String, apply: @escaping (String) -> Void, lookup: @escaping @MainActor () async throws -> TimeZone?) {
+        let token = selections[key, default: PlaceSelection()].begin()
+        Task {
+            let zone = await PlaceZone.withTimeout(lookup)
+            if let zone = selections[key, default: PlaceSelection()].finish(token, zone: zone) { apply(zone.identifier) }
+        }
+    }
+
+    func edited(_ key: String) {
+        guard selections[key] != nil else { return }
+        selections[key]?.cancel()
+    }
+}
+
 @MainActor
 final class LocationSuggestions: NSObject, ObservableObject, @preconcurrency MKLocalSearchCompleterDelegate {
-    @Published var results: [MKLocalSearchCompletion] = []
+    @Published var results: [PlaceSuggestion] = []
     @Published var unavailable = false
     private let completer = MKLocalSearchCompleter()
     override init() {
@@ -173,27 +253,46 @@ final class LocationSuggestions: NSObject, ObservableObject, @preconcurrency MKL
     }
     func search(_ text: String) {
         unavailable = false
-        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completer.cancel(); results = []; return }
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.isEmpty { completer.cancel(); results = []; return }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--location-fixtures") {
+            results = PlaceSuggestion.fixtures.filter { $0.text.localizedCaseInsensitiveContains(query) }
+            return
+        }
+        #endif
         completer.queryFragment = text
     }
     func stop() { completer.cancel(); results = [] }
-    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) { results = Array(completer.results.prefix(5)) }
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        results = completer.results.prefix(5).map { PlaceSuggestion(title: $0.title, subtitle: $0.subtitle, completion: $0) }
+    }
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) { results = []; unavailable = true }
 }
 
+/// Picking a suggestion reports it so the caller can set a zone; typing reports an edit.
 struct LocationSearchField: View {
+    var title = "Location"
     @Binding var text: String
+    var identifier = "location-field"
+    var onChoose: ((PlaceSuggestion) -> Void)? = nil
+    var onEdit: (() -> Void)? = nil
     @StateObject private var suggestions = LocationSuggestions()
     @FocusState private var focused: Bool
+    @State private var chosen: String?
     var body: some View {
-        DaybookTextField("Location", text: $text).focused($focused)
-            .onChange(of: text) { _, value in if focused { suggestions.search(value) } }
+        DaybookTextField(title, text: $text).focused($focused).accessibilityIdentifier(identifier)
+            .onChange(of: text) { _, value in
+                if focused { suggestions.search(value) }
+                if value != chosen { chosen = nil; onEdit?() }
+            }
             .onChange(of: focused) { _, value in if value { suggestions.search(text) } else { suggestions.stop() } }
         if focused {
             ForEach(Array(suggestions.results.enumerated()), id: \.offset) { _, result in
                 Button {
                     focused = false; suggestions.stop()
-                    text = [result.title, result.subtitle].filter { !$0.isEmpty }.joined(separator: ", ")
+                    chosen = result.text; text = result.text
+                    onChoose?(result)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(result.title).foregroundStyle(.primary)
@@ -209,12 +308,11 @@ struct LocationSearchField: View {
 struct WizardSessionFields: View {
     @Binding var draft: SessionDraft
     let eventTimeZoneID: String
-    var zone: TimeZone { TimeZone(identifier: eventTimeZoneID) ?? .current }
+    var zone: TimeZone { .effective(eventTimeZoneID) }
     var body: some View {
         DaybookTextField("Session title", text: $draft.name)
         SessionDateField(draft: $draft, zone: zone, title: "Date").accessibilityIdentifier("wizard-session-date").accessibilityLabel("Session date")
-        if eventTimeZoneID.isEmpty { Text("Choose the event timezone above to add times.").font(.caption).foregroundStyle(.secondary) }
-        SessionScheduleField(draft: $draft, zone: zone).disabled(eventTimeZoneID.isEmpty)
+        SessionScheduleField(draft: $draft, zone: zone)
         optionalTime("Call time", value: $draft.callTime)
         DaybookChoicePicker("Schedule", selection: $draft.scheduleStatus, identifier: "wizard-session-schedule") { Text("Tentative").tag("tentative"); Text("Confirmed").tag("confirmed") }
         DaybookChoicePicker("Coverage", selection: $draft.coverage, identifier: "wizard-session-coverage") { Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering") }
@@ -225,7 +323,6 @@ struct WizardSessionFields: View {
         OptionalSessionTimeField(title: title, value: value,
             defaultDate: (draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date())
                 .addingTimeInterval(title == "End" ? 3600 : 0), zone: zone)
-            .disabled(eventTimeZoneID.isEmpty)
     }
 }
 
@@ -237,25 +334,86 @@ func zoneLabel(_ identifier: String, date: Date = Date()) -> String {
     return "\(name) · \(offset)"
 }
 
-struct EventTimeZoneField: View {
-    @Binding var selection: String
-    var date: Date
+/// Zones are never picked directly; this shows the one a place set, or the home fallback.
+struct DerivedTimeZoneRow: View {
+    let title: String
+    let timeZoneID: String
+    let date: Date
+    let caption: String
+    let identifier: String
+    @ObservedObject var zones: PlaceZones
+    let key: String
     var body: some View {
-        DaybookLink { TimeZonePicker(selection: $selection, date: date) } label: {
-            TimeZoneValueLabel(title: "Event timezone", value: zoneLabel(selection, date: date))
-        }.accessibilityIdentifier("event-timezone")
+        TimeZoneValueLabel(title: title, value: zoneLabel(TimeZone.effective(timeZoneID).identifier, date: date))
+            .accessibilityElement(children: .combine).accessibilityIdentifier(identifier)
+        Group {
+            if zones.pending(key) {
+                HStack(spacing: 8) { ProgressView(); Text("Finding timezone…") }.accessibilityIdentifier("\(identifier)-pending")
+            } else if zones.failed(key) {
+                Text("Couldn’t get a timezone for this place.")
+            } else {
+                Text(TimeZone(identifier: timeZoneID) == nil ? "Your home timezone." : caption)
+            }
+        }.font(.caption).foregroundStyle(.secondary)
     }
 }
 
-struct WorkTimeZoneField: View {
-    @Binding var draft: JobDraft
-    var date: Date
+/// The event location and track both set the event timezone; the last one chosen wins.
+struct EventPlaceFields: View {
+    @Binding var location: String
+    @Binding var trackPlaceID: String
+    @Binding var timeZoneID: String
+    let date: Date
+    @ObservedObject var zones: PlaceZones
+    let key: String
+    var locationIdentifier = "job-location"
+    @State private var choosingTrack = false
     var body: some View {
-        if draft.workArrangement == .remote || draft.workArrangement == .hybrid {
-            DaybookLink { TimeZonePicker(selection: $draft.timeZoneID, date: date) } label: {
-                TimeZoneValueLabel(title: "Your timezone", value: zoneLabel(draft.timeZoneID, date: date))
-            }.accessibilityIdentifier("work-timezone")
-            Text("Session schedules use the event timezone. Your timezone shows the corresponding local times.").font(.caption).foregroundStyle(.secondary)
+        LocationSearchField(text: $location, identifier: locationIdentifier, onChoose: { suggestion in
+            choose { try await PlaceZone.resolve(suggestion) }
+        }, onEdit: { zones.edited(key) })
+        if !trackPlaceID.isEmpty { SavedTrackView(placeID: trackPlaceID) }
+        Button(trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }
+            .accessibilityIdentifier("choose-track")
+            .sheet(isPresented: $choosingTrack) { TrackLocationPicker(placeID: $trackPlaceID) }
+            .onChange(of: trackPlaceID) { _, id in
+                if !id.isEmpty { choose { try await PlaceZone.resolve(trackPlaceID: id) } }
+            }
+        if !trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { trackPlaceID = "" }.accessibilityIdentifier("remove-track") }
+        DerivedTimeZoneRow(title: "Event timezone", timeZoneID: timeZoneID, date: date,
+                           caption: "Set by the event’s location or track. All sessions use it.",
+                           identifier: "event-timezone", zones: zones, key: key)
+    }
+    private func choose(_ lookup: @escaping @MainActor () async throws -> TimeZone?) {
+        let zone = $timeZoneID
+        zones.choose(key, apply: { zone.wrappedValue = $0 }, lookup: lookup)
+    }
+}
+
+/// Remote and hybrid work happens where the user is, which sets their timezone.
+struct WorkLocationFields: View {
+    @Binding var draft: JobDraft
+    let date: Date
+    @ObservedObject var zones: PlaceZones
+    let key: String
+    private static func remote(_ value: WorkArrangement) -> Bool { value == .remote || value == .hybrid }
+    var body: some View {
+        Group {
+            if Self.remote(draft.workArrangement) {
+                LocationSearchField(title: "Your location", text: $draft.location, identifier: "work-location", onChoose: { suggestion in
+                    let zone = $draft.timeZoneID
+                    zones.choose(key, apply: { zone.wrappedValue = $0 }) { try await PlaceZone.resolve(suggestion) }
+                }, onEdit: { zones.edited(key) })
+                DerivedTimeZoneRow(title: "Your timezone", timeZoneID: draft.timeZoneID, date: date,
+                                   caption: "Set by your location. Session times also show in this timezone.",
+                                   identifier: "work-timezone", zones: zones, key: key)
+            }
+        }
+        .onChange(of: draft.workArrangement) { old, new in
+            // On-site bookings store the venue here; it isn't where the user works from.
+            if Self.remote(new) && !Self.remote(old) {
+                zones.edited(key); draft.location = ""; draft.timeZoneID = TimeZone.home.identifier
+            }
         }
     }
 }

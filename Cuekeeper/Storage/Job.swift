@@ -95,6 +95,7 @@ final class Client: NSManagedObject {
     @NSManaged var contact: String
     @NSManaged var notes: String
     @NSManaged var defaultCurrency: String
+    @NSManaged var invoicingJSON: String
     @NSManaged var id: UUID?
     @NSManaged var name: String
     @NSManaged var jobs: Set<Job>?

@@ -1076,9 +1076,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try archive.restore(in: context).added, 0)
     }
 
-    func testV2ThroughV13StoresMigrateWithRelationshipsAndFeeHistory() async throws {
+    func testV2ThroughV14StoresMigrateWithRelationshipsAndFeeHistory() async throws {
         let modelURL = try XCTUnwrap(Bundle(for: Job.self).url(forResource: "Cuekeeper", withExtension: "momd"))
-        for version in 2...13 {
+        for version in 2...14 {
             let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelURL.appending(path: "CuekeeperV\(version).mom")))
             let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
             let fileName = "migration-\(version).sqlite"
@@ -1093,8 +1093,10 @@ final class PersistenceTests: XCTestCase {
             if version >= 3 {
                 let session = NSEntityDescription.insertNewObject(forEntityName: "WorkSession", into: oldContext)
                 session.setValue(UUID(), forKey: "id"); session.setValue("Existing session", forKey: "name"); session.setValue(job, forKey: "job")
-                let link = NSEntityDescription.insertNewObject(forEntityName: "BroadcastLink", into: oldContext)
-                link.setValue(UUID(), forKey: "id"); link.setValue("https://example.com/old", forKey: "url"); link.setValue(session, forKey: "session")
+                if version < 14 {
+                    let link = NSEntityDescription.insertNewObject(forEntityName: "BroadcastLink", into: oldContext)
+                    link.setValue(UUID(), forKey: "id"); link.setValue("https://example.com/old", forKey: "url"); link.setValue(session, forKey: "session")
+                }
             }
             if version >= 4 {
                 let fee = NSEntityDescription.insertNewObject(forEntityName: "FeeRevision", into: oldContext)
@@ -1128,6 +1130,7 @@ final class PersistenceTests: XCTestCase {
             XCTAssertEqual(saved.series?.name, version >= 6 ? "Existing series" : nil)
             XCTAssertEqual(saved.trackPlaceID, version >= 7 ? "existing-track" : "")
             XCTAssertEqual(saved.id, jobID); XCTAssertEqual(saved.client?.name, "Existing client")
+            XCTAssertEqual(saved.client?.invoicingJSON, ""); XCTAssertFalse(saved.client?.invoicing.isComplete ?? true)
             if version >= 3 { XCTAssertEqual(saved.activeSessions.first?.name, "Existing session") }
             XCTAssertNil(saved.managedObjectContext?.persistentStoreCoordinator?.managedObjectModel.entitiesByName["BroadcastLink"])
             if version >= 4 { XCTAssertEqual(try saved.currentFee().amount, 12345) }

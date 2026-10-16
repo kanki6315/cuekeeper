@@ -117,7 +117,7 @@ Dates and amounts use monospaced digits where alignment aids scanning. Metadata 
 
 The shared form is a custom ScrollView with titled content, vertical section groups and ruled panels; it is more than a recolored native Form. It centers content up to 760 points with page padding and section spacing from the tokens. Section headers sit above panels; rows use shared horizontal and vertical padding, inset dividers and optional footers. Explicitly unframed sections omit their fill, border and horizontal padding. Native lists remain available through DaybookList, with matching row surfaces and 18-point section spacing.
 
-Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments, Expenses and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details lead with the header and a To settle panel, then Schedule / Money / Details tabs; when the detail column is at least 820 points wide (and text is below accessibility sizes) the schedule sits beside Money and Details in a 1.45 : 1 column split instead. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
+Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments, Expenses and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details lead with the header and a To settle panel, then Schedule / Money / Details tabs; when the detail column is at least 820 points wide (and text is below accessibility sizes) the schedule sits beside Money and Details in a 1.45 : 1 column split instead. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments is a month close: a month stepper, the month's money by state per currency, then events grouped by client with their invoicing gates; amounts and partial balances remain derived from actual records.
 
 Regular-width layouts at non-accessibility text sizes use a sidebar; Upcoming and Events use sidebar, agenda and selected detail columns. The sidebar ranges from 210 to 280 points (ideal 230); the agenda from 320 to 520 (ideal 420). Native split-view behavior handles width and portrait collapse. Compact widths and all accessibility text sizes use tabs and navigation stacks. Headers and payment summaries adapt vertically when text or width demands it.
 
@@ -242,11 +242,49 @@ project and series links, notes, then Duplicate and Delete.
 Sources: `Cuekeeper/JobDetailView.swift`, `Cuekeeper/EventDetailSummary.swift`, `Cuekeeper/EventDetailComponents.swift`,
 `Cuekeeper/EventWeatherView.swift`. Brief and evidence: `design/event-page/`.
 
-### Payment disclosures and deletion
+### Payments month close
 
-Ready to invoice groups events into initially collapsed client disclosures, with
-event counts and separate currency totals. Expanded rows show event names, dates
-and fees and open the event detail. Accessibility text stacks the row content.
+Built from `PaymentsMonth` (`Cuekeeper/PaymentsReadiness.swift`), derived on each render from
+events, fees, invoices, receipts and client invoicing details; nothing is stored. Each event has
+four gates in a fixed order — **Work · Fee · Receipts · Client** — each done, missing or not yet:
+
+- Work: completed is done; ended but not completed is missing (*Mark completed*); otherwise not yet.
+- Fee: a known amount is done; unknown or conflicting is missing. A zero fee reads *No fee* and is not counted.
+- Receipts: any draft receipt on the event blocks, prompting the bookkeeping. Finished receipts never block.
+- Client: needs a client with billing name, billing email, address and payment terms (tax ID optional).
+
+Billing state wins over gates: review, paid, invoiced (with balance and due), draft, paid directly.
+Otherwise all four done is *Ready to invoice*, work done with a gap is *Held up*, and work still to
+come is upcoming. Receipts settle invoices as a whole; no per-event paid amount is derived.
+
+Compact layout: tab header with Add Invoice; the Wallet expenses prompt when drafts are pending;
+month stepper (chevrons, *This month* when away); a panel with one bar per currency split into
+Paid, Invoiced, Ready to invoice, Held up and Still to happen (accent at full, 62% and 32%,
+orange, faint ink), with totals, unknown-fee counts and a legend; *By client* with the step-bar
+key (gate labels with arrows into a sample bar, then Done / Missing / Not yet). Client panels show
+the name, details state (*Add details* when incomplete), then rows: date rail, title, a 4-segment
+step bar with the gap named in text, and the amount. Groups with ready work end in *Invoice n
+ready · total* per currency. *Still open from earlier* lists unpaid and draft invoices for earlier
+work and earlier finished work not yet invoiced. *All invoices and payments* opens the full ledger.
+
+Rows with gaps open the readiness sheet: four gate rows with their actions (Mark completed, Add
+fee, Finish for each blocking receipt, Add client), the client invoicing form inline when details
+are the gap, and *Create invoice* once ready. Other rows open the event.
+
+At 900 pt and wider (non-accessibility) the clients become a ledger table with gate columns
+beside a 340 pt column holding the money panel and *Still open from earlier*.
+
+Invoices started from a ready group preselect those events and offer that client's finished,
+reimbursable, unbilled receipts in the invoice currency as *Reimbursable receipts* lines. Marking
+an invoice sent fills the due date from the client's terms when none is set. The client editor has
+an *Invoicing details* section; the event page adds *Invoicing details to add* before *Ready to
+invoice* when only details are missing.
+
+Sources: `Cuekeeper/PaymentsView.swift`, `Cuekeeper/PaymentsComponents.swift`,
+`Cuekeeper/PaymentsReadiness.swift`. Brief: `design/payments/implementation-brief.md`.
+
+### Event deletion
+
 Delete Event requires a destructive confirmation explaining that the event and
 sessions leave the schedule and synced calendar while invoices and payments remain.
 Save failures are surfaced without dismissing the detail.

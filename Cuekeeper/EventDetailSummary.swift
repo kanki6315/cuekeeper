@@ -58,6 +58,10 @@ struct EventDetailFacts: Equatable {
     var fee: EventFeeFact
     var billing: EventBillingFact
     var expenseDrafts: [EventExpenseFact]
+    /// Required invoicing details the client is missing.
+    var clientDetailsMissing: [String] = []
+    /// Receipts still saved as drafts; these hold up invoicing.
+    var blockingReceipts = 0
 }
 
 // MARK: - Derived page state
@@ -80,7 +84,7 @@ struct NextCall: Equatable {
 struct OpenItem: Equatable, Identifiable {
     enum Kind: String, Equatable {
         case tentativeBooking, sessionTime, sessionConfirmation, sessionCoverage, clientMissing
-        case feeConflict, feeUnknown, readyToInvoice, invoiceDraft, balanceOwed, billingReview, expenseDraft
+        case feeConflict, feeUnknown, clientDetails, readyToInvoice, invoiceDraft, balanceOwed, billingReview, expenseDraft
     }
     enum Action: Equatable {
         case markBooked
@@ -88,6 +92,7 @@ struct OpenItem: Equatable, Identifiable {
         case editEvent
         case openFee
         case addToInvoice
+        case editClientInvoicing
         case openInvoice(UUID)
         case reviewBilling(UUID?)
         case reviewExpense(UUID)
@@ -208,8 +213,13 @@ struct EventDetailSummary: Equatable {
 
         switch facts.billing {
         case .notInvoiced:
-            if status == "completed", facts.hasClient, let fee, let amount = fee.amount {
-                items.append(OpenItem(kind: .readyToInvoice, title: "Ready to invoice", detail: Money.format(amount, currency: fee.currency), tab: .money, action: .addToInvoice))
+            if status == "completed", facts.hasClient, let fee, let amount = fee.amount, amount > 0, facts.blockingReceipts == 0 {
+                if facts.clientDetailsMissing.isEmpty {
+                    items.append(OpenItem(kind: .readyToInvoice, title: "Ready to invoice", detail: Money.format(amount, currency: fee.currency), tab: .money, action: .addToInvoice))
+                } else {
+                    let list = ListFormatter.localizedString(byJoining: facts.clientDetailsMissing)
+                    items.append(OpenItem(kind: .clientDetails, title: "Invoicing details to add", detail: list.prefix(1).uppercased() + list.dropFirst() + " missing", tab: .money, action: .editClientInvoicing))
+                }
             }
         case .directPayments:
             break
@@ -240,7 +250,7 @@ struct EventDetailSummary: Equatable {
         }
 
         if status == "cancelled" {
-            let money: Set<OpenItem.Kind> = [.feeConflict, .invoiceDraft, .balanceOwed, .billingReview, .expenseDraft]
+            let money: Set<OpenItem.Kind> = [.feeConflict, .clientDetails, .invoiceDraft, .balanceOwed, .billingReview, .expenseDraft]
             items = items.filter { money.contains($0.kind) }
         }
         return items
@@ -310,11 +320,13 @@ extension EventDetailFacts {
                     guard let id = expense.id else { return nil }
                     let value = expense.value
                     return EventExpenseFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount, currency: value.currency)).flatMap { $0 }, currency: value.currency)
-                }
+                },
+            clientDetailsMissing: job.client?.invoicing.missing ?? [],
+            blockingReceipts: (job.expenses ?? []).filter { $0.isDraft && $0.value.discarded != true }.count
         )
     }
 
-    private static func billing(job: Job, context: NSManagedObjectContext, index: InvoiceIndex?) -> EventBillingFact {
+    static func billing(job: Job, context: NSManagedObjectContext, index: InvoiceIndex?) -> EventBillingFact {
         do {
             let invoices = try job.activeInvoices(in: context, index: index)
             if invoices.count > 1 { return .review(message: "This event is on more than one invoice", invoiceID: invoices.first?.id) }

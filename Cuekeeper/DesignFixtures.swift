@@ -14,6 +14,10 @@ enum DesignFixtures {
             try seedToday(context)
             return
         }
+        if ProcessInfo.processInfo.arguments.contains("--payments-fixtures") {
+            try seedPayments(context)
+            return
+        }
         let start = Calendar.current.startOfDay(for: Date())
         var created: [Job] = []
         for (index, name) in ["City vs United", "Studio highlights", "National finals", "Daytona", "Sebring AEC", "Season opener"].enumerated() {
@@ -112,6 +116,84 @@ enum DesignFixtures {
         }
 
     }
+    /// A month in progress: ready, held-up, upcoming, invoiced and paid work across four clients,
+    /// plus invoices still open from the previous month. Dates are relative to today.
+    static func seedPayments(_ context: NSManagedObjectContext) throws {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let month = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
+        let day = { (offset: Int) in calendar.date(byAdding: .day, value: offset, to: month)! }
+        let ahead = { (offset: Int) in calendar.date(byAdding: .day, value: offset, to: today)! }
+        let photo = UIGraphicsImageRenderer(size: CGSize(width: 200, height: 260)).image { renderer in
+            UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 200, height: 260))
+            ("SYNTHETIC RECEIPT" as NSString).draw(at: CGPoint(x: 16, y: 20), withAttributes: [.foregroundColor: UIColor.black])
+        }.jpegData(compressionQuality: 0.8)!
+        var jobs: [String: Job] = [:]
+        func event(_ name: String, client: String, start: Date, end: Date? = nil, status: BookingStatus, fee: String?, currency: String) throws {
+            var draft = JobDraft(name: name, startDate: start, endDate: end ?? start)
+            draft.clientName = client; draft.bookingStatus = status; draft.roleNames = ["Commentator"]
+            draft.timeZoneID = TimeZone.current.identifier
+            draft.fee?.currency = currency; draft.fee?.amount = fee ?? ""; draft.fee?.agreement = fee == nil ? "unknown" : "agreed"
+            jobs[name] = try context.existingObject(with: try draft.save(in: context)) as? Job
+        }
+        func receipt(_ name: String, merchant: String, amount: String, reimbursable: Bool, finished: Bool) throws {
+            let id = try Expense.capture(photo, jobID: jobs[name]!.objectID, in: context)
+            let expense = try context.existingObject(with: id) as! Expense
+            try Expense.save(ExpenseValue(merchant: merchant, day: jobs[name]!.startDay, amount: amount, currency: "EUR", category: "Travel", reimbursable: reimbursable),
+                             id: id, revision: expense.revision, confirmed: finished, in: context)
+        }
+        func invoice(_ reference: String, client: String, currency: String, events: [(String, Int64)], status: String = "sent", sent: Date? = nil, due: Date? = nil) throws -> NSManagedObjectID {
+            var draft = InvoiceDraft(clientID: jobs[events[0].0]!.client!.id!, currency: currency)
+            draft.value.reference = reference; draft.value.status = status
+            draft.value.lines = events.map { BilledLine(jobID: jobs[$0.0]!.id!, jobName: $0.0, amount: $0.1) }
+            if let sent { draft.value.sentDay = Day.string(from: sent) }
+            if let due { draft.value.dueDay = Day.string(from: due) }
+            return try draft.save(in: context)
+        }
+        // Earlier month, still open.
+        let previous = calendar.date(byAdding: .month, value: -1, to: month)!
+        let earlier = { (offset: Int) in calendar.date(byAdding: .day, value: offset, to: previous)! }
+        try event("Monza Grand Prix", client: "Apex Media", start: earlier(11), status: .completed, fee: "3150", currency: "USD")
+        try event("Late summer special", client: "Trackside Radio", start: earlier(20), status: .completed, fee: "480", currency: "EUR")
+        try event("Cup third round", client: "Northside Sports", start: earlier(14), status: .completed, fee: "1300", currency: "EUR")
+        try event("League derby", client: "Northside Sports", start: earlier(21), status: .completed, fee: "1300", currency: "EUR")
+        _ = try invoice("APX-2207", client: "Apex Media", currency: "USD", events: [("Monza Grand Prix", 315_000)], sent: ahead(-32), due: ahead(-2))
+        _ = try invoice("INV-0410", client: "Trackside Radio", currency: "EUR", events: [("Late summer special", 48_000)], sent: ahead(-14), due: today)
+        let split = try invoice("INV-0409", client: "Northside Sports", currency: "EUR", events: [("Cup third round", 130_000), ("League derby", 130_000)], sent: ahead(-16), due: ahead(14))
+        var part = PaymentDraft(); part.amount = "1300"; part.note = "Part payment"
+        try part.save(in: context, invoiceID: split)
+        // This month.
+        try event("Season launch show", client: "Trackside Radio", start: day(0), status: .completed, fee: "390", currency: "EUR")
+        try event("Cup quarter-final", client: "Northside Sports", start: day(2), status: .completed, fee: "650", currency: "EUR")
+        try event("Autumn Classic", client: "Trackside Radio", start: day(3), status: .completed, fee: "420", currency: "EUR")
+        try event("Podcast guest spot", client: "Velocity TV", start: day(5), status: .completed, fee: "250", currency: "USD")
+        try event("Monza preview", client: "Apex Media", start: day(7), status: .completed, fee: "1100", currency: "USD")
+        try event("Charity gala", client: "Riverside Trust", start: day(9), status: .completed, fee: "0", currency: "EUR")
+        try event("Harbour regatta", client: "Velocity TV", start: day(10), status: .completed, fee: "900", currency: "USD")
+        try event("City vs United", client: "Northside Sports", start: day(12), status: .completed, fee: "650", currency: "EUR")
+        try event("Silverstone weekend", client: "Northside Sports", start: today, end: ahead(2), status: .booked, fee: "1800", currency: "EUR")
+        try event("Studio highlights", client: "Northside Sports", start: ahead(4), status: .tentative, fee: nil, currency: "EUR")
+        try event("Brands Hatch finale", client: "Apex Media", start: ahead(8), end: ahead(9), status: .booked, fee: "2400", currency: "USD")
+        try event("National finals", client: "Apex Media", start: ahead(14), status: .booked, fee: nil, currency: "USD")
+        let paid = try invoice("INV-0401", client: "Trackside Radio", currency: "EUR", events: [("Season launch show", 39_000)], sent: day(1), due: day(15))
+        var full = PaymentDraft(); full.amount = "390"; try full.save(in: context, invoiceID: paid)
+        _ = try invoice("Draft", client: "Apex Media", currency: "USD", events: [("Monza preview", 110_000)], status: "draft")
+        var direct = PaymentDraft(); direct.amount = "250"; direct.note = "Paid on the day"
+        try direct.save(in: context, jobID: jobs["Podcast guest spot"]!.objectID)
+        try receipt("Cup quarter-final", merchant: "Etihad parking", amount: "25.80", reimbursable: true, finished: true)
+        try receipt("Silverstone weekend", merchant: "Fuel, Towcester", amount: "38.40", reimbursable: true, finished: false)
+        try receipt("Silverstone weekend", merchant: "Paddock cafe", amount: "14.20", reimbursable: false, finished: false)
+        // Client invoicing details: two complete, two with gaps.
+        func details(_ client: String, _ value: ClientInvoicing) throws {
+            let request = NSFetchRequest<Client>(entityName: "Client"); request.predicate = NSPredicate(format: "name == %@", client)
+            try Client.saveInvoicing(value, client: try context.fetch(request).first!.objectID, in: context)
+        }
+        try details("Northside Sports", ClientInvoicing(billingName: "Northside Sports Media Ltd", email: "accounts@northside.example", address: "14 Wharf Road\nManchester", termsDays: 30))
+        try details("Trackside Radio", ClientInvoicing(billingName: "Trackside Radio Ltd", email: "finance@trackside.example", address: "2 Station Lane\nLeeds", termsDays: 14))
+        try details("Apex Media", ClientInvoicing(billingName: "Apex Media Inc.", address: "500 Market Street\nSan Francisco", termsDays: 30))
+        try details("Velocity TV", ClientInvoicing(billingName: "Velocity Television LLC"))
+    }
+
     static func seedToday(_ context: NSManagedObjectContext) throws {
         let day = Calendar.current.startOfDay(for: Date())
         for (index, name) in ["Silverstone weekend", "Studio highlights"].enumerated() {
@@ -145,7 +227,7 @@ struct DesignFixtureScreen: View {
     @State private var editorPresented = true
     var body: some View {
         if ["widgets", "accessories"].contains(DesignFixtures.route) { WidgetFixtureGallery() }
-        else if ["root", "pending-root", "expenses-overview"].contains(DesignFixtures.route) { RootView() }
+        else if ["root", "pending-root", "expenses-overview", "payments-root"].contains(DesignFixtures.route) { RootView() }
         else if let job = jobs.first, let invoice = invoices.first {
             NavigationStack {
                 switch DesignFixtures.route {

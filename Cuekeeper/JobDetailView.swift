@@ -282,6 +282,7 @@ struct JobDetailView: View {
     private func perform(_ item: OpenItem) {
         switch item.action {
         case .markBooked: updateBookingStatus(.booked)
+        case .markCompleted: updateBookingStatus(.completed)
         case .editSession(let id): editingSession = sessions.first { $0.id == id }
         case .editEvent: editing = true
         case .openFee: showingFee = true

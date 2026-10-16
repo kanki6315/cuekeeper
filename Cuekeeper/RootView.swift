@@ -58,6 +58,7 @@ extension View {
 
 enum ScheduleDestination: Hashable {
     case event(NSManagedObjectID), booking(NSManagedObjectID), session(NSManagedObjectID), pendingExpenses
+    case fee(NSManagedObjectID), invoice(NSManagedObjectID)
 }
 
 struct RootView: View {
@@ -86,6 +87,10 @@ struct RootView: View {
                                     if let job = try? context.existingObject(with: id) as? Job { JobDetailView(job: job) }
                                 case .session(let id):
                                     if let session = try? context.existingObject(with: id) as? WorkSession { SessionDetailView(session: session) }
+                                case .fee(let id):
+                                    if let job = try? context.existingObject(with: id) as? Job { FeeDetailView(job: job) }
+                                case .invoice(let id):
+                                    if let invoice = try? context.existingObject(with: id) as? Invoice { InvoiceDetailView(invoice: invoice) }
                                 }
                             }
                             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -109,7 +114,7 @@ struct RootView: View {
             todayNavigation.request()
         }
         .onChange(of: todayNavigation.revision) { _, _ in
-            UserDefaults.standard.set("Today", forKey: "upcoming.scope")
+            UpcomingView.requestNow()
             paths[.upcoming] = NavigationPath()
             selectedTab = .upcoming
         }
@@ -119,8 +124,8 @@ struct RootView: View {
     }
     @ViewBuilder private func content(_ section: AppSection) -> some View {
         switch section {
-        case .upcoming: JobsView(upcomingOnly: true, path: path(for: .upcoming))
-        case .jobs: JobsView(upcomingOnly: false, path: path(for: .jobs))
+        case .upcoming: UpcomingView(path: path(for: .upcoming), onShowAllEvents: { selectedTab = .jobs })
+        case .jobs: JobsView(path: path(for: .jobs))
         case .payments: PaymentsView()
         case .expenses: ExpensesView()
         case .settings: SettingsView()
@@ -132,7 +137,6 @@ private struct JobsView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.managedObjectContext) private var context
     @EnvironmentObject private var persistence: PersistenceController
-    let upcomingOnly: Bool
     @Binding var path: NavigationPath
     var selectedJob: Binding<Job?>? = nil
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)], predicate: NSPredicate(format: "deletedAt == nil")) private var jobs: FetchedResults<Job>
@@ -143,27 +147,12 @@ private struct JobsView: View {
     @State private var query = ""
     @State private var filter = JobFilter()
     @State private var scope = "All"
-    @AppStorage("upcoming.scope") private var upcomingScope = "Today"
-    @AppStorage("upcoming.dismissedAttention") private var dismissedAttention = ""
-    private func attentionKey(_ job: Job) -> String { "\(job.id?.uuidString ?? "")/\(job.eventStartDay)/\(job.bookingStatus)/\(job.eventEndDay < Day.string(from: Date()) ? "past" : "schedule")" }
-    private var attention: [Job] {
-        let dismissed = Set(dismissedAttention.split(separator: "\n").map(String.init))
-        let today = Day.string(from: Date()), soon = Day.string(from: Date().addingTimeInterval(14 * 86400))
-        return jobs.filter { job in
-            !["completed", "cancelled"].contains(job.bookingStatus) && filter.includes(job, query: query) && !dismissed.contains(attentionKey(job))
-            && (job.eventEndDay < today || (job.eventStartDay <= soon && (job.activeSessions.isEmpty || job.activeSessions.contains { $0.scheduleStatus != "confirmed" })))
-        }
-    }
     private var representatives: [Job] {
         let _ = events.count + sessions.count
-        let today = Day.string(from: Date())
-        let weekEnd = Day.string(from: Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.end.addingTimeInterval(-1) ?? Date())
         let matching = jobs.filter { job in
             let active = !["completed", "cancelled"].contains(job.bookingStatus)
             return filter.includes(job, query: query)
-                && (!upcomingOnly || (active && (job.eventEndDay >= today || job.activeSessions.contains { ($0.endTime ?? .distantPast) >= Date() })))
-                && (!upcomingOnly || upcomingScope != "Week" || job.eventStartDay <= weekEnd)
-                && (upcomingOnly || scope == "All" || (scope == "Active" ? active : job.bookingStatus == scope.lowercased()))
+                && (scope == "All" || (scope == "Active" ? active : job.bookingStatus == scope.lowercased()))
         }
         var seen = Set<NSManagedObjectID>()
         return matching.filter { seen.insert($0.eventKey).inserted }.sorted {
@@ -176,38 +165,23 @@ private struct JobsView: View {
                 if selectedJob == nil {
                     // Matches DaybookForm's 29pt gap below the tab header (5pt row padding + 24pt section spacing).
                     DaybookTabHeader { if !jobs.isEmpty { addButton } }.padding(.bottom, 11)
-                } else if upcomingOnly {
-                    HStack { Spacer(); addButton }
                 } else {
                     ViewThatFits(in: .horizontal) {
-                        HStack { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); Spacer(); addButton }
-                        VStack(alignment: .leading, spacing: 12) { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()); addButton }
+                        HStack { Text("Events").font(.largeTitle.bold()); Spacer(); addButton }
+                        VStack(alignment: .leading, spacing: 12) { Text("Events").font(.largeTitle.bold()); addButton }
                     }
                 }
-                if upcomingOnly { PendingExpensesPrompt() }
                 if !jobs.isEmpty {
-                    if !upcomingOnly || upcomingScope != "Today" { HStack {
+                    HStack {
                         DaybookTextField("Search events, clients or series", text: $query).accessibilityIdentifier("search-jobs")
                         Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
-                    } }
-                    if upcomingOnly {
-                        if upcomingScope == "Today" {
-                            TimelineView(.periodic(from: .now, by: 60)) { timeline in
-                                Text(timeline.date, format: .dateTime.weekday(.wide).day().month(.wide))
-                                    .foregroundStyle(Color("SecondaryText"))
-                            }
-                        }
-                        DaybookSegments(title: "Show upcoming", selection: $upcomingScope,
-                                        options: ["Today", "Week", "All"], identifier: "upcoming-scope",
-                                        label: { $0 })
-                    } else {
-                        DaybookSegments(title: "Bookings", selection: $scope,
-                                        options: ["All", "Active", "Completed", "Cancelled"],
-                                        identifier: "event-status-scope", label: { $0 })
                     }
+                    DaybookSegments(title: "Bookings", selection: $scope,
+                                    options: ["All", "Active", "Completed", "Cancelled"],
+                                    identifier: "event-status-scope", label: { $0 })
                 }
                 if jobs.isEmpty {
-                    if selectedJob == nil { Text(upcomingOnly ? "Upcoming" : "Events").font(.largeTitle.bold()) }
+                    if selectedJob == nil { Text("Events").font(.largeTitle.bold()) }
                     VStack(spacing: 24) {
                         CuekeeperMark().fill(Color.accentColor.opacity(0.2), style: FillStyle(eoFill: true))
                             .frame(width: 90, height: 104).accessibilityHidden(true)
@@ -222,13 +196,10 @@ private struct JobsView: View {
                             .buttonStyle(LaunchPrimaryButton()).accessibilityIdentifier("add-job")
                     }.multilineTextAlignment(.center).frame(maxWidth: 480).padding(.vertical, 48)
                         .frame(maxWidth: .infinity)
-                } else if (!upcomingOnly || upcomingScope != "Today") && representatives.isEmpty {
+                } else if representatives.isEmpty {
                     ContentUnavailableView("No events to show", systemImage: "calendar", description: Text("Start with dates and a client. Add the schedule when it arrives."))
                     if filter.isActive { Button("Clear Filters") { filter = JobFilter() } }
                 }
-                if upcomingOnly && upcomingScope == "Today" && !jobs.isEmpty {
-                    TodayScheduleView(selectedJob: selectedJob)
-                } else {
                 LazyVStack(spacing: 0) {
                     ForEach(representatives, id: \.eventKey) { job in
                         if let selectedJob {
@@ -238,24 +209,6 @@ private struct JobsView: View {
                         }
                         Divider()
                     }
-                }
-                }
-                if upcomingOnly && upcomingScope != "Today" && !attention.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Label("Needs attention", systemImage: "exclamationmark.circle").font(.headline)
-                            Spacer()
-                            Button { dismissedAttention = Set(dismissedAttention.split(separator: "\n").map(String.init) + attention.map(attentionKey)).sorted().joined(separator: "\n") } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("Dismiss current attention items")
-                        }
-                        ForEach(Array(attention.prefix(3)), id: \.objectID) { job in
-                            NavigationLink(value: ScheduleDestination.booking(job.objectID)) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(job.eventEndDay < Day.string(from: Date()) ? "Ready to mark complete?" : "Schedule to confirm").font(.subheadline.weight(.semibold))
-                                    Text(job.displayName).font(.subheadline)
-                                }.frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                    }.padding(16).foregroundStyle(Color("AmberText")).background(.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 12))
                 }
             }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 20).frame(maxWidth: 850).frame(maxWidth: .infinity)
         }.daybookSurface()

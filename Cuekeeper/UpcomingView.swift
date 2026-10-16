@@ -57,6 +57,7 @@ struct UpcomingView: View {
             case .editEvent(let job): JobEditorView(job: job)
             case .session(let job, let session): SessionEditorView(job: job, session: session)
             case .invoice(let job): InvoiceEditorView(job: job)
+            case .clientInvoicing(let client): ClientInvoicingEditor(client: client)
             case .expense(let job, let expense): ExpenseEditorView(job: job, expense: expense)
             case .notes(let job): UpcomingNotesSheet(job: job) { self.sheet = nil; DispatchQueue.main.async { self.sheet = .editEvent(job) } }
             case .chooseCaptureEvent(let suggested):
@@ -445,6 +446,7 @@ struct UpcomingView: View {
         case .editEvent: if let target { sheet = .editEvent(target) }
         case .openFee: if let target { path.append(ScheduleDestination.fee(target.objectID)) }
         case .addToInvoice: if let target { sheet = .invoice(target) }
+        case .editClientInvoicing: if let client = target?.client { sheet = .clientInvoicing(client) }
         case .openInvoice(let id): openInvoice(id, job: target)
         case .reviewBilling(let id):
             if let id { openInvoice(id, job: target) } else if let target { show(target) }
@@ -472,6 +474,7 @@ private enum UpcomingSheet: Identifiable {
     case editEvent(Job)
     case session(Job, WorkSession)
     case invoice(Job)
+    case clientInvoicing(Client)
     case expense(Job?, Expense)
     case notes(Job)
     case chooseCaptureEvent([Job])
@@ -482,6 +485,7 @@ private enum UpcomingSheet: Identifiable {
         case .editEvent(let job): "edit-\(job.objectID)"
         case .session(_, let session): "session-\(session.objectID)"
         case .invoice(let job): "invoice-\(job.objectID)"
+        case .clientInvoicing(let client): "client-invoicing-\(client.objectID)"
         case .expense(_, let expense): "expense-\(expense.objectID)"
         case .notes(let job): "notes-\(job.objectID)"
         case .chooseCaptureEvent: "choose-capture"

@@ -272,7 +272,7 @@ struct UpcomingSummary: Equatable {
     /// The day an item is tied to: the event's end once it is over, invoices by their due day, everything else by the start.
     private static func rankDay(_ item: OpenItem, job: UpcomingJobFact) -> String {
         switch item.kind {
-        case .eventOver, .readyToInvoice, .invoiceDraft, .billingReview, .expenseDraft: return job.lastDay
+        case .eventOver, .clientDetails, .readyToInvoice, .invoiceDraft, .billingReview, .expenseDraft: return job.lastDay
         case .balanceOwed:
             if case let .sent(_, _, _, _, _, due, _) = job.facts.billing, !due.isEmpty { return due }
             return job.lastDay

@@ -191,12 +191,12 @@ struct BackupArchive: Codable {
         guard keys.count == records.count else { throw RecordError.invalid("The backup contains duplicate record identities.") }
         let indexed = Dictionary(uniqueKeysWithValues: records.map { ($0.key, $0) })
         for record in records {
-            // Pre-V13 archives lack only the new optional ownership field.
-            // Restoring those records leaves it nil for legacy ID-based ownership.
+            // Pre-V13 archives lack only the new optional ownership field, and pre-V15
+            // archives lack client invoicing details. Restored records keep the defaults.
             guard let entity = model.entitiesByName[record.key.entity],
                   Set(record.attributes.keys).isSubset(of: Set(entity.attributesByName.keys)),
                   Set(entity.attributesByName.keys).subtracting(record.attributes.keys).isSubset(
-                    of: record.key.entity == "WorkEvent" ? ["ownerJobID"] : []),
+                    of: record.key.entity == "WorkEvent" ? ["ownerJobID"] : record.key.entity == "Client" ? ["invoicingJSON"] : []),
                   Set(record.relationships.keys) == Set(entity.relationshipsByName.keys),
                   record.attributes["id"] == .uuid(record.key.id) else {
                 throw RecordError.invalid("The backup’s records do not match this version of Cuekeeper.")

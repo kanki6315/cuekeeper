@@ -159,6 +159,7 @@ if [ "$run_tests" = 1 ]; then
         -destination "${TEST_DESTINATION:-platform=iOS Simulator,name=iPhone 18 Pro}" \
         -derivedDataPath build/tests \
         -collect-test-diagnostics never \
+        -parallel-testing-worker-count "${TEST_WORKERS:-4}" \
         CODE_SIGNING_ALLOWED=NO \
         | pretty
 fi

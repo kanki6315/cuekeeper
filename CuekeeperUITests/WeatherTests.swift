@@ -51,7 +51,6 @@ final class WeatherTests: XCTestCase {
             let hour = app.descendants(matching: .any)["weather-hour"].firstMatch
             XCTAssertTrue(hour.waitForExistence(timeout: 5))
             positionNearTop(hour, in: app)
-            Thread.sleep(forTimeInterval: 0.5)
             capture(dark ? "hourly-dark-large" : "hourly-light")
             app.terminate()
         }
@@ -66,7 +65,6 @@ final class WeatherTests: XCTestCase {
         let result = app.buttons["track-result-0"]
         XCTAssertTrue(result.waitForExistence(timeout: 5)); reveal(result, in: app); result.tap()
         let use = app.buttons["use-track"]; reveal(use, in: app)
-        Thread.sleep(forTimeInterval: 0.5)
         capture("track-selection"); use.tap()
         XCTAssertTrue(app.buttons["save-event"].waitForExistence(timeout: 5)); app.buttons["save-event"].tap()
         let status = app.descendants(matching: .any)["weather-outdated"].firstMatch

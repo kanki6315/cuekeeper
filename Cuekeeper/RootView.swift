@@ -88,7 +88,7 @@ struct RootView: View {
                                     if let session = try? context.existingObject(with: id) as? WorkSession { SessionDetailView(session: session) }
                                 }
                             }
-                            .overlay(alignment: .bottom) {
+                            .safeAreaInset(edge: .bottom, spacing: 0) {
                                 if section != .settings && showsSyncFeedback {
                                     SyncFeedbackView { selectedTab = .settings }
                                         .padding(.horizontal, 20).padding(.bottom, 12)

@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreData
 import PhotosUI
 import SwiftUI
@@ -148,6 +149,8 @@ struct EventExpensesSection: View {
 struct ExpenseEditorView: View {
     @Environment(\.managedObjectContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     let job: Job?
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)], predicate: NSPredicate(format: "deletedAt == nil")) private var events: FetchedResults<Job>
     private let initialJobID: NSManagedObjectID?
@@ -162,6 +165,8 @@ struct ExpenseEditorView: View {
     @State private var isDraft: Bool
     @State private var photo: Data?
     @State private var scanning = false
+    @State private var cameraAccess = AVCaptureDevice.authorizationStatus(for: .video)
+    @State private var cameraBlocked = false
     @State private var picker: PhotosPickerItem?
     @State private var busy = false
     @State private var savingPhoto = false
@@ -212,7 +217,12 @@ struct ExpenseEditorView: View {
                         }
                     } else {
                         if VNDocumentCameraViewController.isSupported {
-                            Button("Open Camera", systemImage: "doc.viewfinder") { scanning = true }.accessibilityIdentifier("receipt-camera")
+                            if cameraUnavailable {
+                                Text(cameraUnavailableMessage).foregroundStyle(Color("SecondaryText"))
+                                if cameraAccess == .denied { Button("Open Settings", systemImage: "gear") { openSettings() }.accessibilityIdentifier("receipt-camera-settings") }
+                            } else {
+                                Button("Open Camera", systemImage: "doc.viewfinder") { Task { await openCamera() } }.accessibilityIdentifier("receipt-camera")
+                            }
                         }
                         PhotosPicker(selection: $picker, matching: .images) { Label("Choose Receipt Photo", systemImage: "photo") }
                         Text("Scan one receipt. Its photo stays with this draft while you review the details.").foregroundStyle(Color("SecondaryText"))
@@ -299,7 +309,7 @@ struct ExpenseEditorView: View {
             }
             .photosPicker(isPresented: $choosingPhoto, selection: $picker, matching: .images)
             .confirmationDialog("Replace the receipt photo?", isPresented: $replacing, titleVisibility: .visible) {
-                if VNDocumentCameraViewController.isSupported { Button("Scan Replacement") { scanning = true } }
+                if VNDocumentCameraViewController.isSupported { Button("Scan Replacement") { Task { await openCamera() } } }
                 Button("Choose Replacement Photo") { choosingPhoto = true }
                 Button("Keep Current Photo", role: .cancel) {}
             } message: { Text("Your current photo stays until its replacement is saved. Entered payment details will be kept for comparison.") }
@@ -321,8 +331,17 @@ struct ExpenseEditorView: View {
                     try? context.save()
                 }
                 #endif
-                if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported { scanning = true }
+                // Only open the scanner automatically when the camera can actually be used; otherwise the
+                // receipt section explains why and offers Settings instead of presenting a blank scanner.
+                if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported && !cameraUnavailable { await openCamera() }
             }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { cameraAccess = AVCaptureDevice.authorizationStatus(for: .video) }
+            }
+            .alert("Camera access is off", isPresented: $cameraBlocked) {
+                if cameraAccess == .denied { Button("Open Settings") { openSettings() } }
+                Button(cameraAccess == .denied ? "Not Now" : "OK", role: .cancel) {}
+            } message: { Text(cameraUnavailableMessage) }
             .onDisappear { task?.cancel() }
             .interactiveDismissDisabled(savingPhoto || recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID)
             .preservesDraftOnTodayLink()
@@ -345,6 +364,22 @@ struct ExpenseEditorView: View {
             Text(label).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             DaybookTextField(label, text: text).keyboardType(decimal ? .decimalPad : .default).accessibilityIdentifier(identifier)
         }
+    }
+    private var cameraUnavailable: Bool { cameraAccess == .denied || cameraAccess == .restricted }
+    private var cameraUnavailableMessage: String {
+        cameraAccess == .restricted
+            ? "Camera access is restricted on this device. Choose a receipt photo instead."
+            : "Allow camera access in Settings to scan receipts, or choose a receipt photo instead."
+    }
+    private func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+    }
+    private func openCamera() async {
+        // The person just answered the system prompt, so don't follow a refusal with another alert.
+        let prompted = cameraAccess == .notDetermined
+        if prompted { _ = await AVCaptureDevice.requestAccess(for: .video) }
+        cameraAccess = AVCaptureDevice.authorizationStatus(for: .video)
+        if cameraAccess == .authorized { scanning = true } else if !prompted { cameraBlocked = true }
     }
     private func capture(_ image: UIImage) {
         guard !busy else { return }

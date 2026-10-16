@@ -18,7 +18,7 @@ From the first booking to the final payment. Keep your broadcast schedule, call 
 Description
 Your broadcast work, from first booking to final payment.
 
-Cuekeeper is a daybook for freelance commentators, presenters, producers and crew. Keep events, clients, call times and broadcast links together on iPhone and iPad.
+Cuekeeper is a daybook for freelance commentators, presenters, producers and crew. Keep events, clients, call times and fees together on iPhone and iPad.
 
 • Plan sessions and follow your schedule across timezones.
 • Track agreed fees, invoices, partial payments and outstanding balances.

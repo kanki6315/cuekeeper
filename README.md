@@ -53,7 +53,7 @@ The app uses the approved Icon Composer asset in `design/brand/Cuekeeper.icon`.
 - Isolated local test stores that never write test records to iCloud.
 
 - Create incomplete or timed sessions with independent schedule and coverage states,
-  the event timezone, call times, roles, notes and broadcast links.
+  the event timezone, call times, roles and notes.
 - Publish all-day job placeholders and eligible confirmed, covering sessions to
   a selected calendar; reconcile changes without removing unrelated events.
 - Record unknown or zero fees, agreement status and optional quantity/rate breakdowns.

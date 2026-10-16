@@ -20,7 +20,7 @@ struct SessionEditorView: View {
         self.job = job; self.session = duplicating ? nil : session
         self.savedBaseline = duplicating ? nil : session.map(SessionDraft.init(session:))
         var value = session.map(SessionDraft.init(session:)) ?? SessionDraft(job: job)
-        if duplicating { value.scheduleStatus = "tentative"; value.links = []; value.notes = "" }
+        if duplicating { value.scheduleStatus = "tentative"; value.notes = "" }
         // Resolve legacy inheritance once for the simple, direct series picker.
         value.seriesName = session?.effectiveSeries?.name ?? job.series?.name ?? ""
         value.overridesSeries = true
@@ -62,7 +62,7 @@ struct SessionEditorView: View {
                         Text("Undecided").tag("undecided"); Text("Covering").tag("covering"); Text("Not covering").tag("notCovering")
                     }
                 } header: { Text("Status & coverage") } footer: { Text("Confirming times does not change whether you’re covering this session or whether the client booking is confirmed.") }
-                Section { Button(details ? "Fewer details" : "Roles, notes & links", systemImage: "slider.horizontal.3") { details.toggle() } }
+                Section { Button(details ? "Fewer details" : "Roles & notes", systemImage: "slider.horizontal.3") { details.toggle() } }
                 if details {
                 Section("Roles") {
                     Toggle("Override booking roles", isOn: $draft.overridesRoles)
@@ -74,19 +74,6 @@ struct SessionEditorView: View {
                     } else { Text(job.roleNames.isEmpty ? "No booking roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(Color("SecondaryText")) }
                 }
                 Section("Notes") { DaybookTextField("Session notes", text: $draft.notes, axis: .vertical).lineLimit(3...8) }
-                Section {
-                    ForEach($draft.links) { $link in
-                        VStack(alignment: .leading, spacing: 12) {
-                            DaybookTextField("Link label (optional)", text: $link.label)
-                            DaybookTextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                                .accessibilityIdentifier("broadcast-url")
-                            DaybookTextField("Link notes (optional)", text: $link.notes, axis: .vertical)
-                            Button("Remove Link", role: .destructive) { draft.links.removeAll { $0.id == link.id } }
-                        }.padding(.vertical, 4)
-                    }
-                    Button("Add Broadcast Link", systemImage: "link.badge.plus") { draft.links.append(LinkDraft()) }
-                        .accessibilityIdentifier("add-broadcast-link")
-                } header: { Text("Broadcast links") } footer: { Text("Save links when they’re available. They aren’t required to save a session.") }
                 }
                 if session == nil {
                     Section { Button("Save & Add Another", systemImage: "plus") { save(another: true) }.accessibilityIdentifier("save-another-session") }
@@ -117,7 +104,7 @@ struct SessionEditorView: View {
             if another {
                 if let saved = try context.existingObject(with: savedID) as? WorkSession { draft.day = saved.day }
                 draft.name = ""; draft.startTime = nil; draft.endTime = nil; draft.callTime = nil
-                draft.scheduleStatus = "tentative"; draft.notes = ""; draft.links = []
+                draft.scheduleStatus = "tentative"; draft.notes = ""
                 initial = draft; savedCount += 1
             } else { dismiss() }
         } catch { self.error = error.localizedDescription }
@@ -197,17 +184,6 @@ struct SessionDetailView: View {
                 LabeledContent("Roles", value: session.roleNames.isEmpty ? "None selected" : session.roleNames.joined(separator: ", "))
             }
             if !session.notes.isEmpty { Section("Notes") { Text(session.notes).textSelection(.enabled) } }
-            Section("Broadcast links") {
-                if session.sortedLinks.isEmpty { Text("No links added yet").foregroundStyle(Color("SecondaryText")) }
-                ForEach(session.sortedLinks, id: \.objectID) { link in
-                    VStack(alignment: .leading, spacing: 6) {
-                        if let url = URL(string: link.url), ["https", "http"].contains(url.scheme?.lowercased() ?? "") {
-                            Link(link.label.isEmpty ? link.url : link.label, destination: url)
-                        } else { Text(link.url).textSelection(.enabled) }
-                        if !link.notes.isEmpty { Text(link.notes).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                    }
-                }
-            }
             Section("Calendar") {
                 Text(session.calendarEligible ? "Eligible for a timed entry in your connected calendar." : "A timed entry requires confirmed start and end times and coverage set to Covering.")
                 Text(calendar.status).font(.subheadline).foregroundStyle(Color("SecondaryText"))
@@ -229,56 +205,5 @@ struct SessionDetailView: View {
                 } catch { self.error = error.localizedDescription }
             }
         }
-    }
-}
-
-struct BroadcastLinkEditorView: View {
-    let job: Job
-    let session: WorkSession?
-    @Environment(\.managedObjectContext) private var context
-    @Environment(\.dismiss) private var dismiss
-    @State private var link = LinkDraft()
-    @State private var name = ""
-    @State private var error: String?
-    @State private var discard = false
-    @FocusState private var focused: Bool
-    private var changed: Bool { !link.url.isEmpty || !link.label.isEmpty || !link.notes.isEmpty || !name.isEmpty }
-    var body: some View {
-        NavigationStack {
-            DaybookForm {
-                Section {
-                    if let session { LabeledContent("Session", value: session.title) }
-                    else { DaybookTextField("Session name (optional)", text: $name) }
-                    DaybookTextField("Label (optional)", text: $link.label)
-                    DaybookTextField("https://…", text: $link.url).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().focused($focused).accessibilityIdentifier("quick-broadcast-url")
-                    DaybookTextField("Notes (optional)", text: $link.notes, axis: .vertical)
-                } footer: {
-                    if session == nil { Text("This creates an unscheduled session to keep the link with its broadcast. Add times later if useful.") }
-                }
-            }.navigationTitle("Add Broadcast Link").navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if changed { discard = true } else { dismiss() } } }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
-                            do {
-                                let original = session.map(SessionDraft.init(session:))
-                                var draft = original ?? SessionDraft(job: job)
-                                if session == nil { draft.name = name }
-                                draft.links.append(link)
-                                try draft.save(in: context, jobID: job.objectID, editing: session?.objectID, baseline: original)
-                                dismiss()
-                            } catch { self.error = error.localizedDescription }
-                        }.accessibilityIdentifier("save-broadcast-link")
-                    }
-                }
-                .task { if !ProcessInfo.processInfo.arguments.contains("--design-fixtures") { focused = true } }
-                .saveErrorAlert($error).interactiveDismissDisabled(changed)
-                .confirmationDialog("Discard link?", isPresented: $discard, titleVisibility: .visible) {
-                    Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {}
-                }
-        }
-        .presentationSizing(.page)
-        .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
     }
 }

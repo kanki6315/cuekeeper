@@ -426,7 +426,9 @@ struct SyncFeedbackView: View {
     let showDetails: () -> Void
 
     var body: some View {
-        Group {
+        // Keep a task host even before the first activity makes the banner visible.
+        // An empty Group has no child on which SwiftUI can run the task below.
+        ZStack {
             if let activity = displayedActivity, let message = activity.message {
                 Button(action: showDetails) {
                     HStack(spacing: 12) {

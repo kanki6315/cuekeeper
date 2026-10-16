@@ -83,14 +83,15 @@ final class FirstLaunchUITests: XCTestCase {
 
     func testReturningUserAndBackupRecovery() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--first-launch", "--setup-backup-fixture", "--ui-test-sync-receiving"]
+        // A restore requires no active iCloud import.
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--first-launch", "--setup-backup-fixture"]
         app.launch()
         XCTAssertTrue(app.staticTexts["Welcome back"].waitForExistence(timeout: 10))
         capture("first-launch-returning")
         app.buttons["setup-backups"].tap()
         let review = app.buttons["setup-review-restore"]
         XCTAssertTrue(review.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["1 event"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "1 event · ")).firstMatch.waitForExistence(timeout: 5))
         capture("first-launch-backup-picker")
         review.tap()
         XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 5))

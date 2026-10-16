@@ -15,7 +15,8 @@ final class WeatherTests: XCTestCase {
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<12 {
             if element.exists && element.isHittable { return }
-            let scroll = app.scrollViews.element(boundBy: app.scrollViews.count - 1)
+            let forms = app.scrollViews.matching(identifier: "daybook-form")
+            let scroll = forms.element(boundBy: forms.count - 1)
             scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.85))
                 .press(forDuration: 0.05, thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.25)))
         }
@@ -23,7 +24,8 @@ final class WeatherTests: XCTestCase {
     }
     private func positionNearTop(_ element: XCUIElement, in app: XCUIApplication) {
         reveal(element, in: app)
-        let scroll = app.scrollViews.element(boundBy: app.scrollViews.count - 1)
+        let forms = app.scrollViews.matching(identifier: "daybook-form")
+        let scroll = forms.element(boundBy: forms.count - 1)
         let delta = min(max(element.frame.minY - scroll.frame.minY - 80, 0), scroll.frame.height * 0.6)
         if delta > 20 {
             let origin = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.85))

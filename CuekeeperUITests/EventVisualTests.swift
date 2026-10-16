@@ -35,7 +35,7 @@ final class EventVisualTests: XCTestCase {
             if large {
                 XCTAssertFalse(app.segmentedControls["session-schedule"].exists)
                 schedule.tap()
-                app.buttons["Tentative"].tap()
+                app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Tentative", "booking-status-tentative")).element.tap()
             } else {
                 schedule.buttons["Tentative"].tap()
                 XCTAssertTrue(schedule.buttons["Tentative"].isSelected)

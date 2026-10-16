@@ -53,7 +53,7 @@ final class CaptureTests: XCTestCase {
         let app = XCUIApplication()
         var headerY: CGFloat = 0
         for state in ["idle", "receiving", "error"] {
-            app.launchArguments = ["--ui-testing", "--design-fixtures", "--design-screen=root", "--design-dark"]
+            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=root", "--design-dark"]
             if state != "idle" { app.launchArguments.append("--ui-test-sync-\(state)") }
             app.launch()
             let addButton = app.buttons["add-job"]
@@ -146,7 +146,7 @@ final class CaptureTests: XCTestCase {
         let sidebar = app.collectionViews["Sidebar"]
         if sidebar.exists { sidebar.cells.containing(.staticText, identifier: "Payments").firstMatch.tap() }
         else { app.buttons["Payments"].firstMatch.tap() }
-        XCTAssertTrue(app.staticTexts["Invoiced outstanding"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Invoiced"].firstMatch.waitForExistence(timeout: 5))
         let overview = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         overview.name = "Payments overview"; overview.lifetime = .keepAlways; add(overview)
     }
@@ -228,10 +228,8 @@ final class CaptureTests: XCTestCase {
     }
 
     func testClientLibraryAndFilters() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store"]
-        app.launch()
-        XCTAssertTrue(app.buttons["add-job"].waitForExistence(timeout: 10))
+        // Filters are only available when there is an event to filter.
+        let app = createEvent("Client filter event")
         let settings = app.buttons["Settings"].firstMatch
         if settings.exists { settings.tap() } else { app.staticTexts["Settings"].firstMatch.tap() }
         app.buttons["Clients"].tap()
@@ -272,9 +270,11 @@ final class CaptureTests: XCTestCase {
         client.name = "Client details"
         client.lifetime = .keepAlways
         add(client)
-        let upcoming = app.buttons["Upcoming"].firstMatch
-        if upcoming.exists { upcoming.tap() } else { app.staticTexts["Upcoming"].firstMatch.tap() }
-        app.buttons["filter-jobs"].tap()
+        let events = app.buttons["Events"].firstMatch
+        if events.exists { events.tap() } else { app.staticTexts["Events"].firstMatch.tap() }
+        let filterButton = app.buttons["filter-jobs"]
+        XCTAssertTrue(filterButton.waitForExistence(timeout: 5))
+        filterButton.tap()
         Thread.sleep(forTimeInterval: 1)
         let filters = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         filters.name = "Job filters"

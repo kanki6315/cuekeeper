@@ -42,7 +42,9 @@ final class DesignSupplementTests: XCTestCase {
         let complete = app.buttons["Mark completed"]
         XCTAssertTrue(complete.waitForExistence(timeout: 5))
         complete.tap()
-        XCTAssertTrue(app.staticTexts["Completed"].waitForExistence(timeout: 5))
+        let completed = app.buttons["booking-status-completed"]
+        XCTAssertTrue(completed.waitForExistence(timeout: 5))
+        XCTAssertTrue(completed.isSelected)
         XCTAssertFalse(complete.exists)
     }
 

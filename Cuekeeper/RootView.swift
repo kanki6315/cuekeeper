@@ -16,107 +16,111 @@ private enum AppSection: String, CaseIterable, Identifiable {
     }
 }
 
+/// A Today request waits for editors to close through their normal save/discard flow.
+@MainActor
+final class TodayNavigation: ObservableObject {
+    @Published private(set) var revision = 0
+    private var editors: Set<UUID> = []
+    private var pending = false
+
+    func beginEditing(_ id: UUID) { editors.insert(id) }
+    func endEditing(_ id: UUID) {
+        editors.remove(id)
+        if editors.isEmpty && pending { request() }
+    }
+    func request() {
+        guard editors.isEmpty else { pending = true; return }
+        pending = false
+        revision += 1
+    }
+}
+
+private struct TodayNavigationKey: EnvironmentKey {
+    static let defaultValue: TodayNavigation? = nil
+}
+extension EnvironmentValues {
+    var todayNavigation: TodayNavigation? {
+        get { self[TodayNavigationKey.self] }
+        set { self[TodayNavigationKey.self] = newValue }
+    }
+}
+private struct PreserveDraftNavigation: ViewModifier {
+    @Environment(\.todayNavigation) private var navigation
+    @State private var id = UUID()
+    func body(content: Content) -> some View {
+        content.onAppear { navigation?.beginEditing(id) }
+            .onDisappear { navigation?.endEditing(id) }
+    }
+}
+extension View {
+    func preservesDraftOnTodayLink() -> some View { modifier(PreserveDraftNavigation()) }
+}
+
+enum ScheduleDestination: Hashable {
+    case event(NSManagedObjectID), booking(NSManagedObjectID), session(NSManagedObjectID), pendingExpenses
+}
+
 struct RootView: View {
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.managedObjectContext) private var context
     @EnvironmentObject private var persistence: PersistenceController
-    @State private var selection: AppSection? = .upcoming
-    @State private var selectedJob: Job?
+    @StateObject private var todayNavigation = TodayNavigation()
     @State private var selectedTab: AppSection = .upcoming
-    @State private var todayNavigationID = UUID()
+    @State private var paths: [AppSection: NavigationPath] = [:]
     @FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "deletedAt == nil")) private var allJobs: FetchedResults<Job>
     private var showsSyncFeedback: Bool {
         !allJobs.isEmpty || persistence.syncActivity.needsAttention || persistence.syncActivity.offline
     }
 
     var body: some View {
-        Group {
-        if sizeClass == .regular && !typeSize.isAccessibilitySize {
-            if (selection == .upcoming || selection == .jobs) && !allJobs.isEmpty {
-                NavigationSplitView {
-                    sidebar
-                } content: {
-                    JobsView(upcomingOnly: selection == .upcoming, selectedJob: $selectedJob)
-                        .id("\(selection?.rawValue ?? "Upcoming")-\(todayNavigationID)")
-                        .navigationSplitViewColumnWidth(min: 320, ideal: 420, max: 520)
-                } detail: {
-                    NavigationStack {
-                        if let selectedJob { EventDetailView(anchor: selectedJob).id(selectedJob.objectID) }
-                        else { ContentUnavailableView("Select an event", systemImage: "text.book.closed", description: Text("Your schedule, fees and payments, together.")).daybookSurface() }
-                    }
-                }.navigationSplitViewStyle(.balanced)
-            } else {
-                NavigationSplitView { sidebar } detail: { NavigationStack { content(selection ?? .upcoming) } }
-            }
-        } else {
-            TabView(selection: $selectedTab) {
-                ForEach(AppSection.allCases) { section in
-                    NavigationStack {
+        TabView(selection: $selectedTab) {
+            ForEach(AppSection.allCases) { section in
+                Tab(section.rawValue, systemImage: section.symbol, value: section) {
+                    NavigationStack(path: path(for: section)) {
                         content(section)
+                            .navigationDestination(for: ScheduleDestination.self) { destination in
+                                switch destination {
+                                case .pendingExpenses: PendingExpensesView()
+                                case .event(let id):
+                                    if let job = try? context.existingObject(with: id) as? Job { EventDetailView(anchor: job) }
+                                case .booking(let id):
+                                    if let job = try? context.existingObject(with: id) as? Job { JobDetailView(job: job) }
+                                case .session(let id):
+                                    if let session = try? context.existingObject(with: id) as? WorkSession { SessionDetailView(session: session) }
+                                }
+                            }
                             .overlay(alignment: .bottom) {
                                 if section != .settings && showsSyncFeedback {
                                     SyncFeedbackView { selectedTab = .settings }
-                                        .padding(.horizontal, 20)
-                                        .padding(.bottom, 12)
+                                        .padding(.horizontal, 20).padding(.bottom, 12)
                                 }
                             }
                     }
-                    .id(section == .upcoming ? todayNavigationID : nil)
-                    .tabItem { Label(section.rawValue, systemImage: section.symbol) }
-                    .tag(section)
                 }
             }
         }
-            }
+        .tabViewStyle(.sidebarAdaptable)
+        .environment(\.todayNavigation, todayNavigation)
         #if DEBUG
         .onAppear {
-            if DesignFixtures.enabled && DesignFixtures.route == "expenses-overview" {
-                selection = .expenses
-                selectedTab = .expenses
-            }
+            if DesignFixtures.enabled && DesignFixtures.route == "expenses-overview" { selectedTab = .expenses }
         }
         #endif
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CuekeeperOpenToday"))) { _ in
-            todayNavigationID = UUID()
-            selectedJob = nil
+            todayNavigation.request()
+        }
+        .onChange(of: todayNavigation.revision) { _, _ in
+            UserDefaults.standard.set("Today", forKey: "upcoming.scope")
+            paths[.upcoming] = NavigationPath()
             selectedTab = .upcoming
-            selection = .upcoming
         }
     }
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            BrandLockup().padding(.horizontal, 18).padding(.top, 22).padding(.bottom, 12)
-            List(AppSection.allCases, selection: $selection) { section in
-                Label { Text(section.rawValue) } icon: {
-                    Image(systemName: section.symbol)
-                        .foregroundStyle(selection == section ? Color.white : Color("AccentColor"))
-                }
-                    .padding(.vertical, 6).tag(section)
-            }
-            .listStyle(.sidebar)
-            .tint(Color("SidebarSelection"))
-            .scrollContentBackground(.hidden)
-            if showsSyncFeedback {
-                Button { selection = .settings } label: {
-                    Label(persistence.syncActivity.message ?? "Saved on this device", systemImage: persistence.syncActivity.needsAttention ? "exclamationmark.icloud" : "icloud")
-                        .font(.footnote)
-                        .foregroundStyle(persistence.syncActivity.needsAttention ? Color("AmberText") : Color("SecondaryText"))
-                        .padding(20)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("sync-feedback")
-                .accessibilityHint("Opens storage and iCloud details")
-            }
-        }
-        .modifier(DaybookSidebarSurface())
-        .padding(10)
-        .background(Color("PageBackground"))
-        .navigationSplitViewColumnWidth(min: 210, ideal: 230, max: 280)
+    private func path(for section: AppSection) -> Binding<NavigationPath> {
+        Binding(get: { paths[section] ?? NavigationPath() }, set: { paths[section] = $0 })
     }
     @ViewBuilder private func content(_ section: AppSection) -> some View {
         switch section {
-        case .upcoming: JobsView(upcomingOnly: true)
-        case .jobs: JobsView(upcomingOnly: false)
+        case .upcoming: JobsView(upcomingOnly: true, path: path(for: .upcoming))
+        case .jobs: JobsView(upcomingOnly: false, path: path(for: .jobs))
         case .payments: PaymentsView()
         case .expenses: ExpensesView()
         case .settings: SettingsView()
@@ -129,6 +133,7 @@ private struct JobsView: View {
     @Environment(\.managedObjectContext) private var context
     @EnvironmentObject private var persistence: PersistenceController
     let upcomingOnly: Bool
+    @Binding var path: NavigationPath
     var selectedJob: Binding<Job?>? = nil
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)], predicate: NSPredicate(format: "deletedAt == nil")) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: []) private var events: FetchedResults<WorkEvent>
@@ -139,7 +144,6 @@ private struct JobsView: View {
     @State private var filter = JobFilter()
     @State private var scope = "All"
     @AppStorage("upcoming.scope") private var upcomingScope = "Today"
-    @State private var opened: Job?
     @AppStorage("upcoming.dismissedAttention") private var dismissedAttention = ""
     private func attentionKey(_ job: Job) -> String { "\(job.id?.uuidString ?? "")/\(job.eventStartDay)/\(job.bookingStatus)/\(job.eventEndDay < Day.string(from: Date()) ? "past" : "schedule")" }
     private var attention: [Job] {
@@ -230,7 +234,7 @@ private struct JobsView: View {
                         if let selectedJob {
                             Button { selectedJob.wrappedValue = job } label: { row(job) }.buttonStyle(.plain)
                         } else {
-                            NavigationLink { EventDetailView(anchor: job) } label: { row(job) }.buttonStyle(.plain)
+                            NavigationLink(value: ScheduleDestination.event(job.objectID)) { row(job) }.buttonStyle(.plain)
                         }
                         Divider()
                     }
@@ -244,7 +248,7 @@ private struct JobsView: View {
                             Button { dismissedAttention = Set(dismissedAttention.split(separator: "\n").map(String.init) + attention.map(attentionKey)).sorted().joined(separator: "\n") } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("Dismiss current attention items")
                         }
                         ForEach(Array(attention.prefix(3)), id: \.objectID) { job in
-                            NavigationLink { JobDetailView(job: job) } label: {
+                            NavigationLink(value: ScheduleDestination.booking(job.objectID)) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(job.eventEndDay < Day.string(from: Date()) ? "Ready to mark complete?" : "Schedule to confirm").font(.subheadline.weight(.semibold))
                                     Text(job.displayName).font(.subheadline)
@@ -259,11 +263,10 @@ private struct JobsView: View {
             .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
             .sheet(isPresented: $showingAdd) { EventWizardView { id in
                 if let job = try? context.existingObject(with: id) as? Job {
-                    if let selectedJob { selectedJob.wrappedValue = job } else { opened = job }
+                    if let selectedJob { selectedJob.wrappedValue = job } else { path.append(ScheduleDestination.event(job.objectID)) }
                 }
             } }
             .sheet(isPresented: $showingFilters) { JobFiltersView(filter: $filter) }
-            .navigationDestination(item: $opened) { EventDetailView(anchor: $0) }
             .onAppear { if selectedJob?.wrappedValue == nil { selectedJob?.wrappedValue = representatives.first } }
     }
     private var addButton: some View { Button("Add Event", systemImage: "plus") { showingAdd = true }.buttonStyle(DaybookPrimaryButton()).accessibilityIdentifier("add-job") }

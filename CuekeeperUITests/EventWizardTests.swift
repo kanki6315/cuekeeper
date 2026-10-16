@@ -65,7 +65,9 @@ final class EventWizardTests: XCTestCase {
         XCTAssertFalse(app.datePickers["End date"].exists)
         XCTAssertFalse(app.textFields["schedule-time-Start"].exists)
         let end = app.buttons["session-time-End-unset"]
-        XCTAssertFalse(end.exists)
+        XCTAssertTrue(end.exists)
+        XCTAssertFalse(app.datePickers["session-time-End"].exists)
+        end.tap()
         XCTAssertTrue(app.datePickers["session-time-End"].exists)
         app.buttons["Clear start"].tap()
         XCTAssertTrue(start.exists)

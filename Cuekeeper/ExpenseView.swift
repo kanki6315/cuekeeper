@@ -169,6 +169,7 @@ struct ExpenseEditorView: View {
     @State private var task: Task<Void, Never>?
     @State private var message: String?
     @State private var error: String?
+    @State private var failedDraftSave = false
     @State private var discard = false
     @State private var retry = false
     @State private var replacing = false
@@ -312,10 +313,27 @@ struct ExpenseEditorView: View {
                     picker = nil
                 }
             }
-            .task { if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported { scanning = true } }
+            .task {
+                #if DEBUG
+                if ProcessInfo.processInfo.isUITesting, ProcessInfo.processInfo.arguments.contains("--ui-test-expense-conflict"),
+                   let recordID, let expense = try? context.existingObject(with: recordID) as? Expense {
+                    expense.revision = UUID().uuidString
+                    try? context.save()
+                }
+                #endif
+                if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported { scanning = true }
+            }
             .onDisappear { task?.cancel() }
             .interactiveDismissDisabled(savingPhoto || recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID)
-            .saveErrorAlert($error)
+            .preservesDraftOnTodayLink()
+            .alert("Couldn’t save changes", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+                if failedDraftSave {
+                    Button("Close without saving", role: .destructive) { dismiss() }
+                    Button("Keep Editing", role: .cancel) { error = nil }
+                } else {
+                    Button("OK", role: .cancel) { error = nil }
+                }
+            } message: { Text(error ?? "Please try again.") }
             .confirmationDialog("Read the receipt again?", isPresented: $retry, titleVisibility: .visible) {
                 Button("Read Receipt Again") { extract() }
                 Button("Keep Editing", role: .cancel) {}
@@ -385,11 +403,15 @@ struct ExpenseEditorView: View {
     }
     private func save(confirmed: Bool) {
         guard let recordID else { return }
+        failedDraftSave = false
         do {
             try Expense.save(draft, id: recordID, revision: revision, confirmed: confirmed, jobID: selectedJobID, in: context)
             if confirmed, let expense = try context.existingObject(with: recordID) as? Expense, let id = expense.id { ExpenseNotifications.shared.clear(id: id) }
             dismiss()
-        } catch { self.error = error.localizedDescription }
+        } catch {
+            failedDraftSave = isDraft
+            self.error = error.localizedDescription
+        }
     }
 }
 

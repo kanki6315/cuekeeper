@@ -34,6 +34,26 @@ final class BackgroundExpenseUITests: XCTestCase {
         app.buttons["Keep Draft"].tap()
         XCTAssertTrue(app.staticTexts["Opening expense…"].waitForExistence(timeout: 5))
     }
+    func testConflictedDraftCanCloseWithoutSaving() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=pending-expenses", "--ui-test-expense-conflict"]
+        app.launch()
+        let row = app.buttons.matching(identifier: "pending-expense-row").matching(NSPredicate(format: "label CONTAINS %@", "Circuit Parking")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        row.tap()
+        let keep = app.buttons["Keep Draft"]
+        XCTAssertTrue(keep.waitForExistence(timeout: 5))
+        keep.tap()
+        let close = app.buttons["Close without saving"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        app.buttons["Keep Editing"].tap()
+        XCTAssertTrue(keep.exists)
+        keep.tap()
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+    }
+
     func testSettingsInstructionsAndPendingPrompt() {
         let app = launch("pending-root")
         let pending = app.buttons["pending-expenses"].firstMatch

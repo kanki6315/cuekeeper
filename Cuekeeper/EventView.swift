@@ -100,6 +100,7 @@ struct EventEditorView: View {
                 if booking.fee?.amount.isEmpty == true, let client = try? context.fetch(request).first { booking.fee?.currency = client.defaultCurrency }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
+            .preservesDraftOnTodayLink()
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
     }
 }

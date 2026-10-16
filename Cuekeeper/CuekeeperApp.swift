@@ -65,10 +65,23 @@ struct CuekeeperApp: App {
 
     }
 
+    // Hosted unit tests open multiple stores and historical models. Mounting the
+    // live UI would resolve its fetch requests against those test models and
+    // leave onboarding sheets interfering with presentation-policy tests.
+    private var isUnitTestHost: Bool {
+        #if DEBUG
+        return NSClassFromString("XCTestCase") != nil && !ProcessInfo.processInfo.isUITesting
+        #else
+        return false
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
-                if let error = persistence.loadError {
+                if isUnitTestHost {
+                    Color.clear
+                } else if let error = persistence.loadError {
                     ContentUnavailableView {
                         Label("Couldn’t open your daybook", systemImage: "externaldrive.badge.exclamationmark")
                     } description: {
@@ -133,7 +146,6 @@ struct CuekeeperApp: App {
                 }
                 guard url.scheme == "cuekeeper", url.host == "today" else { return }
                 calendarLink = nil
-                UserDefaults.standard.set("Today", forKey: "upcoming.scope")
                 NotificationCenter.default.post(name: Notification.Name("CuekeeperOpenToday"), object: nil)
             }
             .tint(Color("AccentColor"))

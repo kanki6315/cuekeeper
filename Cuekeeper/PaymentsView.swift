@@ -400,6 +400,7 @@ struct PaymentEditorView: View {
                 }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
+            .preservesDraftOnTodayLink()
             .onAppear { if initial == nil { initial = draft } }
         }
         .presentationSizing(.page)

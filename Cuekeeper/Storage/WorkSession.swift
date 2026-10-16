@@ -204,13 +204,11 @@ enum SessionTimeInput {
 }
 
 extension SessionDraft {
-    /// Keep the initial end aligned with start until a different end has been chosen.
+    /// Entering a start must not invent an end for an incomplete schedule.
     mutating func setStartTime(_ date: Date?, zone: TimeZone) {
-        let usesDefaultEnd = endTime == nil || endTime == startTime
         startTime = date
         if let date {
             day = Day.string(from: date, timeZone: zone)
-            if usesDefaultEnd { endTime = date }
         }
         timeZoneID = zone.identifier
         inferEndDate(zone: zone)

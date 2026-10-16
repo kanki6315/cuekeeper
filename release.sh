@@ -153,10 +153,12 @@ if [ "$run_tests" = 1 ]; then
     log "CloudKit tooling and release-gate tests"
     python3 -m unittest discover -s scripts/tests
     log "Unit and UI tests (simulator)"
+    # Avoid simctl diagnose hanging after tests finish; keep ordinary results and coverage.
     xcodebuild test \
         -project Cuekeeper.xcodeproj -scheme Cuekeeper \
         -destination "${TEST_DESTINATION:-platform=iOS Simulator,name=iPhone 18 Pro}" \
         -derivedDataPath build/tests \
+        -collect-test-diagnostics never \
         CODE_SIGNING_ALLOWED=NO \
         | pretty
 fi

@@ -88,6 +88,30 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(options['provisioningProfiles'], {
             app['--bundle-id']: app['--name'], widget['--bundle-id']: widget['--name']})
 
+    def test_simulator_failure_still_blocks_archive_without_diagnostic_collection(self):
+        (self.root / "scripts/tests").mkdir()
+        (self.root / "scripts/tests/test_placeholder.py").write_text(
+            'import unittest\n'
+            'class Placeholder(unittest.TestCase):\n'
+            '    def test_pass(self): pass\n')
+        (self.root / "bin/xcodebuild").write_text(
+            '#!/bin/sh\n'
+            'echo "$*" >> "$BUILD_MARKER"\n'
+            'if [ "$1" = test ]; then exit "${TEST_EXIT_CODE:-0}"; fi\n')
+        marker = self.root / 'build-called'
+        for exit_code in (0, 65):
+            with self.subTest(exit_code=exit_code):
+                marker.unlink(missing_ok=True)
+                result = subprocess.run(
+                    ['bash', str(self.root / 'release.sh'), '--no-upload', '--skip-cloudkit-check'],
+                    cwd=self.root, env={**self.env, 'TEST_EXIT_CODE': str(exit_code)},
+                    capture_output=True, text=True)
+                self.assertEqual(result.returncode, exit_code, result.stdout + result.stderr)
+                calls = marker.read_text().splitlines()
+                self.assertTrue(calls[0].startswith('test '))
+                self.assertIn('-collect-test-diagnostics never', calls[0])
+                self.assertEqual(len(calls), 3 if exit_code == 0 else 1)
+
 
 if __name__ == '__main__':
     unittest.main()

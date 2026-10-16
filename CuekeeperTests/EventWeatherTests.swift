@@ -150,6 +150,46 @@ final class EventWeatherTests: XCTestCase {
         XCTAssertEqual(store.nextAttempt(placeID: "new-track"), now.addingTimeInterval(86400))
     }
 
+    func testUndecodableSnapshotsRecoverWithoutResettingBudget() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appending(path: "cache.json")
+        let now = date("2026-10-13")
+        let stamp = now.timeIntervalSinceReferenceDate
+        let json = #"{"attempts":[\#(stamp)],"entries":{"track":{"attemptedAt":\#(stamp),"snapshot":{"futureField":true}}}}"#
+        try Data(json.utf8).write(to: file)
+        var calls = 0
+        let store = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in calls += 1; return self.snapshot(now: now) }
+        XCTAssertNil(store.cached(placeID: "track"))
+        XCTAssertEqual(store.nextAttempt(placeID: "track"), now.addingTimeInterval(3600))
+        XCTAssertNil(store.nextAttempt(placeID: "another-track"))
+        _ = try await store.load(placeID: "another-track", location: CLLocation(latitude: 29, longitude: -81), timeZone: zone)
+        XCTAssertEqual(calls, 1)
+        let persisted = try JSONDecoder().decode(EventWeatherStore.State.self, from: Data(contentsOf: file))
+        XCTAssertEqual(persisted.attempts.count, 2)
+    }
+
+    func testUnreadableCacheSpendsBudgetUntilADayAfterLastWrite() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appending(path: "cache.json")
+        var now = date("2026-10-13")
+        try Data("not json".utf8).write(to: file)
+        try FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: file.path)
+        var calls = 0
+        let location = CLLocation(latitude: 29, longitude: -81)
+        let store = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in calls += 1; return self.snapshot(now: now) }
+        do { _ = try await store.load(placeID: "track", location: location, timeZone: zone); XCTFail("Expected daily limit") }
+        catch { XCTAssertEqual(error as? EventWeatherStore.Failure, .dailyLimit) }
+        XCTAssertNoThrow(try JSONDecoder().decode(EventWeatherStore.State.self, from: Data(contentsOf: file)))
+        now = now.addingTimeInterval(86400)
+        let reopened = EventWeatherStore(fileURL: file, clock: { now }) { _, _ in calls += 1; return self.snapshot(now: now) }
+        _ = try await reopened.load(placeID: "track", location: location, timeZone: zone)
+        XCTAssertEqual(calls, 1)
+    }
+
     func testConcurrentLoadsMakeOneRequest() async throws {
         var calls = 0
         let now = date("2026-10-13")

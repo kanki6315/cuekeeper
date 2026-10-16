@@ -111,6 +111,17 @@ struct EventWizardView: View {
         .presentationSizing(.page).presentationDetents([.large])
         .presentationBackground(Color("PageBackground"))
         .interactiveDismissDisabled()
+        .preservesDraftOnTodayLink()
+        #if DEBUG
+        .task {
+            if ProcessInfo.processInfo.isUITesting, ProcessInfo.processInfo.arguments.contains("--ui-test-event-arrives-during-wizard") {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                    try JobDraft(name: "Arrived from another device").save(in: context)
+                } catch is CancellationError {} catch { self.error = error.localizedDescription }
+            }
+        }
+        #endif
         .onChange(of: season) { _, _ in
             let previous = draft; draft = inactiveDraft; inactiveDraft = previous
             sessionEvent = 0; activeSession = nil; copyTargets = []; copyExpanded = false; copyNotice = ""

@@ -8,13 +8,78 @@ final class TodayTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 15))
         app.buttons["upcoming-scope-All"].tap()
         XCTAssertTrue(app.textFields["search-jobs"].waitForExistence(timeout: 3))
-        app.open(URL(string: "cuekeeper://today")!)
+        XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
         XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
         app.staticTexts["Qualifying"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Qualifying"].waitForExistence(timeout: 3))
-        app.open(URL(string: "cuekeeper://today")!)
+        XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
         XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
     }
+    func testTodayLinkPreservesWizardUntilUserClosesIt() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures"]
+        app.launch()
+        let add = app.buttons["add-job"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 15))
+        add.tap()
+        let next = app.buttons["wizard-continue"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        let title = app.textFields["job-name"]
+        title.tap()
+        title.typeText("Draft to keep")
+        XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        XCTAssertEqual(title.value as? String, "Draft to keep")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["Discard Draft"].waitForExistence(timeout: 3))
+        app.buttons["Discard Draft"].tap()
+        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+    }
+
+    func testTodayLinkWaitsForSessionEditorBeforePoppingDetail() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures"]
+        app.launch()
+        let session = app.staticTexts["Qualifying"].firstMatch
+        XCTAssertTrue(session.waitForExistence(timeout: 15))
+        session.tap()
+        app.buttons["edit-session"].tap()
+        let name = app.textFields["session-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText(" changed")
+        XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        XCTAssertTrue((name.value as? String)?.contains("changed") == true)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["Discard Changes"].waitForExistence(timeout: 3))
+        app.buttons["Discard Changes"].tap()
+        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+    }
+
+    func testFirstEventWizardSurvivesIncomingEventAndRotation() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--ui-test-event-arrives-during-wizard"]
+        app.launch()
+        let add = app.buttons["add-job"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 15))
+        add.tap()
+        let next = app.buttons["wizard-continue"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        // Wait for the synthetic store change that used to replace the iPad root.
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertTrue(next.exists)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        XCUIDevice.shared.orientation = .portrait
+        app.buttons["Cancel"].tap()
+        app.buttons["upcoming-scope-All"].tap()
+        XCTAssertTrue(app.staticTexts["Arrived from another device"].firstMatch.waitForExistence(timeout: 5))
+    }
+
     func testTodayLargeText() {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .portrait

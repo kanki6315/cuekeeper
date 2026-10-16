@@ -116,6 +116,7 @@ struct InvoiceEditorView: View {
             .onChange(of: draft.value.currency) { _, _ in if !locked { draft.value.lines = []; amounts = [:] } }
             .onChange(of: draft.value.status) { _, status in if status == "sent" && draft.value.sentDay.isEmpty { draft.value.sentDay = Day.string(from: Date()) } }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
+            .preservesDraftOnTodayLink()
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

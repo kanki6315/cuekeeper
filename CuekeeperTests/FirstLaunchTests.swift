@@ -71,6 +71,46 @@ final class FirstLaunchTests: XCTestCase {
         XCTAssertNil(activity.restoreUnavailableReason)
     }
 
+    func testUnavailableAccountDoesNotBlockLocalRestore() {
+        var activity = SyncActivity()
+        activity.checkingAccount = false
+        activity.accountIssue = "Sign in to iCloud"
+        XCTAssertNil(activity.restoreUnavailableReason)
+        activity.record(id: UUID(), kind: .receiving, ended: true, succeeded: false, error: "No account")
+        XCTAssertNil(activity.restoreUnavailableReason)
+        activity.accountIssue = nil
+        XCTAssertNotNil(activity.restoreUnavailableReason)
+    }
+
+    func testOfflineRestoreDoesNotWaitForAnImpossibleDownload() {
+        var activity = SyncActivity()
+        activity.offline = true
+        activity.record(id: UUID(), kind: .receiving, ended: true, succeeded: false, error: "Offline")
+        XCTAssertNil(activity.restoreUnavailableReason)
+        activity.offline = false
+        XCTAssertNotNil(activity.restoreUnavailableReason)
+        activity.record(id: UUID(), kind: .receiving, ended: true, succeeded: true, error: nil)
+        XCTAssertNil(activity.restoreUnavailableReason)
+    }
+
+    func testTodayNavigationWaitsForAllEditorsAndCoalescesLinks() {
+        let navigation = TodayNavigation()
+        let first = UUID(), second = UUID()
+        navigation.beginEditing(first)
+        navigation.beginEditing(second)
+        navigation.request()
+        navigation.request()
+        XCTAssertEqual(navigation.revision, 0)
+        navigation.endEditing(first)
+        XCTAssertEqual(navigation.revision, 0)
+        navigation.endEditing(second)
+        XCTAssertEqual(navigation.revision, 1)
+        navigation.endEditing(second)
+        XCTAssertEqual(navigation.revision, 1)
+        navigation.request()
+        XCTAssertEqual(navigation.revision, 2)
+    }
+
     func testUpgradeDetectionHappensBeforeStoreCreation() async throws {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

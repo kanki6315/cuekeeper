@@ -76,8 +76,38 @@ final class CaptureTests: XCTestCase {
             if state == "error" {
                 app.buttons["sync-feedback"].tap()
                 XCTAssertTrue(app.tabBars.buttons["Settings"].isSelected)
-                XCTAssertTrue(app.staticTexts["Couldn’t receive changes. iCloud will try again."].exists)
+                let summary = app.descendants(matching: .any)["sync-summary"]
+                XCTAssertTrue(summary.waitForExistence(timeout: 5))
+                XCTAssertEqual(summary.label, "Warning: Sync paused")
+                XCTAssertEqual(summary.value as? String, "Couldn’t receive changes. iCloud will try again.")
             }
+            app.terminate()
+        }
+    }
+
+    func testSettingsSummarizesSyncStateWithoutBackups() {
+        let app = XCUIApplication()
+        let cases: [(flag: String?, extra: [String], label: String, value: String?)] = [
+            (nil, [], "Saved on this device", "iCloud sync is off"),
+            ("receiving", [], "Receiving changes", nil),
+            ("offline", ["--design-dark"], "Offline", "Syncs when you reconnect"),
+            ("error", ["--design-dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"],
+             "Warning: Sync paused", "Couldn’t receive changes. iCloud will try again."),
+        ]
+        for item in cases {
+            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=settings"] + item.extra
+            if let flag = item.flag { app.launchArguments.append("--ui-test-sync-\(flag)") }
+            app.launch()
+            let summary = app.descendants(matching: .any)["sync-summary"]
+            XCTAssertTrue(summary.waitForExistence(timeout: 10))
+            reveal(summary, in: app)
+            XCTAssertEqual(summary.label, item.label)
+            XCTAssertEqual(summary.value as? String ?? "", item.value ?? "")
+            XCTAssertFalse(app.staticTexts["Storage & iCloud"].exists)
+            XCTAssertFalse(app.staticTexts["Last backup"].exists)
+            XCTAssertTrue(app.buttons["backups-link"].exists)
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            shot.name = "settings-sync-\(item.flag ?? "local")"; shot.lifetime = .keepAlways; add(shot)
             app.terminate()
         }
     }
@@ -100,7 +130,7 @@ final class CaptureTests: XCTestCase {
         let offline = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         offline.name = "Offline local storage"; offline.lifetime = .keepAlways; add(offline)
         app.buttons["sync-feedback"].tap()
-        XCTAssertTrue(app.staticTexts["Storage & iCloud"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your data"].waitForExistence(timeout: 5))
     }
 
     func testInvoiceAndPartialPaymentWorkflow() {

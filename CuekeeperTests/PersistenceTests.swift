@@ -22,8 +22,8 @@ final class PersistenceTests: XCTestCase {
         try FileManager.default.removeItem(at: directory)
     }
 
-    private func openStore(fileName: String = "test.sqlite") async throws -> PersistenceController {
-        let store = PersistenceController(storeURL: directory.appending(path: fileName), cloudEnabled: false)
+    private func openStore(fileName: String = "test.sqlite", defaults: UserDefaults = .standard) async throws -> PersistenceController {
+        let store = PersistenceController(storeURL: directory.appending(path: fileName), cloudEnabled: false, defaults: defaults)
         for _ in 0..<100 {
             if store.isLoaded { openedStores.append(store); return store }
             if let error = store.loadError { throw NSError(domain: error, code: 1) }
@@ -945,6 +945,48 @@ final class PersistenceTests: XCTestCase {
         state.enabled = false; state.offline = true; XCTAssertNil(state.message)
     }
 
+    func testSyncSummaryMirrorsActivityWithoutClaimingOtherDevices() {
+        var state = SyncActivity()
+        let account = "Sign in to iCloud in device Settings"
+        func summary(_ last: Date? = nil) -> SyncSummary { state.summary(accountStatus: account, lastTransfer: last) }
+        XCTAssertEqual(summary().headline, "Connecting to iCloud"); XCTAssertEqual(state.accountSummary, "Checking…")
+        state.checkingAccount = false
+        XCTAssertEqual(summary().headline, "Waiting for iCloud"); XCTAssertEqual(state.accountSummary, "Available")
+        let incoming = UUID()
+        state.record(id: incoming, kind: .receiving, ended: false, succeeded: false, error: nil)
+        XCTAssertEqual(summary().headline, "Receiving changes"); XCTAssertTrue(summary().busy)
+        state.record(id: UUID(), kind: .sending, ended: false, succeeded: false, error: nil)
+        XCTAssertEqual(summary().headline, "Syncing changes")
+        state.offline = true
+        XCTAssertEqual(summary().headline, "Offline"); XCTAssertFalse(summary().busy)
+        state.offline = false
+        state.record(id: incoming, kind: .receiving, ended: true, succeeded: false, error: "Couldn’t receive changes. iCloud will try again.")
+        XCTAssertEqual(summary(), SyncSummary(headline: "Sync paused", detail: "Couldn’t receive changes. iCloud will try again.", symbol: "exclamationmark", warning: true))
+        state.accountIssue = "iCloud needs attention"
+        XCTAssertEqual(summary().headline, "Not syncing"); XCTAssertEqual(summary().detail, account)
+        XCTAssertEqual(state.accountSummary, "Unavailable")
+        state.accountIssue = nil
+        var done = SyncActivity(); done.checkingAccount = false
+        done.record(id: UUID(), kind: .receiving, ended: true, succeeded: true, error: nil)
+        let now = Date()
+        XCTAssertEqual(done.summary(accountStatus: "Available", lastTransfer: nil).detail, nil)
+        let today = done.summary(accountStatus: "Available", lastTransfer: now)
+        XCTAssertEqual(today.headline, "Synced")
+        XCTAssertEqual(today.detail, "Last exchange \(now.formatted(date: .omitted, time: .shortened))")
+        done.enabled = false
+        XCTAssertEqual(done.summary(accountStatus: "", lastTransfer: now).headline, "Saved on this device")
+        XCTAssertNil(done.accountSummary)
+    }
+
+    @MainActor func testBackupRowDateOmitsCurrentYear() throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let recent = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let older = try XCTUnwrap(calendar.date(from: DateComponents(year: 2025, month: 12, day: 30)))
+        XCTAssertEqual(SettingsView.backupDate(recent, now: now), recent.formatted(.dateTime.month(.abbreviated).day()))
+        XCTAssertEqual(SettingsView.backupDate(older, now: now), older.formatted(.dateTime.month(.abbreviated).day().year()))
+    }
+
     private func billingJob(_ name: String, amount: String, currency: String = "USD", in context: NSManagedObjectContext) throws -> Job {
         var draft = JobDraft(name: name); draft.clientName = "Studio Network"
         draft.fee?.amount = amount; draft.fee?.currency = currency
@@ -1290,15 +1332,15 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try job.feeHeads().count, 1)
     }
 
-    func testStartDefaultsEndAndPreservesCustomEnd() throws {
+    func testStartLeavesEndUnsetAndPreservesCustomEnd() throws {
         let zone = try XCTUnwrap(TimeZone(identifier: "UTC"))
         let formatter = ISO8601DateFormatter()
         let start = try XCTUnwrap(formatter.date(from: "2026-10-14T19:00:00Z"))
         var draft = SessionDraft(day: "2026-10-14", timeZoneID: zone.identifier)
         draft.setStartTime(start, zone: zone)
-        XCTAssertEqual(draft.endTime, start)
+        XCTAssertNil(draft.endTime)
         draft.setStartTime(start.addingTimeInterval(3600), zone: zone)
-        XCTAssertEqual(draft.endTime, draft.startTime)
+        XCTAssertNil(draft.endTime)
         let customEnd = start.addingTimeInterval(3 * 3600)
         draft.endTime = customEnd
         draft.setStartTime(start, zone: zone)
@@ -1308,7 +1350,41 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(draft.endTime, customEnd)
         draft.endTime = nil
         draft.setStartTime(start, zone: zone)
-        XCTAssertEqual(draft.endTime, start)
+        XCTAssertNil(draft.endTime)
+    }
+
+    func testStartOnlySessionCanBeSaved() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        let jobID = try JobDraft(name: "Incomplete schedule").save(in: context)
+        var draft = SessionDraft(day: "2026-10-14", timeZoneID: "UTC")
+        draft.setStartTime(try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-14T19:00:00Z")), zone: TimeZone(identifier: "UTC")!)
+        let id = try draft.save(in: context, jobID: jobID)
+        let session = try XCTUnwrap(context.existingObject(with: id) as? WorkSession)
+        XCTAssertEqual(session.startTime, draft.startTime)
+        XCTAssertNil(session.endTime)
+        draft.scheduleStatus = "confirmed"
+        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
+    }
+
+    func testSuccessfulImportSurvivesStoreReopenAndIsScopedToStore() async throws {
+        let suite = "import-completion-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = try await openStore(defaults: defaults)
+        store.recordSyncEvent(id: UUID(), kind: .receiving, ended: true, succeeded: true, error: nil)
+        XCTAssertTrue(store.syncActivity.receivedImport)
+        for persistentStore in store.container.persistentStoreCoordinator.persistentStores {
+            try store.container.persistentStoreCoordinator.remove(persistentStore)
+        }
+        let reopened = try await openStore(defaults: defaults)
+        XCTAssertTrue(reopened.syncActivity.receivedImport)
+        var activity = reopened.syncActivity
+        activity.enabled = true
+        activity.offline = true
+        XCTAssertNil(activity.restoreUnavailableReason)
+        let fresh = try await openStore(fileName: "fresh.sqlite", defaults: defaults)
+        XCTAssertFalse(fresh.syncActivity.receivedImport)
     }
 
     func testEndDateInferenceTracksClockEditsAndOptionalTimes() throws {

@@ -89,6 +89,7 @@ struct FeeEditorView: View {
                 }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
+            .preservesDraftOnTodayLink()
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

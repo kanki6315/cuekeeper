@@ -106,6 +106,7 @@ struct SessionBatchEditorView: View {
                     }.disabled(selected.isEmpty || !changed).accessibilityIdentifier("apply-session-changes") }
                 }
                 .saveErrorAlert($error).interactiveDismissDisabled(changed)
+            .preservesDraftOnTodayLink()
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
     }
 }

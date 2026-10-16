@@ -117,7 +117,7 @@ Dates and amounts use monospaced digits where alignment aids scanning. Metadata 
 
 The shared form is a custom ScrollView with titled content, vertical section groups and ruled panels; it is more than a recolored native Form. It centers content up to 760 points with page padding and section spacing from the tokens. Section headers sit above panels; rows use shared horizontal and vertical padding, inset dividers and optional footers. Explicitly unframed sections omit their fill, border and horizontal padding. Native lists remain available through DaybookList, with matching row surfaces and 18-point section spacing.
 
-Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments, Expenses and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details keep schedule and work context ahead of fee/billing content. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
+Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments, Expenses and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details lead with the header and a To settle panel, then Schedule / Money / Details tabs; when the detail column is at least 820 points wide (and text is below accessibility sizes) the schedule sits beside Money and Details in a 1.45 : 1 column split instead. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
 
 Regular-width layouts at non-accessibility text sizes use a sidebar; Upcoming and Events use sidebar, agenda and selected detail columns. The sidebar ranges from 210 to 280 points (ideal 230); the agenda from 320 to 520 (ideal 420). Native split-view behavior handles width and portrait collapse. Compact widths and all accessibility text sizes use tabs and navigation stacks. Headers and payment summaries adapt vertically when text or width demands it.
 
@@ -144,7 +144,7 @@ Panels and search use gently rounded rectangles. Primary and secondary actions u
 
 DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `PrimaryButtonText` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Event uses the primary style; Add Session uses the secondary style.
 
-Event details expose the next booking-state action inline: Mark as booked for tentative events and Mark completed for booked events. Edit Event is a toolbar action; Duplicate Event and confirmed Delete Event appear in separate sections. Upcoming uses DaybookSegments for All upcoming / This week. Events uses the same control for All / Active / Completed / Cancelled. These compact, text-only controls keep all choices in one row. The visible track is 36 points high at default text size (32-point segments), with a separate 44-point touch area. Selection uses a slightly stronger tinted fill, a fine outline and semibold text; inactive options keep a faint tint without individual outlines. No icons or grid fallback. At accessibility text sizes the same row scrolls horizontally rather than compressing enlarged labels.
+Event details change booking status from the header badge menu; the next step for a tentative booking, an owed balance or a ready-to-invoice event appears as the prominent To settle action. Edit Event and a More menu (Duplicate, Delete) are toolbar actions; Duplicate and confirmed Delete also close the Details tab. Upcoming uses DaybookSegments for All upcoming / This week. Events uses the same control for All / Active / Completed / Cancelled. These compact, text-only controls keep all choices in one row. The visible track is 36 points high at default text size (32-point segments), with a separate 44-point touch area. Selection uses a slightly stronger tinted fill, a fine outline and semibold text; inactive options keep a faint tint without individual outlines. No icons or grid fallback. At accessibility text sizes the same row scrolls horizontally rather than compressing enlarged labels.
 
 ### Panels and sections
 
@@ -207,6 +207,41 @@ expose it once; session editing displays it read-only. Remote/hybrid Work fields
 include Your timezone for secondary local-time readouts, including call time.
 On-site work inherits the event zone. Event-zone changes preserve scheduled instants.
 
+### Event detail page
+
+The page is built from `EventDetailSummary`, a value derived on each render from the event's sessions, fee, invoices,
+receipts and expense drafts; nothing it shows is stored. Order: header (dates · place as one line that opens the editor,
+large-title event name, status badge menu, client, role · arrangement), To settle, then the body.
+
+**To settle** lists derived open items in a fixed order: dates on hold, session gaps (no time, unconfirmed time,
+undecided coverage; one item per session), client to add, fee conflict or unknown fee, ready to invoice, unsent draft
+invoice, owed balance, billing review, receipts to review. Each row has a tinted symbol, a one-line title, optional
+detail and its own action; dates on hold, owed balance and ready to invoice use the prominent button. Three rows show
+before "Show all". The panel disappears when nothing is open, and cancelled events keep only money items.
+
+**Tabs** use DaybookSegments with an amber per-tab count of open items and stay pinned while scrolling, except at
+accessibility sizes where a pinned bar would cover the screen. The selection is remembered per event; completed or
+cancelled events with money items open on Money.
+
+**Schedule** shows a next-call panel for covered work within seven days: forest fill in light mode, raised surface with
+a mint hairline in dark mode, the call time large in the chosen clock, the other clock beneath, then on-air range and
+series. Within 90 minutes it becomes a countdown. Remote work offers *Your time / Track* segments, defaulting to your
+time; on-site work always reads track time. The run of show groups sessions under the date rail with a covering count
+and, inside the forecast window, that day's track weather. Rows are quiet when confirmed and covering; not-covering rows
+use secondary text, missing times show a dashed amber TBC tile with Add time, and a session's own series shows only when
+it differs from the event's. Wide layouts add the track time trailing each row. Forecast status and the Apple Weather
+attribution sit under the run of show; hourly forecasts belong to each session's page.
+
+**Money** opens with the fee, its agreement and, only when the active invoice bills this event alone, a paid/owed bar.
+Grouped invoices state the invoice balance instead, because receipts settle the whole invoice. Fee breakdown lines,
+invoices and payments, and expenses follow.
+
+**Details** holds client, role, working arrangement with its zone offset in words, event timezone, location, track,
+project and series links, notes, then Duplicate and Delete.
+
+Sources: `Cuekeeper/JobDetailView.swift`, `Cuekeeper/EventDetailSummary.swift`, `Cuekeeper/EventDetailComponents.swift`,
+`Cuekeeper/EventWeatherView.swift`. Brief and evidence: `design/event-page/`.
+
 ### Payment disclosures and deletion
 
 Ready to invoice groups events into initially collapsed client disclosures, with
@@ -230,6 +265,21 @@ and a compact “Restore by” date. Leading swipe reveals Restore; trailing swi
 reveals Delete. Both disable full-swipe execution. Delete opens the existing
 permanent-removal confirmation; it never removes a row on the initial swipe/tap.
 Context menus and named accessibility actions provide alternatives to swiping.
+
+### Backups
+
+Status first, with an inline navigation title and no page heading. A panel leads
+with the last backup's relative date and its event count and size, followed by
+Back Up Now, progress and notices. An amber line appears only while sync changes
+may still be arriving. Saved iCloud backups follow under "In iCloud" with an
+"n of 50" count. Each row has a capsule Restore action and a "…" menu holding
+Delete Backup; a context menu offers both. Pull to refresh reloads the list. At
+regular width and non-accessibility text sizes, the status and a Files panel
+(Export to Files, Import a Backup, "ZIP files aren't encrypted.") sit in a
+360-point column beside the list, with content capped at 1080 points. Otherwise
+the panels stack and Files moves to a toolbar folder menu. All other fine print
+(what's included, restore semantics, encryption, iCloud limit) lives behind the
+About backups info button: a popover on iPad and a medium sheet on iPhone.
 
 ### First-launch setup
 
@@ -257,7 +307,7 @@ the incumbent visual system rather than claiming a new full-product audit.
 ## Do's and Don'ts
 
 ### Do:
-- **Do** preserve the date-led hierarchy and sessions-before-billing detail order.
+- **Do** preserve the date-led hierarchy; event details open on Schedule and promote Money once the event is completed with money still to settle.
 - **Do** use named appearance-aware color assets and semantic text styles.
 - **Do** keep USD and EUR separate and show real partial balances and pending schedules.
 - **Do** retain native controls, navigation and accessibility adaptation.

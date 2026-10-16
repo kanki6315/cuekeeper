@@ -3,8 +3,7 @@ import SwiftUI
 
 /// The landing tab: Now for the work in flight, Plan for settling and looking ahead.
 struct UpcomingView: View {
-    /// Set on iPad, where the agenda column selects the event shown beside it.
-    var selectedJob: Binding<Job?>? = nil
+    @Binding var path: NavigationPath
     var onShowAllEvents: () -> Void = {}
 
     @Environment(\.managedObjectContext) private var context
@@ -23,7 +22,6 @@ struct UpcomingView: View {
     @AppStorage(UpcomingView.modeKey) private var storedMode = ""
     @AppStorage(UpcomingView.modeSetKey) private var storedModeSet = ""
     @SceneStorage("upcoming.settleExpanded") private var settleExpanded = false
-    @State private var route: UpcomingRoute?
     @State private var sheet: UpcomingSheet?
     @State private var pendingCapture: Job?
     @State private var error: String?
@@ -48,13 +46,6 @@ struct UpcomingView: View {
         .daybookSurface()
         .navigationTitle("").navigationBarTitleDisplayMode(.inline)
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
-        .navigationDestination(item: $route) { route in
-            switch route {
-            case .event(let job): EventDetailView(anchor: job)
-            case .fee(let job): FeeDetailView(job: job)
-            case .invoice(let invoice): InvoiceDetailView(invoice: invoice)
-            }
-        }
         .sheet(item: $sheet, onDismiss: {
             if let job = pendingCapture { pendingCapture = nil; sheet = .capture(job) }
         }) { sheet in
@@ -118,29 +109,11 @@ struct UpcomingView: View {
         .task(id: summary.inFlightKey) {
             // A widget request holds Now for the current set of in-flight jobs only.
             if storedModeSet == Self.openNow { storedModeSet = summary.inFlightKey }
-            if let selectedJob, selectedJob.wrappedValue == nil, let id = summary.inFlight.first?.id ?? summary.comingUp.first?.id {
-                selectedJob.wrappedValue = job(id)
-            }
         }
     }
 
-    @ViewBuilder private func header(_ summary: UpcomingSummary) -> some View {
-        if selectedJob == nil {
-            // Matches DaybookForm's gap below the tab header.
-            DaybookTabHeader { if !jobs.isEmpty { actions(summary) } }
-        } else {
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    Text("Upcoming").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-                    Spacer(minLength: 12)
-                    if !jobs.isEmpty { actions(summary) }
-                }
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Upcoming").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-                    if !jobs.isEmpty { actions(summary) }
-                }
-            }
-        }
+    private func header(_ summary: UpcomingSummary) -> some View {
+        DaybookTabHeader { if !jobs.isEmpty { actions(summary) } }
     }
 
     private func actions(_ summary: UpcomingSummary) -> some View {
@@ -338,7 +311,6 @@ struct UpcomingView: View {
             }
         }
         .padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 6)
-        .background(isSelected(fact.id) ? Color.accentColor.opacity(0.08) : Color.clear)
     }
 
     @ViewBuilder private func sessionRow(_ fact: EventSessionFact, in day: UpcomingDay, multiple: Bool) -> some View {
@@ -360,12 +332,8 @@ struct UpcomingView: View {
             HStack(spacing: 0) {
                 let row = RunOfShowRow(session: fact, zone: zone, context: contextText.isEmpty ? nil : contextText)
                 if let session = sessions.first(where: { $0.id == fact.id }), let job = session.job {
-                    if let selectedJob {
-                        Button { selectedJob.wrappedValue = job } label: { row }.buttonStyle(.plain)
-                    } else {
-                        NavigationLink { SessionDetailView(session: session) } label: { row }
-                            .buttonStyle(.plain).accessibilityHint("Opens the session")
-                    }
+                    NavigationLink(value: ScheduleDestination.session(session.objectID)) { row }
+                        .buttonStyle(.plain).accessibilityHint("Opens the session")
                     if fact.start == nil && fact.coverage != "notCovering" {
                         Button("Add time") { sheet = .session(job, session) }
                             .font(.subheadline.weight(.semibold)).frame(minHeight: 44).padding(.trailing, 14)
@@ -446,7 +414,6 @@ struct UpcomingView: View {
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
             }
             .padding(.horizontal, 14).padding(.vertical, 14)
-            .background(isSelected(entry.job.id) ? Color.accentColor.opacity(0.08) : Color.clear)
             .contentShape(Rectangle())
         }
         .accessibilityIdentifier("coming-up-row")
@@ -456,21 +423,13 @@ struct UpcomingView: View {
 
     private func job(_ id: UUID) -> Job? { jobs.first { $0.id == id } }
 
-    private func isSelected(_ id: UUID) -> Bool { selectedJob?.wrappedValue?.id == id }
-
     private func hasNotes(_ job: Job) -> Bool { !job.eventNotes.isEmpty || !job.notes.isEmpty }
 
-    private func show(_ job: Job) {
-        if let selectedJob { selectedJob.wrappedValue = job } else { route = .event(job) }
-    }
+    private func show(_ job: Job) { path.append(ScheduleDestination.event(job.objectID)) }
 
     @ViewBuilder private func jobButton<Label: View>(_ id: UUID, @ViewBuilder label: () -> Label) -> some View {
         if let job = job(id) {
-            if let selectedJob {
-                Button { selectedJob.wrappedValue = job } label: { label() }.buttonStyle(.plain)
-            } else {
-                NavigationLink { EventDetailView(anchor: job) } label: { label() }.buttonStyle(.plain)
-            }
+            NavigationLink(value: ScheduleDestination.event(job.objectID)) { label() }.buttonStyle(.plain)
         } else {
             label()
         }
@@ -484,7 +443,7 @@ struct UpcomingView: View {
         case .editSession(let id):
             if let target, let session = target.activeSessions.first(where: { $0.id == id }) { sheet = .session(target, session) }
         case .editEvent: if let target { sheet = .editEvent(target) }
-        case .openFee: if let target { if selectedJob != nil { show(target) } else { route = .fee(target) } }
+        case .openFee: if let target { path.append(ScheduleDestination.fee(target.objectID)) }
         case .addToInvoice: if let target { sheet = .invoice(target) }
         case .openInvoice(let id): openInvoice(id, job: target)
         case .reviewBilling(let id):
@@ -495,7 +454,7 @@ struct UpcomingView: View {
     }
 
     private func openInvoice(_ id: UUID, job: Job?) {
-        if selectedJob == nil, let invoice = invoices.first(where: { $0.id == id }) { route = .invoice(invoice) }
+        if let invoice = invoices.first(where: { $0.id == id }) { path.append(ScheduleDestination.invoice(invoice.objectID)) }
         else if let job { show(job) }
     }
 
@@ -506,10 +465,6 @@ struct UpcomingView: View {
         do { try draft.save(in: context, editing: job.objectID, baseline: baseline) }
         catch { self.error = error.localizedDescription }
     }
-}
-
-private enum UpcomingRoute: Hashable {
-    case event(Job), fee(Job), invoice(Invoice)
 }
 
 private enum UpcomingSheet: Identifiable {

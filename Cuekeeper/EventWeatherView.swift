@@ -170,7 +170,7 @@ struct WeatherAttribution: View {
         AsyncImage(url: colorScheme == .dark ? snapshot.darkMarkURL : snapshot.lightMarkURL) { image in
             image.resizable().scaledToFit().frame(width: 96, height: 24)
         } placeholder: {
-            Label("Weather", systemImage: "apple.logo").font(.subheadline).fixedSize(horizontal: true, vertical: false)
+            Text("Apple Weather").font(.subheadline).fixedSize(horizontal: true, vertical: false)
         }.fixedSize()
     }
 }

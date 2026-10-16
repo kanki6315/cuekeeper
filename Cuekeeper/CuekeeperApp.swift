@@ -10,7 +10,8 @@ struct CuekeeperApp: App {
     @StateObject private var persistence: PersistenceController
     @StateObject private var expenseNotifications = ExpenseNotifications.shared
     @StateObject private var handoff: EventEditorHandoff
-    @State private var calendarLink: CalendarLink?
+    @StateObject private var presentations = ExternalPresentations()
+    @State private var pendingToday = false
     @StateObject private var calendar = CalendarController()
     @StateObject private var schedulePublisher = SchedulePublisher()
     @Environment(\.scenePhase) private var scenePhase
@@ -64,10 +65,23 @@ struct CuekeeperApp: App {
 
     }
 
+    // Hosted unit tests open multiple stores and historical models. Mounting the
+    // live UI would resolve its fetch requests against those test models and
+    // leave onboarding sheets interfering with presentation-policy tests.
+    private var isUnitTestHost: Bool {
+        #if DEBUG
+        return NSClassFromString("XCTestCase") != nil && !ProcessInfo.processInfo.isUITesting
+        #else
+        return false
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
-                if let error = persistence.loadError {
+                if isUnitTestHost {
+                    Color.clear
+                } else if let error = persistence.loadError {
                     ContentUnavailableView {
                         Label("Couldn’t open your daybook", systemImage: "externaldrive.badge.exclamationmark")
                     } description: {
@@ -83,23 +97,7 @@ struct CuekeeperApp: App {
                         launchContent
                         #endif
                     }.environment(\.managedObjectContext, persistence.container.viewContext)
-                    .sheet(item: $calendarLink) { link in
-                        CalendarLinkView(link: link)
-                            .environment(\.managedObjectContext, persistence.container.viewContext)
-                    }
-                    .sheet(item: $expenseNotifications.route) { route in
-                        ExpenseNotificationView(id: route.id).environment(\.managedObjectContext, persistence.container.viewContext)
-                    }
-                    .sheet(isPresented: $handoff.scanningReceipt) {
-                        ReceiptEventPicker().environment(\.managedObjectContext, persistence.container.viewContext)
-                    }
-                    .fullScreenCover(item: Binding(get: { handoff.pending }, set: { value in
-                        if value == nil, let id = handoff.pending?.id { handoff.close(id: id) }
-                    })) { request in
-                        SiriCreatedEventView(request: request)
-                            .environment(\.managedObjectContext, persistence.container.viewContext)
-                            .onDisappear { handoff.close(id: request.id) }
-                    }
+
                 } else {
                     ProgressView("Opening your daybook…")
                 }
@@ -108,6 +106,39 @@ struct CuekeeperApp: App {
             .background(Color("PageBackground"))
             .environmentObject(persistence)
             .environmentObject(calendar)
+            .background {
+                ExternalPresentationHost(presentations: presentations, ready: persistence.isLoaded && !isUnitTestHost) { request in
+                    AnyView(externalContent(request)
+                        .environment(\.managedObjectContext, persistence.container.viewContext)
+                        .environmentObject(persistence).environmentObject(calendar))
+                } onClose: { request in
+                    switch request {
+                    case .receipt: handoff.scanningReceipt = false
+                    case .siri(let request): handoff.close(id: request.id)
+                    default: break
+                    }
+                }
+            }
+            .onReceive(expenseNotifications.$route) { route in
+                guard let route else { return }
+                presentations.enqueue(.expense(route.id))
+                Task { @MainActor in
+                    if expenseNotifications.route?.id == route.id { expenseNotifications.route = nil }
+                }
+            }
+            .onReceive(handoff.$scanningReceipt) { scanning in
+                if scanning { presentations.enqueue(.receipt) }
+            }
+            .onReceive(handoff.$pending) { request in
+                if let request { presentations.enqueue(.siri(request)) }
+            }
+            .task(id: pendingToday && persistence.isLoaded && (firstLaunchCompleted || bypassSetupForTests)) {
+                guard pendingToday, persistence.isLoaded, firstLaunchCompleted || bypassSetupForTests else { return }
+                // Let the completed setup install the tab navigation before delivering.
+                do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                NotificationCenter.default.post(name: Notification.Name("CuekeeperOpenToday"), object: nil)
+                pendingToday = false
+            }
             .onChange(of: persistence.isLoaded) { _, loaded in
                 if loaded {
                     calendar.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled)
@@ -126,14 +157,18 @@ struct CuekeeperApp: App {
                 }
             }
             .onOpenURL { url in
+                #if DEBUG
+                if ProcessInfo.processInfo.isUITesting, url.host == "ui-test" {
+                    triggerExternalRouteTest(url.lastPathComponent)
+                    return
+                }
+                #endif
                 if let link = CalendarLink(url: url) {
-                    calendarLink = link
+                    presentations.enqueue(.calendar(link))
                     return
                 }
                 guard url.scheme == "cuekeeper", url.host == "today" else { return }
-                calendarLink = nil
-                UpcomingView.requestNow()
-                NotificationCenter.default.post(name: Notification.Name("CuekeeperOpenToday"), object: nil)
+                pendingToday = true
             }
             .tint(Color("AccentColor"))
             .preferredColorScheme(preferredAppearance)
@@ -156,6 +191,37 @@ struct CuekeeperApp: App {
                     schedulePublisher.start(context: persistence.container.viewContext, enabled: persistence.cloudEnabled)
                 }
             }
+        }
+    }
+
+    #if DEBUG
+    private func triggerExternalRouteTest(_ kind: String) {
+        let context = persistence.container.viewContext
+        do {
+            switch kind {
+            case "receipt": try handoff.requestReceiptScan()
+            case "siri":
+                var draft = EventCreationDraft(); draft.events[0].details.name = "Routed Siri event"
+                _ = try handoff.create(draft, in: context)
+            case "expense":
+                let records = try context.fetch(NSFetchRequest<Expense>(entityName: "Expense"))
+                if let id = records.first(where: \.needsCompletion)?.id { expenseNotifications.open(userInfo: ["expenseID": id.uuidString]) }
+            case "calendar":
+                let records = try context.fetch(NSFetchRequest<Job>(entityName: "Job"))
+                let id = records.first?.id ?? UUID()
+                if let link = CalendarLink(url: URL(string: "cuekeeper://calendar/job/\(id)")!) { presentations.enqueue(.calendar(link)) }
+            default: break
+            }
+        } catch { assertionFailure(error.localizedDescription) }
+    }
+    #endif
+
+    @ViewBuilder private func externalContent(_ request: ExternalPresentation) -> some View {
+        switch request {
+        case .calendar(let link): CalendarLinkView(link: link)
+        case .expense(let id): ExpenseNotificationView(id: id)
+        case .receipt: ReceiptEventPicker()
+        case .siri(let request): SiriCreatedEventView(request: request)
         }
     }
 
@@ -207,7 +273,7 @@ private struct CalendarLinkView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("calendar-route-done") }
             }
         }
         .task(id: link.id) {
@@ -229,4 +295,95 @@ extension ProcessInfo {
         false
         #endif
     }
+}
+
+/// External actions are presented above the visible screen, including setup and
+/// an existing editor. No sheet binding is left armed on a hidden root view.
+enum ExternalPresentation: Identifiable {
+    case calendar(CalendarLink), expense(UUID), receipt, siri(EventEditorHandoff.Request)
+    var id: String {
+        switch self {
+        case .calendar(let link): "calendar/\(link.id)"
+        case .expense(let id): "expense/\(id)"
+        case .receipt: "receipt"
+        case .siri(let request): "siri/\(request.id)"
+        }
+    }
+}
+
+@MainActor
+final class ExternalPresentations: ObservableObject {
+    @Published private(set) var waiting: [ExternalPresentation] = []
+    private var active: Set<String> = []
+    func enqueue(_ request: ExternalPresentation) {
+        guard !active.contains(request.id), !waiting.contains(where: { $0.id == request.id }) else { return }
+        waiting.append(request)
+    }
+    func didPresent(_ request: ExternalPresentation) {
+        active.insert(request.id)
+        waiting.removeAll { $0.id == request.id }
+    }
+    func didClose(_ request: ExternalPresentation) { active.remove(request.id) }
+}
+
+private struct ExternalPresentationHost: UIViewControllerRepresentable {
+    @ObservedObject var presentations: ExternalPresentations
+    let ready: Bool
+    let content: (ExternalPresentation) -> AnyView
+    let onClose: (ExternalPresentation) -> Void
+    func makeUIViewController(context: Context) -> ExternalPresentationController { ExternalPresentationController() }
+    func updateUIViewController(_ controller: ExternalPresentationController, context: Context) {
+        controller.presentations = presentations
+        controller.ready = ready
+        controller.content = content
+        controller.onClose = onClose
+        controller.drain()
+    }
+}
+
+private final class ExternalPresentationController: UIViewController {
+    var presentations: ExternalPresentations?
+    var ready = false
+    var content: ((ExternalPresentation) -> AnyView)?
+    var onClose: ((ExternalPresentation) -> Void)?
+    private var delivery: Task<Void, Never>?
+    override func loadView() { view = UIView(); view.isUserInteractionEnabled = false }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); drain() }
+    func drain() {
+        guard delivery == nil, ready, presentations?.waiting.isEmpty == false else { return }
+        delivery = Task { @MainActor [weak self] in
+            defer { self?.delivery = nil }
+            // Wait only for a mounted window or an in-flight presentation transition.
+            // Ordinary sheets are valid presenters, rather than reasons to defer.
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(150)) } catch { return }
+                guard let self, self.ready, let queue = self.presentations, let request = queue.waiting.first else { return }
+                guard let window = self.view.window, window.windowScene?.activationState == .foregroundActive,
+                      var presenter = window.rootViewController, let content = self.content else { continue }
+                while let next = presenter.presentedViewController { presenter = next }
+                guard !presenter.isBeingPresented, !presenter.isBeingDismissed,
+                      presenter.transitionCoordinator == nil, !(presenter is UIAlertController) else { continue }
+                let host = ExternalRouteHostingController(rootView: content(request))
+                host.modalPresentationStyle = .pageSheet
+                if case .expense = request { host.isModalInPresentation = true }
+                host.sheetPresentationController?.detents = [.large()]
+                let close = self.onClose
+                host.onClose = { [weak queue] in queue?.didClose(request); close?(request) }
+                presenter.present(host, animated: true)
+                host.presentationController?.delegate = host
+                queue.didPresent(request)
+            }
+        }
+    }
+    deinit { delivery?.cancel() }
+}
+
+private final class ExternalRouteHostingController: UIHostingController<AnyView>, UIAdaptivePresentationControllerDelegate {
+    var onClose: (() -> Void)?
+    private func closed() { let action = onClose; onClose = nil; action?() }
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if isBeingDismissed || presentingViewController == nil { closed() }
+    }
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) { closed() }
 }

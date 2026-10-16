@@ -172,8 +172,33 @@ schemes:
       targets:
         Cuekeeper: all
     test:
-      targets: [CuekeeperTests, CuekeeperUITests]
+      targets:
+        - CuekeeperTests
+        # UI test classes run in parallel on simulator clones. Screenshot-only
+        # classes run from the Design Capture scheme instead.
+        - name: CuekeeperUITests
+          parallelizable: true
+          # The system Files picker runs out of process and drops taps on clones.
+          skippedTests: [DesignCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests, BackupFilePickerTests]
       gatherCoverageData: true
+  Cuekeeper - Design Capture:
+    build:
+      targets:
+        Cuekeeper: all
+    test:
+      targets:
+        - name: CuekeeperUITests
+          parallelizable: true
+          selectedTests: [DesignCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests]
+  Cuekeeper - System Pickers:
+    build:
+      targets:
+        Cuekeeper: all
+    test:
+      targets:
+        - name: CuekeeperUITests
+          parallelizable: false
+          selectedTests: [BackupFilePickerTests]
   Cuekeeper - Initialize CloudKit:
     build:
       targets:

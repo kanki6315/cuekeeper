@@ -147,11 +147,14 @@ struct EventDraft: Equatable {
             guard timed.isEmpty || TimeZone(identifier: event.timeZoneID) != nil else {
                 throw RecordError.invalid("Choose an event timezone while sessions have times.")
             }
+            // Keep each session's local clock times; only the zone they're read in changes.
+            let from = TimeZone.effective(prior.timeZoneID), to = TimeZone.effective(event.timeZoneID)
             for session in anchor.activeSessions {
                 session.timeZoneID = event.timeZoneID
-                if let start = session.startTime, let zone = TimeZone(identifier: event.timeZoneID) {
-                    session.day = Day.string(from: start, timeZone: zone)
-                }
+                session.startTime = session.startTime.map { from.sameWallClock($0, in: to) }
+                session.endTime = session.endTime.map { from.sameWallClock($0, in: to) }
+                session.callTime = session.callTime.map { from.sameWallClock($0, in: to) }
+                if let start = session.startTime { session.day = Day.string(from: start, timeZone: to) }
             }
         }
         try writer.save(); context.refreshAllObjects()

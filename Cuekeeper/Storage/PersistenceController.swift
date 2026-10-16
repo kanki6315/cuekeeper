@@ -27,6 +27,8 @@ final class PersistenceController: ObservableObject {
     }
     @Published private(set) var lastTransfer: Date?
     private var eventObserver: NSObjectProtocol?
+    private var accountObserver: NSObjectProtocol?
+    private let defaults: UserDefaults
 
     private let storeReadiness = StoreReadiness()
 
@@ -34,7 +36,8 @@ final class PersistenceController: ObservableObject {
         try await storeReadiness.wait()
     }
 
-    init(storeURL: URL? = nil, cloudEnabled: Bool = true) {
+    init(storeURL: URL? = nil, cloudEnabled: Bool = true, defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         self.cloudEnabled = cloudEnabled
         container = NSPersistentCloudKitContainer(name: "Cuekeeper")
         let description = container.persistentStoreDescriptions[0]
@@ -54,6 +57,14 @@ final class PersistenceController: ObservableObject {
         container.viewContext.name = "Cuekeeper view context"
         syncActivity.enabled = cloudEnabled
         if cloudEnabled {
+            accountObserver = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.syncActivity.resetImportCompletion()
+                    self.persistImportCompletion()
+                    await self.refreshAccountStatus()
+                }
+            }
             networkMonitor.pathUpdateHandler = { [weak self] path in
                 let offline = path.status == .unsatisfied
                 Task { @MainActor [weak self] in self?.syncActivity.offline = offline }
@@ -74,7 +85,7 @@ final class PersistenceController: ObservableObject {
                     case .export: kind = .sending
                     @unknown default: kind = .setup
                     }
-                    self.syncActivity.record(id: event.identifier, kind: kind, ended: event.endDate != nil,
+                    self.recordSyncEvent(id: event.identifier, kind: kind, ended: event.endDate != nil,
                                              succeeded: event.succeeded, error: event.error?.localizedDescription)
                     if event.succeeded, let date = event.endDate, kind != .setup { self.lastTransfer = date }
                 }
@@ -119,6 +130,15 @@ final class PersistenceController: ObservableObject {
                 }
                 #endif
                 if let self {
+                    if error == nil {
+                        let coordinator = self.container.persistentStoreCoordinator
+                        let completed = coordinator.persistentStores.contains {
+                            self.importCompletionKey(for: $0).map { self.defaults.bool(forKey: $0) } == true
+                        }
+                        if completed { self.syncActivity.restoreImportCompletion() }
+                        // An import notification can arrive before the store-loaded callback.
+                        self.persistImportCompletion()
+                    }
                     self.isLoaded = self.loadError == nil
                     if let loadError = self.loadError {
                         self.storeReadiness.complete(.failure(RecordError.invalid("Couldn’t open your daybook: \(loadError)")))
@@ -175,8 +195,27 @@ final class PersistenceController: ObservableObject {
     }
     #endif
 
+    func recordSyncEvent(id: UUID, kind: SyncActivity.Kind, ended: Bool, succeeded: Bool, error: String?) {
+        syncActivity.record(id: id, kind: kind, ended: ended, succeeded: succeeded, error: error)
+        if kind == .receiving && ended && succeeded { persistImportCompletion() }
+    }
+
+    // The Core Data store UUID survives launches, but changes when the store is replaced.
+    // Keep this device-local checkpoint out of CloudKit and backup archives.
+    private func importCompletionKey(for store: NSPersistentStore) -> String? {
+        let metadata = container.persistentStoreCoordinator.metadata(for: store)
+        return (metadata[NSStoreUUIDKey] as? String).map { "cloudImportCompleted.\($0)" }
+    }
+
+    private func persistImportCompletion() {
+        for store in container.persistentStoreCoordinator.persistentStores {
+            if let key = importCompletionKey(for: store) { defaults.set(syncActivity.receivedImport, forKey: key) }
+        }
+    }
+
     deinit {
         networkMonitor.cancel()
+        if let accountObserver { NotificationCenter.default.removeObserver(accountObserver) }
         if let eventObserver { NotificationCenter.default.removeObserver(eventObserver) }
     }
 
@@ -224,9 +263,12 @@ struct SyncActivity: Equatable {
             } else { failures[kind] = error ?? "The transfer did not complete. iCloud will try again." }
         }
     }
+    mutating func restoreImportCompletion() { receivedImport = true }
+    mutating func resetImportCompletion() { receivedImport = false }
     var awaitingInitialImport: Bool { enabled && !receivedImport }
     var restoreUnavailableReason: String? {
-        guard enabled else { return nil }
+        // Local Files recovery must remain available when there is no usable account.
+        guard enabled, !offline, accountIssue == nil else { return nil }
         if awaitingInitialImport {
             return "Wait for iCloud to finish its first download before restoring a backup. Connect to the internet and resolve any iCloud errors, then try again."
         }
@@ -253,6 +295,38 @@ struct SyncActivity: Equatable {
         let messages = Set(failures.values).sorted()
         return messages.isEmpty ? nil : messages.joined(separator: "\n")
     }
+
+    /// Settings headline. Mirrors `message` priority; "Last exchange" describes this device only.
+    func summary(accountStatus: String, lastTransfer: Date?) -> SyncSummary {
+        let exchange = lastTransfer.map { date in
+            "Last exchange \(date.formatted(date: Calendar.current.isDateInToday(date) ? .omitted : .abbreviated, time: .shortened))"
+        }
+        guard enabled else { return SyncSummary(headline: "Saved on this device", detail: "iCloud sync is off", symbol: "iphone") }
+        if accountIssue != nil { return SyncSummary(headline: "Not syncing", detail: accountStatus, symbol: "exclamationmark", warning: true) }
+        if let errorDetails { return SyncSummary(headline: "Sync paused", detail: errorDetails, symbol: "exclamationmark", warning: true) }
+        if offline { return SyncSummary(headline: "Offline", detail: "Syncs when you reconnect", symbol: "icloud.slash") }
+        let kinds = Set(active.values)
+        if kinds.isSuperset(of: [.receiving, .sending]) { return SyncSummary(headline: "Syncing changes", detail: exchange, symbol: "arrow.up.arrow.down", busy: true) }
+        if kinds.contains(.receiving) { return SyncSummary(headline: "Receiving changes", detail: exchange, symbol: "arrow.down", busy: true) }
+        if kinds.contains(.sending) { return SyncSummary(headline: "Sending changes", detail: exchange, symbol: "arrow.up", busy: true) }
+        if kinds.contains(.setup) || checkingAccount { return SyncSummary(headline: "Connecting to iCloud", detail: nil, symbol: "icloud", busy: true) }
+        if !receivedImport { return SyncSummary(headline: "Waiting for iCloud", detail: "Events may still arrive", symbol: "icloud.and.arrow.down") }
+        return SyncSummary(headline: "Synced", detail: exchange, symbol: "checkmark")
+    }
+
+    var accountSummary: String? {
+        guard enabled else { return nil }
+        if checkingAccount { return "Checking…" }
+        return accountIssue == nil ? "Available" : "Unavailable"
+    }
+}
+
+struct SyncSummary: Equatable {
+    let headline: String
+    let detail: String?
+    let symbol: String
+    var warning = false
+    var busy = false
 }
 
 /// Local store readiness, independent of CloudKit import and of any caller's lifetime.

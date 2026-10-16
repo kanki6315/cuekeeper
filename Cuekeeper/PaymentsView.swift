@@ -36,16 +36,16 @@ struct PaymentsView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(["Expected", "Invoiced", "Received"][kind]).font(.headline)
                                 ForEach(currencies, id: \.self) { code in
-                                    Text("\(code) · \(total(code, kind: kind))").monospacedDigit()
+                                    Text("\(code) · \(total(code, kind: kind, index: index))").monospacedDigit()
                                 }
                             }
                         }
                     }
                 } else {
                     ViewThatFits(in: .horizontal) {
-                        totalsTable
+                        totalsTable(index: index)
                         ScrollView(.horizontal) {
-                            totalsTable.fixedSize(horizontal: true, vertical: true)
+                            totalsTable(index: index).fixedSize(horizontal: true, vertical: true)
                         }
                     }
                 }
@@ -111,7 +111,7 @@ struct PaymentsView: View {
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
         .sheet(isPresented: $adding) { InvoiceEditorView() }
     }
-    private var totalsTable: some View {
+    private func totalsTable(index: InvoiceIndex) -> some View {
         Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 16) {
             GridRow { Text(""); ForEach(currencies, id: \.self) { Text($0) } }.font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
             ForEach(0..<3) { kind in
@@ -122,7 +122,7 @@ struct PaymentsView: View {
                         .frame(width: sizeClass == .compact ? totalsLabelWidth : nil, alignment: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     ForEach(currencies, id: \.self) { code in
-                        Text(total(code, kind: kind)).fixedSize(horizontal: true, vertical: false).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
+                        Text(total(code, kind: kind, index: index)).fixedSize(horizontal: true, vertical: false).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
                     }
                 }.font(.subheadline)
             }
@@ -150,7 +150,7 @@ struct PaymentsView: View {
         }
     }
     }
-    private func total(_ currency: String, kind: Int) -> String {
+    private func total(_ currency: String, kind: Int, index: InvoiceIndex) -> String {
         // Observe receipts directly as well as their parent relationships.
         _ = payments.count
         do {
@@ -161,7 +161,7 @@ struct PaymentsView: View {
                     sum += Decimal(amount)
                 }
             } else if kind == 1 {
-                for invoice in invoices where invoice.issue(in: context) == nil {
+                for invoice in invoices where invoice.issue(in: context, index: index) == nil {
                     let value = try invoice.currentValue()
                     if value.currency == currency && value.status == "sent" { sum += Decimal(max(0, try invoice.balance())) }
                 }
@@ -378,7 +378,7 @@ struct PaymentEditorView: View {
                     }.padding(.vertical, 4)
                     DatePicker("Received", selection: $draft.date, displayedComponents: .date)
                     DaybookTextField("Reference or note (optional)", text: $draft.note, axis: .vertical)
-                    if let balance = try? invoice?.balance(), let amount = try? Money.parse(draft.amount), amount >= 0, let remaining = try? Money.minorUnits(Decimal(balance) - Decimal(amount)) {
+                    if let balance = try? invoice?.balance(), let amount = try? Money.parse(draft.amount, currency: currency), amount >= 0, let remaining = try? Money.minorUnits(Decimal(balance) - Decimal(amount)) {
                         LabeledContent(remaining < 0 ? "Credit after payment" : "Remaining after payment", value: Money.format(abs(remaining), currency: currency)).font(.subheadline.weight(.semibold)).monospacedDigit()
                     }
                 } header: { Text("Payment") } footer: { Text("Each receipt is kept in history. To correct it later, reverse the receipt and record the corrected payment.") }
@@ -400,6 +400,7 @@ struct PaymentEditorView: View {
                 }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
+            .preservesDraftOnTodayLink()
             .onAppear { if initial == nil { initial = draft } }
         }
         .presentationSizing(.page)

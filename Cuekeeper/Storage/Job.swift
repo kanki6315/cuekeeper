@@ -52,6 +52,15 @@ extension TimeZone {
 
     /// A stored zone when valid, otherwise the home zone.
     static func effective(_ identifier: String) -> TimeZone { TimeZone(identifier: identifier) ?? .home }
+
+    /// The instant that reads the same wall-clock date and time in `zone` as `date` reads here.
+    /// A time skipped by a daylight-saving change in `zone` moves forward to the next valid time.
+    func sameWallClock(_ date: Date, in zone: TimeZone) -> Date {
+        guard zone != self else { return date }
+        var source = Calendar(identifier: .gregorian); source.timeZone = self
+        var target = Calendar(identifier: .gregorian); target.timeZone = zone
+        return target.date(from: source.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)) ?? date
+    }
 }
 
 /// Placeholder dates are civil dates, not UTC instants. Device travel must not move them.

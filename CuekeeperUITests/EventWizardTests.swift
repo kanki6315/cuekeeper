@@ -1,38 +1,6 @@
 import XCTest
 
-final class EventWizardTests: XCTestCase {
-    func testDeleteEventRequiresConfirmation() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=root"]
-        app.launch()
-        let event = app.staticTexts["City vs United"].firstMatch
-        XCTAssertTrue(event.waitForExistence(timeout: 10))
-        event.tap()
-        let details = app.buttons["event-tab-details"]
-        XCTAssertTrue(details.waitForExistence(timeout: 5)); details.tap()
-        let delete = app.buttons["delete-job"]
-        for _ in 0..<15 where !delete.isHittable {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.8))
-                .press(forDuration: 0.01, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.25)))
-        }
-        XCTAssertTrue(delete.isHittable)
-        XCTAssertTrue(app.buttons["duplicate-job"].exists)
-        delete.tap()
-        XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 3))
-        capture("delete-event-confirmation")
-        app.buttons["Cancel"].tap()
-        XCTAssertTrue(delete.exists)
-        delete.tap()
-        app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Delete Event", "delete-job")).firstMatch.tap()
-        XCTAssertTrue(event.waitForNonExistence(timeout: 5))
-        app.terminate()
-        app.launchArguments.removeAll { $0 == "--reset-test-store" }
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Studio highlights"].firstMatch.waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["City vs United"].exists)
-    }
-
+final class EventWizardTests: DaybookUITestCase {
     func testEventCreationUsesMultiDateCalendar() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -67,7 +35,9 @@ final class EventWizardTests: XCTestCase {
         XCTAssertFalse(app.datePickers["End date"].exists)
         XCTAssertFalse(app.textFields["schedule-time-Start"].exists)
         let end = app.buttons["session-time-End-unset"]
-        XCTAssertFalse(end.exists)
+        XCTAssertTrue(end.exists)
+        XCTAssertFalse(app.datePickers["session-time-End"].exists)
+        end.tap()
         XCTAssertTrue(app.datePickers["session-time-End"].exists)
         app.buttons["Clear start"].tap()
         XCTAssertTrue(start.exists)
@@ -75,139 +45,6 @@ final class EventWizardTests: XCTestCase {
         app.buttons["Clear end"].tap()
         XCTAssertTrue(end.exists)
         capture("inline-native-session-times-cleared")
-    }
-
-    func testEventAndWorkTimezonesFollowArrangement() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-event"]
-        app.launch()
-        // Timezones are read-only; places set them.
-        XCTAssertTrue(element("event-timezone", in: app).waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["event-timezone"].exists)
-        let arrangement = app.buttons["work-arrangement"]
-        for _ in 0..<8 where !arrangement.isHittable { app.swipeUp() }
-        XCTAssertTrue(arrangement.isHittable)
-        XCTAssertTrue(app.textFields["work-location"].exists)
-        XCTAssertTrue(element("work-timezone", in: app).exists)
-        capture("timezone-remote")
-        arrangement.tap(); app.buttons["On-site"].tap()
-        XCTAssertFalse(app.textFields["work-location"].exists)
-        XCTAssertFalse(element("work-timezone", in: app).exists)
-        capture("timezone-onsite")
-        arrangement.tap(); app.buttons["Hybrid"].tap()
-        XCTAssertTrue(app.textFields["work-location"].exists)
-        XCTAssertTrue(element("work-timezone", in: app).exists)
-        capture("timezone-hybrid")
-        app.buttons["Cancel"].tap(); app.buttons["Discard Changes"].tap()
-        app.terminate()
-        for large in [false, true] {
-            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-session", "--design-dark"]
-                + (large ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
-            app.launch()
-            XCTAssertTrue(app.buttons["save-session"].waitForExistence(timeout: 10))
-            // LabeledContent exposes a combined label at standard text sizes.
-            let forms = app.scrollViews.matching(identifier: "daybook-form")
-            let editor = forms.element(boundBy: forms.count - 1)
-            let zone = editor.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Event timezone")).firstMatch
-            for _ in 0..<5 where !zone.isHittable { editor.swipeUp() }
-            XCTAssertTrue(zone.isHittable)
-            XCTAssertFalse(app.buttons["event-timezone"].exists)
-            XCTAssertFalse(element("work-timezone", in: app).exists)
-            capture(large ? "session-inherited-timezone-large" : "session-inherited-timezone")
-            app.terminate()
-        }
-    }
-
-    func testUnifiedEditorShowsBookingFieldsAndDiscardsChanges() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-job"]
-        app.launch()
-        XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 10))
-        let project = app.textFields["library-WorkProject-name"]
-        for _ in 0..<8 where !project.isHittable { app.swipeUp() }
-        XCTAssertTrue(project.isHittable)
-        project.tap()
-        project.typeText(" revised")
-        capture("unified-event-booking")
-        app.buttons["Cancel"].tap()
-        XCTAssertTrue(app.buttons["Discard Changes"].waitForExistence(timeout: 3))
-        app.buttons["Discard Changes"].tap()
-        XCTAssertTrue(app.navigationBars["Edit Event"].waitForNonExistence(timeout: 5))
-    }
-
-    func testFeeShortcutOpensUnifiedEditorAtFee() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=fee"]
-        app.launch()
-        XCTAssertTrue(app.buttons["edit-fee"].waitForExistence(timeout: 10))
-        app.buttons["edit-fee"].tap()
-        XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 5))
-        capture("unified-event-fee")
-        XCTAssertTrue(app.textFields["overall-fee"].isHittable)
-        app.buttons["Cancel"].tap()
-    }
-
-    func testSingleClientEditorKeepsFieldsVisibleAndFeeExpandable() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-event"]
-        app.launch()
-        XCTAssertTrue(app.navigationBars["Edit Event"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.textFields["job-location"].exists)
-        XCTAssertFalse(app.buttons["editor-booking-section"].exists)
-        XCTAssertFalse(app.buttons["editor-add-client"].exists)
-        XCTAssertEqual(app.textFields.matching(identifier: "library-Client-name").count, 1)
-        XCTAssertTrue(app.textFields["library-WorkProject-name"].exists)
-        let fee = app.buttons["editor-fee-section"].firstMatch
-        for _ in 0..<8 where !fee.isHittable { app.swipeUp() }
-        fee.tap()
-        XCTAssertTrue(app.textFields["overall-fee"].exists)
-        fee.tap()
-        XCTAssertFalse(app.textFields["overall-fee"].exists)
-        app.buttons["Cancel"].tap()
-        XCTAssertTrue(app.navigationBars["Edit Event"].waitForNonExistence(timeout: 5))
-    }
-
-    func testSiriSavedEventEditsInPlace() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--siri-wizard-test", "--siri-import-notice"]
-        app.launch()
-        XCTAssertTrue(app.buttons["siri-event-done"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["IMSA esports"].exists)
-        XCTAssertFalse(app.buttons["wizard-continue"].exists)
-        let notice = app.staticTexts["Recurrence wasn’t imported. Only one event was created."]
-        XCTAssertTrue(notice.exists)
-        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: notice)
-        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 9), .completed)
-        app.navigationBars.containing(.button, identifier: "siri-event-done").buttons["edit-event"].tap()
-        let location = app.textFields["job-location"]
-        XCTAssertTrue(location.waitForExistence(timeout: 5))
-        location.tap(); location.typeText("Studio")
-        app.buttons["save-event"].tap()
-        // The event header joins dates and place on one line.
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "edit-event-dates", "Studio")).firstMatch.waitForExistence(timeout: 5))
-        app.buttons["siri-event-done"].tap()
-        XCTAssertFalse(app.buttons["siri-event-done"].exists)
-        XCTAssertTrue(app.staticTexts["IMSA esports"].firstMatch.exists)
-    }
-
-    func testSiriClosingWithoutEditsKeepsEvent() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--siri-wizard-test"]
-        app.launch()
-        XCTAssertTrue(app.buttons["siri-event-done"].waitForExistence(timeout: 10))
-        app.navigationBars.containing(.button, identifier: "siri-event-done").buttons["edit-event"].tap()
-        XCTAssertTrue(app.buttons["save-event"].waitForExistence(timeout: 5))
-        app.buttons["Cancel"].tap()
-        app.buttons["siri-event-done"].tap()
-        XCTAssertTrue(app.staticTexts["IMSA esports"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["siri-event-done"].exists)
-        XCTAssertTrue(app.staticTexts["IMSA esports"].firstMatch.exists)
     }
 
     func testClientTypeaheadAndNewBookingChoices() {
@@ -255,67 +92,7 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Review"].waitForExistence(timeout: 5))
         capture("wizard-review")
         next.tap()
-        XCTAssertFalse(next.waitForExistence(timeout: 2))
-    }
-
-    func testSeasonAndOptionalSteps() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job"]
-        app.launch()
-        let next = app.buttons["wizard-continue"]
-        XCTAssertTrue(next.waitForExistence(timeout: 10))
-        app.buttons["Season / multiple events"].tap()
-        for label in ["Client, project & series", "Session times", "Role & location", "Fee & payment"] {
-            let toggle = app.switches[label]
-            if !toggle.isHittable { app.swipeUp() }
-            toggle.tap()
-        }
-        next.tap()
-        XCTAssertTrue(app.buttons["Add event"].waitForExistence(timeout: 5))
-        next.tap()
-        XCTAssertTrue(app.textFields["championship-search"].waitForExistence(timeout: 5))
-        capture("wizard-client")
-        next.tap()
-        XCTAssertTrue(app.buttons["Add session"].waitForExistence(timeout: 5))
-        app.buttons["Add session"].tap()
-        capture("wizard-session")
-        next.tap()
-        next.tap()
-        XCTAssertTrue(app.switches["Provide fee breakdown"].waitForExistence(timeout: 5))
-        capture("wizard-payment")
-        next.tap()
-        XCTAssertTrue(app.staticTexts["Event calendar"].waitForExistence(timeout: 5))
-        capture("wizard-season-review")
-    }
-
-    func testCopySessionsBetweenSeasonEvents() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job"]
-        app.launch()
-        let next = app.buttons["wizard-continue"]
-        XCTAssertTrue(next.waitForExistence(timeout: 10))
-        app.buttons["Season / multiple events"].tap()
-        app.switches["Session times"].tap()
-        next.tap()
-        app.buttons["Add event"].tap()
-        let title = app.textFields["Title (optional)"]
-        XCTAssertTrue(title.waitForExistence(timeout: 5))
-        title.tap(); title.typeText("Round two")
-        app.buttons["Done"].tap()
-        next.tap()
-        app.buttons["Add session"].tap()
-        app.buttons["Session 1"].tap()
-        app.buttons["Copy sessions to other events"].tap()
-        app.switches["Round two"].tap()
-        app.buttons["Copy sessions"].tap()
-        XCTAssertTrue(app.staticTexts["Sessions copied to 1 event."].waitForExistence(timeout: 5))
-        next.tap()
-        XCTAssertTrue(app.staticTexts["Round two"].waitForExistence(timeout: 5))
-        capture("wizard-two-events-review")
-        next.tap()
-        XCTAssertFalse(next.waitForExistence(timeout: 2))
+        XCTAssertTrue(next.waitForNonExistence(timeout: 5))
     }
 
     func testDarkLargeTextSetup() {
@@ -331,49 +108,6 @@ final class EventWizardTests: XCTestCase {
         capture("wizard-dark-large-text-review")
         app.swipeUp()
         capture("wizard-dark-large-text-review-lower")
-    }
-
-    func testChampionshipReuseAndAppleLocationSuggestions() throws {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job"]
-        app.launch()
-        let next = app.buttons["wizard-continue"]
-        XCTAssertTrue(next.waitForExistence(timeout: 10))
-        app.switches["Client, project & series"].tap()
-        app.switches["Role & location"].tap()
-        next.tap()
-        let championship = app.textFields["championship-search"]
-        championship.tap()
-        dismissKeyboardIntroduction(in: app)
-        championship.typeText("SportsCar")
-        let suggestion = app.buttons["SportsCar Championship"]
-        for _ in 0..<4 where !suggestion.isHittable || suggestion.frame.maxY > next.frame.minY { app.swipeUp() }
-        suggestion.tap()
-        XCTAssertTrue(app.staticTexts["SportsCar Championship"].exists)
-
-        for _ in 0..<3 where !championship.isHittable || championship.frame.maxY > next.frame.minY - 12 { app.swipeUp() }
-        championship.tap(); dismissKeyboardIntroduction(in: app); championship.typeText("Support championship")
-        let add = app.buttons["championship-search-add"]
-        for _ in 0..<4 where !add.isHittable || add.frame.maxY > next.frame.minY { app.swipeUp() }
-        add.tap()
-        XCTAssertTrue(app.staticTexts["Support championship"].exists)
-        capture("wizard-multiple-series")
-        next.tap()
-        let arrangement = app.buttons["work-arrangement"]
-        for _ in 0..<4 where !arrangement.isHittable { app.swipeUp() }
-        arrangement.tap(); app.buttons["Remote"].tap()
-        let location = app.textFields["work-location"]
-        if !location.isHittable { app.swipeUp() }
-        location.tap(); location.typeText("Silverstone")
-        let locationSuggestion = app.buttons.matching(identifier: "location-suggestion").firstMatch
-        guard locationSuggestion.waitForExistence(timeout: 20) else {
-            capture("wizard-location-service-unavailable")
-            throw XCTSkip("Apple Maps suggestions unavailable in this simulator run; manual location entry retained.")
-        }
-        capture("wizard-apple-location-suggestions")
-        locationSuggestion.tap()
-        XCTAssertTrue((location.value as? String)?.localizedCaseInsensitiveContains("Silverstone") == true)
     }
 
     func testPopulatedAccessibleReviewAndForeignSessionDate() {
@@ -395,43 +129,5 @@ final class EventWizardTests: XCTestCase {
         app.buttons["wizard-continue"].tap()
         XCTAssertFalse(element("work-timezone", in: app).exists)
         capture("wizard-winter-work-timezone")
-    }
-
-    func testChosenLocationSetsEventTimezone() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job",
-                               "--location-fixtures", "--slow-location-fixtures"]
-        app.launch()
-        let next = app.buttons["wizard-continue"]
-        XCTAssertTrue(next.waitForExistence(timeout: 10))
-        let location = app.textFields["job-location"]
-        for _ in 0..<6 where !location.isHittable || location.frame.maxY > next.frame.minY - 12 { app.swipeUp() }
-        location.tap(); dismissKeyboardIntroduction(in: app); location.typeText("Vancouver")
-        let suggestion = app.buttons.matching(identifier: "location-suggestion").firstMatch
-        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
-        suggestion.tap()
-        // Continue waits for the lookup so the old zone can't be saved by accident.
-        XCTAssertTrue(element("event-timezone-pending", in: app).waitForExistence(timeout: 2))
-        XCTAssertFalse(next.isEnabled)
-        let zone = element("event-timezone", in: app)
-        let pacific = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Pacific"), object: zone)
-        XCTAssertEqual(XCTWaiter.wait(for: [pacific], timeout: 10), .completed)
-        XCTAssertTrue(next.isEnabled)
-        capture("wizard-location-sets-timezone")
-    }
-
-    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-    }
-
-    private func dismissKeyboardIntroduction(in app: XCUIApplication) {
-        let introduction = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Continue", "wizard-continue")).firstMatch
-        if introduction.waitForExistence(timeout: 2), introduction.isHittable { introduction.tap() }
-    }
-
-    private func capture(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
 }

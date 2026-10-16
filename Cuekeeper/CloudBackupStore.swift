@@ -18,6 +18,8 @@ enum BackupLimits {
 /// Separate custom zone: Core Data sync never modifies or deletes these snapshots.
 protocol CloudBacking {
     func list() async throws -> [CloudBackupStore.Entry]
+    /// Newest restorable backup, or nil when there are none.
+    func latestDate() async throws -> Date?
     func save(file: URL, date: Date, events: Int) async throws
     func load(_ entry: CloudBackupStore.Entry) async throws -> URL
     func delete(_ entry: CloudBackupStore.Entry) async throws
@@ -66,6 +68,16 @@ struct CloudBackupStore: CloudBacking {
         guard !ids.isEmpty else { return [] }
         let results = try await database.records(for: ids, desiredKeys: ["savedAt", "byteCount", "eventCount"])
         return Self.entries(ids: ids, results: results)
+    }
+    /// Read-only: unlike `list()`, never creates the backup zone.
+    func latestDate() async throws -> Date? {
+        let index: CKRecord
+        do { index = try await database.record(for: indexID) }
+        catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound { return nil }
+        let ids = (index["backupNames"] as? [String] ?? []).map { CKRecord.ID(recordName: $0, zoneID: zoneID) }
+        guard !ids.isEmpty else { return nil }
+        let results = try await database.records(for: ids, desiredKeys: ["savedAt", "byteCount", "eventCount"])
+        return Self.entries(ids: ids, results: results).filter(\.canRestore).compactMap(\.date).max()
     }
     static func entries(ids: [CKRecord.ID], results: [CKRecord.ID: Result<CKRecord, Error>]) -> [Entry] {
         ids.map { id in

@@ -374,7 +374,7 @@ extension UpcomingSummary {
             guard let id = expense.id else { return nil }
             let value = expense.value
             let day = value.day.isEmpty ? Day.string(from: expense.createdAt ?? Date()) : value.day
-            return UpcomingReceiptFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount)).flatMap { $0 },
+            return UpcomingReceiptFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount, currency: value.currency)).flatMap { $0 },
                                        currency: value.currency, day: day)
         }
     }

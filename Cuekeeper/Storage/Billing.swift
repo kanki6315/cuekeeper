@@ -267,7 +267,7 @@ struct PaymentDraft: Equatable {
     var date = Date()
     var note = ""
     func save(in context: NSManagedObjectContext, invoiceID: NSManagedObjectID? = nil, jobID: NSManagedObjectID? = nil, transaction: NSManagedObjectContext? = nil) throws {
-        guard let amount = try Money.parse(amount), amount > 0, (invoiceID == nil) != (jobID == nil) else { throw RecordError.invalid("Enter a positive payment amount and choose one invoice or direct-payment job.") }
+        guard (invoiceID == nil) != (jobID == nil) else { throw RecordError.invalid("Enter a positive payment amount and choose one invoice or direct-payment job.") }
         let writer = transaction ?? isolatedWriter(context)
         var invoice: Invoice?; var job: Job?; let currency: String
         if let invoiceID {
@@ -285,6 +285,7 @@ struct PaymentDraft: Equatable {
             guard try job!.activeInvoices(in: writer).isEmpty else { throw RecordError.invalid("This job belongs to an invoice. Record payment on that invoice instead.") }
             _ = try job!.directPaid(); currency = try job!.currentFee().currency
         }
+        guard let amount = try Money.parse(amount, currency: currency), amount > 0 else { throw RecordError.invalid("Enter a positive payment amount and choose one invoice or direct-payment job.") }
         let payment = PaymentRecord(entity: NSEntityDescription.entity(forEntityName: "PaymentRecord", in: writer)!, insertInto: writer)
         payment.id = UUID(); payment.createdAt = Date(); payment.receivedAt = date; payment.amount = amount
         payment.currency = currency; payment.note = note; payment.invoice = invoice; payment.job = job

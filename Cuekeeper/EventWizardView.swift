@@ -111,6 +111,17 @@ struct EventWizardView: View {
         .presentationSizing(.page).presentationDetents([.large])
         .presentationBackground(Color("PageBackground"))
         .interactiveDismissDisabled()
+        .preservesDraftOnTodayLink()
+        #if DEBUG
+        .task {
+            if ProcessInfo.processInfo.isUITesting, ProcessInfo.processInfo.arguments.contains("--ui-test-event-arrives-during-wizard") {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                    try JobDraft(name: "Arrived from another device").save(in: context)
+                } catch is CancellationError {} catch { self.error = error.localizedDescription }
+            }
+        }
+        #endif
         .onChange(of: season) { _, _ in
             let previous = draft; draft = inactiveDraft; inactiveDraft = previous
             sessionEvent = 0; activeSession = nil; copyTargets = []; copyExpanded = false; copyNotice = ""
@@ -353,9 +364,9 @@ struct EventWizardView: View {
             let count = draft.events.reduce(0) { $0 + $1.sessions.count }
             if count > 0 { WizardSummaryRow("Sessions", value: "\(count)") }
             WizardSummaryRow(season ? "Fee per event" : "Fee", value: (try? fee.wrappedValue.value().amount).map { Money.format($0, currency: fee.wrappedValue.currency) } ?? "Unknown")
-            if let total = try? FeeValue(lines: fee.wrappedValue.lines).total(), !fee.wrappedValue.lines.isEmpty,
-               total != (try? Money.parse(fee.wrappedValue.amount)) { WizardSummaryRow("Breakdown total", value: Money.format(total, currency: fee.wrappedValue.currency)).foregroundStyle(Color("AmberText")) }
-            if !season, let received = try? Money.parse(draft.payment.amount) { WizardSummaryRow("Received", value: Money.format(received, currency: fee.wrappedValue.currency)) }
+            if let total = try? FeeValue(currency: fee.wrappedValue.currency, lines: fee.wrappedValue.lines).total(), !fee.wrappedValue.lines.isEmpty,
+               total != (try? Money.parse(fee.wrappedValue.amount, currency: fee.wrappedValue.currency)) { WizardSummaryRow("Breakdown total", value: Money.format(total, currency: fee.wrappedValue.currency)).foregroundStyle(Color("AmberText")) }
+            if !season, let received = try? Money.parse(draft.payment.amount, currency: fee.wrappedValue.currency) { WizardSummaryRow("Received", value: Money.format(received, currency: fee.wrappedValue.currency)) }
         }
         Section {
             Menu("Edit details") {
@@ -387,7 +398,7 @@ struct EventWizardView: View {
             if current == .payment {
                 _ = try fee.wrappedValue.value()
                 if !season, !draft.payment.amount.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    guard let amount = try Money.parse(draft.payment.amount), amount > 0 else { throw RecordError.invalid("Enter a positive received amount, or leave it empty.") }
+                    guard let amount = try Money.parse(draft.payment.amount, currency: fee.wrappedValue.currency), amount > 0 else { throw RecordError.invalid("Enter a positive received amount, or leave it empty.") }
                 }
             }
             path.append(route[index + 1])
@@ -423,14 +434,14 @@ struct FeeBreakdownFields: View {
                 DaybookTextField("Description", text: $line.description)
                 DaybookTextField("Quantity", text: $line.quantity).keyboardType(.decimalPad)
                 DaybookTextField("Rate", text: $line.rate).keyboardType(.numbersAndPunctuation)
-                if let total = try? line.total() { LabeledContent("Line total", value: Money.format(total, currency: draft.currency)) }
+                if let total = try? line.total(currency: draft.currency) { LabeledContent("Line total", value: Money.format(total, currency: draft.currency)) }
                 Button("Remove item", role: .destructive) { draft.lines.removeAll { $0.id == line.id } }
             }
         }
         Button("Add breakdown item", systemImage: "plus") { draft.lines.append(FeeLine()) }
-        if !draft.lines.isEmpty, let total = try? FeeValue(lines: draft.lines).total() {
+        if !draft.lines.isEmpty, let total = try? FeeValue(currency: draft.currency, lines: draft.lines).total() {
             LabeledContent("Breakdown total", value: Money.format(total, currency: draft.currency))
-            Button("Use breakdown total as overall fee") { draft.amount = Money.text(total) }.disabled(total < 0)
+            Button("Use breakdown total as overall fee") { draft.amount = Money.text(total, currency: draft.currency) }.disabled(total < 0)
         }
     }
 }

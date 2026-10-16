@@ -78,6 +78,17 @@ struct SessionDraft: Identifiable, Equatable {
     var notes = ""
 
     init(day: String, timeZoneID: String = "") { self.day = day; self.timeZoneID = timeZoneID }
+
+    /// The same local day and clock times in the new event zone.
+    func rezoned(from oldZoneID: String, to newZoneID: String) -> SessionDraft {
+        var copy = self
+        let old = TimeZone.effective(oldZoneID), new = TimeZone.effective(newZoneID)
+        copy.startTime = startTime.map { old.sameWallClock($0, in: new) }
+        copy.endTime = endTime.map { old.sameWallClock($0, in: new) }
+        copy.callTime = callTime.map { old.sameWallClock($0, in: new) }
+        copy.timeZoneID = newZoneID
+        return copy
+    }
     init(job: Job) { day = job.eventStartDay; timeZoneID = job.eventTimeZoneID }
     init(session: WorkSession) {
         id = session.id ?? UUID()
@@ -204,13 +215,11 @@ enum SessionTimeInput {
 }
 
 extension SessionDraft {
-    /// Keep the initial end aligned with start until a different end has been chosen.
+    /// Entering a start must not invent an end for an incomplete schedule.
     mutating func setStartTime(_ date: Date?, zone: TimeZone) {
-        let usesDefaultEnd = endTime == nil || endTime == startTime
         startTime = date
         if let date {
             day = Day.string(from: date, timeZone: zone)
-            if usesDefaultEnd { endTime = date }
         }
         timeZoneID = zone.identifier
         inferEndDate(zone: zone)

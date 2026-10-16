@@ -3,8 +3,12 @@ import CoreData
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Status first: the last backup and Back Up Now lead; saved iCloud copies fill the
+/// remaining space. Fine print lives behind the About backups button.
 struct BackupView: View {
     @Environment(\.managedObjectContext) private var context
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject private var persistence: PersistenceController
     @StateObject private var workflow = BackupWorkflow()
     @State private var entries: [CloudBackupStore.Entry] = []
@@ -13,69 +17,57 @@ struct BackupView: View {
     @State private var confirmDelete = false
     @State private var importing = false
     @State private var exporting = false
+    @State private var showInfo = false
     private let cloud: any CloudBacking
     private let preview: Bool
     init(cloud: any CloudBacking = CloudBackupStore(), preview: Bool = false) { self.cloud = cloud; self.preview = preview }
 
+    private var twoPane: Bool { sizeClass == .regular && !typeSize.isAccessibilitySize }
+    private var cloudAvailable: Bool { persistence.cloudEnabled || preview }
+    private var latest: CloudBackupStore.Entry? { entries.filter { $0.date != nil }.max { $0.date! < $1.date! } }
+
     var body: some View {
-        DaybookForm(title: "Backups") {
-            Section {
-                Text("Save a separate copy of your daybook to iCloud or Files. Each ZIP backup keeps your records and receipt images together.")
-                Text("Includes events, sessions, clients, fees, invoices, payments, expenses and receipt photos on this device. Calendar connections and device preferences are not included.")
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                if persistence.syncActivity.message != nil {
-                    Text("iCloud may still have changes to deliver. A backup includes only records already on this device.").font(.subheadline).foregroundStyle(Color("AmberText"))
-                }
-                Button("Back Up Now", systemImage: "icloud.and.arrow.up") {
-                    workflow.run("Preparing backup…") { control in
-                        let file = try await workflow.prepare(context: context, control: control)
-                        try control.check()
-                        workflow.stage = "Uploading to iCloud…"; workflow.fraction = nil; workflow.canCancel = false
-                        try await cloud.save(file: file.url, date: file.date, events: file.events)
-                        try control.check()
-                        workflow.notice = "Backup saved to iCloud."
-                        let result = try await cloud.list(); try control.check(); entries = result; loaded = true
-                    }
-                }.buttonStyle(DaybookPrimaryButton()).disabled(workflow.busy || !(persistence.cloudEnabled || preview))
-                    .accessibilityIdentifier("backup-now")
-                if workflow.busy { BackupProgressView(workflow: workflow) }
-                if let notice = workflow.notice { Text(notice).accessibilityIdentifier("backup-notice") }
-            }
-            Section {
-                if let reason = persistence.syncActivity.restoreUnavailableReason {
-                    Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                }
-                Button("Export Backup", systemImage: "square.and.arrow.up") {
-                    workflow.run("Preparing export…") { control in
-                        let file = try await workflow.prepare(context: context, control: control)
-                        try control.check(); workflow.export = file
-                        workflow.notice = "Ready to export: \(counted(file.events, "event", "events")) · \(counted(file.receipts, "receipt", "receipts")) · \(ByteCountFormatter.string(fromByteCount: file.bytes, countStyle: .file))."
-                        exporting = true
-                    }
-                }.frame(minHeight: 44).disabled(workflow.busy).accessibilityIdentifier("backup-export")
-                Button("Import Backup", systemImage: "square.and.arrow.down") { importing = true }
-                    .frame(minHeight: 44).disabled(workflow.busy).accessibilityIdentifier("backup-import")
-            } header: { Text("Files") } footer: {
-                Text("Exported ZIP files are not encrypted. They contain personal and financial records and receipt images; save them somewhere you trust. Imports are checked before you confirm a restore. Keep enough free device storage for the archive, unpacked images and restored records.")
-            }
-            Section {
-                if loaded && entries.isEmpty { ContentUnavailableView("No backups yet", systemImage: "icloud", description: Text("Tap Back Up Now to save your first copy.")) }
-                ForEach(entries) { entry in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(entry.title).font(.headline)
-                        Text(entry.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                        ViewThatFits(in: .horizontal) {
-                            HStack { actions(entry) }
-                            VStack(alignment: .leading) { actions(entry) }
+        ScrollView {
+            Group {
+                if twoPane {
+                    HStack(alignment: .top, spacing: 24) {
+                        DaybookSections { statusSection; filesSection }
+                            .frame(minWidth: 280, idealWidth: 340, maxWidth: 360)
+                        Group {
+                            if loaded && entries.isEmpty { emptyList }
+                            else { DaybookSections { savedSection } }
                         }
+                        .frame(maxWidth: .infinity)
                     }
+                    .frame(maxWidth: 1080)
+                } else {
+                    DaybookSections { statusSection; savedSection }
+                        .frame(maxWidth: 760)
                 }
-                Button("Refresh", systemImage: "arrow.clockwise") { refresh() }.frame(minHeight: 44).disabled(workflow.busy)
-            } header: { Text("Saved iCloud backups") } footer: {
-                Text("Backups use your iCloud storage. Each archive supports up to 512 MB, including up to 32 MB of record details. Keep up to 50 cloud copies; delete older copies deliberately. Restoring merges records and preserves newer edits and payments.")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .refreshable { await reload() }
+        .accessibilityIdentifier("daybook-form")
+        .daybookSurface()
+        .navigationTitle("Backups").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !twoPane {
+                ToolbarItem(placement: .topBarTrailing) { filesMenu }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("About backups", systemImage: "info.circle") { showInfo = true }
+                    .accessibilityIdentifier("backup-info")
+                    .popover(isPresented: $showInfo) {
+                        BackupInfoView()
+                            .frame(minWidth: 320, idealWidth: 380, idealHeight: 500)
+                            .presentationDetents([.medium, .large])
+                            .presentationCompactAdaptation(.sheet)
+                    }
             }
         }
-        .navigationTitle("Backups").navigationBarTitleDisplayMode(.inline)
         .saveErrorAlert($workflow.error)
         .task { if !loaded { refresh() } }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
@@ -94,7 +86,7 @@ struct BackupView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .CKAccountChanged)) { _ in
             workflow.invalidate(); entries = []; loaded = false; deleting = nil; confirmDelete = false
-            workflow.notice = "Your iCloud account changed. Refresh to load its backups."
+            refresh()
         }
         .confirmationDialog("Restore this backup?", isPresented: $workflow.reviewing, titleVisibility: .visible) {
             Button("Restore Backup") { workflow.restore(context: context, syncActivity: { persistence.syncActivity }) }
@@ -114,21 +106,229 @@ struct BackupView: View {
             Button("Cancel", role: .cancel) { deleting = nil }
         } message: { Text("This permanently removes this backup from iCloud on all your devices. Your current daybook and other backups are kept.") }
     }
-    @ViewBuilder private func actions(_ entry: CloudBackupStore.Entry) -> some View {
-        Button("Restore", systemImage: "arrow.uturn.backward") {
-            workflow.run("Downloading backup…") { control in
-                let url = try await cloud.load(entry)
-                defer { try? FileManager.default.removeItem(at: url) }
-                try control.check()
-                try await workflow.read(url, context: context, control: control)
+
+    // MARK: Sections
+
+    @ViewBuilder private var statusSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
+                    if !cloudAvailable {
+                        Text("iCloud backups are off").font(.title3.weight(.semibold))
+                        Text("Export a copy to Files instead.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    } else if !loaded {
+                        Text("Checking iCloud…").font(.title3.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                    } else if let latest, let date = latest.date {
+                        Text("Last backup").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text(Self.relative.string(from: date)).font(.title3.weight(.semibold))
+                        Text(latest.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    } else {
+                        Text("No backups yet").font(.title3.weight(.semibold))
+                        Text("Keep a copy of your daybook in iCloud.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    }
+                    if persistence.syncActivity.message != nil {
+                        Label("Changes from other devices may still be arriving.", systemImage: "arrow.triangle.2.circlepath")
+                            .font(.subheadline).foregroundStyle(Color("AmberText")).padding(.top, 4)
+                    }
+                    if let reason = persistence.syncActivity.restoreUnavailableReason {
+                        Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .padding(.bottom, 12)
+                Button { backUp() } label: {
+                    Label("Back Up Now", systemImage: "icloud.and.arrow.up").frame(maxWidth: .infinity)
+                }
+                    .buttonStyle(DaybookPrimaryButton())
+                    .disabled(workflow.busy || !cloudAvailable)
+                    .accessibilityIdentifier("backup-now")
+                if workflow.busy { BackupProgressView(workflow: workflow).padding(.top, 12) }
+                if let notice = workflow.notice {
+                    Text(notice).font(.subheadline).padding(.top, 12).accessibilityIdentifier("backup-notice")
+                }
             }
-        }.frame(minHeight: 44).disabled(workflow.busy || !entry.canRestore)
-        Button("Delete Backup", role: .destructive) { deleting = entry; confirmDelete = true }.frame(minHeight: 44).disabled(workflow.busy)
+        }
+    }
+
+    @ViewBuilder private var filesSection: some View {
+        Section {
+            Button("Export to Files", systemImage: "square.and.arrow.up") { export() }
+                .frame(minHeight: 44).disabled(workflow.busy).accessibilityIdentifier("backup-export")
+            Button("Import a Backup", systemImage: "square.and.arrow.down") { importing = true }
+                .frame(minHeight: 44).disabled(workflow.busy).accessibilityIdentifier("backup-import")
+        } header: { Text("Files") } footer: { Text("ZIP files aren’t encrypted.") }
+    }
+
+    private var filesMenu: some View {
+        Menu {
+            Section {
+                Button("Export to Files", systemImage: "square.and.arrow.up") { export() }
+                    .accessibilityIdentifier("backup-export")
+                Button("Import a Backup", systemImage: "square.and.arrow.down") { importing = true }
+                    .accessibilityIdentifier("backup-import")
+            } header: { Text("ZIP files aren’t encrypted.") }
+        } label: { Label("Files", systemImage: "folder") }
+            .disabled(workflow.busy)
+            .accessibilityIdentifier("backup-files")
+    }
+
+    @ViewBuilder private var savedSection: some View {
+        if cloudAvailable && !entries.isEmpty {
+            Section {
+                ForEach(entries) { entry in row(entry) }
+            } header: {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("In iCloud")
+                    Spacer()
+                    Text("\(entries.count) of \(CloudBackupStore.maximumBackups)")
+                        .font(.subheadline).monospacedDigit().foregroundStyle(Color("SecondaryText"))
+                        .accessibilityLabel("\(entries.count) of \(CloudBackupStore.maximumBackups) backups")
+                }
+            }
+        }
+    }
+
+    /// Keeps the list column occupied on wide layouts; the status panel already names the empty state.
+    private var emptyList: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "icloud").font(.title2).foregroundStyle(Color("SecondaryText"))
+            Text("Your iCloud backups will appear here.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+        }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [4, 4])) }
+    }
+
+    private func row(_ entry: CloudBackupStore.Entry) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) { summary(entry); Spacer(minLength: 0); actions(entry) }
+            VStack(alignment: .leading, spacing: 8) { summary(entry); HStack(spacing: 12) { actions(entry) } }
+        }
+        .contextMenu {
+            Button("Restore", systemImage: "arrow.uturn.backward") { restore(entry) }.disabled(workflow.busy || !entry.canRestore)
+            Button("Delete Backup", systemImage: "trash", role: .destructive) { deleting = entry; confirmDelete = true }.disabled(workflow.busy)
+        }
+    }
+
+    private func summary(_ entry: CloudBackupStore.Entry) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(Self.rowTitle(entry)).font(.subheadline.weight(.semibold)).monospacedDigit()
+            Text(entry.details).font(.footnote).foregroundStyle(entry.canRestore ? Color("SecondaryText") : Color("AmberText"))
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func actions(_ entry: CloudBackupStore.Entry) -> some View {
+        Button("Restore") { restore(entry) }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+            .buttonStyle(.glass).buttonBorderShape(.capsule)
+            .frame(minHeight: 44)
+            .disabled(workflow.busy || !entry.canRestore)
+            .accessibilityLabel("Restore")
+        Menu {
+            Button("Delete Backup", systemImage: "trash", role: .destructive) { deleting = entry; confirmDelete = true }
+        } label: {
+            Image(systemName: "ellipsis").foregroundStyle(Color("SecondaryText"))
+                .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+        }
+        .disabled(workflow.busy)
+        .accessibilityLabel("More actions for \(entry.title)")
+        .accessibilityIdentifier("backup-more")
+    }
+
+    // MARK: Actions
+
+    private func backUp() {
+        workflow.run("Preparing backup…") { control in
+            let file = try await workflow.prepare(context: context, control: control)
+            try control.check()
+            workflow.stage = "Uploading to iCloud…"; workflow.fraction = nil; workflow.canCancel = false
+            try await cloud.save(file: file.url, date: file.date, events: file.events)
+            try control.check()
+            // The status panel and list already show the new backup; confirm it for VoiceOver only.
+            AccessibilityNotification.Announcement("Backup saved to iCloud.").post()
+            let result = try await cloud.list(); try control.check(); entries = result; loaded = true
+        }
+    }
+    private func export() {
+        workflow.run("Preparing export…") { control in
+            let file = try await workflow.prepare(context: context, control: control)
+            try control.check(); workflow.export = file
+            workflow.notice = "Ready to export: \(counted(file.events, "event", "events")) · \(counted(file.receipts, "receipt", "receipts")) · \(ByteCountFormatter.string(fromByteCount: file.bytes, countStyle: .file))."
+            exporting = true
+        }
+    }
+    private func restore(_ entry: CloudBackupStore.Entry) {
+        workflow.run("Downloading backup…") { control in
+            let url = try await cloud.load(entry)
+            defer { try? FileManager.default.removeItem(at: url) }
+            try control.check()
+            try await workflow.read(url, context: context, control: control)
+        }
     }
     private func refresh() {
-        guard persistence.cloudEnabled || preview else { return }
+        guard cloudAvailable else { return }
         workflow.run("Loading iCloud backups…") { control in
             let result = try await cloud.list(); try control.check(); entries = result; loaded = true
         }
+    }
+    private func reload() async {
+        guard cloudAvailable, !workflow.busy else { return }
+        do { entries = try await cloud.list(); loaded = true }
+        catch { workflow.error = error.localizedDescription }
+    }
+
+    /// “Oct 8, 6:10 PM”; the year appears only for earlier years.
+    private static func rowTitle(_ entry: CloudBackupStore.Entry) -> String {
+        guard let date = entry.date else { return entry.title }
+        let style = Date.FormatStyle.dateTime.month(.abbreviated).day().hour().minute()
+        return Calendar.current.isDate(date, equalTo: .now, toGranularity: .year)
+            ? date.formatted(style) : date.formatted(style.year())
+    }
+
+    /// “Yesterday at 9:42 PM”, “Oct 8, 2026 at 6:10 PM”.
+    private static let relative: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium; formatter.timeStyle = .short
+        formatter.doesRelativeDateFormatting = true
+        return formatter
+    }()
+}
+
+/// The fine print, kept to what someone needs before relying on a backup.
+struct BackupInfoView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ScaledMetric(relativeTo: .subheadline) private var iconWidth = 26
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    item("square.stack.3d.up", "What’s included", "Events, clients, fees, invoices, payments, expenses and receipt photos. Not calendar connections or device settings.")
+                    Divider()
+                    item("arrow.uturn.backward", "Restoring", "Adds missing records and brings back deleted ones. Never overwrites newer edits or payments.")
+                    Divider()
+                    item("doc.zipper", "Exported files", "ZIP files aren’t encrypted. Keep them somewhere you trust.")
+                    Divider()
+                    item("icloud", "iCloud", "Uses your iCloud storage. Keeps up to \(CloudBackupStore.maximumBackups) backups.")
+                }
+                .padding(.horizontal, 20)
+            }
+            .navigationTitle("About backups").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .daybookSurface()
+        }
+        .accessibilityIdentifier("backup-info-sheet")
+    }
+    private func item(_ symbol: String, _ title: String, _ text: String) -> some View {
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(text).font(.subheadline).foregroundStyle(Color("SecondaryText")).fixedSize(horizontal: false, vertical: true)
+            }
+        } icon: {
+            Image(systemName: symbol).foregroundStyle(Color.accentColor).frame(width: iconWidth)
+        }
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
     }
 }

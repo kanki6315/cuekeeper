@@ -229,9 +229,14 @@ final class PlaceZones: ObservableObject {
     func pending(_ key: String) -> Bool { selections[key]?.pending ?? false }
     func failed(_ key: String) -> Bool { selections[key]?.failed ?? false }
 
-    func choose(_ key: String, apply: @escaping (String) -> Void, lookup: @escaping @MainActor () async throws -> TimeZone?) {
+    /// A delay lets typing settle; a lookup superseded during it never runs.
+    func choose(_ key: String, after delay: Duration = .zero, apply: @escaping (String) -> Void, lookup: @escaping @MainActor () async throws -> TimeZone?) {
         let token = selections[key, default: PlaceSelection()].begin()
         Task {
+            if delay > .zero {
+                try? await Task.sleep(for: delay)
+                guard selections[key]?.revision == token else { return }
+            }
             let zone = await PlaceZone.withTimeout(lookup)
             if let zone = selections[key, default: PlaceSelection()].finish(token, zone: zone) { apply(zone.identifier) }
         }
@@ -371,22 +376,34 @@ struct EventPlaceFields: View {
     var body: some View {
         LocationSearchField(text: $location, identifier: locationIdentifier, onChoose: { suggestion in
             choose { try await PlaceZone.resolve(suggestion) }
-        }, onEdit: { zones.edited(key) })
+        }, onEdit: { rederive() })
         if !trackPlaceID.isEmpty { SavedTrackView(placeID: trackPlaceID) }
         Button(trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }
             .accessibilityIdentifier("choose-track")
             .sheet(isPresented: $choosingTrack) { TrackLocationPicker(placeID: $trackPlaceID) }
             .onChange(of: trackPlaceID) { _, id in
-                if !id.isEmpty { choose { try await PlaceZone.resolve(trackPlaceID: id) } }
+                if id.isEmpty { rederive() } else { choose { try await PlaceZone.resolve(trackPlaceID: id) } }
             }
         if !trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { trackPlaceID = "" }.accessibilityIdentifier("remove-track") }
         DerivedTimeZoneRow(title: "Event timezone", timeZoneID: timeZoneID, date: date,
                            caption: "Set by the event’s location or track. All sessions use it.",
                            identifier: "event-timezone", zones: zones, key: key)
     }
-    private func choose(_ lookup: @escaping @MainActor () async throws -> TimeZone?) {
+    private func choose(after delay: Duration = .zero, _ lookup: @escaping @MainActor () async throws -> TimeZone?) {
         let zone = $timeZoneID
-        zones.choose(key, apply: { zone.wrappedValue = $0 }, lookup: lookup)
+        zones.choose(key, after: delay, apply: { zone.wrappedValue = $0 }, lookup: lookup)
+    }
+    /// Typed text or a removed track falls back to what's left: the track, the typed place, then home.
+    /// Text that matches no place is treated as a venue label, so it gets the home zone.
+    private func rederive() {
+        let track = trackPlaceID, text = location.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !track.isEmpty {
+            choose { try await PlaceZone.resolve(trackPlaceID: track) }
+        } else if !text.isEmpty {
+            choose(after: .milliseconds(700)) { try await PlaceZone.resolve(query: text) ?? .home }
+        } else {
+            zones.edited(key); timeZoneID = TimeZone.home.identifier
+        }
     }
 }
 

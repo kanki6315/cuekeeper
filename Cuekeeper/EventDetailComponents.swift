@@ -417,12 +417,12 @@ struct MoneySummaryPanel: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(line.description.isEmpty ? "Item" : line.description)
-                                if let rate = try? Money.parse(line.rate, allowNegative: true) {
+                                if let rate = try? Money.parse(line.rate, currency: value.currency, allowNegative: true) {
                                     Text("\(line.quantity) × \(Money.format(rate, currency: value.currency))").font(.footnote).foregroundStyle(Color("SecondaryText"))
                                 }
                             }
                             Spacer(minLength: 8)
-                            Text((try? line.total()).map { Money.format($0, currency: value.currency) } ?? "Needs review").monospacedDigit()
+                            Text((try? line.total(currency: value.currency)).map { Money.format($0, currency: value.currency) } ?? "Needs review").monospacedDigit()
                         }.font(.subheadline).padding(.vertical, 10)
                     }
                 }

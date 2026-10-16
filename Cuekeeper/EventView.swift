@@ -100,6 +100,7 @@ struct EventEditorView: View {
                 if booking.fee?.amount.isEmpty == true, let client = try? context.fetch(request).first { booking.fee?.currency = client.defaultCurrency }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
+            .preservesDraftOnTodayLink()
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
     }
 }
@@ -121,7 +122,7 @@ private func feeSummary(_ draft: FeeDraft?) -> String {
     guard let draft else { return "Fee needs review" }
     let amount: String
     if draft.amount.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { amount = "Fee unknown" }
-    else if let value = try? Money.parse(draft.amount) { amount = Money.format(value, currency: draft.currency) }
+    else if let value = try? Money.parse(draft.amount, currency: draft.currency) { amount = Money.format(value, currency: draft.currency) }
     else { amount = "Amount needs review" }
     return "\(amount) · \(draft.agreement.capitalized) · \(draft.lines.count) breakdown \(draft.lines.count == 1 ? "item" : "items")"
 }

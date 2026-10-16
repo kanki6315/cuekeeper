@@ -2,22 +2,35 @@ import CoreData
 import SwiftUI
 
 struct PendingExpensesPrompt: View {
+    @Environment(\.todayNavigation) private var todayNavigation
     var alwaysVisible = false
     @FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "isDraft == YES AND (job == nil OR job.deletedAt == nil)")) private var expenses: FetchedResults<Expense>
     private var count: Int { expenses.filter(\.needsCompletion).count }
     var body: some View {
         if count > 0 || alwaysVisible {
-            DaybookLink { PendingExpensesView() } label: {
-                HStack(alignment: .center, spacing: 12) {
-                    Image(systemName: "tray")
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Expenses to complete").font(.headline)
-                        Text(count == 0 ? "All caught up" : "\(count) \(count == 1 ? "expense needs" : "expenses need") your review").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Group {
+                if todayNavigation != nil {
+                    NavigationLink(value: ScheduleDestination.pendingExpenses) {
+                        HStack(spacing: 10) {
+                            promptLabel.foregroundStyle(Color.primary).frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                        }.contentShape(Rectangle())
                     }
-                    Spacer()
-                }.frame(minHeight: 44)
+                } else {
+                    DaybookLink { PendingExpensesView() } label: { promptLabel }
+                }
             }.accessibilityIdentifier("pending-expenses")
         }
+    }
+    private var promptLabel: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "tray")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Expenses to complete").font(.headline)
+                Text(count == 0 ? "All caught up" : "\(count) \(count == 1 ? "expense needs" : "expenses need") your review").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            }
+            Spacer()
+        }.frame(minHeight: 44)
     }
 }
 
@@ -40,8 +53,8 @@ struct PendingExpensesView: View {
                         Button { selected = expense } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(expense.value.merchant.isEmpty ? "Expense to complete" : expense.value.merchant).font(.headline)
-                                if let amount = try? Money.parse(expense.value.amount), !expense.value.currency.isEmpty {
-                                    Text(Money.format(amount, currency: expense.value.currency)).monospacedDigit()
+                                if let amount = ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) {
+                                    Text(amount).monospacedDigit()
                                 }
                                 Text(expense.job?.eventTitle ?? "Event to choose").font(.subheadline).foregroundStyle(Color("SecondaryText"))
                                 Text(expense.photo == nil ? "Receipt to add" : "Receipt attached").font(.caption).foregroundStyle(Color("SecondaryText"))
@@ -51,6 +64,7 @@ struct PendingExpensesView: View {
                     }
                 }
             }
+            ExpenseRemindersSection(header: "Reminders")
             Section { DaybookLink("Wallet automation setup") { ExpenseAutomationSettingsView() } }
         }
         .navigationTitle("Expenses to complete").navigationBarTitleDisplayMode(.inline)

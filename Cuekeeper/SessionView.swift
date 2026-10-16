@@ -95,6 +95,7 @@ struct SessionEditorView: View {
                 }
             }
             .saveErrorAlert($error).interactiveDismissDisabled(draft != initial)
+            .preservesDraftOnTodayLink()
         }
         .presentationSizing(.page)
         .presentationDetents([.large])

@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreData
 import PhotosUI
 import SwiftUI
@@ -93,8 +94,8 @@ struct ExpensesView: View {
                 Text(value.merchant.isEmpty ? "Expense to complete" : value.merchant)
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if let amount = try? Money.parse(value.amount), !value.currency.isEmpty {
-                    Text(Money.format(amount, currency: value.currency))
+                if let amount = ExpenseValue.displayAmount(value.amount, currency: value.currency) {
+                    Text(amount)
                         .font(.subheadline.weight(.semibold)).monospacedDigit()
                         .fixedSize(horizontal: true, vertical: false)
                 }
@@ -102,7 +103,7 @@ struct ExpensesView: View {
             Text([expense.job?.eventTitle ?? "Event to choose", expense.job?.client?.name]
                 .compactMap { $0 }.joined(separator: " · "))
                 .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-            Text([expense.isDraft ? "Needs review" : "", value.day, value.category,
+            Text([expense.isDraft ? "Needs review" : "", value.day.isEmpty ? "" : Day.display(value.day), value.category,
                   value.reimbursable ? "Reimbursable" : ""]
                 .filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(.caption)
@@ -132,7 +133,7 @@ struct EventExpensesSection: View {
                         Text(expense.isDraft ? "Review receipt" : expense.value.merchant).font(.headline)
                         if expense.isDraft { Text(expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm").font(.subheadline) }
                         else {
-                            Text("\(Money.format((try? Money.parse(expense.value.amount)) ?? 0, currency: expense.value.currency)) · \(expense.value.day)").font(.subheadline)
+                            Text("\(ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) ?? "Total to check") · \(Day.display(expense.value.day))").font(.subheadline)
                         }
                     }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }.accessibilityIdentifier("expense-row")
@@ -148,6 +149,8 @@ struct EventExpensesSection: View {
 struct ExpenseEditorView: View {
     @Environment(\.managedObjectContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     let job: Job?
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)], predicate: NSPredicate(format: "deletedAt == nil")) private var events: FetchedResults<Job>
     private let initialJobID: NSManagedObjectID?
@@ -162,6 +165,8 @@ struct ExpenseEditorView: View {
     @State private var isDraft: Bool
     @State private var photo: Data?
     @State private var scanning = false
+    @State private var cameraAccess = AVCaptureDevice.authorizationStatus(for: .video)
+    @State private var cameraBlocked = false
     @State private var picker: PhotosPickerItem?
     @State private var busy = false
     @State private var savingPhoto = false
@@ -169,6 +174,7 @@ struct ExpenseEditorView: View {
     @State private var task: Task<Void, Never>?
     @State private var message: String?
     @State private var error: String?
+    @State private var failedDraftSave = false
     @State private var discard = false
     @State private var retry = false
     @State private var replacing = false
@@ -211,7 +217,12 @@ struct ExpenseEditorView: View {
                         }
                     } else {
                         if VNDocumentCameraViewController.isSupported {
-                            Button("Open Camera", systemImage: "doc.viewfinder") { scanning = true }.accessibilityIdentifier("receipt-camera")
+                            if cameraUnavailable {
+                                Text(cameraUnavailableMessage).foregroundStyle(Color("SecondaryText"))
+                                if cameraAccess == .denied { Button("Open Settings", systemImage: "gear") { openSettings() }.accessibilityIdentifier("receipt-camera-settings") }
+                            } else {
+                                Button("Open Camera", systemImage: "doc.viewfinder") { Task { await openCamera() } }.accessibilityIdentifier("receipt-camera")
+                            }
                         }
                         PhotosPicker(selection: $picker, matching: .images) { Label("Choose Receipt Photo", systemImage: "photo") }
                         Text("Scan one receipt. Its photo stays with this draft while you review the details.").foregroundStyle(Color("SecondaryText"))
@@ -224,7 +235,7 @@ struct ExpenseEditorView: View {
                 if let captured = draft.capture {
                     Section("Captured payment") {
                         if !captured.merchant.isEmpty { Text(captured.merchant) }
-                        if !captured.amount.isEmpty { Text([captured.amount, captured.currency].filter { !$0.isEmpty }.joined(separator: " ")) }
+                        if !captured.amount.isEmpty { Text(ExpenseValue.displayAmount(captured.amount, currency: captured.currency) ?? [captured.amount, captured.currency].filter { !$0.isEmpty }.joined(separator: " ")) }
                         if let date = captured.date { Text(date.formatted(date: .abbreviated, time: .shortened)) }
                         Text("Payment details are kept here for comparison. Review the fields below before saving.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
                     }
@@ -235,8 +246,8 @@ struct ExpenseEditorView: View {
                         ForEach(conflicts) { field in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(field.rawValue).font(.headline)
-                                Text("Current: \(draft[keyPath: field.keyPath])")
-                                Text("Receipt: \(proposal[keyPath: field.keyPath])")
+                                Text("Current: \(field.display(draft[keyPath: field.keyPath]))")
+                                Text("Receipt: \(field.display(proposal[keyPath: field.keyPath]))")
                                 Button("Use receipt \(field.rawValue.lowercased())") {
                                     draft[keyPath: field.keyPath] = proposal[keyPath: field.keyPath]
                                     conflicts.removeAll { $0 == field }
@@ -249,7 +260,7 @@ struct ExpenseEditorView: View {
                 if photo != nil || recordID != nil {
                     Section {
                         field("Merchant", text: $draft.merchant, identifier: "expense-merchant")
-                        field("Date (YYYY-MM-DD)", text: $draft.day, identifier: "expense-date")
+                        dateField
                         field("Total paid", text: $draft.amount, identifier: "expense-total", decimal: true)
                         DaybookPicker("Currency", selection: $draft.currency, identifier: "expense-currency") {
                             Text("Choose currency").tag("")
@@ -298,7 +309,7 @@ struct ExpenseEditorView: View {
             }
             .photosPicker(isPresented: $choosingPhoto, selection: $picker, matching: .images)
             .confirmationDialog("Replace the receipt photo?", isPresented: $replacing, titleVisibility: .visible) {
-                if VNDocumentCameraViewController.isSupported { Button("Scan Replacement") { scanning = true } }
+                if VNDocumentCameraViewController.isSupported { Button("Scan Replacement") { Task { await openCamera() } } }
                 Button("Choose Replacement Photo") { choosingPhoto = true }
                 Button("Keep Current Photo", role: .cancel) {}
             } message: { Text("Your current photo stays until its replacement is saved. Entered payment details will be kept for comparison.") }
@@ -312,21 +323,75 @@ struct ExpenseEditorView: View {
                     picker = nil
                 }
             }
-            .task { if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported { scanning = true } }
+            .task {
+                #if DEBUG
+                if ProcessInfo.processInfo.isUITesting, ProcessInfo.processInfo.arguments.contains("--ui-test-expense-conflict"),
+                   let recordID, let expense = try? context.existingObject(with: recordID) as? Expense {
+                    expense.revision = UUID().uuidString
+                    try? context.save()
+                }
+                #endif
+                // Only open the scanner automatically when the camera can actually be used; otherwise the
+                // receipt section explains why and offers Settings instead of presenting a blank scanner.
+                if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported && !cameraUnavailable { await openCamera() }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { cameraAccess = AVCaptureDevice.authorizationStatus(for: .video) }
+            }
+            .alert("Camera access is off", isPresented: $cameraBlocked) {
+                if cameraAccess == .denied { Button("Open Settings") { openSettings() } }
+                Button(cameraAccess == .denied ? "Not Now" : "OK", role: .cancel) {}
+            } message: { Text(cameraUnavailableMessage) }
             .onDisappear { task?.cancel() }
             .interactiveDismissDisabled(savingPhoto || recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID)
-            .saveErrorAlert($error)
+            .preservesDraftOnTodayLink()
+            .alert("Couldn’t save changes", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+                if failedDraftSave {
+                    Button("Close without saving", role: .destructive) { dismiss() }
+                    Button("Keep Editing", role: .cancel) { error = nil }
+                } else {
+                    Button("OK", role: .cancel) { error = nil }
+                }
+            } message: { Text(error ?? "Please try again.") }
             .confirmationDialog("Read the receipt again?", isPresented: $retry, titleVisibility: .visible) {
                 Button("Read Receipt Again") { extract() }
                 Button("Keep Editing", role: .cancel) {}
             }
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
     }
+    /// The receipt date stays empty until it is read or chosen, so a blank never silently becomes today.
+    @ViewBuilder private var dateField: some View {
+        if draft.day.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Date").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Button("Add Date") { draft.day = Day.string(from: Date()) }.accessibilityIdentifier("expense-date")
+            }
+        } else {
+            DatePicker("Date", selection: Binding(get: { Day.date(from: draft.day) ?? Date() }, set: { draft.day = Day.string(from: $0) }),
+                       displayedComponents: .date).accessibilityIdentifier("expense-date")
+        }
+    }
     private func field(_ label: String, text: Binding<String>, identifier: String, decimal: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             DaybookTextField(label, text: text).keyboardType(decimal ? .decimalPad : .default).accessibilityIdentifier(identifier)
         }
+    }
+    private var cameraUnavailable: Bool { cameraAccess == .denied || cameraAccess == .restricted }
+    private var cameraUnavailableMessage: String {
+        cameraAccess == .restricted
+            ? "Camera access is restricted on this device. Choose a receipt photo instead."
+            : "Allow camera access in Settings to scan receipts, or choose a receipt photo instead."
+    }
+    private func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+    }
+    private func openCamera() async {
+        // The person just answered the system prompt, so don't follow a refusal with another alert.
+        let prompted = cameraAccess == .notDetermined
+        if prompted { _ = await AVCaptureDevice.requestAccess(for: .video) }
+        cameraAccess = AVCaptureDevice.authorizationStatus(for: .video)
+        if cameraAccess == .authorized { scanning = true } else if !prompted { cameraBlocked = true }
     }
     private func capture(_ image: UIImage) {
         guard !busy else { return }
@@ -385,11 +450,15 @@ struct ExpenseEditorView: View {
     }
     private func save(confirmed: Bool) {
         guard let recordID else { return }
+        failedDraftSave = false
         do {
             try Expense.save(draft, id: recordID, revision: revision, confirmed: confirmed, jobID: selectedJobID, in: context)
             if confirmed, let expense = try context.existingObject(with: recordID) as? Expense, let id = expense.id { ExpenseNotifications.shared.clear(id: id) }
             dismiss()
-        } catch { self.error = error.localizedDescription }
+        } catch {
+            failedDraftSave = isDraft
+            self.error = error.localizedDescription
+        }
     }
 }
 

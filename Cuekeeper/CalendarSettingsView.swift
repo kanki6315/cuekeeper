@@ -5,12 +5,13 @@ struct CalendarSettingsView: View {
     @State private var selected = ""
     @State private var disconnect = false
     @State private var takeOver = false
+    @State private var keepEntries = false
     var body: some View {
         DaybookForm {
             Section {
                 LabeledContent("Permission", value: calendar.permission)
                 Text(calendar.status).accessibilityIdentifier("calendar-status")
-                if calendar.busy { ProgressView("Updating Calendar…") }
+                if calendar.busy && calendar.connected { ProgressView("Updating Calendar…") }
             } header: { Text("Connection") } footer: {
                 Text("One device updates Calendar to avoid duplicates. To include edits from other devices, open Cuekeeper here while online. Your events are still available offline.")
             }
@@ -65,6 +66,8 @@ struct CalendarSettingsView: View {
             }
             if calendar.connected {
                 Section {
+                    Button("Disconnect without removing entries") { keepEntries = true }
+                        .accessibilityIdentifier("calendar-disconnect-keep")
                     Button("Update Now") { Task { await calendar.sync() } }.disabled(calendar.busy)
                     Button("Disconnect & Remove Entries", role: .destructive) { disconnect = true }.disabled(calendar.busy)
                 } footer: { Text("Only entries added by Cuekeeper are updated or removed. Changes in Calendar won’t sync back to Cuekeeper.") }
@@ -74,6 +77,11 @@ struct CalendarSettingsView: View {
         .task { calendar.refreshCalendars(); selected = calendar.selectedID }
         .confirmationDialog("Remove Cuekeeper’s entries from this calendar and disconnect?", isPresented: $disconnect, titleVisibility: .visible) {
             Button("Disconnect & Remove Entries", role: .destructive) { Task { await calendar.disconnect() } }
+        }
+        .confirmationDialog("Disconnect and leave existing entries in Calendar?", isPresented: $keepEntries, titleVisibility: .visible) {
+            Button("Disconnect without removing entries", role: .destructive) { calendar.disconnectKeepingEntries() }
+        } message: {
+            Text("This device stops updating Calendar immediately. Existing entries stay. Another device may need to choose Use This Device Instead because this option works without contacting iCloud.")
         }
         .confirmationDialog("Make this device the calendar manager?", isPresented: $takeOver, titleVisibility: .visible) {
             Button("Use This Device") { Task { await calendar.takeOver(selected) } }

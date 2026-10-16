@@ -74,7 +74,7 @@ struct TodayScheduleView: View {
     @ViewBuilder private func sessionRow(_ row: ScheduleSession, event: ScheduleEvent?) -> some View {
         if let session = sessions.first(where: { $0.id == row.id }), let job = session.job {
             let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
-            NavigationLink { SessionDetailView(session: session) } label: {
+            NavigationLink(value: ScheduleDestination.session(session.objectID)) {
                 layout {
                     VStack(alignment: .leading, spacing: 4) {
                         if let start = row.start {
@@ -110,6 +110,6 @@ struct TodayScheduleView: View {
     }
     @ViewBuilder private func eventLink<Label: View>(_ job: Job, @ViewBuilder label: () -> Label) -> some View {
         if let selectedJob { Button { selectedJob.wrappedValue = job } label: { label() }.buttonStyle(.plain) }
-        else { NavigationLink { EventDetailView(anchor: job) } label: { label() }.buttonStyle(.plain) }
+        else { NavigationLink(value: ScheduleDestination.event(job.objectID)) { label() }.buttonStyle(.plain) }
     }
 }

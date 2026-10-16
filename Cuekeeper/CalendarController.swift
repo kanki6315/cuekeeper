@@ -18,6 +18,8 @@ final class CalendarController: ObservableObject {
     private let deviceID: String
     private let publisher: any CalendarPublishing
     private var queued = false
+    private var generation = 0
+    private var syncPermit = CalendarSyncPermit()
     private var context: NSManagedObjectContext?
     private var observers: [NSObjectProtocol] = []
     private var disabledForTests = false
@@ -65,15 +67,18 @@ final class CalendarController: ObservableObject {
     }
     func connect(_ id: String) async {
         guard !busy, !disabledForTests else { return }
+        let generation = generation
         busy = true
         do {
             guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
             try await publisher.claim(deviceID: deviceID, name: ownerLabel)
-            try await adopt(id)
+            guard generation == self.generation else { busy = false; return }
+            try await adopt(id, generation: generation)
         } catch CalendarOwnershipError.managedElsewhere(let owner) {
+            guard generation == self.generation else { busy = false; return }
             otherOwner = owner
             status = "Calendar not connected: \(CalendarOwnershipError.managedElsewhere(owner).localizedDescription)"
-        } catch { status = "Calendar not connected: \(error.localizedDescription)" }
+        } catch { if generation == self.generation { status = "Calendar not connected: \(error.localizedDescription)" } }
         busy = false
         if connected { await sync() }
     }
@@ -81,41 +86,64 @@ final class CalendarController: ObservableObject {
     /// entries; this one adopts the existing Cuekeeper entries instead of duplicating them.
     func takeOver(_ id: String) async {
         guard !busy, !disabledForTests else { return }
+        let generation = generation
         busy = true
         do {
             guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
             try await publisher.takeOver(deviceID: deviceID, name: ownerLabel)
-            try await adopt(id)
-        } catch { status = "Calendar not connected: \(error.localizedDescription)" }
+            guard generation == self.generation else { busy = false; return }
+            try await adopt(id, generation: generation)
+        } catch { if generation == self.generation { status = "Calendar not connected: \(error.localizedDescription)" } }
         busy = false
         if connected { await sync() }
     }
-    private func adopt(_ id: String) async throws {
-        if connected && selectedID != id { try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys) }
+    private func adopt(_ id: String, generation: Int) async throws {
+        if connected && selectedID != id { try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys, permit: syncPermit) }
+        guard generation == self.generation else { throw CancellationError() }
+        syncPermit = CalendarSyncPermit()
         selectedID = id; defaults.set(id, forKey: "calendar.selected")
         otherOwner = nil
         status = "Connected. Updating entries…"
     }
     func disconnect() async {
         guard !busy, !disabledForTests else { return }
+        let generation = generation
+        let permit = syncPermit
         busy = true; defer { busy = false }
         do {
             do { try await publisher.verify(deviceID: deviceID) }
             catch CalendarOwnershipError.notOwner {
+                guard generation == self.generation else { return }
                 // Another device took over and now owns the entries; leave them in place.
                 clearConnection()
                 status = "Disconnected. Calendar entries were left for the device that now manages them."
                 return
             }
-            try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys)
+            guard generation == self.generation else { return }
+            try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys, permit: permit)
+            guard generation == self.generation else { return }
             try await publisher.release(deviceID: deviceID)
+            guard generation == self.generation else { return }
             clearConnection()
             status = "Disconnected. Cuekeeper’s calendar entries were removed."
-        } catch { status = "Couldn’t disconnect: \(error.localizedDescription). Retry when Calendar and iCloud are available." }
+        } catch { if generation == self.generation { status = "Couldn’t disconnect: \(error.localizedDescription). Retry when Calendar and iCloud are available." } }
     }
+    /// An offline escape hatch: do not require EventKit access or contact iCloud.
+    /// The remote claim may remain, so another device can use the existing takeover flow.
+    func disconnectKeepingEntries() {
+        guard connected else { return }
+        generation += 1
+        syncPermit.cancel()
+        debounce?.cancel(); queued = false
+        clearConnection()
+        otherOwner = nil
+        status = "Disconnected on this device. Entries remain in Calendar. Another device may need to choose Use This Device Instead."
+    }
+
     private func clearConnection() {
         selectedID = ""; defaults.removeObject(forKey: "calendar.selected")
         defaults.removeObject(forKey: "calendar.eventIDs")
+        defaults.removeObject(forKey: "calendar.lastPublished")
     }
     func scheduleSync() {
         guard !disabledForTests, connected else { return }
@@ -128,19 +156,27 @@ final class CalendarController: ObservableObject {
     func sync() async {
         guard connected, !disabledForTests, context != nil else { return }
         guard !busy else { queued = true; return }
+        let generation = generation
+        let calendarID = selectedID
+        let permit = syncPermit
         busy = true
         defer { busy = false; if queued { queued = false; scheduleSync() } }
         do {
             guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { throw RecordError.invalid("Full Calendar access is needed. Enable it in Settings; your jobs are saved locally.") }
             guard let calendar = store.calendar(withIdentifier: selectedID), calendar.allowsContentModifications else { throw RecordError.invalid("The selected calendar is unavailable. Choose another calendar in Cuekeeper Settings.") }
             try await publisher.verify(deviceID: deviceID)
+            guard generation == self.generation else { return }
             let plan = try await currentPlan()
-            try await worker.sync(plan: plan, calendarID: selectedID)
+            guard generation == self.generation else { return }
+            try await worker.sync(plan: plan, calendarID: calendarID, permit: permit)
+            guard generation == self.generation else { return }
             status = "Updated at \(Date().formatted(date: .omitted, time: .shortened)) on this device."
         } catch let error as CalendarOwnershipError {
+            guard generation == self.generation else { return }
             store.reset()
             status = "\(error.localizedDescription) Disconnect here, or connect again to take over."
         } catch {
+            guard generation == self.generation else { return }
             store.reset()
             status = "Calendar update pending: \(error.localizedDescription)"
         }
@@ -160,7 +196,7 @@ final class CalendarController: ObservableObject {
 
     /// EventKit represents all-day dates in the device's default time zone.
     /// Preserve the job's civil dates, rather than its midnight instants, when publishing.
-    nonisolated static func update(_ event: EKEvent, from desired: CalendarEntry) -> Bool {
+    nonisolated static func update(_ event: EKEvent, from desired: CalendarEntry, lastPublished: CalendarEntry? = nil) -> Bool {
         let timeZone = desired.allDay ? nil : TimeZone(identifier: desired.timeZoneID)
         func eventDate(_ date: Date) -> Date {
             guard desired.allDay else { return date }
@@ -174,16 +210,24 @@ final class CalendarController: ObservableObject {
         // The plan uses an exclusive next-day boundary; EventKit normalizes all-day
         // end dates to the final second of the last included day.
         let end = eventDate(desired.end).addingTimeInterval(desired.allDay ? -1 : 0)
-        guard event.title != desired.title || event.startDate != start || event.endDate != end
-            || event.isAllDay != desired.allDay || (event.notes ?? "") != desired.notes || (event.location ?? "") != desired.location
-            || event.url != desired.url || event.timeZone != timeZone else { return false }
-        event.title = desired.title
-        event.timeZone = timeZone
-        event.startDate = start
-        event.endDate = end
-        // Set this last: changing the time zone can turn an all-day event into a timed event.
-        event.isAllDay = desired.allDay
-        event.notes = desired.notes; event.location = desired.location; event.url = desired.url
+        // Only changed source fields are authoritative. Providers may normalize the
+        // last successfully published text; writing it again would trigger another sync.
+        let titleChanged = lastPublished?.title != desired.title && event.title != desired.title
+        let notesChanged = lastPublished?.notes != desired.notes && (event.notes ?? "") != desired.notes
+        let locationChanged = lastPublished?.location != desired.location && (event.location ?? "") != desired.location
+        let urlChanged = lastPublished?.url != desired.url && event.url != desired.url
+        let scheduleChanged = event.startDate != start || event.endDate != end || event.isAllDay != desired.allDay || event.timeZone != timeZone
+        guard titleChanged || notesChanged || locationChanged || urlChanged || scheduleChanged else { return false }
+        if titleChanged { event.title = desired.title }
+        if scheduleChanged {
+            event.timeZone = timeZone
+            event.startDate = start
+            event.endDate = end
+            event.isAllDay = desired.allDay
+        }
+        if notesChanged { event.notes = desired.notes }
+        if locationChanged { event.location = desired.location }
+        if urlChanged { event.url = desired.url }
         return true
     }
 
@@ -246,6 +290,27 @@ struct CalendarDeviceIdentity {
     }()
 }
 
+/// A local disconnect invalidates work already awaiting EventKit or iCloud.
+final class CalendarSyncPermit: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    func cancel() { lock.lock(); cancelled = true; lock.unlock() }
+    func commit(_ operation: () throws -> Void) throws {
+        lock.lock(); defer { lock.unlock() }
+        guard !cancelled else { throw CancellationError() }
+        try operation()
+    }
+}
+
+struct CalendarPublishedState: Codable {
+    var calendarID: String
+    var entries: [String: CalendarEntry] = [:]
+    func entry(calendarID: String, eventID: String?) -> CalendarEntry? {
+        guard self.calendarID == calendarID, let eventID else { return nil }
+        return entries[eventID]
+    }
+}
+
 /// Owns its EventKit objects away from the main actor. No EventKit objects cross
 /// this boundary; the UI store is used only for calendar selection and permission.
 private actor CalendarWorker {
@@ -253,36 +318,44 @@ private actor CalendarWorker {
     private let defaults: UserDefaults
     init(defaults: UserDefaults) { self.defaults = defaults }
 
-    func sync(plan: CalendarPlan, calendarID: String) throws {
+    func sync(plan: CalendarPlan, calendarID: String, permit: CalendarSyncPermit) throws {
         do {
             store.reset()
             guard let calendar = store.calendar(withIdentifier: calendarID), calendar.allowsContentModifications else {
                 throw RecordError.invalid("The selected calendar is unavailable. Choose another calendar in Cuekeeper Settings.")
             }
             rememberBounds(plan.bounds)
+            let published = defaults.data(forKey: "calendar.lastPublished").flatMap { try? JSONDecoder().decode(CalendarPublishedState.self, from: $0) }
+            var changed = false
             let existing = managedEvents(calendar: calendar)
             let grouped = Dictionary(grouping: existing, by: { CalendarPlan.key(from: $0.url)! })
             var retained: [EKEvent] = []
             var ids: [String: String] = [:]
             for (key, events) in grouped {
                 guard plan.knownKeys.contains(key) else { continue }
-                if plan.desired[key] == nil { for event in events { try store.remove(event, span: .thisEvent, commit: false) } }
+                if plan.desired[key] == nil { for event in events { try store.remove(event, span: .thisEvent, commit: false); changed = true } }
             }
             for (key, desired) in plan.desired {
                 let matches = grouped[key] ?? []
                 let event = matches.first ?? EKEvent(eventStore: store)
-                for duplicate in matches.dropFirst() { try store.remove(duplicate, span: .thisEvent, commit: false) }
+                for duplicate in matches.dropFirst() { try store.remove(duplicate, span: .thisEvent, commit: false); changed = true }
                 if event.calendar == nil { event.calendar = calendar }
                 // Save only actual changes; EventKit notifications must not create a sync loop.
-                if CalendarController.update(event, from: desired) {
+                if CalendarController.update(event, from: desired, lastPublished: published?.entry(calendarID: calendarID, eventID: event.eventIdentifier)) {
                     try store.save(event, span: .thisEvent, commit: false)
+                    changed = true
                 }
                 retained.append(event)
             }
-            try store.commit()
-            // IDs are assigned on commit; recapture them for date changes and moved entries.
-            for event in retained { if let key = CalendarPlan.key(from: event.url), let id = event.eventIdentifier { ids[key] = id } }
-            defaults.set(ids, forKey: "calendar.eventIDs")
+            try permit.commit {
+                if changed { try store.commit() }
+                // IDs are assigned on commit; recapture them for date changes and moved entries.
+                for event in retained { if let key = CalendarPlan.key(from: event.url), let id = event.eventIdentifier { ids[key] = id } }
+                defaults.set(ids, forKey: "calendar.eventIDs")
+                var state = CalendarPublishedState(calendarID: calendarID)
+                for (key, id) in ids { state.entries[id] = plan.desired[key] }
+                defaults.set(try JSONEncoder().encode(state), forKey: "calendar.lastPublished")
+            }
         } catch {
             store.reset()
             throw error
@@ -312,7 +385,7 @@ private actor CalendarWorker {
         }
         return Array(result.values).sorted { $0.eventIdentifier < $1.eventIdentifier }
     }
-    func removeManagedEvents(calendarID: String, knownKeys: Set<String>) throws {
+    func removeManagedEvents(calendarID: String, knownKeys: Set<String>, permit: CalendarSyncPermit) throws {
         store.reset()
         defer { store.reset() }
         guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { throw RecordError.invalid("Restore Calendar access before disconnecting.") }
@@ -323,6 +396,6 @@ private actor CalendarWorker {
             guard let key = CalendarPlan.key(from: event.url), knownKeys.contains(key) else { continue }
             try store.remove(event, span: .thisEvent, commit: false)
         }
-        try store.commit()
+        try permit.commit { try store.commit() }
     }
 }

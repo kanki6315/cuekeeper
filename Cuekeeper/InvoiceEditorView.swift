@@ -24,8 +24,8 @@ struct InvoiceEditorView: View {
         if let job, let id = job.id {
             let amount = try? job.currentFee().amount
             value.value.lines = [BilledLine(jobID: id, jobName: job.displayName, amount: amount ?? 0)]
-            amounts[id] = Money.text(amount)
-        } else { for line in value.value.lines { amounts[line.jobID] = Money.text(line.amount) } }
+            amounts[id] = Money.text(amount, currency: value.value.currency)
+        } else { for line in value.value.lines { amounts[line.jobID] = Money.text(line.amount, currency: value.value.currency) } }
         _draft = State(initialValue: value); _initial = State(initialValue: value)
         _clientID = State(initialValue: (draft?.value.clientID ?? job?.client?.id)?.uuidString ?? "")
         _amounts = State(initialValue: amounts); _initialAmounts = State(initialValue: amounts)
@@ -54,7 +54,7 @@ struct InvoiceEditorView: View {
                                 Toggle(job.displayName, isOn: Binding(get: { draft.value.lines.contains { $0.jobID == id } }, set: { selected in
                                     if selected {
                                         let amount = try? job.currentFee().amount
-                                        draft.value.lines.append(BilledLine(jobID: id, jobName: job.displayName, amount: amount ?? 0)); amounts[id] = Money.text(amount)
+                                        draft.value.lines.append(BilledLine(jobID: id, jobName: job.displayName, amount: amount ?? 0)); amounts[id] = Money.text(amount, currency: draft.value.currency)
                                     } else { draft.value.lines.removeAll { $0.jobID == id }; amounts.removeValue(forKey: id) }
                                 }))
                                 .disabled(!draft.value.lines.contains { $0.jobID == id } && !eligible(job, index: index))
@@ -116,6 +116,7 @@ struct InvoiceEditorView: View {
             .onChange(of: draft.value.currency) { _, _ in if !locked { draft.value.lines = []; amounts = [:] } }
             .onChange(of: draft.value.status) { _, status in if status == "sent" && draft.value.sentDay.isEmpty { draft.value.sentDay = Day.string(from: Date()) } }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
+            .preservesDraftOnTodayLink()
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
@@ -130,7 +131,7 @@ struct InvoiceEditorView: View {
         guard let client = UUID(uuidString: clientID) else { throw RecordError.invalid("Choose a client.") }
         var value = draft.value; value.clientID = client
         for index in value.lines.indices {
-            guard let amount = try Money.parse(amounts[value.lines[index].jobID] ?? "") else { throw RecordError.invalid("Enter a billed amount for each included booking.") }
+            guard let amount = try Money.parse(amounts[value.lines[index].jobID] ?? "", currency: value.currency) else { throw RecordError.invalid("Enter a billed amount for each included booking.") }
             value.lines[index].amount = amount
         }
         try value.validate(); return value

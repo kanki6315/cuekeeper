@@ -155,10 +155,9 @@ final class RecoveryBackupTests: XCTestCase {
         var activity = SyncActivity()
         let importID = UUID()
 
-        // Setup/export success, offline status and a failed import must not unlock restore.
+        // While online, setup/export success and a failed import must not unlock restore.
         activity.record(id: UUID(), kind: .setup, ended: true, succeeded: true, error: nil)
         activity.record(id: UUID(), kind: .sending, ended: true, succeeded: true, error: nil)
-        activity.offline = true
         activity.record(id: importID, kind: .receiving, ended: true, succeeded: false, error: "Offline")
         workflow.restore(context: target, syncActivity: { activity }) { _ in XCTFail("Restore must wait") }
         XCTAssertNotNil(workflow.error)
@@ -201,6 +200,28 @@ final class RecoveryBackupTests: XCTestCase {
         }
         await fulfillment(of: [restored], timeout: 5)
         XCTAssertNil(workflow.error)
+    }
+
+    func testWorkflowAllowsFilesRestoreWithoutUsableICloud() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let snapshot = try BackupArchive.capture(in: source)
+        for offline in [false, true] {
+            let target = try await context()
+            let workflow = BackupWorkflow(); workflow.archive = snapshot
+            var activity = SyncActivity()
+            activity.checkingAccount = false
+            activity.offline = offline
+            activity.accountIssue = offline ? nil : "No iCloud account"
+            activity.record(id: UUID(), kind: .receiving, ended: true, succeeded: false, error: "Unavailable")
+            let restored = expectation(description: "Restore without usable iCloud")
+            workflow.restore(context: target, syncActivity: { activity }) { result in
+                XCTAssertGreaterThan(result.added, 0)
+                restored.fulfill()
+            }
+            await fulfillment(of: [restored], timeout: 5)
+            XCTAssertNil(workflow.error)
+            XCTAssertNoThrow(try BackupArchive.capture(in: target))
+        }
     }
 
     func testWorkflowReportsCommittedRestoreAfterAccountInvalidation() async throws {

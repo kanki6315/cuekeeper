@@ -22,8 +22,8 @@ final class PersistenceTests: XCTestCase {
         try FileManager.default.removeItem(at: directory)
     }
 
-    private func openStore(fileName: String = "test.sqlite") async throws -> PersistenceController {
-        let store = PersistenceController(storeURL: directory.appending(path: fileName), cloudEnabled: false)
+    private func openStore(fileName: String = "test.sqlite", defaults: UserDefaults = .standard) async throws -> PersistenceController {
+        let store = PersistenceController(storeURL: directory.appending(path: fileName), cloudEnabled: false, defaults: defaults)
         for _ in 0..<100 {
             if store.isLoaded { openedStores.append(store); return store }
             if let error = store.loadError { throw NSError(domain: error, code: 1) }
@@ -32,14 +32,18 @@ final class PersistenceTests: XCTestCase {
         throw NSError(domain: "Store timed out", code: 2)
     }
 
-    func testStoreReadinessWaitsBeyondTenSecondsForAllCallers() async throws {
+    func testStoreReadinessWaitsUntilCompletedForAllCallers() async throws {
         let readiness = StoreReadiness()
-        let first = Task { try await readiness.wait() }
-        let second = Task { try await readiness.wait() }
-        try await Task.sleep(for: .seconds(10.2))
+        let first = Task { try await readiness.wait(); return Date() }
+        let second = Task { try await readiness.wait(); return Date() }
+        // StoreReadiness has no timer; waiters stay pending until the store reports a result.
+        try await Task.sleep(for: .milliseconds(300))
+        let completed = Date()
         readiness.complete(.success(()))
-        try await first.value
-        try await second.value
+        let firstResumed = try await first.value
+        let secondResumed = try await second.value
+        XCTAssertGreaterThanOrEqual(firstResumed, completed)
+        XCTAssertGreaterThanOrEqual(secondResumed, completed)
         // Callers arriving after opening also succeed immediately.
         try await readiness.wait()
     }
@@ -94,7 +98,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertFalse(store.hadExistingStore)
         XCTAssertFalse(store.isLoaded, "Exercise the wait before the load callback runs")
         let draft = try SiriEventDraft.make(title: "Cold start event", start: Date(), end: nil, allDay: true)
-        let handoff = EventEditorHandoff(isPresentingModal: { false })
+        let handoff = EventEditorHandoff(isPresentationBlocked: { false })
         // Same readiness/save sequence as the Siri creation intents.
         try await store.waitUntilLoaded()
         let id = try handoff.create(draft, in: store.container.viewContext)
@@ -122,7 +126,7 @@ final class PersistenceTests: XCTestCase {
         openedStores.append(store)
         XCTAssertFalse(store.isLoaded)
         let draft = try SiriEventDraft.make(title: "Retried event", start: Date(), end: nil, allDay: true)
-        let handoff = EventEditorHandoff(isPresentingModal: { false })
+        let handoff = EventEditorHandoff(isPresentationBlocked: { false })
         let cancelled = Task {
             try await store.waitUntilLoaded()
             _ = try handoff.create(draft, in: store.container.viewContext)
@@ -170,7 +174,7 @@ final class PersistenceTests: XCTestCase {
             var draft = JobDraft(name: "Event \(code)")
             draft.clientName = "Client \(code)"
             draft.fee?.currency = code
-            draft.fee?.amount = "100.25"
+            draft.fee?.amount = Money.text(10025, currency: code)
             let jobID = try draft.save(in: context)
             let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
             XCTAssertEqual(try job.currentFee().currency, code)
@@ -180,7 +184,7 @@ final class PersistenceTests: XCTestCase {
             invoiceDraft.value.sentDay = Day.string(from: Date())
             invoiceDraft.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 10025)]
             let invoiceID = try invoiceDraft.save(in: context)
-            try PaymentDraft(amount: "25.10").save(in: context, invoiceID: invoiceID)
+            try PaymentDraft(amount: Money.text(2510, currency: code)).save(in: context, invoiceID: invoiceID)
             let invoice = try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice)
             XCTAssertEqual(try invoice.balance(), 7515)
             XCTAssertEqual(try invoice.paid(), 2510)
@@ -250,7 +254,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try reloaded.directPaid(), 5000)
     }
 
-    func testEventTimezoneControlsSessionsAndRemoteDisplayWithoutMovingInstants() async throws {
+    func testEventTimezoneControlsSessionsAndRemoteDisplayAndKeepsWallClockOnZoneChange() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var creation = EventCreationDraft()
         creation.events[0].timeZoneID = "Europe/London"
@@ -279,13 +283,15 @@ final class PersistenceTests: XCTestCase {
         let original = EventDraft(anchor: job)
         var event = original; event.timeZoneID = "America/Los_Angeles"
         try event.save(in: context, anchorID: id, baseline: original)
-        XCTAssertEqual(session.startTime, start)
-        XCTAssertEqual(session.endTime, draft.endTime)
-        XCTAssertEqual(session.callTime, draft.callTime)
-        XCTAssertEqual(session.day, "2026-10-14")
+        // 01:30 in London stays 01:30 in Los Angeles: the wall clock is kept, the instant moves 8h.
+        let moved = start.addingTimeInterval(8 * 3600)
+        XCTAssertEqual(session.startTime, moved)
+        XCTAssertEqual(session.endTime, draft.endTime?.addingTimeInterval(8 * 3600))
+        XCTAssertEqual(session.callTime, draft.callTime?.addingTimeInterval(8 * 3600))
+        XCTAssertEqual(session.day, "2026-10-15")
         XCTAssertEqual(session.eventTimeZoneID, "America/Los_Angeles")
         let entry = try XCTUnwrap(CalendarPlan(jobs: [job]).desired.values.first { !$0.allDay })
-        XCTAssertEqual(entry.timeZoneID, "America/Los_Angeles"); XCTAssertEqual(entry.start, start)
+        XCTAssertEqual(entry.timeZoneID, "America/Los_Angeles"); XCTAssertEqual(entry.start, moved)
         var cleared = EventDraft(anchor: job); cleared.timeZoneID = ""
         try cleared.save(in: context, anchorID: id)
         XCTAssertEqual(job.eventTimeZoneID, "America/Los_Angeles")
@@ -294,12 +300,32 @@ final class PersistenceTests: XCTestCase {
             try work.save(in: context, editing: id, baseline: before)
             XCTAssertEqual(job.workTimeZoneID, arrangement == .onSite ? "America/Los_Angeles" : "America/New_York")
             XCTAssertEqual(session.localScheduleDescription == nil, arrangement == .onSite)
-            XCTAssertEqual(session.startTime, start)
+            XCTAssertEqual(session.startTime, moved)
         }
         let reopened = try await openStore()
         let restored = try XCTUnwrap(reopened.container.viewContext.existingObject(with: id) as? Job)
         XCTAssertEqual(restored.eventTimeZoneID, "America/Los_Angeles")
-        XCTAssertEqual(restored.activeSessions.first?.startTime, start)
+        XCTAssertEqual(restored.activeSessions.first?.startTime, moved)
+    }
+
+    func testWizardZoneChangeKeepsSessionWallClockTimes() throws {
+        let formatter = ISO8601DateFormatter()
+        var event = EventOutline(); event.timeZoneID = "America/New_York"
+        var session = SessionDraft(day: "2026-03-08", timeZoneID: "America/New_York")
+        session.startTime = try XCTUnwrap(formatter.date(from: "2026-03-08T14:00:00Z")) // 10:00 EDT
+        session.endTime = try XCTUnwrap(formatter.date(from: "2026-03-09T03:30:00Z"))   // 23:30 EDT
+        event.sessions = [session]
+        event.timeZoneID = "Asia/Tokyo"
+        let rezoned = try XCTUnwrap(event.sessions.first)
+        XCTAssertEqual(rezoned.timeZoneID, "Asia/Tokyo")
+        XCTAssertEqual(rezoned.startTime, formatter.date(from: "2026-03-08T01:00:00Z")) // 10:00 JST
+        XCTAssertEqual(rezoned.endTime, formatter.date(from: "2026-03-08T14:30:00Z"))   // 23:30 JST
+        XCTAssertEqual(EventCreationDraft(events: [event]).resolvedEvents()[0].sessions[0].day, "2026-03-08")
+        // A time skipped by daylight saving moves forward rather than failing.
+        var gap = SessionDraft(day: "2026-03-08", timeZoneID: "Asia/Tokyo")
+        gap.startTime = try XCTUnwrap(formatter.date(from: "2026-03-07T17:30:00Z")) // 02:30 JST
+        XCTAssertEqual(gap.rezoned(from: "Asia/Tokyo", to: "America/New_York").startTime,
+                       formatter.date(from: "2026-03-08T07:30:00Z")) // 03:30 EDT
     }
 
     func testLegacyCommonTimezoneBecomesEventDefaultAndMissingZoneUsesHome() async throws {
@@ -408,11 +434,11 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions + 1)
     }
 
-    func testSiriAndReceiptRequestsRecoverAfterExistingSheetCloses() async throws {
+    func testSiriAndReceiptRequestsRecoverWhenPresentationBecomesAvailable() async throws {
         let store = try await openStore()
         let context = store.container.viewContext
-        var sheetIsPresented = true
-        let handoff = EventEditorHandoff(isPresentingModal: { sheetIsPresented })
+        var presentationBlocked = true
+        let handoff = EventEditorHandoff(isPresentationBlocked: { presentationBlocked })
         let draft = EventCreationDraft()
 
         XCTAssertThrowsError(try handoff.create(draft, in: context))
@@ -422,7 +448,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
         XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
 
-        sheetIsPresented = false
+        presentationBlocked = false
         _ = try handoff.create(draft, in: context)
         let request = try XCTUnwrap(handoff.pending)
         XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
@@ -431,7 +457,7 @@ final class PersistenceTests: XCTestCase {
         try handoff.requestReceiptScan()
         XCTAssertTrue(handoff.scanningReceipt)
         // A repeated scan remains idempotent even when its own sheet is visible.
-        sheetIsPresented = true
+        presentationBlocked = true
         try handoff.requestReceiptScan()
         XCTAssertThrowsError(try handoff.create(draft, in: context))
         XCTAssertNil(handoff.pending)
@@ -945,6 +971,48 @@ final class PersistenceTests: XCTestCase {
         state.enabled = false; state.offline = true; XCTAssertNil(state.message)
     }
 
+    func testSyncSummaryMirrorsActivityWithoutClaimingOtherDevices() {
+        var state = SyncActivity()
+        let account = "Sign in to iCloud in device Settings"
+        func summary(_ last: Date? = nil) -> SyncSummary { state.summary(accountStatus: account, lastTransfer: last) }
+        XCTAssertEqual(summary().headline, "Connecting to iCloud"); XCTAssertEqual(state.accountSummary, "Checking…")
+        state.checkingAccount = false
+        XCTAssertEqual(summary().headline, "Waiting for iCloud"); XCTAssertEqual(state.accountSummary, "Available")
+        let incoming = UUID()
+        state.record(id: incoming, kind: .receiving, ended: false, succeeded: false, error: nil)
+        XCTAssertEqual(summary().headline, "Receiving changes"); XCTAssertTrue(summary().busy)
+        state.record(id: UUID(), kind: .sending, ended: false, succeeded: false, error: nil)
+        XCTAssertEqual(summary().headline, "Syncing changes")
+        state.offline = true
+        XCTAssertEqual(summary().headline, "Offline"); XCTAssertFalse(summary().busy)
+        state.offline = false
+        state.record(id: incoming, kind: .receiving, ended: true, succeeded: false, error: "Couldn’t receive changes. iCloud will try again.")
+        XCTAssertEqual(summary(), SyncSummary(headline: "Sync paused", detail: "Couldn’t receive changes. iCloud will try again.", symbol: "exclamationmark", warning: true))
+        state.accountIssue = "iCloud needs attention"
+        XCTAssertEqual(summary().headline, "Not syncing"); XCTAssertEqual(summary().detail, account)
+        XCTAssertEqual(state.accountSummary, "Unavailable")
+        state.accountIssue = nil
+        var done = SyncActivity(); done.checkingAccount = false
+        done.record(id: UUID(), kind: .receiving, ended: true, succeeded: true, error: nil)
+        let now = Date()
+        XCTAssertEqual(done.summary(accountStatus: "Available", lastTransfer: nil).detail, nil)
+        let today = done.summary(accountStatus: "Available", lastTransfer: now)
+        XCTAssertEqual(today.headline, "Synced")
+        XCTAssertEqual(today.detail, "Last exchange \(now.formatted(date: .omitted, time: .shortened))")
+        done.enabled = false
+        XCTAssertEqual(done.summary(accountStatus: "", lastTransfer: now).headline, "Saved on this device")
+        XCTAssertNil(done.accountSummary)
+    }
+
+    @MainActor func testBackupRowDateOmitsCurrentYear() throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let recent = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let older = try XCTUnwrap(calendar.date(from: DateComponents(year: 2025, month: 12, day: 30)))
+        XCTAssertEqual(SettingsView.backupDate(recent, now: now), recent.formatted(.dateTime.month(.abbreviated).day()))
+        XCTAssertEqual(SettingsView.backupDate(older, now: now), older.formatted(.dateTime.month(.abbreviated).day().year()))
+    }
+
     private func billingJob(_ name: String, amount: String, currency: String = "USD", in context: NSManagedObjectContext) throws -> Job {
         var draft = JobDraft(name: name); draft.clientName = "Studio Network"
         draft.fee?.amount = amount; draft.fee?.currency = currency
@@ -1258,14 +1326,32 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try duplicate.currentFee().amount, 30012)
         XCTAssertEqual(duplicate.feeRevisions?.count, 1)
         XCTAssertNotEqual(try duplicate.feeHeads().first?.id, try job.feeHeads().first?.id)
-        XCTAssertEqual(try Money.parse("0.10"), 10)
-        XCTAssertThrowsError(try Money.parse("1.001"))
-        XCTAssertThrowsError(try Money.parse("NaN"))
-        XCTAssertThrowsError(try Money.parse("999999999999999999999"))
-        XCTAssertEqual(Money.text(120050), "1200.50")
-        XCTAssertEqual(Money.text(5), "0.05")
-        XCTAssertEqual(Money.text(-1999), "-19.99")
-        XCTAssertEqual(try Money.parse(Money.text(120050)), 120050)
+        XCTAssertEqual(try Money.parse("0.10", currency: "USD"), 10)
+        XCTAssertThrowsError(try Money.parse("1.001", currency: "USD"))
+        XCTAssertThrowsError(try Money.parse("NaN", currency: "USD"))
+        XCTAssertThrowsError(try Money.parse("999999999999999999999", currency: "USD"))
+        XCTAssertEqual(Money.text(120050, currency: "USD"), "1200.50")
+        XCTAssertEqual(Money.text(5, currency: "USD"), "0.05")
+        XCTAssertEqual(Money.text(-1999, currency: "USD"), "-19.99")
+        XCTAssertEqual(try Money.parse(Money.text(120050, currency: "USD"), currency: "USD"), 120050)
+    }
+
+    func testMoneyUsesEachCurrencysMinorUnit() throws {
+        XCTAssertEqual(try Money.parse("1200", currency: "JPY"), 1200)
+        XCTAssertThrowsError(try Money.parse("1200.5", currency: "JPY"))
+        XCTAssertEqual(Money.text(1200, currency: "JPY"), "1200")
+        XCTAssertEqual(try Money.parse("12.345", currency: "KWD"), 12345)
+        XCTAssertEqual(try Money.parse("12.3", currency: "KWD"), 12300)
+        XCTAssertThrowsError(try Money.parse("12.3456", currency: "KWD"))
+        XCTAssertEqual(Money.text(5, currency: "KWD"), "0.005")
+        XCTAssertEqual(Money.text(-12345, currency: "KWD"), "-12.345")
+        for currency in CurrencyPreferences.supported {
+            let amount: Int64 = 123456
+            XCTAssertEqual(try Money.parse(Money.text(amount, currency: currency), currency: currency), amount, currency)
+            XCTAssertTrue(Money.format(amount, currency: currency).contains(Money.decimals(currency) == 0 ? "456" : "23"), currency)
+        }
+        XCTAssertEqual(try FeeValue(currency: "JPY", lines: [FeeLine(quantity: "2.5", rate: "1001")]).total(), 2503)
+        XCTAssertThrowsError(try FeeValue(currency: "JPY", lines: [FeeLine(quantity: "1", rate: "10.5")]).total())
     }
 
     func testConcurrentFeeVersionsRequireExplicitResolution() async throws {
@@ -1290,15 +1376,15 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try job.feeHeads().count, 1)
     }
 
-    func testStartDefaultsEndAndPreservesCustomEnd() throws {
+    func testStartLeavesEndUnsetAndPreservesCustomEnd() throws {
         let zone = try XCTUnwrap(TimeZone(identifier: "UTC"))
         let formatter = ISO8601DateFormatter()
         let start = try XCTUnwrap(formatter.date(from: "2026-10-14T19:00:00Z"))
         var draft = SessionDraft(day: "2026-10-14", timeZoneID: zone.identifier)
         draft.setStartTime(start, zone: zone)
-        XCTAssertEqual(draft.endTime, start)
+        XCTAssertNil(draft.endTime)
         draft.setStartTime(start.addingTimeInterval(3600), zone: zone)
-        XCTAssertEqual(draft.endTime, draft.startTime)
+        XCTAssertNil(draft.endTime)
         let customEnd = start.addingTimeInterval(3 * 3600)
         draft.endTime = customEnd
         draft.setStartTime(start, zone: zone)
@@ -1308,7 +1394,41 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(draft.endTime, customEnd)
         draft.endTime = nil
         draft.setStartTime(start, zone: zone)
-        XCTAssertEqual(draft.endTime, start)
+        XCTAssertNil(draft.endTime)
+    }
+
+    func testStartOnlySessionCanBeSaved() async throws {
+        let store = try await openStore()
+        let context = store.container.viewContext
+        let jobID = try JobDraft(name: "Incomplete schedule").save(in: context)
+        var draft = SessionDraft(day: "2026-10-14", timeZoneID: "UTC")
+        draft.setStartTime(try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-14T19:00:00Z")), zone: TimeZone(identifier: "UTC")!)
+        let id = try draft.save(in: context, jobID: jobID)
+        let session = try XCTUnwrap(context.existingObject(with: id) as? WorkSession)
+        XCTAssertEqual(session.startTime, draft.startTime)
+        XCTAssertNil(session.endTime)
+        draft.scheduleStatus = "confirmed"
+        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
+    }
+
+    func testSuccessfulImportSurvivesStoreReopenAndIsScopedToStore() async throws {
+        let suite = "import-completion-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = try await openStore(defaults: defaults)
+        store.recordSyncEvent(id: UUID(), kind: .receiving, ended: true, succeeded: true, error: nil)
+        XCTAssertTrue(store.syncActivity.receivedImport)
+        for persistentStore in store.container.persistentStoreCoordinator.persistentStores {
+            try store.container.persistentStoreCoordinator.remove(persistentStore)
+        }
+        let reopened = try await openStore(defaults: defaults)
+        XCTAssertTrue(reopened.syncActivity.receivedImport)
+        var activity = reopened.syncActivity
+        activity.enabled = true
+        activity.offline = true
+        XCTAssertNil(activity.restoreUnavailableReason)
+        let fresh = try await openStore(fileName: "fresh.sqlite", defaults: defaults)
+        XCTAssertFalse(fresh.syncActivity.receivedImport)
     }
 
     func testEndDateInferenceTracksClockEditsAndOptionalTimes() throws {

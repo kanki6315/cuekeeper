@@ -2,8 +2,10 @@ import CoreData
 import Foundation
 
 enum CurrencyPreferences {
-    // Money stores hundredths; keep the catalog limited to two-decimal currencies.
-    static let supported = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF"]
+    // The original seven stay first so existing pickers keep their familiar order.
+    static let supported = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF",
+                            "AED", "BHD", "BRL", "CNY", "CZK", "DKK", "HKD", "HUF", "ILS", "INR", "JOD", "JPY", "KRW",
+                            "KWD", "MXN", "NOK", "OMR", "PLN", "SEK", "SGD", "THB", "TND", "TRY", "ZAR"]
     static let defaultDisplay = "USD,EUR"
 
     static func displayed(_ stored: String) -> [String] {
@@ -14,27 +16,45 @@ enum CurrencyPreferences {
 
     static func symbol(_ code: String) -> String {
         switch code {
-        case "USD", "CAD", "AUD", "NZD": "dollarsign.circle"
+        case "USD", "CAD", "AUD", "NZD", "SGD", "HKD", "MXN": "dollarsign.circle"
         case "EUR": "eurosign.circle"
         case "GBP": "sterlingsign.circle"
         case "CHF": "francsign.circle"
+        case "JPY": "yensign.circle"
+        case "KRW": "wonsign.circle"
+        case "INR": "indianrupeesign.circle"
         default: "banknote"
         }
     }
 }
 
 /// Integer minor units are authoritative; no binary floating point in financial calculations.
+/// Each currency uses its ISO 4217 minor unit, so every amount is exact in its own currency.
 enum Money {
     static let limit: Int64 = 9_000_000_000_000
-    static func parse(_ text: String, allowNegative: Bool = false) throws -> Int64? {
+    static let maxDecimals = 3
+    /// ISO 4217 exponents, pinned rather than read from ICU, whose display digits differ for some codes.
+    static func decimals(_ currency: String) -> Int {
+        switch currency {
+        case "JPY", "KRW": 0
+        case "BHD", "JOD", "KWD", "OMR", "TND": 3
+        default: 2
+        }
+    }
+    static func parse(_ text: String, currency: String, allowNegative: Bool = false) throws -> Int64? {
+        try parse(text, decimals: decimals(currency), allowNegative: allowNegative)
+    }
+    static func parse(_ text: String, decimals: Int, allowNegative: Bool = false) throws -> Int64? {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
         if value.isEmpty { return nil }
-        let pattern = allowNegative ? #"^-?[0-9]+(\.[0-9]{1,2})?$"# : #"^[0-9]+(\.[0-9]{1,2})?$"#
+        let fraction = decimals > 0 ? #"(\.[0-9]{1,\#(decimals)})?"# : ""
+        let pattern = (allowNegative ? "^-?" : "^") + "[0-9]+" + fraction + "$"
         guard value.range(of: pattern, options: .regularExpression) != nil,
               let decimal = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else {
-            throw RecordError.invalid("Enter an amount with at most two decimal places, without currency symbols or grouping separators.")
+            let places = switch decimals { case 0: "a whole amount"; case 1: "an amount with at most one decimal place"; default: "an amount with at most \(decimals) decimal places" }
+            throw RecordError.invalid("Enter \(places), without currency symbols or grouping separators.")
         }
-        return try minorUnits(decimal * 100)
+        return try minorUnits(decimal * scale(decimals))
     }
     static func minorUnits(_ value: Decimal) throws -> Int64 {
         var value = value; var rounded = Decimal()
@@ -42,17 +62,23 @@ enum Money {
         guard !rounded.isNaN, rounded <= Decimal(limit), rounded >= Decimal(-limit) else { throw RecordError.invalid("The amount is too large.") }
         return NSDecimalNumber(decimal: rounded).int64Value
     }
-    static func text(_ amount: Int64?) -> String {
+    static func text(_ amount: Int64?, currency: String) -> String {
         guard let amount else { return "" }
-        // Always two places, POSIX-style, so the text round-trips through `parse`.
+        // Always the currency's full places, POSIX-style, so the text round-trips through `parse`.
         let sign = amount < 0 ? "-" : ""
-        let units = amount.magnitude
-        return "\(sign)\(units / 100).\(String(format: "%02llu", units % 100))"
+        let places = decimals(currency)
+        let units = amount.magnitude, divisor = (0..<places).reduce(UInt64(1)) { value, _ in value * 10 }
+        guard places > 0 else { return "\(sign)\(units)" }
+        let fraction = String(units % divisor)
+        return "\(sign)\(units / divisor).\(String(repeating: "0", count: places - fraction.count))\(fraction)"
     }
     static func format(_ amount: Int64, currency: String) -> String {
+        let places = decimals(currency)
         let formatter = NumberFormatter(); formatter.numberStyle = .currency; formatter.currencyCode = currency
-        return formatter.string(from: NSDecimalNumber(decimal: Decimal(amount) / 100)) ?? "\(currency) \(text(amount))"
+        formatter.minimumFractionDigits = places; formatter.maximumFractionDigits = places
+        return formatter.string(from: NSDecimalNumber(decimal: Decimal(amount) / scale(places))) ?? "\(currency) \(text(amount, currency: currency))"
     }
+    private static func scale(_ places: Int) -> Decimal { pow(Decimal(10), places) }
 }
 
 struct FeeLine: Codable, Equatable, Identifiable {
@@ -60,11 +86,11 @@ struct FeeLine: Codable, Equatable, Identifiable {
     var description = ""
     var quantity = "1"
     var rate = ""
-    func total() throws -> Int64 {
+    func total(currency: String) throws -> Int64 {
         let quantity = quantity.replacingOccurrences(of: ",", with: ".")
         guard quantity.range(of: #"^[0-9]+(\.[0-9]{1,4})?$"#, options: .regularExpression) != nil,
               let count = Decimal(string: quantity, locale: Locale(identifier: "en_US_POSIX")), count > 0, count <= 1_000_000,
-              let rate = try Money.parse(rate, allowNegative: true) else { throw RecordError.invalid("Each breakdown item needs a positive quantity and a rate. Use a negative rate for an adjustment.") }
+              let rate = try Money.parse(rate, currency: currency, allowNegative: true) else { throw RecordError.invalid("Each breakdown item needs a positive quantity and a rate. Use a negative rate for an adjustment.") }
         return try Money.minorUnits(count * Decimal(rate))
     }
 }
@@ -74,7 +100,7 @@ struct FeeValue: Codable, Equatable {
     var currency = "USD"
     var agreement = "unknown"
     var lines: [FeeLine] = []
-    func total() throws -> Int64 { try Money.minorUnits(lines.reduce(Decimal(0)) { try $0 + Decimal($1.total()) }) }
+    func total() throws -> Int64 { try Money.minorUnits(lines.reduce(Decimal(0)) { try $0 + Decimal($1.total(currency: currency)) }) }
     func validate() throws {
         guard CurrencyPreferences.supported.contains(currency), ["unknown", "estimated", "agreed"].contains(agreement),
               amount == nil || (amount! >= 0 && amount! <= Money.limit) else { throw RecordError.invalid("Choose a supported currency, a fee agreement state, and a nonnegative fee.") }
@@ -134,10 +160,10 @@ struct FeeDraft: Equatable {
         self.init(value: value, parents: Set(try job.feeHeads().compactMap(\.id)))
     }
     init(value: FeeValue, parents: Set<UUID>) {
-        amount = Money.text(value.amount); currency = value.currency; agreement = value.agreement; lines = value.lines; parentIDs = parents
+        amount = Money.text(value.amount, currency: value.currency); currency = value.currency; agreement = value.agreement; lines = value.lines; parentIDs = parents
     }
     func value() throws -> FeeValue {
-        let value = FeeValue(amount: try Money.parse(amount), currency: currency, agreement: agreement, lines: lines)
+        let value = FeeValue(amount: try Money.parse(amount, currency: currency), currency: currency, agreement: agreement, lines: lines)
         try value.validate(); return value
     }
     func apply(to job: Job, in writer: NSManagedObjectContext) throws {

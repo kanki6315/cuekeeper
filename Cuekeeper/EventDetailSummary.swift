@@ -309,7 +309,7 @@ extension EventDetailFacts {
                 .compactMap { expense in
                     guard let id = expense.id else { return nil }
                     let value = expense.value
-                    return EventExpenseFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount)).flatMap { $0 }, currency: value.currency)
+                    return EventExpenseFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount, currency: value.currency)).flatMap { $0 }, currency: value.currency)
                 }
         )
     }

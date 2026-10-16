@@ -105,19 +105,48 @@ final class EventWeatherStore {
          fetch: @escaping (CLLocation, TimeZone) async throws -> EventWeatherSnapshot = EventWeatherStore.fetchWeather) {
         self.fileURL = fileURL; self.clock = clock; self.fetch = fetch
         if let fileURL, FileManager.default.fileExists(atPath: fileURL.path) {
-            do {
-                let data = try Data(contentsOf: fileURL)
-                if let state = try? JSONDecoder().decode(State.self, from: data) {
+            if let data = try? Data(contentsOf: fileURL) {
+                let decoder = JSONDecoder()
+                if let state = try? decoder.decode(State.self, from: data) {
                     entries = state.entries; attempts = state.attempts
-                } else {
+                } else if let legacy = try? decoder.decode([String: Entry].self, from: data) {
                     // Preserve attempts from the original per-place cache during migration.
-                    entries = try JSONDecoder().decode([String: Entry].self, from: data)
-                    attempts = entries.values.map(\.attemptedAt)
+                    entries = legacy; attempts = legacy.values.map(\.attemptedAt)
+                } else {
+                    // Forecasts are disposable, but the budget isn't: keep it and rewrite the file
+                    // so an unreadable cache can't block weather on every launch.
+                    (entries, attempts) = Self.recover(from: data, fileURL: fileURL)
+                    do { try persist() } catch { storageFailed = true }
                 }
+            } else {
+                storageFailed = true // Fail closed instead of silently resetting the request budget.
             }
-            catch { storageFailed = true } // Fail closed instead of silently resetting the request budget.
         }
         purgeExpired()
+    }
+
+    private struct AttemptLog: Decodable {
+        struct Attempt: Decodable { let attemptedAt: Date }
+        let attempts: [Date]?
+        let entries: [String: Attempt]?
+    }
+
+    /// Salvages attempt times from a cache whose snapshots no longer decode. If none survive,
+    /// assumes the whole budget was spent at the file's last write, which is no earlier than any attempt.
+    private static func recover(from data: Data, fileURL: URL) -> ([String: Entry], [Date]) {
+        let decoder = JSONDecoder()
+        func entries(_ log: [String: AttemptLog.Attempt]) -> [String: Entry] {
+            log.mapValues { Entry(attemptedAt: $0.attemptedAt, snapshot: nil) }
+        }
+        if let log = try? decoder.decode(AttemptLog.self, from: data), log.attempts != nil || log.entries != nil {
+            let recovered = entries(log.entries ?? [:])
+            return (recovered, log.attempts ?? recovered.values.map(\.attemptedAt))
+        }
+        if let legacy = try? decoder.decode([String: AttemptLog.Attempt].self, from: data) {
+            return (entries(legacy), legacy.values.map(\.attemptedAt))
+        }
+        let written = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date()
+        return ([:], Array(repeating: written, count: dailyFetchLimit))
     }
 
     func cached(placeID: String) -> EventWeatherSnapshot? {

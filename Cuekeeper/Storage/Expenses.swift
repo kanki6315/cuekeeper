@@ -4,7 +4,6 @@ import CryptoKit
 
 struct ExpenseValue: Codable, Equatable {
     static let categories = ["Travel", "Accommodation", "Meals", "Parking", "Equipment", "Other"]
-    // The first version uses two-decimal currencies, matching Money's exact minor units.
     static let currencies = CurrencyPreferences.supported
     var merchant = ""
     var day = ""
@@ -16,12 +15,17 @@ struct ExpenseValue: Codable, Equatable {
     var notes = ""
     var capture: ExpenseCaptureInput?
     var discarded: Bool?
+    /// Formatted only when the amount is valid for a supported currency, so a bad value is never shown as zero.
+    static func displayAmount(_ amount: String, currency: String) -> String? {
+        guard currencies.contains(currency), let value = try? Money.parse(amount, currency: currency) else { return nil }
+        return Money.format(value, currency: currency)
+    }
     func validate() throws {
         guard !merchant.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RecordError.invalid("Enter the merchant shown on the receipt.") }
-        guard let date = Day.date(from: day), Day.string(from: date) == day else { throw RecordError.invalid("Enter the receipt date as YYYY-MM-DD.") }
-        guard let total = try Money.parse(amount), total > 0 else { throw RecordError.invalid("Enter a total greater than zero.") }
+        guard let date = Day.date(from: day), Day.string(from: date) == day else { throw RecordError.invalid("Choose the receipt date.") }
         guard Self.currencies.contains(currency) else { throw RecordError.invalid("Choose the receipt currency.") }
-        if let tax = try Money.parse(tax), tax > total { throw RecordError.invalid("Tax cannot exceed the receipt total.") }
+        guard let total = try Money.parse(amount, currency: currency), total > 0 else { throw RecordError.invalid("Enter a total greater than zero.") }
+        if let tax = try Money.parse(tax, currency: currency), tax > total { throw RecordError.invalid("Tax cannot exceed the receipt total.") }
         guard Self.categories.contains(category) else { throw RecordError.invalid("Choose an expense category.") }
     }
 }
@@ -127,11 +131,15 @@ struct ExpenseCaptureInput: Codable, Equatable {
         let key = transactionID.trimmingCharacters(in: .whitespacesAndNewlines)
         if !key.isEmpty { captureKey = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined() }
     }
+    /// Keeps amounts whose currency is still unknown; saving checks them against the chosen currency.
+    static func plausibleAmount(_ amount: String, currency: String) -> Bool {
+        (try? Money.parse(amount, decimals: currency.isEmpty ? Money.maxDecimals : Money.decimals(currency))) != nil
+    }
     var draft: ExpenseValue {
         var value = ExpenseValue()
         value.merchant = merchant
-        if (try? Money.parse(amount)) != nil { value.amount = amount }
         if ExpenseValue.currencies.contains(currency) { value.currency = currency }
+        if Self.plausibleAmount(amount, currency: value.currency) { value.amount = amount }
         if let date { value.day = Day.string(from: date) }
         value.capture = self
         return value
@@ -182,6 +190,8 @@ enum ReceiptField: String, CaseIterable, Identifiable {
         case .category: return \.category
         }
     }
+    /// Reader-facing form of a field value; dates use the device's locale instead of the stored YYYY-MM-DD.
+    func display(_ value: String) -> String { self == .day && !value.isEmpty ? Day.display(value) : value }
 }
 
 extension ExpenseValue {

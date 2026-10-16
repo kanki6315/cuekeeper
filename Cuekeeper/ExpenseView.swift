@@ -103,7 +103,7 @@ struct ExpensesView: View {
             Text([expense.job?.eventTitle ?? "Event to choose", expense.job?.client?.name]
                 .compactMap { $0 }.joined(separator: " · "))
                 .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-            Text([expense.isDraft ? "Needs review" : "", value.day, value.category,
+            Text([expense.isDraft ? "Needs review" : "", value.day.isEmpty ? "" : Day.display(value.day), value.category,
                   value.reimbursable ? "Reimbursable" : ""]
                 .filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(.caption)
@@ -133,7 +133,7 @@ struct EventExpensesSection: View {
                         Text(expense.isDraft ? "Review receipt" : expense.value.merchant).font(.headline)
                         if expense.isDraft { Text(expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm").font(.subheadline) }
                         else {
-                            Text("\(Money.format((try? Money.parse(expense.value.amount)) ?? 0, currency: expense.value.currency)) · \(expense.value.day)").font(.subheadline)
+                            Text("\(Money.format((try? Money.parse(expense.value.amount)) ?? 0, currency: expense.value.currency)) · \(Day.display(expense.value.day))").font(.subheadline)
                         }
                     }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }.accessibilityIdentifier("expense-row")
@@ -246,8 +246,8 @@ struct ExpenseEditorView: View {
                         ForEach(conflicts) { field in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(field.rawValue).font(.headline)
-                                Text("Current: \(draft[keyPath: field.keyPath])")
-                                Text("Receipt: \(proposal[keyPath: field.keyPath])")
+                                Text("Current: \(field.display(draft[keyPath: field.keyPath]))")
+                                Text("Receipt: \(field.display(proposal[keyPath: field.keyPath]))")
                                 Button("Use receipt \(field.rawValue.lowercased())") {
                                     draft[keyPath: field.keyPath] = proposal[keyPath: field.keyPath]
                                     conflicts.removeAll { $0 == field }
@@ -260,7 +260,7 @@ struct ExpenseEditorView: View {
                 if photo != nil || recordID != nil {
                     Section {
                         field("Merchant", text: $draft.merchant, identifier: "expense-merchant")
-                        field("Date (YYYY-MM-DD)", text: $draft.day, identifier: "expense-date")
+                        dateField
                         field("Total paid", text: $draft.amount, identifier: "expense-total", decimal: true)
                         DaybookPicker("Currency", selection: $draft.currency, identifier: "expense-currency") {
                             Text("Choose currency").tag("")
@@ -358,6 +358,18 @@ struct ExpenseEditorView: View {
                 Button("Keep Editing", role: .cancel) {}
             }
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
+    }
+    /// The receipt date stays empty until it is read or chosen, so a blank never silently becomes today.
+    @ViewBuilder private var dateField: some View {
+        if draft.day.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Date").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Button("Add Date") { draft.day = Day.string(from: Date()) }.accessibilityIdentifier("expense-date")
+            }
+        } else {
+            DatePicker("Date", selection: Binding(get: { Day.date(from: draft.day) ?? Date() }, set: { draft.day = Day.string(from: $0) }),
+                       displayedComponents: .date).accessibilityIdentifier("expense-date")
+        }
     }
     private func field(_ label: String, text: Binding<String>, identifier: String, decimal: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {

@@ -18,7 +18,7 @@ struct ExpenseValue: Codable, Equatable {
     var discarded: Bool?
     func validate() throws {
         guard !merchant.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RecordError.invalid("Enter the merchant shown on the receipt.") }
-        guard let date = Day.date(from: day), Day.string(from: date) == day else { throw RecordError.invalid("Enter the receipt date as YYYY-MM-DD.") }
+        guard let date = Day.date(from: day), Day.string(from: date) == day else { throw RecordError.invalid("Choose the receipt date.") }
         guard let total = try Money.parse(amount), total > 0 else { throw RecordError.invalid("Enter a total greater than zero.") }
         guard Self.currencies.contains(currency) else { throw RecordError.invalid("Choose the receipt currency.") }
         if let tax = try Money.parse(tax), tax > total { throw RecordError.invalid("Tax cannot exceed the receipt total.") }
@@ -182,6 +182,8 @@ enum ReceiptField: String, CaseIterable, Identifiable {
         case .category: return \.category
         }
     }
+    /// Reader-facing form of a field value; dates use the device's locale instead of the stored YYYY-MM-DD.
+    func display(_ value: String) -> String { self == .day && !value.isEmpty ? Day.display(value) : value }
 }
 
 extension ExpenseValue {

@@ -170,7 +170,8 @@ private struct JobsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if selectedJob == nil {
-                    DaybookTabHeader { if !jobs.isEmpty { addButton } }
+                    // Matches DaybookForm's 29pt gap below the tab header (5pt row padding + 24pt section spacing).
+                    DaybookTabHeader { if !jobs.isEmpty { addButton } }.padding(.bottom, 11)
                 } else if upcomingOnly {
                     HStack { Spacer(); addButton }
                 } else {
@@ -186,7 +187,6 @@ private struct JobsView: View {
                         Button { showingFilters = true } label: { Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").frame(width: 44, height: 44) }.accessibilityLabel("Filter Events").accessibilityIdentifier("filter-jobs")
                     } }
                     if upcomingOnly {
-                        Text(upcomingScope == "Today" ? "Today" : "Upcoming").font(.largeTitle.bold())
                         if upcomingScope == "Today" {
                             TimelineView(.periodic(from: .now, by: 60)) { timeline in
                                 Text(timeline.date, format: .dateTime.weekday(.wide).day().month(.wide))

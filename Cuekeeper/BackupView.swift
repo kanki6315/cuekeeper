@@ -154,7 +154,7 @@ struct BackupView: View {
         Section {
             Button("Export to Files", systemImage: "square.and.arrow.up") { export() }
                 .frame(minHeight: 44).disabled(workflow.busy).accessibilityIdentifier("backup-export")
-            Button("Import a Backup", systemImage: "square.and.arrow.down") { importing = true }
+            Button("Import a Backup", systemImage: "square.and.arrow.down") { startImport() }
                 .frame(minHeight: 44).disabled(workflow.busy).accessibilityIdentifier("backup-import")
         } header: { Text("Files") } footer: { Text("ZIP files aren’t encrypted.") }
     }
@@ -164,7 +164,7 @@ struct BackupView: View {
             Section {
                 Button("Export to Files", systemImage: "square.and.arrow.up") { export() }
                     .accessibilityIdentifier("backup-export")
-                Button("Import a Backup", systemImage: "square.and.arrow.down") { importing = true }
+                Button("Import a Backup", systemImage: "square.and.arrow.down") { startImport() }
                     .accessibilityIdentifier("backup-import")
             } header: { Text("ZIP files aren’t encrypted.") }
         } label: { Label("Files", systemImage: "folder") }
@@ -250,10 +250,28 @@ struct BackupView: View {
             let result = try await cloud.list(); try control.check(); entries = result; loaded = true
         }
     }
+    private func startImport() {
+        #if DEBUG
+        if UITestBackupFiles.enabled {
+            if let url = UITestBackupFiles.newest() { workflow.importFile(url, context: context) }
+            else { workflow.error = "No exported backup is available to import." }
+            return
+        }
+        #endif
+        importing = true
+    }
     private func export() {
         workflow.run("Preparing export…") { control in
             let file = try await workflow.prepare(context: context, control: control)
-            try control.check(); workflow.export = file
+            try control.check()
+            #if DEBUG
+            if UITestBackupFiles.enabled {
+                try UITestBackupFiles.save(file.url)
+                workflow.notice = "Backup exported. Keep the file in a safe place."
+                return
+            }
+            #endif
+            workflow.export = file
             workflow.notice = "Ready to export: \(counted(file.events, "event", "events")) · \(counted(file.receipts, "receipt", "receipts")) · \(ByteCountFormatter.string(fromByteCount: file.bytes, countStyle: .file))."
             exporting = true
         }
@@ -332,3 +350,25 @@ struct BackupInfoView: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+#if DEBUG
+/// Parallel UI tests run on simulator clones, where taps on the out-of-process Files picker are dropped
+/// under load. With `--ui-test-backup-files`, Export copies the archive into a test folder and Import
+/// opens the newest copy through the same workflow calls the pickers use. The real pickers are exercised
+/// serially by the `Cuekeeper - System Pickers` scheme.
+enum UITestBackupFiles {
+    static var enabled: Bool { ProcessInfo.processInfo.arguments.contains("--ui-test-backup-files") }
+    private static var folder: URL { FileManager.default.temporaryDirectory.appendingPathComponent("ui-test-backups", isDirectory: true) }
+    static func save(_ url: URL) throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: url, to: folder.appendingPathComponent("\(UUID().uuidString)-\(url.lastPathComponent)"))
+    }
+    static func newest() -> URL? {
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        return files.max { modified($0) < modified($1) }
+    }
+    private static func modified(_ url: URL) -> Date {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+    }
+}
+#endif

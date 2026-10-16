@@ -31,6 +31,12 @@ class EventWorkflowTestCase: DaybookUITestCase {
         XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
     }
 
+    /// Event details split into Schedule / Money / Details tabs on narrow layouts.
+    func openEventTab(_ tab: String, in app: XCUIApplication) {
+        let button = app.buttons["event-tab-\(tab)"]
+        if button.waitForExistence(timeout: 5) { button.tap() }
+    }
+
     /// Scroll the active editor or right-hand detail pane, not the iPad job list.
     func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<10 {

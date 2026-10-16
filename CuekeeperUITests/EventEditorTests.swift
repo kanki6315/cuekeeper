@@ -9,6 +9,8 @@ final class EventEditorTests: DaybookUITestCase {
         let event = app.staticTexts["City vs United"].firstMatch
         XCTAssertTrue(event.waitForExistence(timeout: 10))
         event.tap()
+        let details = app.buttons["event-tab-details"]
+        if details.waitForExistence(timeout: 5) { details.tap() }
         let delete = app.buttons["delete-job"]
         for _ in 0..<15 where !delete.isHittable {
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.8))

@@ -166,6 +166,7 @@ struct SessionDetailView: View {
     @State private var removing = false
     @State private var duplicating = false
     @State private var error: String?
+    @StateObject private var weather = EventWeatherLoader()
     var body: some View {
         DaybookForm(title: session.title, subtitle: session.job?.displayName ?? "") {
             if let job = session.job {
@@ -185,6 +186,7 @@ struct SessionDetailView: View {
                 }
                 LabeledContent("Roles", value: session.roleNames.isEmpty ? "None selected" : session.roleNames.joined(separator: ", "))
             }
+            SessionWeatherSection(session: session, loader: weather)
             if !session.notes.isEmpty { Section("Notes") { Text(session.notes).textSelection(.enabled) } }
             Section("Calendar") {
                 Text(session.calendarEligible ? "Eligible for a timed entry in your connected calendar." : "A timed entry requires confirmed start and end times and coverage set to Covering.")
@@ -194,6 +196,7 @@ struct SessionDetailView: View {
             Section { Button("Remove Session", role: .destructive) { removing = true } }
         }
         .navigationTitle(session.title).navigationBarTitleDisplayMode(.inline)
+        .eventWeather(weather, request: session.job?.weatherRequest)
         .toolbar { Button("Edit") { editing = true }.accessibilityIdentifier("edit-session") }
         .sheet(isPresented: $editing) { if let job = session.job { SessionEditorView(job: job, session: session) } }
         .sheet(isPresented: $duplicating) { if let job = session.job { SessionEditorView(job: job, session: session, duplicating: true) } }

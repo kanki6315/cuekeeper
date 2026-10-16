@@ -1,6 +1,36 @@
 import XCTest
 
 final class DesignSupplementTests: XCTestCase {
+    /// Captures each event tab and checks that a To settle action opens its record.
+    func testEventPageTabsAndOpenItems() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        for (dark, large) in [(false, false), (true, false), (false, true)] {
+            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=event"]
+                + (dark ? ["--design-dark"] : [])
+                + (large ? ["-UIPreferredContentSizeCategoryName", UIContentSizeCategory.accessibilityExtraLarge.rawValue] : [])
+            app.launch()
+            let variant = dark ? "dark" : large ? "light-large" : "light"
+            XCTAssertTrue(app.descendants(matching: .any)["open-items"].waitForExistence(timeout: 10))
+            for tab in ["schedule", "money", "details"] {
+                let button = app.buttons["event-tab-\(tab)"]
+                XCTAssertTrue(button.waitForExistence(timeout: 5))
+                for _ in 0..<5 where !button.isHittable { app.swipeUp() }
+                button.tap()
+                let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                shot.name = "event-page-\(tab)-\(variant)"
+                shot.lifetime = .keepAlways; add(shot)
+                for _ in 0..<8 where app.scrollViews.firstMatch.exists { app.swipeDown() }
+            }
+            let action = app.buttons["open-item-balanceOwed"]
+            XCTAssertTrue(action.waitForExistence(timeout: 5))
+            action.tap()
+            XCTAssertTrue(app.navigationBars["Invoice details"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["record-payment"].exists)
+            app.terminate()
+        }
+    }
+
     /// Verify the changed scope control and capture glass on populated working screens.
     func testCombinedGlassSurfaces() {
         continueAfterFailure = false

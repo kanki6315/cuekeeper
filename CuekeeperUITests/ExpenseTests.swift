@@ -16,6 +16,7 @@ final class ExpenseUITests: XCTestCase {
         screenshot("receipt-review-fields")
         app.buttons["save-expense"].tap()
         XCTAssertTrue(app.buttons["edit-event"].waitForExistence(timeout: 5))
+        if app.buttons["event-tab-money"].exists { app.buttons["event-tab-money"].tap() }
         let row = app.buttons["expense-row"].firstMatch
         for _ in 0..<8 where !row.isHittable { app.scrollViews.firstMatch.swipeUp() }
         XCTAssertTrue(row.isHittable); XCTAssertTrue(row.label.contains("corrected")); row.tap()

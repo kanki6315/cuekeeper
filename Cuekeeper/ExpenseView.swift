@@ -121,14 +121,17 @@ struct EventExpensesSection: View {
     @FetchRequest private var expenses: FetchedResults<Expense>
     @State private var adding = false
     @State private var selected: Expense?
-    init(job: Job) {
+    /// When set, the parent presents editors; sheets attached inside lazy or decomposed containers are unreliable.
+    var onOpen: ((Expense?) -> Void)? = nil
+    init(job: Job, onOpen: ((Expense?) -> Void)? = nil) {
+        self.onOpen = onOpen
         self.job = job
         _expenses = FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Expense.createdAt, ascending: false)], predicate: NSPredicate(format: "job == %@", job))
     }
     var body: some View {
         Section("Expenses") {
             ForEach(expenses.filter { $0.value.discarded != true }, id: \.objectID) { expense in
-                Button { selected = expense } label: {
+                Button { if let onOpen { onOpen(expense) } else { selected = expense } } label: {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(expense.isDraft ? "Review receipt" : expense.value.merchant).font(.headline)
                         if expense.isDraft { Text(expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm").font(.subheadline) }
@@ -138,7 +141,7 @@ struct EventExpensesSection: View {
                     }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }.accessibilityIdentifier("expense-row")
             }
-            Button("Scan Receipt", systemImage: "doc.viewfinder") { adding = true }
+            Button("Scan Receipt", systemImage: "doc.viewfinder") { if let onOpen { onOpen(nil) } else { adding = true } }
                 .buttonStyle(DaybookSecondaryButton()).accessibilityIdentifier("scan-receipt")
         }
         .sheet(isPresented: $adding) { ExpenseEditorView(job: job) }

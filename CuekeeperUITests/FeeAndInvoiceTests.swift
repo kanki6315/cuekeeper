@@ -3,6 +3,7 @@ import XCTest
 final class FeeAndInvoiceTests: EventWorkflowTestCase {
     func testInvoiceAndPartialPaymentWorkflow() {
         let app = createEvent("Invoiced show")
+        openEventTab("money", in: app)
         let addInvoice = app.buttons["add-job-invoice"]
         reveal(addInvoice, in: app)
         addInvoice.tap()
@@ -51,6 +52,7 @@ final class FeeAndInvoiceTests: EventWorkflowTestCase {
 
     func testOverallFeeCanBeSavedWithoutBreakdown() {
         let app = createEvent("Paid broadcast")
+        openEventTab("money", in: app)
         let fee = app.buttons["job-fee"]
         reveal(fee, in: app)
         fee.tap()
@@ -70,6 +72,7 @@ final class FeeAndInvoiceTests: EventWorkflowTestCase {
 
     func testBreakdownChangesOverallFeeOnlyWhenExplicitlyApplied() {
         let app = createEvent("Breakdown broadcast")
+        openEventTab("money", in: app)
         let fee = app.buttons["job-fee"]
         reveal(fee, in: app)
         fee.tap(); app.buttons["edit-fee"].tap()
@@ -101,6 +104,7 @@ final class FeeAndInvoiceTests: EventWorkflowTestCase {
         XCTAssertTrue(app.staticTexts["Client A"].firstMatch.exists)
         XCTAssertFalse(app.buttons["event-add-client"].exists)
         XCTAssertFalse(app.buttons["Include Existing Booking"].exists)
+        openEventTab("money", in: app)
         let fee = app.buttons["job-fee"]; reveal(fee, in: app); fee.tap()
         XCTAssertTrue(app.buttons["edit-fee"].waitForExistence(timeout: 5))
         app.buttons["edit-fee"].tap()

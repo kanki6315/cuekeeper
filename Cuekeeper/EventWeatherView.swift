@@ -2,73 +2,49 @@ import Combine
 import MapKit
 import SwiftUI
 
-struct EventWeatherSection: View {
-    @ObservedObject var job: Job
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var snapshot: EventWeatherSnapshot?
-    @State private var now = Date()
-    @State private var loading = false
-    @State private var loadID = UUID()
-    @State private var error: String?
-    @State private var venueZone: TimeZone?
-    private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
-    private var request: EventWeatherRequest { job.weatherRequest }
-    private var potentiallyEligible: Bool {
+/// Owns one event's forecast: eligibility, the shared cache and request limits stay in EventWeatherStore.
+@MainActor final class EventWeatherLoader: ObservableObject {
+    @Published private(set) var snapshot: EventWeatherSnapshot?
+    @Published private(set) var loading = false
+    @Published private(set) var error: String?
+    @Published private(set) var now = Date()
+    private var venueZone: TimeZone?
+    private var loadID = UUID()
+    private(set) var request: EventWeatherRequest?
+
+    private func potentiallyEligible(_ request: EventWeatherRequest) -> Bool {
         // Resolve the venue timezone before enforcing the exact civil-date window.
         // This broad preflight allows both sides of the international date line.
         request.eligible(now: now, timeZone: TimeZone(secondsFromGMT: -12 * 3600)!) ||
         request.eligible(now: now, timeZone: TimeZone(secondsFromGMT: 14 * 3600)!)
     }
-    private var eligible: Bool {
-        potentiallyEligible && (venueZone.map { request.eligible(now: now, timeZone: $0) } ?? true)
+    /// Callers pass the job's request so eligibility is known before the first load starts.
+    func eligible(_ request: EventWeatherRequest) -> Bool {
+        potentiallyEligible(request) && (venueZone.map { request.eligible(now: now, timeZone: $0) } ?? true)
+    }
+    /// A forecast that may be shown right now.
+    func current(_ request: EventWeatherRequest) -> EventWeatherSnapshot? {
+        guard request == self.request, eligible(request), let snapshot, snapshot.canDisplay(at: now) else { return nil }
+        return snapshot
     }
 
-    var body: some View {
-        Group {
-            if eligible {
-                Section {
-                    if let snapshot, snapshot.canDisplay(at: now) {
-                        ForecastContent(snapshot: snapshot, request: request, sessions: job.eventSessions, now: now)
-                    } else if loading {
-                        ProgressView("Getting the track forecast…")
-                    } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("Weather unavailable", systemImage: "cloud")
-                            Text(error ?? "Open this job while connected to load the forecast.")
-                                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                            if let next = EventWeatherStore.shared.nextAttempt(placeID: request.placeID) {
-                                Text("Next update available \(next.formatted(date: .abbreviated, time: .shortened)).")
-                                    .font(.caption).foregroundStyle(Color("SecondaryText"))
-                            } else {
-                                Button("Try again") { Task { await load() } }.frame(minHeight: 44)
-                            }
-                        }
-                    }
-                } header: { Text("Track weather") }
-                footer: { Text("Updates at most hourly per venue, up to 24 times per day on this device. Forecasts can change before the event.") }
-            }
-        }
-        .task(id: request) { loadID = UUID(); loading = false; snapshot = nil; venueZone = nil; await load() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await load() } }
-        }
-        .onReceive(timer) { date in
-            now = date
-            EventWeatherStore.shared.purgeExpired()
-            if let snapshot, !snapshot.canDisplay(at: date) {
-                self.snapshot = nil
-            }
-            if scenePhase == .active, eligible,
-               EventWeatherStore.shared.nextAttempt(placeID: request.placeID) == nil {
-                Task { await load() }
-            }
+    func reset(for request: EventWeatherRequest) {
+        self.request = request
+        loadID = UUID(); loading = false; snapshot = nil; venueZone = nil
+    }
+
+    func tick(_ date: Date, scenePhase: ScenePhase) {
+        now = date
+        EventWeatherStore.shared.purgeExpired()
+        if let snapshot, !snapshot.canDisplay(at: date) { self.snapshot = nil }
+        if scenePhase == .active, let request, eligible(request), EventWeatherStore.shared.nextAttempt(placeID: request.placeID) == nil {
+            Task { await load() }
         }
     }
 
-    @MainActor private func load() async {
+    func load() async {
         now = Date()
-        guard potentiallyEligible else { snapshot = nil; return }
-        let requested = request
+        guard let requested = request, potentiallyEligible(requested) else { snapshot = nil; return }
         #if DEBUG
         if ProcessInfo.processInfo.isUITesting || NSClassFromString("XCTestCase") != nil {
             if ProcessInfo.processInfo.arguments.contains("--weather-fixtures") {
@@ -91,13 +67,13 @@ struct EventWeatherSection: View {
         do {
             let track = try await TrackLookup.shared.resolve(requested.placeID)
             try Task.checkCancellation()
-            guard requested == job.weatherRequest else { return }
+            guard requested == request else { return }
             guard let zone = track.timeZone else { throw EventWeatherStore.Failure.unavailable }
             venueZone = zone
             guard requested.eligible(now: Date(), timeZone: zone) else { return }
             let result = try await EventWeatherStore.shared.load(placeID: requested.placeID, location: track.location, timeZone: zone)
             try Task.checkCancellation()
-            guard requested == job.weatherRequest else { return }
+            guard requested == request else { return }
             snapshot = result; now = Date()
         } catch {
             if !Task.isCancelled {
@@ -106,97 +82,140 @@ struct EventWeatherSection: View {
             }
         }
     }
+
+    /// The day's forecast for a run-of-show day key, matched in the venue's own timezone.
+    func day(_ key: String, request: EventWeatherRequest) -> EventWeatherDay? {
+        guard let snapshot = current(request) else { return nil }
+        return snapshot.days(for: request, now: now).first { Day.string(from: $0.date, timeZone: snapshot.timeZone) == key }
+    }
 }
 
-struct ForecastContent: View {
-    let snapshot: EventWeatherSnapshot
-    let request: EventWeatherRequest
-    let sessions: [WorkSession]
-    let now: Date
-    @Environment(\.colorScheme) private var colorScheme
-    private var days: [EventWeatherDay] { snapshot.days(for: request, now: now) }
+/// Keeps a loader current while its view is visible: on appear, on return to the foreground and every minute.
+struct EventWeatherDriver: ViewModifier {
+    @ObservedObject var loader: EventWeatherLoader
+    let request: EventWeatherRequest?
+    @Environment(\.scenePhase) private var scenePhase
+    private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    func body(content: Content) -> some View {
+        content
+            .task(id: request) {
+                guard let request else { return }
+                loader.reset(for: request); await loader.load()
+            }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await loader.load() } } }
+            .onReceive(timer) { loader.tick($0, scenePhase: scenePhase) }
+    }
+}
 
+extension View {
+    func eventWeather(_ loader: EventWeatherLoader, request: EventWeatherRequest?) -> some View { modifier(EventWeatherDriver(loader: loader, request: request)) }
+}
+
+enum WeatherFormat {
+    static func temperature(_ value: Double) -> String {
+        Measurement(value: value, unit: UnitTemperature.celsius)
+            .formatted(.measurement(width: .abbreviated, usage: .weather, numberFormatStyle: .number.precision(.fractionLength(0))))
+    }
+    /// "24° Partly cloudy" for a run-of-show day header.
+    static func headline(_ day: EventWeatherDay) -> String { "\(temperature(day.high)) \(day.condition)" }
+}
+
+/// Forecast status and the Apple Weather attribution, shown wherever forecast data appears.
+struct WeatherStatusFooter: View {
+    @ObservedObject var loader: EventWeatherLoader
+    let request: EventWeatherRequest
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Updated \(snapshot.fetchedAt.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                if snapshot.isOutdated(at: now) {
-                    Label("Outdated forecast · awaiting daily update", systemImage: "clock")
-                        .font(.caption).foregroundStyle(Color("AmberText"))
-                        .accessibilityIdentifier("weather-outdated")
-                }
-            }
-            if days.isEmpty {
-                Text("The event dates aren’t in the available forecast yet.").foregroundStyle(Color("SecondaryText"))
-            }
-            ForEach(days) { day in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(formattedDate(day.date, hourly: false))
-                        .font(.headline)
-                    Label(day.condition, systemImage: day.symbol)
-                    Text("High \(temperature(day.high)) · Low \(temperature(day.low))")
-                        .monospacedDigit()
-                    WeatherMetrics(precipitation: day.precipitation, wind: day.wind)
-                }.accessibilityElement(children: .combine)
-                if day.id != days.last?.id { Divider() }
-            }
-            ForEach(sessions.filter { $0.scheduleStatus != "cancelled" && $0.coverage != "notCovering" }, id: \.objectID) { session in
-                if let start = session.callTime ?? session.startTime {
-                    let end = session.endTime ?? start.addingTimeInterval(3600)
-                    let hours = snapshot.hours(from: start, to: end)
-                    if !hours.isEmpty && end > now {
-                        DisclosureGroup {
-                            ForEach(hours) { hour in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(formattedDate(hour.date, hourly: true))
-                                        .font(.subheadline).fontWeight(.semibold)
-                                    Label("\(hour.condition) · \(temperature(hour.temperature))", systemImage: hour.symbol)
-                                    WeatherMetrics(precipitation: hour.precipitation, wind: hour.wind)
-                                }.padding(.vertical, 6).accessibilityElement(children: .combine).accessibilityIdentifier("weather-hour")
-                            }
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(session.title)
-                                Text("Hourly from \(session.callTime == nil ? "session start" : "call time")")
-                                    .font(.caption).foregroundStyle(Color("SecondaryText"))
-                            }
-                        }
+        if loader.eligible(request) {
+            VStack(alignment: .leading, spacing: 6) {
+                if let snapshot = loader.current(request) {
+                    Text("Track forecast updated \(snapshot.fetchedAt.formatted(date: .abbreviated, time: .shortened)) · \(snapshot.timeZoneID.replacingOccurrences(of: "_", with: " ")) time")
+                        .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                    if snapshot.isOutdated(at: loader.now) {
+                        Label("Outdated forecast · awaiting daily update", systemImage: "clock")
+                            .font(.caption).foregroundStyle(Color("AmberText"))
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("weather-outdated")
+                    }
+                    WeatherAttribution(snapshot: snapshot)
+                } else if loader.loading {
+                    ProgressView("Getting the track forecast…").font(.footnote)
+                } else {
+                    Label("Weather unavailable", systemImage: "cloud").font(.footnote)
+                    Text(loader.error ?? "Open this event while connected to load the forecast.")
+                        .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                    if let next = EventWeatherStore.shared.nextAttempt(placeID: request.placeID) {
+                        Text("Next update available \(next.formatted(date: .abbreviated, time: .shortened)).")
+                            .font(.caption).foregroundStyle(Color("SecondaryText"))
+                    } else {
+                        Button("Try again") { Task { await loader.load() } }.frame(minHeight: 44)
                     }
                 }
-            }
-            Text("Forecast dates and hours use \(snapshot.timeZoneID.replacingOccurrences(of: "_", with: " ")).")
-                .font(.caption).foregroundStyle(Color("SecondaryText"))
-            Link(destination: snapshot.legalURL) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) { weatherMark; Text("Data sources").font(.caption).fixedSize() }
-                    VStack(alignment: .leading, spacing: 8) { weatherMark; Text("Data sources").font(.caption) }
-                }.frame(minHeight: 44)
-            }.accessibilityLabel("Apple Weather data sources")
+            }.frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+}
 
-    private var weatherMark: some View {
+struct WeatherAttribution: View {
+    let snapshot: EventWeatherSnapshot
+    @Environment(\.colorScheme) private var colorScheme
+    var body: some View {
+        Link(destination: snapshot.legalURL) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { mark; Text("Data sources").font(.caption).fixedSize() }
+                VStack(alignment: .leading, spacing: 8) { mark; Text("Data sources").font(.caption) }
+            }.frame(minHeight: 44)
+        }.accessibilityLabel("Apple Weather data sources")
+    }
+    private var mark: some View {
         AsyncImage(url: colorScheme == .dark ? snapshot.darkMarkURL : snapshot.lightMarkURL) { image in
             image.resizable().scaledToFit().frame(width: 96, height: 24)
         } placeholder: {
             Text("Apple Weather").font(.subheadline).fixedSize(horizontal: true, vertical: false)
         }.fixedSize()
     }
+}
 
-    private func formattedDate(_ date: Date, hourly: Bool) -> String {
-        var style: Date.FormatStyle = hourly ? .dateTime.month(.abbreviated).day().hour().minute() : .dateTime.weekday(.wide).month(.abbreviated).day()
-        style.timeZone = snapshot.timeZone
-        return date.formatted(style)
+/// The track forecast for one session: its day, then each hour from call (or start) to the end.
+/// The parent attaches `eventWeather(_:request:)` so loading runs even before this section has content.
+struct SessionWeatherSection: View {
+    @ObservedObject var session: WorkSession
+    @ObservedObject var loader: EventWeatherLoader
+    var body: some View {
+        if let request = session.job?.weatherRequest, loader.eligible(request), session.coverage != "notCovering",
+           let start = session.callTime ?? session.startTime {
+            let end = session.endTime ?? start.addingTimeInterval(3600)
+            Section {
+                if let snapshot = loader.current(request) {
+                    let hours = snapshot.hours(from: start, to: end)
+                    if let day = loader.day(session.eventDay, request: request) {
+                        Label("\(day.condition) · High \(WeatherFormat.temperature(day.high)) · Low \(WeatherFormat.temperature(day.low))", systemImage: day.symbol)
+                            .accessibilityElement(children: .combine)
+                    }
+                    if hours.isEmpty {
+                        Text("Hourly forecast isn’t available for this session yet.").foregroundStyle(Color("SecondaryText"))
+                    }
+                    ForEach(hours) { hour in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(hourText(hour.date, zone: snapshot.timeZone)).font(.subheadline).fontWeight(.semibold)
+                            Label("\(hour.condition) · \(WeatherFormat.temperature(hour.temperature))", systemImage: hour.symbol)
+                            WeatherMetrics(precipitation: hour.precipitation, wind: hour.wind)
+                        }.padding(.vertical, 6).accessibilityElement(children: .combine).accessibilityIdentifier("weather-hour")
+                    }
+                }
+                WeatherStatusFooter(loader: loader, request: request)
+            } header: { Text("Track weather") } footer: {
+                Text("Hourly from \(session.callTime == nil ? "session start" : "call time"). Forecasts can change before the event.")
+            }
+        }
     }
-
-    private func temperature(_ value: Double) -> String {
-        Measurement(value: value, unit: UnitTemperature.celsius)
-            .formatted(.measurement(width: .abbreviated, usage: .weather, numberFormatStyle: .number.precision(.fractionLength(0))))
+    private func hourText(_ date: Date, zone: TimeZone) -> String {
+        var style = Date.FormatStyle.dateTime.hour().minute()
+        style.timeZone = zone
+        return date.formatted(style)
     }
 }
 
-private struct WeatherMetrics: View {
+struct WeatherMetrics: View {
     let precipitation: Double
     let wind: Double
     var body: some View {

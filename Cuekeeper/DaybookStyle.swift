@@ -110,6 +110,8 @@ struct DaybookSegments<Value: Hashable>: View {
     let identifier: String
     let label: (Value) -> String
     var color: (Value) -> Color = { _ in Color.accentColor }
+    /// Open items behind a segment, shown as a small amber count.
+    var badge: (Value) -> Int = { _ in 0 }
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -133,13 +135,23 @@ struct DaybookSegments<Value: Hashable>: View {
             ForEach(options, id: \.self) { option in
                 let selected = selection == option
                 let tint = color(option)
+                let count = badge(option)
                 Button {
                     if !selected { selection = option }
                 } label: {
-                    Text(label(option))
-                        .font(.caption.weight(selected ? .semibold : .medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                    HStack(spacing: 5) {
+                        Text(label(option))
+                            .font(.caption.weight(selected ? .semibold : .medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                        if count > 0 {
+                            Text(count, format: .number)
+                                .font(.caption2.weight(.bold)).monospacedDigit()
+                                .foregroundStyle(Color("AmberText"))
+                                .padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(Color.orange.opacity(0.18), in: Capsule())
+                        }
+                    }
                         .padding(.horizontal, 3)
                         .frame(maxWidth: .infinity)
                         .frame(height: segmentHeight)
@@ -154,6 +166,7 @@ struct DaybookSegments<Value: Hashable>: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(label(option))
+                .accessibilityValue(count > 0 ? "\(count) to settle" : "")
                 .accessibilityAddTraits(selected ? [.isSelected] : [])
                 .accessibilityIdentifier("\(identifier)-\(String(describing: option))")
             }

@@ -110,10 +110,13 @@ final class RecoveryTests: XCTestCase {
         }
     }
 
-    func testBackupFilePickersAndLayouts() {
+    /// Exercises export, import confirmation and restore without the system Files picker, which drops taps
+    /// on parallel simulator clones. `BackupFilePickerTests` drives the real pickers serially
+    /// from the `Cuekeeper - System Pickers` scheme.
+    func testBackupFilesAndLayouts() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=backups"]
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=backups", "--ui-test-backup-files"]
         app.launch()
         XCTAssertTrue(app.buttons["backup-now"].waitForExistence(timeout: 10))
         capture("backups-files-light")
@@ -121,40 +124,27 @@ final class RecoveryTests: XCTestCase {
         let export = button(app, "backup-export", "Export to Files")
         XCTAssertTrue(export.waitForExistence(timeout: 5))
         export.tap()
-        let save = app.buttons["DOCPicker.actionButton"]
-        XCTAssertTrue(save.waitForExistence(timeout: 15))
-        capture("backup-export-picker")
-        save.tap()
-        XCTAssertTrue(app.staticTexts["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 15))
         revealFiles(app)
         let importer = button(app, "backup-import", "Import a Backup")
         XCTAssertTrue(importer.waitForExistence(timeout: 5))
         importer.tap()
-        let file = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@", "Cuekeeper-")).firstMatch
-        if !file.waitForExistence(timeout: 5) {
-            let browse = app.buttons["Browse"].firstMatch
-            if browse.exists { browse.tap() }
-            let local = app.staticTexts[UIDevice.current.userInterfaceIdiom == .pad ? "On My iPad" : "On My iPhone"].firstMatch
-            if local.exists { local.tap() }
-        }
-        capture("backup-import-picker")
-        if !file.waitForExistence(timeout: 10) { print(app.debugDescription) }
-        XCTAssertTrue(file.exists)
-        file.tap()
-        XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 15))
         capture("backup-file-confirmation")
         app.buttons["Restore Backup"].tap()
         let complete = NSPredicate(format: "label CONTAINS %@", "Restore complete")
         expectation(for: complete, evaluatedWith: app.staticTexts["backup-notice"])
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 15)
         app.terminate()
         app.launchArguments += ["--design-dark", "-UIPreferredContentSizeCategoryName", UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue]
         app.launch()
         XCTAssertTrue(app.buttons["backup-now"].waitForExistence(timeout: 10))
         capture("backups-largest-text-dark")
         revealFiles(app)
-        XCTAssertTrue(button(app, "backup-import", "Import a Backup").waitForExistence(timeout: 5))
-        XCTAssertTrue(button(app, "backup-import", "Import a Backup").isHittable)
+        let largeImport = button(app, "backup-import", "Import a Backup")
+        XCTAssertTrue(largeImport.waitForExistence(timeout: 5))
+        let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: largeImport)
+        XCTAssertEqual(XCTWaiter.wait(for: [hittable], timeout: 5), .completed)
         capture("backups-files-largest-text-dark")
     }
 

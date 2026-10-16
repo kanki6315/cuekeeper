@@ -117,7 +117,7 @@ Dates and amounts use monospaced digits where alignment aids scanning. Metadata 
 
 The shared form is a custom ScrollView with titled content, vertical section groups and ruled panels; it is more than a recolored native Form. It centers content up to 760 points with page padding and section spacing from the tokens. Section headers sit above panels; rows use shared horizontal and vertical padding, inset dividers and optional footers. Explicitly unframed sections omit their fill, border and horizontal padding. Native lists remain available through DaybookList, with matching row surfaces and 18-point section spacing.
 
-Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details keep schedule and work context ahead of broadcast links and fee/billing content. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
+Upcoming and Events lead with a shared brand/action header, search and filters, then date-led records. DaybookTabHeader also heads Payments and Settings, with a 48-point minimum height and a stacked fallback for narrow widths or accessibility text. Tab content starts with 12-point top padding. Split-view agenda columns retain their section title beside Add Event; the sidebar carries the brand. Event details keep schedule and work context ahead of fee/billing content. The event editor concentrates initial capture, with optional fields available without manufacturing required data. Payments use a compact separated USD/EUR summary before review items and invoice/job sections; amounts and partial balances remain derived from actual records.
 
 Regular-width layouts at non-accessibility text sizes use a sidebar; Upcoming and Events use sidebar, agenda and selected detail columns. The sidebar ranges from 210 to 280 points (ideal 230); the agenda from 320 to 520 (ideal 420). Native split-view behavior handles width and portrait collapse. Compact widths and all accessibility text sizes use tabs and navigation stacks. Headers and payment summaries adapt vertically when text or width demands it.
 
@@ -142,7 +142,7 @@ Panels and search use gently rounded rectangles. Primary and secondary actions u
 
 ### Primary and secondary actions
 
-DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `PrimaryButtonText` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Event uses the primary style; Add Session and Add Broadcast Link use the secondary style.
+DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `PrimaryButtonText` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Event uses the primary style; Add Session uses the secondary style.
 
 Event details expose the next booking-state action inline: Mark as booked for tentative events and Mark completed for booked events. Edit Event is a toolbar action; Duplicate Event and confirmed Delete Event appear in separate sections. Upcoming uses DaybookSegments for All upcoming / This week. Events uses the same control for All / Active / Completed / Cancelled. These compact, text-only controls keep all choices in one row. The visible track is 36 points high at default text size (32-point segments), with a separate 44-point touch area. Selection uses a slightly stronger tinted fill, a fine outline and semibold text; inactive options keep a faint tint without individual outlines. No icons or grid fallback. At accessibility text sizes the same row scrolls horizontally rather than compressing enlarged labels.
 
@@ -168,7 +168,7 @@ Upcoming, Events, Payments and Settings form the tab/sidebar destinations. The r
 
 ### Event capture and editing
 
-Each event has at most one client, with client/status, schedule, broadcast links,
+Each event has at most one client, with client/status, schedule,
 fee and payment history, notes, project and championships on one detail surface.
 Edit Event shows Client / Work / Fee fields directly, without booking accordions
 or add-client controls. Historical booking notes remain labelled and editable;

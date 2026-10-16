@@ -65,11 +65,7 @@ final class RecoveryBackupTests: XCTestCase {
         var session = SessionDraft(day: job.startDay, timeZoneID: "Europe/London")
         session.startTime = Date(); session.endTime = Date().addingTimeInterval(3600)
         session.scheduleStatus = "confirmed"; session.coverage = "covering"
-        let sessionID = try session.save(in: context, jobID: id)
-        // Links can no longer be added in the app, but existing records must still round-trip.
-        let link = NSEntityDescription.insertNewObject(forEntityName: "BroadcastLink", into: context)
-        link.setValue(UUID(), forKey: "id"); link.setValue("https://example.com/live", forKey: "url")
-        link.setValue(context.object(with: sessionID), forKey: "session"); try context.save()
+        try session.save(in: context, jobID: id)
         var invoice = InvoiceDraft(clientID: job.client!.id!, currency: "USD")
         invoice.value.reference = "INV-RECOVERY"; invoice.value.status = "sent"; invoice.value.sentDay = Day.string(from: Date())
         invoice.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 10000)]
@@ -250,7 +246,6 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertEqual(first.added, archive.records.count)
         let job = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
         XCTAssertEqual(job.id, original.id); XCTAssertEqual(job.client?.name, "Network")
-        XCTAssertEqual(job.activeSessions.first?.links?.first?.url, "https://example.com/live")
         XCTAssertEqual(job.activeSessions.count, 1); XCTAssertEqual(try job.currentFee().amount, 10000)
         let invoice = try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first)
         XCTAssertEqual(try invoice.balance(), 7500); XCTAssertNil(invoice.issue(in: target))
@@ -395,6 +390,23 @@ final class RecoveryBackupTests: XCTestCase {
         // No other missing attribute is accepted as an older schema.
         oldArchive.records[0].attributes.removeValue(forKey: "id")
         XCTAssertThrowsError(try oldArchive.validate(model: target.persistentStoreCoordinator!.managedObjectModel))
+    }
+
+    func testPreV14BackupDropsBroadcastLinks() async throws {
+        let source = try await context(); _ = try fixture(source)
+        var oldArchive = try BackupArchive.capture(in: source)
+        let sessionIndex = try XCTUnwrap(oldArchive.records.firstIndex { $0.key.entity == "WorkSession" })
+        let linkKey = BackupArchive.Key(entity: "BroadcastLink", id: UUID())
+        oldArchive.records[sessionIndex].relationships["links"] = [linkKey]
+        oldArchive.records.append(BackupArchive.Record(key: linkKey, attributes: [
+            "id": .uuid(linkKey.id), "label": .string(""), "url": .string("https://example.com/live"), "notes": .string("")
+        ], relationships: ["session": [oldArchive.records[sessionIndex].key]]))
+        let target = try await context()
+        let decoded = try BackupArchive.decode(oldArchive.encoded(), model: target.persistentStoreCoordinator!.managedObjectModel)
+        XCTAssertFalse(decoded.records.contains { $0.key.entity == "BroadcastLink" })
+        let result = try decoded.restore(in: target)
+        XCTAssertEqual(result.added, oldArchive.records.count - 1)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<WorkSession>(entityName: "WorkSession")), 1)
     }
 
     func testDuplicateEventMetadataKeepsDistinctBookingRelationships() async throws {

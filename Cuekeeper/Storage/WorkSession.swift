@@ -22,7 +22,6 @@ final class WorkSession: NSManagedObject {
     var effectiveSeriesNames: [String] { effectiveSeries.map { [$0.name] } ?? [] }
     @NSManaged var job: Job?
     @NSManaged var roles: Set<WorkRole>?
-    @NSManaged var links: Set<BroadcastLink>?
     var eventTimeZoneID: String { job?.eventTimeZoneID ?? timeZoneID }
     var eventDay: String {
         guard let startTime, let zone = TimeZone(identifier: eventTimeZoneID) else { return day }
@@ -60,17 +59,6 @@ final class WorkSession: NSManagedObject {
         formatter.timeZone = TimeZone(identifier: eventTimeZoneID) ?? .current
         return "\(formatter.string(from: startTime)) – \(formatter.string(from: endTime)) · \(eventTimeZoneID.replacingOccurrences(of: "_", with: " "))"
     }
-}
-
-/// Broadcast links are no longer shown or edited. The entity stays so existing
-/// stores, backups and the CloudKit schema remain compatible.
-@objc(BroadcastLink)
-final class BroadcastLink: NSManagedObject {
-    @NSManaged var id: UUID?
-    @NSManaged var label: String
-    @NSManaged var url: String
-    @NSManaged var notes: String
-    @NSManaged var session: WorkSession?
 }
 
 struct SessionDraft: Identifiable, Equatable {

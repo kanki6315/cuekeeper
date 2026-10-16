@@ -201,6 +201,7 @@
 		77E6DB6F2628C8A88BCDD097 /* CloudBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupStore.swift; sourceTree = "<group>"; };
 		7AC028165CC976F299783F54 /* PendingExpensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingExpensesView.swift; sourceTree = "<group>"; };
 		7AEB83E7804374638D4D0136 /* DesignFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignFixtures.swift; sourceTree = "<group>"; };
+		7B072BFF35B273D519BDDF42 /* CuekeeperV14.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV14.xcdatamodel; sourceTree = "<group>"; };
 		7B7F5F036FF902E9A874EFBF /* DesignCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignCaptureTests.swift; sourceTree = "<group>"; };
 		893F1EA4F4B4BB063F301463 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		919618A957BA6EC5BAA77600 /* EventWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeather.swift; sourceTree = "<group>"; };
@@ -1354,8 +1355,9 @@
 				D4AE67AB7F1A8CA326601086 /* CuekeeperV11.xcdatamodel */,
 				54BB016BE1437AC97CC962A7 /* CuekeeperV12.xcdatamodel */,
 				DEAFA099BF381810103C04D1 /* CuekeeperV13.xcdatamodel */,
+				7B072BFF35B273D519BDDF42 /* CuekeeperV14.xcdatamodel */,
 			);
-			currentVersion = DEAFA099BF381810103C04D1 /* CuekeeperV13.xcdatamodel */;
+			currentVersion = 7B072BFF35B273D519BDDF42 /* CuekeeperV14.xcdatamodel */;
 			path = Cuekeeper.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

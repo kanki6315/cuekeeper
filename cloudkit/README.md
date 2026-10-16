@@ -197,3 +197,17 @@ On October 15, 2026, the signed Mac helper initialized V13 in Development and
 exported the generated schema. The only schema change from the previous snapshot
 is `CD_WorkEvent.CD_ownerJobID`. Deploy the reviewed schema to Production in
 CloudKit Console, then run `./cloudkit.sh check` before distribution.
+
+## Broadcast links removed (V14)
+
+V14 removes the `BroadcastLink` entity and `WorkSession.links`. Lightweight
+migration drops existing link rows from the local store, and pre-V14 ZIP
+backups restore without their link records.
+
+CloudKit cannot delete record types, so `CD_BroadcastLink` and
+`CD_WorkSession.CD_links` remain in the schema. Existing link records stay in
+each user's private database, where V14 ignores them. Older app versions can
+still read and write them until every device updates. V14 adds no fields, so
+Production needs no deployment. The model fingerprint did change: run
+`./cloudkit.sh init --export`, commit the refreshed snapshot, then run
+`./cloudkit.sh check` before distribution.

@@ -30,7 +30,7 @@ struct CalendarPlan: Sendable {
             if let oldID = job.event?.id { knownKeys.insert("event/\(oldID.uuidString)") }
             let key = legacyKey
             var calendar = Calendar(identifier: .gregorian)
-            let zone = TimeZone(identifier: job.eventTimeZoneID) ?? .current
+            let zone = TimeZone.effective(job.eventTimeZoneID)
             calendar.timeZone = zone
             if let start = Day.date(from: job.eventStartDay, timeZone: zone),
                let last = Day.date(from: job.eventEndDay, timeZone: zone),

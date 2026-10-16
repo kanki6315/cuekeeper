@@ -95,24 +95,22 @@ final class CalendarTests: XCTestCase {
         XCTAssertEqual(newPhone.id, newID)
     }
 
-    func testTimeZoneChoicesPreserveDaylightSavingRules() throws {
-        let winter = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T00:00:00Z"))
-        let summer = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-07-01T00:00:00Z"))
-        let choices = TimeZoneChoice.grouped(date: winter)
-        func choice(_ identifier: String) throws -> TimeZoneChoice {
-            try XCTUnwrap(choices.first { $0.identifiers.contains(identifier) })
-        }
-        XCTAssertEqual(Set(choices.flatMap(\.identifiers)), Set(TimeZone.knownTimeZoneIdentifiers))
-        XCTAssertEqual(Set(choices.map(\.label)).count, choices.count)
-        let eastern = try choice("America/New_York")
-        XCTAssertEqual(eastern.id, try choice("America/Toronto").id)
-        XCTAssertNotEqual(try choice("America/Denver").id, try choice("America/Phoenix").id)
-        XCTAssertNotEqual(try choice("Europe/London").id, try choice("Africa/Abidjan").id)
-        XCTAssertEqual(eastern.identifier(selection: "America/Toronto", search: "", current: ""), "America/Toronto")
-        XCTAssertEqual(eastern.identifier(selection: "", search: "New York", current: ""), "America/New_York")
-        let zone = try XCTUnwrap(TimeZone(identifier: eastern.identifier(selection: "", search: "", current: "")))
-        XCTAssertEqual(zone.secondsFromGMT(for: winter), -18000)
-        XCTAssertEqual(zone.secondsFromGMT(for: summer), -14400)
+    func testPlaceSelectionAppliesOnlyTheLatestChoice() {
+        var selection = PlaceSelection()
+        let location = selection.begin()
+        let track = selection.begin()
+        // The track was chosen last, so a slower location lookup must not win.
+        XCTAssertEqual(selection.finish(track, zone: TimeZone(identifier: "America/Vancouver"))?.identifier, "America/Vancouver")
+        XCTAssertNil(selection.finish(location, zone: TimeZone(identifier: "America/Los_Angeles")))
+        XCTAssertFalse(selection.pending)
+        let edited = selection.begin()
+        selection.cancel()
+        XCTAssertNil(selection.finish(edited, zone: TimeZone(identifier: "Europe/London")))
+        XCTAssertFalse(selection.pending)
+        let failed = selection.begin()
+        XCTAssertNil(selection.finish(failed, zone: nil))
+        XCTAssertTrue(selection.failed)
+        XCTAssertFalse(selection.pending)
     }
 
     func testProjectionPreservesPlaceholdersAndUsesCivilDayBoundaries() throws {

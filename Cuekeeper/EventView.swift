@@ -16,7 +16,7 @@ struct EventEditorView: View {
     @State private var booking = JobDraft()
     @State private var initialBooking: JobDraft
     @State private var multipleDays: Bool
-    @State private var choosingTrack = false
+    @StateObject private var zones = PlaceZones()
     @State private var discard = false
     @State private var error: String?
     init(anchor: Job? = nil, template: Job? = nil, focusBooking: NSManagedObjectID? = nil, focusFee: Bool = false, onSave: ((NSManagedObjectID) -> Void)? = nil) {
@@ -43,15 +43,8 @@ struct EventEditorView: View {
                             Text("Title").font(.subheadline).foregroundStyle(Color("SecondaryText"))
                             DaybookTextField("Custom title (optional)", text: $draft.title).accessibilityIdentifier("event-title")
                         }
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Location").font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                            DaybookTextField("Add location", text: $draft.location).accessibilityIdentifier("job-location")
-                        }
-                        if !draft.trackPlaceID.isEmpty { SavedTrackView(placeID: draft.trackPlaceID) }
-                        Button(draft.trackPlaceID.isEmpty ? "Choose track location" : "Change track location", systemImage: "mappin.and.ellipse") { choosingTrack = true }.accessibilityIdentifier("choose-track")
-                        if !draft.trackPlaceID.isEmpty { Button("Remove track location", role: .destructive) { draft.trackPlaceID = "" }.accessibilityIdentifier("remove-track") }
-                        EventTimeZoneField(selection: $draft.timeZoneID, date: draft.startDate)
-                        Text("All sessions use this timezone. Changing it preserves existing scheduled instants.").font(.caption).foregroundStyle(.secondary)
+                        EventPlaceFields(location: $draft.location, trackPlaceID: $draft.trackPlaceID, timeZoneID: $draft.timeZoneID,
+                                         date: draft.startDate, zones: zones, key: "event")
                     }.id("event-details")
                     Section {
                         DatePicker(multipleDays ? "Start" : "Date", selection: $draft.startDate, displayedComponents: .date)
@@ -60,10 +53,10 @@ struct EventEditorView: View {
                     } header: { Text("Dates") } footer: { Text("Session dates and times are edited separately.") }
                     Section {
                         if anchor == nil {
-                            EventBookingFields(draft: $booking, newRole: $newRole, feeExpanded: $feeExpanded, feeID: "event-fee", newBooking: true)
+                            EventBookingFields(draft: $booking, newRole: $newRole, feeExpanded: $feeExpanded, feeID: "event-fee", zones: zones, newBooking: true)
                         } else {
                             ForEach($bookings) { $entry in
-                                EventBookingFields(draft: $entry.draft, newRole: $entry.newRole, feeExpanded: $feeExpanded, feeID: "event-fee")
+                                EventBookingFields(draft: $entry.draft, newRole: $entry.newRole, feeExpanded: $feeExpanded, feeID: "event-fee", zones: zones)
                             }
                         }
                     }.containerValue(\.daybookUnframed, true).id("event-work")
@@ -91,7 +84,7 @@ struct EventEditorView: View {
                             let id = try draft.save(in: context, anchorID: anchor?.objectID, baseline: anchor == nil ? nil : initial, firstBooking: anchor == nil ? first : nil, bookings: bookings)
                             onSave?(id); dismiss()
                         } catch { self.error = error.localizedDescription }
-                    }.disabled(anchor == nil && booking.clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("save-event")
+                    }.disabled(zones.pending || anchor == nil && booking.clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("save-event")
                 }
             }
             .onChange(of: draft.startDate) { _, start in if !multipleDays || draft.endDate < start { draft.endDate = start } }
@@ -100,7 +93,6 @@ struct EventEditorView: View {
                 let request = NSFetchRequest<Client>(entityName: "Client"); request.predicate = NSPredicate(format: "name ==[cd] %@", name)
                 if booking.fee?.amount.isEmpty == true, let client = try? context.fetch(request).first { booking.fee?.currency = client.defaultCurrency }
             }
-            .sheet(isPresented: $choosingTrack) { TrackLocationPicker(placeID: $draft.trackPlaceID) }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
             .confirmationDialog("Discard changes?", isPresented: $discard, titleVisibility: .visible) { Button("Discard Changes", role: .destructive) { dismiss() }; Button("Keep Editing", role: .cancel) {} }
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
@@ -134,6 +126,7 @@ private struct EventBookingFields: View {
     @Binding var newRole: String
     @Binding var feeExpanded: Bool
     let feeID: String
+    @ObservedObject var zones: PlaceZones
     var newBooking = false
     @Environment(\.managedObjectContext) private var context
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
@@ -152,7 +145,7 @@ private struct EventBookingFields: View {
                 DaybookPicker("Arrangement", selection: $draft.workArrangement, identifier: "work-arrangement") {
                     ForEach(WorkArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                WorkTimeZoneField(draft: $draft, date: draft.startDate)
+                WorkLocationFields(draft: $draft, date: draft.startDate, zones: zones, key: "work")
                 DisclosureGroup {
                     ForEach(Array(Set(roles.map(\.name)).union(draft.roleNames)).sorted(), id: \.self) { role in
                         Toggle(role, isOn: Binding(get: { draft.roleNames.contains(role) }, set: { if $0 { draft.roleNames.insert(role) } else { draft.roleNames.remove(role) } }))
@@ -213,7 +206,7 @@ struct EventDetailView: View {
 struct EventScheduleRow: View {
     @ObservedObject var session: WorkSession
     private func scheduleDates(_ start: Date) -> String {
-        let zone = TimeZone(identifier: session.eventTimeZoneID) ?? .current
+        let zone = TimeZone.effective(session.eventTimeZoneID)
         var dates = session.shortDate(start)
         if let end = session.endTime, Day.string(from: start, timeZone: zone) != Day.string(from: end, timeZone: zone) {
             dates += " – " + session.shortDate(end)

@@ -287,7 +287,8 @@ final class PersistenceTests: XCTestCase {
         let entry = try XCTUnwrap(CalendarPlan(jobs: [job]).desired.values.first { !$0.allDay })
         XCTAssertEqual(entry.timeZoneID, "America/Los_Angeles"); XCTAssertEqual(entry.start, start)
         var cleared = EventDraft(anchor: job); cleared.timeZoneID = ""
-        XCTAssertThrowsError(try cleared.save(in: context, anchorID: id))
+        try cleared.save(in: context, anchorID: id)
+        XCTAssertEqual(job.eventTimeZoneID, "America/Los_Angeles")
         for arrangement in [WorkArrangement.hybrid, .onSite, .remote] {
             let before = JobDraft(job: job); var work = before; work.workArrangement = arrangement
             try work.save(in: context, editing: id, baseline: before)
@@ -301,7 +302,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(restored.activeSessions.first?.startTime, start)
     }
 
-    func testLegacyCommonTimezoneBecomesEventDefaultAndMissingZoneRejectsTimes() async throws {
+    func testLegacyCommonTimezoneBecomesEventDefaultAndMissingZoneUsesHome() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var booking = JobDraft(); booking.clientName = "Legacy"
         let id = try booking.save(in: context)
@@ -314,11 +315,14 @@ final class PersistenceTests: XCTestCase {
         let event = EventDraft(anchor: job)
         try event.save(in: context, anchorID: id)
         XCTAssertEqual(job.event?.timeZoneID, "Europe/London")
-        var creation = EventCreationDraft(); creation.shared.clientName = "No zone"
+        // Without a place, an event and its sessions use the home zone.
+        var creation = EventCreationDraft(); creation.shared.clientName = "No zone"; creation.events[0].timeZoneID = ""
         var session = SessionDraft(day: "2026-10-14", timeZoneID: "Asia/Tokyo")
         session.startTime = Date(); creation.events[0].sessions = [session]
-        XCTAssertThrowsError(try creation.save(in: context))
-        XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+        let created = try XCTUnwrap(creation.save(in: context).first)
+        let zoneless = try XCTUnwrap(context.existingObject(with: created) as? Job)
+        XCTAssertEqual(zoneless.eventTimeZoneID, TimeZone.home.identifier)
+        XCTAssertEqual(zoneless.activeSessions.first?.timeZoneID, TimeZone.home.identifier)
     }
 
     func testCopiesUseDestinationEventTimezoneAndRejectDSTGapAtomically() throws {
@@ -446,6 +450,7 @@ final class PersistenceTests: XCTestCase {
         let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
         let eventID = try XCTUnwrap(job.event?.objectID)
         XCTAssertEqual(job.eventTitle, "IMSA esports")
+        XCTAssertEqual(job.eventLocation, "Remote")
         XCTAssertEqual(job.eventNotes, "Production briefing")
         XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
         XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
@@ -543,6 +548,57 @@ final class PersistenceTests: XCTestCase {
         let incomplete = try SiriEventDraft.make(title: "Call", start: timedStart, end: nil, allDay: false)
         XCTAssertNil(incomplete.events[0].sessions.first?.endTime)
         XCTAssertThrowsError(try SiriEventDraft.make(title: "Invalid", start: end, end: start, allDay: true))
+    }
+
+    func testWizardKeepsVenueOnEventAndRemoteLocationOnBooking() async throws {
+        let store = try await openStore(); let context = store.container.viewContext
+        for arrangement in [WorkArrangement.remote, .onSite] {
+            var creation = EventCreationDraft()
+            creation.shared.clientName = "Broadcast"
+            creation.shared.workArrangement = arrangement
+            creation.shared.location = "Home studio, Vancouver"; creation.shared.timeZoneID = "America/Vancouver"
+            creation.events[0].details.location = "Silverstone Circuit"
+            creation.events[0].details.trackPlaceID = "track-one"
+            creation.events[0].timeZoneID = "Europe/London"
+            let id = try XCTUnwrap(creation.save(in: context).first)
+            let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+            XCTAssertEqual(job.eventLocation, "Silverstone Circuit")
+            XCTAssertEqual(job.eventTrackPlaceID, "track-one")
+            XCTAssertEqual(job.eventTimeZoneID, "Europe/London")
+            if arrangement == .remote {
+                XCTAssertEqual(job.location, "Home studio, Vancouver")
+                XCTAssertEqual(job.workTimeZoneID, "America/Vancouver")
+            } else {
+                XCTAssertEqual(job.location, "Silverstone Circuit")
+                XCTAssertEqual(job.workTimeZoneID, "Europe/London")
+            }
+        }
+    }
+
+    func testZonelessEventsAdoptTheHomeZoneOnce() async throws {
+        let saved = UserDefaults.standard.object(forKey: "homeTimeZone")
+        defer { if let saved { UserDefaults.standard.set(saved, forKey: "homeTimeZone") } else { UserDefaults.standard.removeObject(forKey: "homeTimeZone") } }
+        UserDefaults.standard.set("Asia/Tokyo", forKey: "homeTimeZone")
+        let store = try await openStore(); let context = store.container.viewContext
+        var event = EventDraft(); event.timeZoneID = "Europe/London"
+        var booking = JobDraft(); booking.clientName = "Legacy"
+        let id = try event.save(in: context, firstBooking: booking)
+        let job = try XCTUnwrap(context.existingObject(with: id) as? Job)
+        // Simulate a record created before zones were required.
+        job.event?.timeZoneID = ""; job.timeZoneID = ""; try context.save()
+        XCTAssertEqual(job.eventTimeZoneID, "")
+        let start = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-15T10:00:00Z"))
+        var session = SessionDraft(job: job)
+        session.setStartTime(start, zone: .effective(job.eventTimeZoneID)); session.endTime = start.addingTimeInterval(3600)
+        try session.save(in: context, jobID: id)
+        XCTAssertEqual(job.eventTimeZoneID, "Asia/Tokyo")
+        XCTAssertEqual(job.activeSessions.first?.startTime, start)
+        // A later home change never rewrites a stored zone.
+        UserDefaults.standard.set("Europe/Paris", forKey: "homeTimeZone")
+        let before = EventDraft(anchor: job); var edited = before; edited.notes = "Updated"
+        try edited.save(in: context, anchorID: id, baseline: before)
+        XCTAssertEqual(job.eventTimeZoneID, "Asia/Tokyo")
+        XCTAssertEqual(job.activeSessions.first?.startTime, start)
     }
 
     func testEventClientsKeepIndependentBillingAndSurviveReopen() async throws {
@@ -1366,7 +1422,6 @@ final class PersistenceTests: XCTestCase {
         draft.scheduleStatus = "confirmed"
         XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
         draft.scheduleStatus = "tentative"; draft.startTime = Date()
-        XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
         draft.timeZoneID = "UTC"; draft.endTime = draft.startTime!.addingTimeInterval(-1)
         XCTAssertThrowsError(try draft.save(in: context, jobID: jobID))
         draft.endTime = draft.startTime!.addingTimeInterval(3600)

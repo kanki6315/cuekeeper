@@ -7,6 +7,7 @@ struct PreferenceFields: View {
     @AppStorage("defaultCurrency") private var currency = "USD"
     @AppStorage("defaultRole") private var role = ""
     @AppStorage("homeTimeZone") private var homeTimeZone = TimeZone.current.identifier
+    @AppStorage("homeLocation") private var homeLocation = ""
     @AppStorage("appearance") private var appearance = "system"
 
     var body: some View {
@@ -25,10 +26,10 @@ struct PreferenceFields: View {
             NavigationLink { DefaultRolePicker(selection: $role) } label: {
                 preferenceRow("Default role", value: role.isEmpty ? "None" : role)
             }.accessibilityIdentifier("preference-role")
-            NavigationLink { TimeZonePicker(selection: $homeTimeZone) } label: {
-                preferenceRow("Home timezone", value: homeTimeZone.isEmpty ? "Unspecified" :
-                    (homeTimeZone.split(separator: "/").last.map(String.init) ?? homeTimeZone).replacingOccurrences(of: "_", with: " "))
-            }.accessibilityIdentifier("preference-timezone")
+            NavigationLink { HomeLocationPicker() } label: {
+                preferenceRow("Home location", value: homeLocation.isEmpty
+                    ? (TimeZone.home.localizedName(for: .generic, locale: .current) ?? TimeZone.home.identifier) : homeLocation)
+            }.accessibilityIdentifier("preference-home-location")
                 .onAppear {
                     if UserDefaults.standard.object(forKey: "homeTimeZone") == nil {
                         homeTimeZone = TimeZone.current.identifier
@@ -70,6 +71,31 @@ struct PreferenceFields: View {
         Picker("Appearance", selection: $appearance) {
             Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
         }.accessibilityIdentifier("preference-appearance")
+    }
+}
+
+/// New events and remote work start in the home location's timezone.
+private struct HomeLocationPicker: View {
+    @AppStorage("homeTimeZone") private var homeTimeZone = TimeZone.current.identifier
+    @AppStorage("homeLocation") private var homeLocation = ""
+    @StateObject private var zones = PlaceZones()
+    @State private var text = ""
+    var body: some View {
+        DaybookForm {
+            Section {
+                LocationSearchField(title: "Search for your city", text: $text, identifier: "home-location", onChoose: { suggestion in
+                    zones.choose("home", apply: { zone in
+                        UserDefaults.standard.set(zone, forKey: "homeTimeZone")
+                        UserDefaults.standard.set(suggestion.text, forKey: "homeLocation")
+                    }) { try await PlaceZone.resolve(suggestion) }
+                }, onEdit: { zones.edited("home") })
+                DerivedTimeZoneRow(title: "Home timezone", timeZoneID: homeTimeZone, date: Date(),
+                                   caption: "New events use this until you choose their location.",
+                                   identifier: "home-timezone", zones: zones, key: "home")
+            }
+        }
+        .navigationTitle("Home location").navigationBarTitleDisplayMode(.inline)
+        .onAppear { text = homeLocation }
     }
 }
 

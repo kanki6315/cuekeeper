@@ -128,6 +128,10 @@ struct EventDraft: Equatable {
         // A concurrent promotion must not silently merge a different event.
         for (key, value) in values where baseline == nil || baseline?.values[key] != value { event.setValue(value, forKey: key) }
         guard event.startDay <= event.endDay else { throw JobDraft.ValidationError.invalidDates }
+        // Zones only come from places now: never clear a valid zone, and give a zoneless event the home zone.
+        if TimeZone(identifier: event.timeZoneID) == nil {
+            event.timeZoneID = TimeZone(identifier: prior.timeZoneID) == nil ? TimeZone.home.identifier : prior.timeZoneID
+        }
         anchor.event = event
         for entry in bookings where entry.changed {
             let existing = try writer.existingObject(with: entry.id) as! Job

@@ -26,7 +26,7 @@ struct SessionEditorView: View {
         value.overridesSeries = true
         _draft = State(initialValue: value); _initial = State(initialValue: value)
     }
-    private var zone: TimeZone { TimeZone(identifier: job.eventTimeZoneID) ?? .current }
+    private var zone: TimeZone { TimeZone.effective(job.eventTimeZoneID) }
     var body: some View {
         NavigationStack {
             DaybookForm {
@@ -47,9 +47,8 @@ struct SessionEditorView: View {
                             }
                         } else { sessionDatePicker }
                     }
-                    TimeZoneValueLabel(title: "Event timezone", value: zoneLabel(job.eventTimeZoneID, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()))
-                    if job.eventTimeZoneID.isEmpty { Text("Set the timezone in Edit Event before adding times.").font(.caption).foregroundStyle(.secondary) }
-                    SessionScheduleField(draft: $draft, zone: zone).disabled(job.eventTimeZoneID.isEmpty)
+                    TimeZoneValueLabel(title: "Event timezone", value: zoneLabel(zone.identifier, date: draft.startTime ?? Day.date(from: draft.day) ?? Date()))
+                    SessionScheduleField(draft: $draft, zone: zone)
                     optionalTime("Call time", value: $draft.callTime)
                 } header: { Text("Schedule") } footer: {
                     Text("Times can remain incomplete. An end time earlier than the start falls on the next day. All sessions use the event timezone.")
@@ -128,7 +127,6 @@ struct SessionEditorView: View {
     @ViewBuilder private func optionalTime(_ label: String, value: Binding<Date?>) -> some View {
         OptionalSessionTimeField(title: label, value: value,
             defaultDate: draft.startTime ?? Day.date(from: draft.day, timeZone: zone) ?? Date(), zone: zone)
-            .disabled(job.eventTimeZoneID.isEmpty)
     }
 
 }
@@ -192,7 +190,7 @@ struct SessionDetailView: View {
                 LabeledContent("Coverage", value: session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized)
                 if let call = session.callTime {
                     Text("Call: \(session.shortTime(call))")
-                        .environment(\.timeZone, TimeZone(identifier: session.eventTimeZoneID) ?? .current)
+                        .environment(\.timeZone, TimeZone.effective(session.eventTimeZoneID))
                 }
                 LabeledContent("Roles", value: session.roleNames.isEmpty ? "None selected" : session.roleNames.joined(separator: ", "))
             }

@@ -39,7 +39,7 @@ final class WorkSession: NSManagedObject {
     func formattedTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium; formatter.timeStyle = .short
-        formatter.timeZone = TimeZone(identifier: eventTimeZoneID) ?? .current
+        formatter.timeZone = TimeZone.effective(eventTimeZoneID)
         return formatter.string(from: date)
     }
     var localScheduleDescription: String? {
@@ -58,7 +58,7 @@ final class WorkSession: NSManagedObject {
         guard let startTime, let endTime else { return day.isEmpty ? "Date and times to come" : "\(day) · Times to come" }
         let formatter = DateFormatter()
         formatter.dateStyle = .medium; formatter.timeStyle = .short
-        formatter.timeZone = TimeZone(identifier: eventTimeZoneID) ?? .current
+        formatter.timeZone = TimeZone.effective(eventTimeZoneID)
         return "\(formatter.string(from: startTime)) – \(formatter.string(from: endTime)) · \(eventTimeZoneID.replacingOccurrences(of: "_", with: " "))"
     }
 }
@@ -136,10 +136,13 @@ struct SessionDraft: Identifiable, Equatable {
         var resolved = self
         resolved.timeZoneID = job.eventTimeZoneID
         guard job.deletedAt == nil else { throw RecordError.invalid("This event has been deleted.") }
-        // Legacy/programmatic capture establishes a single event timezone once.
-        if resolved.timeZoneID.isEmpty && job.event == nil && !timeZoneID.isEmpty {
-            job.timeZoneID = timeZoneID
-            resolved.timeZoneID = timeZoneID
+        // An event without a zone adopts one once, so stored instants stay tied to a fixed zone:
+        // the zone times were entered in (the home zone by default), or a legacy capture's zone.
+        let timed = startTime != nil || endTime != nil || callTime != nil
+        if TimeZone(identifier: resolved.timeZoneID) == nil && (timed || (job.event == nil && !timeZoneID.isEmpty)) {
+            let zone = TimeZone.effective(timeZoneID).identifier
+            if let event = job.event { event.timeZoneID = zone } else { job.timeZoneID = zone }
+            resolved.timeZoneID = zone
         }
         try resolved.validate()
         let session = try id.map { try writer.existingObject(with: $0) as! WorkSession }

@@ -165,7 +165,7 @@ final class CalendarController: ObservableObject {
         func eventDate(_ date: Date) -> Date {
             guard desired.allDay else { return date }
             var source = Calendar(identifier: .gregorian)
-            source.timeZone = TimeZone(identifier: desired.timeZoneID) ?? .current
+            source.timeZone = TimeZone.effective(desired.timeZoneID)
             var local = Calendar(identifier: .gregorian)
             local.timeZone = .current
             return local.date(from: source.dateComponents([.year, .month, .day], from: date))!

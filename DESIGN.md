@@ -231,6 +231,21 @@ reveals Delete. Both disable full-swipe execution. Delete opens the existing
 permanent-removal confirmation; it never removes a row on the initial swipe/tap.
 Context menus and named accessibility actions provide alternatives to swiping.
 
+### Backups
+
+Status first, with an inline navigation title and no page heading. A panel leads
+with the last backup's relative date and its event count and size, followed by
+Back Up Now, progress and notices. An amber line appears only while sync changes
+may still be arriving. Saved iCloud backups follow under "In iCloud" with an
+"n of 50" count. Each row has a capsule Restore action and a "…" menu holding
+Delete Backup; a context menu offers both. Pull to refresh reloads the list. At
+regular width and non-accessibility text sizes, the status and a Files panel
+(Export to Files, Import a Backup, "ZIP files aren't encrypted.") sit in a
+360-point column beside the list, with content capped at 1080 points. Otherwise
+the panels stack and Files moves to a toolbar folder menu. All other fine print
+(what's included, restore semantics, encryption, iCloud limit) lives behind the
+About backups info button: a popover on iPad and a medium sheet on iPhone.
+
 ### First-launch setup
 
 The welcome centers the existing cue-card mark and semantic large-title text,

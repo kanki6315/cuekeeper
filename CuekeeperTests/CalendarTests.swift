@@ -187,6 +187,68 @@ final class CalendarTests: XCTestCase {
         XCTAssertFalse(CalendarController.update(event, from: entry))
     }
 
+    func testProviderTextNormalizationDoesNotRepublishUnchangedSource() throws {
+        var entry = CalendarEntry(key: "session/\(UUID())", title: "Title ", start: Date(timeIntervalSince1970: 1791982800),
+                                  end: Date(timeIntervalSince1970: 1791986400), allDay: false, timeZoneID: "UTC", notes: "Notes\n", location: "Venue ")
+        let event = EKEvent(eventStore: EKEventStore())
+        XCTAssertTrue(CalendarController.update(event, from: entry))
+        let published = entry
+        event.title = "Title"; event.notes = "<html><body>Notes</body></html>"; event.location = "Venue"
+        for _ in 0..<3 { XCTAssertFalse(CalendarController.update(event, from: entry, lastPublished: published)) }
+        entry.start = entry.start.addingTimeInterval(3600); entry.end = entry.end.addingTimeInterval(3600)
+        XCTAssertTrue(CalendarController.update(event, from: entry, lastPublished: published))
+        XCTAssertEqual(event.notes, "<html><body>Notes</body></html>")
+        entry.notes = "Changed in Cuekeeper"
+        XCTAssertTrue(CalendarController.update(event, from: entry, lastPublished: published))
+        XCTAssertEqual(event.notes, entry.notes)
+        XCTAssertEqual(event.title, "Title")
+        // A genuinely new entry must be populated even if its source is unchanged.
+        let replacement = EKEvent(eventStore: EKEventStore())
+        XCTAssertTrue(CalendarController.update(replacement, from: entry))
+        XCTAssertEqual(replacement.title, entry.title)
+        let state = CalendarPublishedState(calendarID: "calendar-a", entries: ["event-id": entry])
+        let reopened = try JSONDecoder().decode(CalendarPublishedState.self, from: JSONEncoder().encode(state))
+        XCTAssertEqual(reopened.entry(calendarID: "calendar-a", eventID: "event-id"), entry)
+        XCTAssertNil(reopened.entry(calendarID: "calendar-b", eventID: "event-id"))
+        XCTAssertNil(reopened.entry(calendarID: "calendar-a", eventID: "replacement-id"))
+    }
+
+    func testLocalDisconnectNeedsNeitherCalendarAccessNorPublisher() async throws {
+        let suite = "local-disconnect-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("unavailable-calendar", forKey: "calendar.selected")
+        defaults.set(["key": "id"], forKey: "calendar.eventIDs")
+        let publisher = TestCalendarPublisher()
+        try await publisher.claim(deviceID: "first", name: "Device")
+        let controller = CalendarController(defaults: defaults, publisher: publisher, deviceID: "first")
+        controller.disconnectKeepingEntries()
+        XCTAssertFalse(controller.connected)
+        XCTAssertNil(defaults.string(forKey: "calendar.selected"))
+        XCTAssertNil(defaults.dictionary(forKey: "calendar.eventIDs"))
+        let owner = await publisher.owner
+        XCTAssertEqual(owner, "first", "Local disconnect must not depend on contacting iCloud")
+        XCTAssertFalse(CalendarController(defaults: defaults).connected)
+        let permit = CalendarSyncPermit()
+        permit.cancel()
+        var committed = false
+        XCTAssertThrowsError(try permit.commit { committed = true })
+        XCTAssertFalse(committed)
+    }
+
+    func testExternalRoutesRetainDistinctRequestsAndDeduplicateActiveRoutes() {
+        let queue = ExternalPresentations()
+        let first = ExternalPresentation.expense(UUID())
+        let second = ExternalPresentation.receipt
+        queue.enqueue(first); queue.enqueue(first); queue.enqueue(second)
+        XCTAssertEqual(queue.waiting.map(\.id), [first.id, second.id])
+        queue.didPresent(first)
+        queue.enqueue(first)
+        XCTAssertEqual(queue.waiting.map(\.id), [second.id])
+        queue.didClose(first); queue.enqueue(first)
+        XCTAssertEqual(queue.waiting.map(\.id), [second.id, first.id])
+    }
+
     func testEventKitReconciliationAndSinglePublisher() async throws {
         let eventStore = EKEventStore()
         guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
@@ -237,6 +299,15 @@ final class CalendarTests: XCTestCase {
         XCTAssertEqual(events().first?.endDate, exclusiveEnd.addingTimeInterval(-1))
         let desired = try XCTUnwrap(CalendarPlan(jobs: [job]).desired.values.first)
         XCTAssertFalse(CalendarController.update(try XCTUnwrap(events().first), from: desired))
+        // Simulate provider normalization without changing the ownership marker.
+        let normalized = try XCTUnwrap(events().first)
+        normalized.notes = "<html><body>Provider-formatted notes</body></html>"
+        normalized.title = "Provider-normalized title"
+        try eventStore.save(normalized, span: .thisEvent)
+        await controller.sync()
+        XCTAssertEqual(events().first?.notes, normalized.notes)
+        XCTAssertEqual(events().first?.title, "Provider-normalized title")
+        XCTAssertNotNil(defaults.data(forKey: "calendar.lastPublished"))
         // Existing malformed entries are repaired in place on the next sync.
         let legacy = try XCTUnwrap(events().first)
         legacy.isAllDay = false

@@ -1,7 +1,6 @@
 import Combine
 import CoreData
 import Foundation
-import UIKit
 
 struct SiriEventDraft {
     static func make(title: String, start: Date, end: Date?, allDay: Bool,
@@ -38,16 +37,12 @@ struct SiriEventDraft {
 
 @MainActor
 final class EventEditorHandoff: ObservableObject {
-    private let isPresentingModal: @MainActor () -> Bool
+    private let isPresentationBlocked: @MainActor () -> Bool
 
-    init(isPresentingModal: @escaping @MainActor () -> Bool = {
-        // Include inactive scenes: Siri can temporarily deactivate the app while
-        // an existing sheet still occupies its presentation controller.
-        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .contains { $0.isKeyWindow && $0.rootViewController?.presentedViewController != nil }
-    }) {
-        self.isPresentingModal = isPresentingModal
+    // External routes can stack above existing sheets. A caller may still inject
+    // a genuine presentation blocker (for example, an unavailable scene).
+    init(isPresentationBlocked: @escaping @MainActor () -> Bool = { false }) {
+        self.isPresentationBlocked = isPresentationBlocked
     }
 
     struct Request: Identifiable {
@@ -83,7 +78,7 @@ final class EventEditorHandoff: ObservableObject {
     }
 
     private func requireAvailablePresentation() throws {
-        guard !isPresentingModal() else {
+        guard !isPresentationBlocked() else {
             throw RecordError.invalid("Close the current screen in Cuekeeper, then try again.")
         }
     }

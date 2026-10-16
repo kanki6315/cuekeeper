@@ -94,7 +94,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertFalse(store.hadExistingStore)
         XCTAssertFalse(store.isLoaded, "Exercise the wait before the load callback runs")
         let draft = try SiriEventDraft.make(title: "Cold start event", start: Date(), end: nil, allDay: true)
-        let handoff = EventEditorHandoff(isPresentingModal: { false })
+        let handoff = EventEditorHandoff(isPresentationBlocked: { false })
         // Same readiness/save sequence as the Siri creation intents.
         try await store.waitUntilLoaded()
         let id = try handoff.create(draft, in: store.container.viewContext)
@@ -122,7 +122,7 @@ final class PersistenceTests: XCTestCase {
         openedStores.append(store)
         XCTAssertFalse(store.isLoaded)
         let draft = try SiriEventDraft.make(title: "Retried event", start: Date(), end: nil, allDay: true)
-        let handoff = EventEditorHandoff(isPresentingModal: { false })
+        let handoff = EventEditorHandoff(isPresentationBlocked: { false })
         let cancelled = Task {
             try await store.waitUntilLoaded()
             _ = try handoff.create(draft, in: store.container.viewContext)
@@ -408,11 +408,11 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(anchor.feeRevisions?.count ?? 0, priorRevisions + 1)
     }
 
-    func testSiriAndReceiptRequestsRecoverAfterExistingSheetCloses() async throws {
+    func testSiriAndReceiptRequestsRecoverWhenPresentationBecomesAvailable() async throws {
         let store = try await openStore()
         let context = store.container.viewContext
-        var sheetIsPresented = true
-        let handoff = EventEditorHandoff(isPresentingModal: { sheetIsPresented })
+        var presentationBlocked = true
+        let handoff = EventEditorHandoff(isPresentationBlocked: { presentationBlocked })
         let draft = EventCreationDraft()
 
         XCTAssertThrowsError(try handoff.create(draft, in: context))
@@ -422,7 +422,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try context.count(for: NSFetchRequest<Job>(entityName: "Job")), 0)
         XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 0)
 
-        sheetIsPresented = false
+        presentationBlocked = false
         _ = try handoff.create(draft, in: context)
         let request = try XCTUnwrap(handoff.pending)
         XCTAssertEqual(try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")), 1)
@@ -431,7 +431,7 @@ final class PersistenceTests: XCTestCase {
         try handoff.requestReceiptScan()
         XCTAssertTrue(handoff.scanningReceipt)
         // A repeated scan remains idempotent even when its own sheet is visible.
-        sheetIsPresented = true
+        presentationBlocked = true
         try handoff.requestReceiptScan()
         XCTAssertThrowsError(try handoff.create(draft, in: context))
         XCTAssertNil(handoff.pending)

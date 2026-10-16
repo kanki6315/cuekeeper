@@ -80,6 +80,57 @@ final class TodayTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Arrived from another device"].firstMatch.waitForExistence(timeout: 5))
     }
 
+    func testExternalRoutesOpenAboveWizardAndReturnToItsDraft() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=pending-root"]
+        app.launch()
+        XCTAssertTrue(app.buttons["add-job"].firstMatch.waitForExistence(timeout: 15))
+        app.buttons["add-job"].firstMatch.tap()
+        let name = app.textFields["job-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Preserved underneath")
+        for (route, close) in [("calendar", "calendar-route-done"), ("receipt", "Close"), ("siri", "siri-event-done"), ("expense", "Keep Draft")] {
+            XCUIDevice.shared.system.open(URL(string: "cuekeeper://ui-test/\(route)")!)
+            let button = app.buttons[close]
+            XCTAssertTrue(button.waitForExistence(timeout: 8), route)
+            if route == "expense" {
+                app.navigationBars["Receipt"].swipeDown()
+                XCTAssertTrue(button.exists, "A routed draft still requires an explicit close")
+            }
+            button.tap()
+            XCTAssertTrue(name.waitForExistence(timeout: 5), route)
+            XCTAssertEqual(name.value as? String, "Preserved underneath", route)
+        }
+    }
+
+    func testLocalCalendarDisconnectWithoutAccess() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=calendar", "-calendar.selected", "missing-calendar"]
+        app.launch()
+        let disconnect = app.buttons["calendar-disconnect-keep"]
+        XCTAssertTrue(disconnect.waitForExistence(timeout: 15))
+        disconnect.tap()
+        let confirm = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Disconnect without removing entries", "calendar-disconnect-keep")).firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(disconnect.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["calendar-status"].label.contains("Disconnected on this device"))
+    }
+
+    func testExternalRouteOpensAboveFirstLaunch() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--first-launch"]
+        app.launch()
+        XCTAssertTrue(app.buttons["setup-start"].waitForExistence(timeout: 15))
+        XCUIDevice.shared.system.open(URL(string: "cuekeeper://ui-test/receipt")!)
+        XCTAssertTrue(app.navigationBars["Receipt for which event?"].waitForExistence(timeout: 8))
+        app.buttons["Close"].tap()
+        XCTAssertTrue(app.buttons["setup-start"].waitForExistence(timeout: 5))
+    }
+
     func testTodayLargeText() {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .portrait

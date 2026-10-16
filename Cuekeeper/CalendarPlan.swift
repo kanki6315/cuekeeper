@@ -1,7 +1,7 @@
 import Foundation
 import CoreData
 
-struct CalendarEntry: Equatable, Sendable {
+struct CalendarEntry: Equatable, Codable, Sendable {
     let key: String
     var title: String
     var start: Date

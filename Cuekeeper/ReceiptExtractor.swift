@@ -15,9 +15,9 @@ struct ReceiptFields {
         var value = ExpenseValue()
         value.merchant = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         if let date = Day.date(from: day), Day.string(from: date) == day { value.day = day }
-        if (try? Money.parse(amount)) != nil { value.amount = amount }
         if ExpenseValue.currencies.contains(currency.uppercased()) { value.currency = currency.uppercased() }
-        if (try? Money.parse(tax)) != nil { value.tax = tax }
+        if ExpenseCaptureInput.plausibleAmount(amount, currency: value.currency) { value.amount = amount }
+        if ExpenseCaptureInput.plausibleAmount(tax, currency: value.currency) { value.tax = tax }
         if ExpenseValue.categories.contains(category) { value.category = category }
         return value
     }
@@ -27,13 +27,16 @@ enum ReceiptExtractor {
     private static let receiptTooLongMessage = "This receipt is too long to read automatically. Enter the details below using the attached photo."
 
     static func recognize(_ image: Data) async throws -> String {
-        try await Task.detached(priority: .userInitiated) {
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.automaticallyDetectsLanguage = true
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.automaticallyDetectsLanguage = true
+        // A detached task doesn't inherit cancellation, so forward it to Vision; otherwise retries keep stacking up.
+        let work = Task.detached(priority: .userInitiated) {
             try VNImageRequestHandler(data: image).perform([request])
+            try Task.checkCancellation()
             return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
-        }.value
+        }
+        return try await withTaskCancellationHandler { try await work.value } onCancel: { request.cancel(); work.cancel() }
     }
 
     enum ProcessingLocation: Sendable {

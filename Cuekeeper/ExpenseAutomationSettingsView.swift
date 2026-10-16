@@ -51,6 +51,7 @@ struct ExpenseAutomationSettingsView: View {
                         .accessibilityAddTraits(.isHeader)
                     Text("After your next card tap, look for a draft in Expenses to complete. Add its receipt and choose an event.")
                     DaybookLink("Expenses to complete") { PendingExpensesView() }
+                    DaybookLink("Completion Reminders") { ExpenseAutomationRemindersView() }
                     Button("Review Setup Steps") { savedStep = 0 }.frame(minHeight: 44)
                 }
             }
@@ -272,6 +273,15 @@ private struct ExpenseAutomationPaymentDetailsView: View {
 }
 
 private struct ExpenseAutomationRemindersView: View {
+    var body: some View {
+        DaybookForm { ExpenseRemindersSection() }
+            .navigationTitle("Completion Reminders").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Shared so reminders can be turned on where drafts are reviewed, not only from Wallet setup help.
+struct ExpenseRemindersSection: View {
+    var header: String?
     @AppStorage(ExpenseNotifications.preference) private var enabled = false
     @ObservedObject private var notifications = ExpenseNotifications.shared
     @Environment(\.scenePhase) private var phase
@@ -279,30 +289,30 @@ private struct ExpenseAutomationRemindersView: View {
     @State private var requesting = false
 
     var body: some View {
-        DaybookForm {
-            Section {
-                Text("Get a notification that opens your captured draft. Drafts remain in Upcoming and Payments when reminders are off.")
-                if enabled {
-                    Button("Turn Off Reminders") { Task { await notifications.disable() } }
-                }
-                if notifications.status == .denied {
-                    Text("Notifications are disabled in device Settings.")
-                    Button("Open Notification Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }
-                } else if !enabled {
-                    Button("Enable Reminders") {
-                        requesting = true
-                        Task { await notifications.enable(); requesting = false }
-                    }.disabled(requesting).accessibilityIdentifier("enable-expense-reminders")
-                }
-                if requesting { ProgressView("Requesting permission…") }
-                if let error = notifications.lastError { Text(error).foregroundStyle(Color("SecondaryText")) }
+        Section {
+            Text("Get a notification that opens your captured draft. Drafts remain in Upcoming and Payments when reminders are off.")
+            if enabled {
+                Button("Turn Off Reminders") { Task { await notifications.disable() } }
             }
-        }.navigationTitle("Completion Reminders").navigationBarTitleDisplayMode(.inline)
-            .task { await notifications.refresh() }
-            .onChange(of: phase) { _, value in
-                if value == .active { Task { await notifications.refresh() } }
+            if notifications.status == .denied {
+                Text("Notifications are disabled in device Settings.")
+                Button("Open Notification Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
+            } else if !enabled {
+                Button("Enable Reminders") {
+                    requesting = true
+                    Task { await notifications.enable(); requesting = false }
+                }.disabled(requesting).accessibilityIdentifier("enable-expense-reminders")
             }
+            if requesting { ProgressView("Requesting permission…") }
+            if let error = notifications.lastError { Text(error).foregroundStyle(Color("SecondaryText")) }
+        } header: {
+            if let header { Text(header) }
+        }
+        .task { await notifications.refresh() }
+        .onChange(of: phase) { _, value in
+            if value == .active { Task { await notifications.refresh() } }
+        }
     }
 }

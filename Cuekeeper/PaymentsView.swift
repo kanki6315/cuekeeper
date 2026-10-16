@@ -378,7 +378,7 @@ struct PaymentEditorView: View {
                     }.padding(.vertical, 4)
                     DatePicker("Received", selection: $draft.date, displayedComponents: .date)
                     DaybookTextField("Reference or note (optional)", text: $draft.note, axis: .vertical)
-                    if let balance = try? invoice?.balance(), let amount = try? Money.parse(draft.amount), amount >= 0, let remaining = try? Money.minorUnits(Decimal(balance) - Decimal(amount)) {
+                    if let balance = try? invoice?.balance(), let amount = try? Money.parse(draft.amount, currency: currency), amount >= 0, let remaining = try? Money.minorUnits(Decimal(balance) - Decimal(amount)) {
                         LabeledContent(remaining < 0 ? "Credit after payment" : "Remaining after payment", value: Money.format(abs(remaining), currency: currency)).font(.subheadline.weight(.semibold)).monospacedDigit()
                     }
                 } header: { Text("Payment") } footer: { Text("Each receipt is kept in history. To correct it later, reverse the receipt and record the corrected payment.") }

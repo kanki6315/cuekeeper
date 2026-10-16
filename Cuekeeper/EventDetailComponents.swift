@@ -323,6 +323,8 @@ struct RunOfShowRow: View {
     let zone: TimeZone
     /// Shown trailing at regular width so remote workers see both clocks at once.
     var trackZone: TimeZone? = nil
+    /// Series every session shares; a session's own series shows only when it differs.
+    var eventSeries: [String] = []
     var onAddTime: (() -> Void)? = nil
     @ScaledMetric(relativeTo: .body) private var timeWidth = 76
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -334,6 +336,9 @@ struct RunOfShowRow: View {
             time
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.title).font(.body.weight(skipped ? .regular : .semibold))
+                if !session.series.isEmpty && session.series != eventSeries {
+                    ForEach(session.series, id: \.self) { Text($0).font(.subheadline) }
+                }
                 if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(subtitleColor) }
             }.frame(maxWidth: .infinity, alignment: .leading)
             if session.start == nil, !skipped, let onAddTime {

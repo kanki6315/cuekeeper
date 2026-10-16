@@ -6,6 +6,11 @@ final class CaptureTests: XCTestCase {
         XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
     }
     /// Scroll the active editor or right-hand detail pane, not the iPad job list.
+    /// Event details split into Schedule / Money / Details tabs.
+    private func openEventTab(_ tab: String, in app: XCUIApplication) {
+        let button = app.buttons["event-tab-\(tab)"]
+        if button.waitForExistence(timeout: 5) { button.tap() }
+    }
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<10 {
             let forms = app.scrollViews.matching(identifier: "daybook-form")
@@ -105,6 +110,7 @@ final class CaptureTests: XCTestCase {
 
     func testInvoiceAndPartialPaymentWorkflow() {
         let app = createEvent("Invoiced show")
+        openEventTab("money", in: app)
         let addInvoice = app.buttons["add-job-invoice"]
         reveal(addInvoice, in: app)
         addInvoice.tap()
@@ -153,6 +159,7 @@ final class CaptureTests: XCTestCase {
 
     func testOverallFeeCanBeSavedWithoutBreakdown() {
         let app = createEvent("Paid broadcast")
+        openEventTab("money", in: app)
         let fee = app.buttons["job-fee"]
         reveal(fee, in: app)
         fee.tap()
@@ -172,6 +179,7 @@ final class CaptureTests: XCTestCase {
 
     func testBreakdownChangesOverallFeeOnlyWhenExplicitlyApplied() {
         let app = createEvent("Breakdown broadcast")
+        openEventTab("money", in: app)
         let fee = app.buttons["job-fee"]
         reveal(fee, in: app)
         fee.tap(); app.buttons["edit-fee"].tap()
@@ -289,6 +297,7 @@ final class CaptureTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Client A"].firstMatch.exists)
         XCTAssertFalse(app.buttons["event-add-client"].exists)
         XCTAssertFalse(app.buttons["Include Existing Booking"].exists)
+        openEventTab("money", in: app)
         let fee = app.buttons["job-fee"]; reveal(fee, in: app); fee.tap()
         XCTAssertTrue(app.buttons["edit-fee"].waitForExistence(timeout: 5))
         app.buttons["edit-fee"].tap()
@@ -330,11 +339,11 @@ final class CaptureTests: XCTestCase {
         let location = app.textFields["job-location"]; reveal(location, in: app); location.tap(); location.typeText("Silverstone\n")
         app.buttons["save-event"].tap()
         XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Silverstone"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "edit-event-dates", "Silverstone")).firstMatch.waitForExistence(timeout: 5))
         app.buttons["edit-event"].tap()
         reveal(location, in: app); location.tap(); location.typeText(" discarded\n")
         app.buttons["Cancel"].tap(); app.buttons["Discard Changes"].tap()
         XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Silverstone discarded"].exists)
+        XCTAssertFalse(app.buttons["edit-event-dates"].label.contains("discarded"))
     }
 }

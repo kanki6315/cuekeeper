@@ -56,6 +56,7 @@
 		6F10F9A23FA535E443F05AAB /* ExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */; };
 		75124E87A3A68003C805BECE /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8A51E9BA7FE1E0EA6C578E /* TodayTests.swift */; };
 		789BFF476A91BB6DA4110CE0 /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BCF474DBEC80465600AB43 /* RecoveryView.swift */; };
+		7C3981B233655BCC6ADF3626 /* JobDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6813AB65D56DEB9B484FB834 /* JobDetailView.swift */; };
 		8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */; };
 		8DC18CBE3C781DED3F4B888C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
 		8FCB4E47836A4382380C6D83 /* FirstLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */; };
@@ -194,6 +195,7 @@
 		658D5107A3868AF488F32DDE /* RecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryTests.swift; sourceTree = "<group>"; };
 		66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV2.xcdatamodel; sourceTree = "<group>"; };
 		66BCF474DBEC80465600AB43 /* RecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryView.swift; sourceTree = "<group>"; };
+		6813AB65D56DEB9B484FB834 /* JobDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobDetailView.swift; sourceTree = "<group>"; };
 		69DFC518A6A7190800E88CDF /* EventWizardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardTests.swift; sourceTree = "<group>"; };
 		6BBD1B9E7E5410319837EBCE /* EventWeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWeatherView.swift; sourceTree = "<group>"; };
 		6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherTests.swift; sourceTree = "<group>"; };
@@ -406,6 +408,7 @@
 				762E08735536CF82AAD4C49D /* FirstLaunchView.swift */,
 				C31D03E096ABF3A6E23F885D /* Info.plist */,
 				575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */,
+				6813AB65D56DEB9B484FB834 /* JobDetailView.swift */,
 				D682B024A3E281F66B73080A /* JobEditorView.swift */,
 				91C80D913C2F1C3287CFD3DF /* LibraryView.swift */,
 				B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */,
@@ -740,6 +743,7 @@
 				F32D8B7636FD757FB78A8368 /* FirstLaunchView.swift in Sources */,
 				B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */,
 				AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */,
+				7C3981B233655BCC6ADF3626 /* JobDetailView.swift in Sources */,
 				9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */,
 				5FDD73F6DC26E4162D82A56C /* LibraryDraft.swift in Sources */,
 				C57248F482328358DA6A3C51 /* LibraryView.swift in Sources */,

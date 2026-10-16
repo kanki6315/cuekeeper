@@ -9,6 +9,8 @@ final class EventWizardTests: XCTestCase {
         let event = app.staticTexts["City vs United"].firstMatch
         XCTAssertTrue(event.waitForExistence(timeout: 10))
         event.tap()
+        let details = app.buttons["event-tab-details"]
+        XCTAssertTrue(details.waitForExistence(timeout: 5)); details.tap()
         let delete = app.buttons["delete-job"]
         for _ in 0..<15 where !delete.isHittable {
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.8))
@@ -186,7 +188,8 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(location.waitForExistence(timeout: 5))
         location.tap(); location.typeText("Studio")
         app.buttons["save-event"].tap()
-        XCTAssertTrue(app.staticTexts["Studio"].firstMatch.waitForExistence(timeout: 5))
+        // The event header joins dates and place on one line.
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "edit-event-dates", "Studio")).firstMatch.waitForExistence(timeout: 5))
         app.buttons["siri-event-done"].tap()
         XCTAssertFalse(app.buttons["siri-event-done"].exists)
         XCTAssertTrue(app.staticTexts["IMSA esports"].firstMatch.exists)

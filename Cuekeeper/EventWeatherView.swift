@@ -124,6 +124,7 @@ struct ForecastContent: View {
                 if snapshot.isOutdated(at: now) {
                     Label("Outdated forecast · awaiting daily update", systemImage: "clock")
                         .font(.caption).foregroundStyle(Color("AmberText"))
+                        .accessibilityElement(children: .combine)
                         .accessibilityIdentifier("weather-outdated")
                 }
             }

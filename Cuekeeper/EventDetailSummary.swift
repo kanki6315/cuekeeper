@@ -22,6 +22,7 @@ struct EventSessionFact: Equatable, Identifiable {
     let call: Date?
     let confirmed: Bool
     let coverage: String
+    var series: [String] = []
 }
 
 struct EventExpenseFact: Equatable, Identifiable {
@@ -298,7 +299,8 @@ extension EventDetailFacts {
             sessions: job.activeSessions.compactMap { session in
                 guard let id = session.id else { return nil }
                 return EventSessionFact(id: id, title: session.title, day: session.eventDay, start: session.startTime, end: session.endTime,
-                                        call: session.callTime, confirmed: session.scheduleStatus == "confirmed", coverage: session.coverage)
+                                        call: session.callTime, confirmed: session.scheduleStatus == "confirmed", coverage: session.coverage,
+                                        series: session.effectiveSeriesNames)
             },
             fee: fee,
             billing: Self.billing(job: job, context: context, index: index),

@@ -39,13 +39,13 @@ final class DesignSupplementTests: XCTestCase {
         XCTAssertTrue(edit.waitForExistence(timeout: 10)); edit.tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()
-        let complete = app.buttons["Mark completed"]
-        XCTAssertTrue(complete.waitForExistence(timeout: 5))
-        complete.tap()
+        let status = app.buttons["booking-status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        status.tap()
         let completed = app.buttons["booking-status-completed"]
         XCTAssertTrue(completed.waitForExistence(timeout: 5))
-        XCTAssertTrue(completed.isSelected)
-        XCTAssertFalse(complete.exists)
+        completed.tap()
+        XCTAssertTrue(app.buttons["booking-status"].label.contains("Completed"))
     }
 
     /// Verify the changed scope control and capture glass on populated working screens.

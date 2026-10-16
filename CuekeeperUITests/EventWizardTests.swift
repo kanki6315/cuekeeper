@@ -80,17 +80,22 @@ final class EventWizardTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-event"]
         app.launch()
-        XCTAssertTrue(app.buttons["event-timezone"].waitForExistence(timeout: 10))
+        // Timezones are read-only; places set them.
+        XCTAssertTrue(element("event-timezone", in: app).waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["event-timezone"].exists)
         let arrangement = app.buttons["work-arrangement"]
         for _ in 0..<8 where !arrangement.isHittable { app.swipeUp() }
         XCTAssertTrue(arrangement.isHittable)
-        XCTAssertTrue(app.buttons["work-timezone"].exists)
+        XCTAssertTrue(app.textFields["work-location"].exists)
+        XCTAssertTrue(element("work-timezone", in: app).exists)
         capture("timezone-remote")
         arrangement.tap(); app.buttons["On-site"].tap()
-        XCTAssertFalse(app.buttons["work-timezone"].exists)
+        XCTAssertFalse(app.textFields["work-location"].exists)
+        XCTAssertFalse(element("work-timezone", in: app).exists)
         capture("timezone-onsite")
         arrangement.tap(); app.buttons["Hybrid"].tap()
-        XCTAssertTrue(app.buttons["work-timezone"].exists)
+        XCTAssertTrue(app.textFields["work-location"].exists)
+        XCTAssertTrue(element("work-timezone", in: app).exists)
         capture("timezone-hybrid")
         app.buttons["Cancel"].tap(); app.buttons["Discard Changes"].tap()
         app.terminate()
@@ -106,7 +111,7 @@ final class EventWizardTests: XCTestCase {
             for _ in 0..<5 where !zone.isHittable { editor.swipeUp() }
             XCTAssertTrue(zone.isHittable)
             XCTAssertFalse(app.buttons["event-timezone"].exists)
-            XCTAssertFalse(app.buttons["work-timezone"].exists)
+            XCTAssertFalse(element("work-timezone", in: app).exists)
             capture(large ? "session-inherited-timezone-large" : "session-inherited-timezone")
             app.terminate()
         }
@@ -352,7 +357,10 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Support championship"].exists)
         capture("wizard-multiple-series")
         next.tap()
-        let location = app.textFields["Location"]
+        let arrangement = app.buttons["work-arrangement"]
+        for _ in 0..<4 where !arrangement.isHittable { app.swipeUp() }
+        arrangement.tap(); app.buttons["Remote"].tap()
+        let location = app.textFields["work-location"]
         if !location.isHittable { app.swipeUp() }
         location.tap(); location.typeText("Silverstone")
         let locationSuggestion = app.buttons.matching(identifier: "location-suggestion").firstMatch
@@ -382,8 +390,36 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(date.debugDescription.contains("Jan 15") || date.debugDescription.contains("January 15"), "Session should display January 15 in Tokyo, not January 14 in New York: \(date.debugDescription)")
         capture("wizard-foreign-session-date")
         app.buttons["wizard-continue"].tap()
-        XCTAssertFalse(app.buttons["work-timezone"].exists)
+        XCTAssertFalse(element("work-timezone", in: app).exists)
         capture("wizard-winter-work-timezone")
+    }
+
+    func testChosenLocationSetsEventTimezone() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job",
+                               "--location-fixtures", "--slow-location-fixtures"]
+        app.launch()
+        let next = app.buttons["wizard-continue"]
+        XCTAssertTrue(next.waitForExistence(timeout: 10))
+        let location = app.textFields["job-location"]
+        for _ in 0..<6 where !location.isHittable || location.frame.maxY > next.frame.minY - 12 { app.swipeUp() }
+        location.tap(); dismissKeyboardIntroduction(in: app); location.typeText("Vancouver")
+        let suggestion = app.buttons.matching(identifier: "location-suggestion").firstMatch
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        suggestion.tap()
+        // Continue waits for the lookup so the old zone can't be saved by accident.
+        XCTAssertTrue(element("event-timezone-pending", in: app).waitForExistence(timeout: 2))
+        XCTAssertFalse(next.isEnabled)
+        let zone = element("event-timezone", in: app)
+        let pacific = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Pacific"), object: zone)
+        XCTAssertEqual(XCTWaiter.wait(for: [pacific], timeout: 10), .completed)
+        XCTAssertTrue(next.isEnabled)
+        capture("wizard-location-sets-timezone")
+    }
+
+    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
     private func dismissKeyboardIntroduction(in app: XCUIApplication) {

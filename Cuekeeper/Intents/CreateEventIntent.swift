@@ -36,18 +36,16 @@ struct CreateEventIntent: AppIntent {
     @Parameter(title: "Roles") var roles: [String]?
     @Parameter(title: "Booking status", default: .tentative) var bookingStatus: BookingStatus
     @Parameter(title: "Work arrangement", default: .unspecified) var workArrangement: WorkArrangement
-    @Parameter(title: "Location") var location: String?
-    @Parameter(title: "Event timezone", description: "An IANA timezone, such as Europe/London. Optional for an all-day event.")
-    var timeZoneID: String?
+    @Parameter(title: "Location", description: "The venue. Its timezone becomes the event timezone.") var location: String?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Create an event on \(\.$startDate)") {
             \.$endDate; \.$eventTitle; \.$client; \.$project; \.$championships
-            \.$roles; \.$bookingStatus; \.$workArrangement; \.$location; \.$timeZoneID
+            \.$roles; \.$bookingStatus; \.$workArrangement; \.$location
         }
     }
 
-    func makeDraft() -> EventCreationDraft {
+    func makeDraft(timeZone: TimeZone? = nil) -> EventCreationDraft {
         var draft = EventCreationDraft()
         draft.events[0].details.name = eventTitle ?? ""
         draft.events[0].details.startDate = startDate
@@ -58,8 +56,8 @@ struct CreateEventIntent: AppIntent {
         draft.shared.roleNames = Set((roles ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
         draft.shared.bookingStatus = bookingStatus
         draft.shared.workArrangement = workArrangement
-        draft.shared.location = (location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        draft.events[0].timeZoneID = (timeZoneID ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        draft.events[0].details.location = (location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if let timeZone { draft.events[0].timeZoneID = timeZone.identifier }
         return draft
     }
 
@@ -68,10 +66,10 @@ struct CreateEventIntent: AppIntent {
         if let endDate, Day.string(from: endDate) < Day.string(from: startDate) {
             throw $endDate.needsValueError("What is the last day? It must be on or after the start date.")
         }
-        let draft = makeDraft()
-        if !draft.events[0].timeZoneID.isEmpty && TimeZone(identifier: draft.events[0].timeZoneID) == nil {
-            throw $timeZoneID.needsValueError("Which timezone? Use a timezone such as Europe/London or America/New_York.")
-        }
+        // The venue sets the zone; without a match the home zone applies.
+        let place = (location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let zone = place.isEmpty ? nil : await PlaceZone.withTimeout { try await PlaceZone.resolve(query: place) }
+        let draft = makeDraft(timeZone: zone)
         try await persistence.waitUntilLoaded()
         _ = try handoff.create(draft, in: persistence.container.viewContext)
         return .result(dialog: "Created your event. Add the remaining details in Cuekeeper.")

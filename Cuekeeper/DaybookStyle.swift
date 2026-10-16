@@ -391,20 +391,20 @@ extension WorkSession {
         guard let startTime else { return day.isEmpty ? "Schedule to come" : "Time to come · \(Day.display(day))" }
         var result = "\(shortDate(startTime)) · \(shortTime(startTime))"
         if let endTime {
-            let zone = TimeZone(identifier: eventTimeZoneID) ?? .current
+            let zone = TimeZone.effective(eventTimeZoneID)
             let overnight = Day.string(from: startTime, timeZone: zone) != Day.string(from: endTime, timeZone: zone)
             result += " – \(overnight ? shortDate(endTime) + " " : "")\(shortTime(endTime))"
         }
-        let zone = TimeZone(identifier: eventTimeZoneID) ?? .current
+        let zone = TimeZone.effective(eventTimeZoneID)
         return result + " " + (zone.abbreviation(for: startTime) ?? eventTimeZoneID)
     }
     func shortDate(_ date: Date) -> String {
-        let formatter = DateFormatter(); formatter.timeZone = TimeZone(identifier: eventTimeZoneID) ?? .current
+        let formatter = DateFormatter(); formatter.timeZone = TimeZone.effective(eventTimeZoneID)
         formatter.dateStyle = .medium; formatter.timeStyle = .none
         return formatter.string(from: date)
     }
     func shortTime(_ date: Date) -> String {
-        let formatter = DateFormatter(); formatter.timeZone = TimeZone(identifier: eventTimeZoneID) ?? .current
+        let formatter = DateFormatter(); formatter.timeZone = TimeZone.effective(eventTimeZoneID)
         formatter.dateStyle = .none; formatter.timeStyle = .short
         return formatter.string(from: date)
     }

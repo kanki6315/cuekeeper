@@ -382,12 +382,17 @@ struct RunOfShowRow: View {
 struct MoneySummaryPanel: View {
     let fee: EventFeeFact
     let progress: InvoiceProgress
+    /// Shown when the panel opens the fee screen.
+    var chevron = false
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(amount).font(.title2.bold()).monospacedDigit()
                 Spacer(minLength: 8)
                 Text(agreement).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                if chevron {
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                }
             }
             switch progress {
             case let .single(total, paid, currency):

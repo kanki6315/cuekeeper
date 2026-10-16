@@ -25,6 +25,10 @@ struct JobDetailView: View {
     @SceneStorage private var storedTab: String
     @AppStorage("eventTimeDisplay") private var storedTime = ""
     @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var width: CGFloat = 0
+    /// Columns replace tabs when the detail column itself is wide, not merely on regular size classes:
+    /// an iPad showing the sidebar and agenda leaves too little room.
+    private var wide: Bool { width >= 820 && !typeSize.isAccessibilitySize }
     @State private var error: String?
     @State private var editing = false
     @State private var confirmingDeletion = false
@@ -60,6 +64,18 @@ struct JobDetailView: View {
                         OpenItemsPanel(items: summary.openItems, perform: perform)
                     }.padding(.bottom, 16)
                 }
+                if wide {
+                    HStack(alignment: .top, spacing: 32) {
+                        schedule(summary, choice: choice)
+                            .frame(width: max(0, (min(width - 40, 1240) - 32) * 1.45 / 2.45))
+                        VStack(alignment: .leading, spacing: 28) {
+                            EventSectionTitle("Money")
+                            money(summary)
+                            EventSectionTitle("Details")
+                            details
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
                 Section {
                     Group {
                         switch tab {
@@ -75,13 +91,15 @@ struct JobDetailView: View {
                         .padding(.vertical, 4)
                         .background(Color("PageBackground"))
                 }
+                }
             }
-            .frame(maxWidth: 760)
+            .frame(maxWidth: wide ? 1240 : 760)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .accessibilityIdentifier("daybook-form")
         .daybookSurface()
         .saveErrorAlert($error)
@@ -145,7 +163,9 @@ struct JobDetailView: View {
                         .font(.subheadline).foregroundStyle(Color("SecondaryText"))
                 }
                 ForEach(summary.days) { day in
-                    RunOfShowDayView(day: day) { fact in sessionRow(fact, zone: zone) }
+                    RunOfShowDayView(day: day) { fact in
+                        sessionRow(fact, zone: zone, trackZone: wide && choice == .yours ? summary.zone(for: .track) : nil)
+                    }
                 }
                 HStack(spacing: 12) {
                     Button("Session", systemImage: "plus") { addingSession = true }
@@ -162,10 +182,10 @@ struct JobDetailView: View {
         }
     }
 
-    @ViewBuilder private func sessionRow(_ fact: EventSessionFact, zone: TimeZone) -> some View {
+    @ViewBuilder private func sessionRow(_ fact: EventSessionFact, zone: TimeZone, trackZone: TimeZone?) -> some View {
         if let session = sessions.first(where: { $0.id == fact.id }) {
             HStack(spacing: 0) {
-                NavigationLink { SessionDetailView(session: session) } label: { RunOfShowRow(session: fact, zone: zone, eventSeries: job.eventSeriesNames) }
+                NavigationLink { SessionDetailView(session: session) } label: { RunOfShowRow(session: fact, zone: zone, trackZone: trackZone, eventSeries: job.eventSeriesNames) }
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens the session")
                 if fact.start == nil && fact.coverage != "notCovering" {
@@ -184,11 +204,8 @@ struct JobDetailView: View {
         let fee: EventFeeFact = (try? job.currentFee()).map(EventFeeFact.value) ?? .conflict
         VStack(alignment: .leading, spacing: 24) {
             NavigationLink { FeeDetailView(job: job) } label: {
-                MoneySummaryPanel(fee: fee, progress: summary.invoiceProgress)
+                MoneySummaryPanel(fee: fee, progress: summary.invoiceProgress, chevron: true)
                     .foregroundStyle(Color.primary)
-                    .overlay(alignment: .topTrailing) {
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).padding(16)
-                    }
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

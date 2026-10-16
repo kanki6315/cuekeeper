@@ -187,7 +187,10 @@ final class EventWizardTests: XCTestCase {
         let location = app.textFields["job-location"]
         XCTAssertTrue(location.waitForExistence(timeout: 5))
         location.tap(); location.typeText("Studio")
-        app.buttons["save-event"].tap()
+        // Saving waits for the typed place's timezone lookup.
+        let save = app.buttons["save-event"]
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: save)], timeout: 5), .completed)
+        save.tap()
         XCTAssertTrue(app.staticTexts["Studio"].firstMatch.waitForExistence(timeout: 5))
         app.buttons["siri-event-done"].tap()
         XCTAssertFalse(app.buttons["siri-event-done"].exists)
@@ -414,10 +417,18 @@ final class EventWizardTests: XCTestCase {
         XCTAssertTrue(element("event-timezone-pending", in: app).waitForExistence(timeout: 2))
         XCTAssertFalse(next.isEnabled)
         let zone = element("event-timezone", in: app)
-        let pacific = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Pacific"), object: zone)
-        XCTAssertEqual(XCTWaiter.wait(for: [pacific], timeout: 10), .completed)
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element("event-timezone-pending", in: app))
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 10), .completed)
+        XCTAssertTrue(zone.label.contains("Pacific"))
         XCTAssertTrue(next.isEnabled)
         capture("wizard-location-sets-timezone")
+        // Typing a place without picking a suggestion still replaces the old zone.
+        location.tap()
+        location.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40) + "Silverstone")
+        let notPacific = XCTNSPredicateExpectation(predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "Pacific"), object: zone)
+        XCTAssertEqual(XCTWaiter.wait(for: [notPacific], timeout: 10), .completed)
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: next)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 5), .completed)
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

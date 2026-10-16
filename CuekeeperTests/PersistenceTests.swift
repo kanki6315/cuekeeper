@@ -250,7 +250,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(try reloaded.directPaid(), 5000)
     }
 
-    func testEventTimezoneControlsSessionsAndRemoteDisplayWithoutMovingInstants() async throws {
+    func testEventTimezoneControlsSessionsAndRemoteDisplayAndKeepsWallClockOnZoneChange() async throws {
         let store = try await openStore(); let context = store.container.viewContext
         var creation = EventCreationDraft()
         creation.events[0].timeZoneID = "Europe/London"
@@ -279,13 +279,15 @@ final class PersistenceTests: XCTestCase {
         let original = EventDraft(anchor: job)
         var event = original; event.timeZoneID = "America/Los_Angeles"
         try event.save(in: context, anchorID: id, baseline: original)
-        XCTAssertEqual(session.startTime, start)
-        XCTAssertEqual(session.endTime, draft.endTime)
-        XCTAssertEqual(session.callTime, draft.callTime)
-        XCTAssertEqual(session.day, "2026-10-14")
+        // 01:30 in London stays 01:30 in Los Angeles: the wall clock is kept, the instant moves 8h.
+        let moved = start.addingTimeInterval(8 * 3600)
+        XCTAssertEqual(session.startTime, moved)
+        XCTAssertEqual(session.endTime, draft.endTime?.addingTimeInterval(8 * 3600))
+        XCTAssertEqual(session.callTime, draft.callTime?.addingTimeInterval(8 * 3600))
+        XCTAssertEqual(session.day, "2026-10-15")
         XCTAssertEqual(session.eventTimeZoneID, "America/Los_Angeles")
         let entry = try XCTUnwrap(CalendarPlan(jobs: [job]).desired.values.first { !$0.allDay })
-        XCTAssertEqual(entry.timeZoneID, "America/Los_Angeles"); XCTAssertEqual(entry.start, start)
+        XCTAssertEqual(entry.timeZoneID, "America/Los_Angeles"); XCTAssertEqual(entry.start, moved)
         var cleared = EventDraft(anchor: job); cleared.timeZoneID = ""
         try cleared.save(in: context, anchorID: id)
         XCTAssertEqual(job.eventTimeZoneID, "America/Los_Angeles")
@@ -294,12 +296,32 @@ final class PersistenceTests: XCTestCase {
             try work.save(in: context, editing: id, baseline: before)
             XCTAssertEqual(job.workTimeZoneID, arrangement == .onSite ? "America/Los_Angeles" : "America/New_York")
             XCTAssertEqual(session.localScheduleDescription == nil, arrangement == .onSite)
-            XCTAssertEqual(session.startTime, start)
+            XCTAssertEqual(session.startTime, moved)
         }
         let reopened = try await openStore()
         let restored = try XCTUnwrap(reopened.container.viewContext.existingObject(with: id) as? Job)
         XCTAssertEqual(restored.eventTimeZoneID, "America/Los_Angeles")
-        XCTAssertEqual(restored.activeSessions.first?.startTime, start)
+        XCTAssertEqual(restored.activeSessions.first?.startTime, moved)
+    }
+
+    func testWizardZoneChangeKeepsSessionWallClockTimes() throws {
+        let formatter = ISO8601DateFormatter()
+        var event = EventOutline(); event.timeZoneID = "America/New_York"
+        var session = SessionDraft(day: "2026-03-08", timeZoneID: "America/New_York")
+        session.startTime = try XCTUnwrap(formatter.date(from: "2026-03-08T14:00:00Z")) // 10:00 EDT
+        session.endTime = try XCTUnwrap(formatter.date(from: "2026-03-09T03:30:00Z"))   // 23:30 EDT
+        event.sessions = [session]
+        event.timeZoneID = "Asia/Tokyo"
+        let rezoned = try XCTUnwrap(event.sessions.first)
+        XCTAssertEqual(rezoned.timeZoneID, "Asia/Tokyo")
+        XCTAssertEqual(rezoned.startTime, formatter.date(from: "2026-03-08T01:00:00Z")) // 10:00 JST
+        XCTAssertEqual(rezoned.endTime, formatter.date(from: "2026-03-08T14:30:00Z"))   // 23:30 JST
+        XCTAssertEqual(EventCreationDraft(events: [event]).resolvedEvents()[0].sessions[0].day, "2026-03-08")
+        // A time skipped by daylight saving moves forward rather than failing.
+        var gap = SessionDraft(day: "2026-03-08", timeZoneID: "Asia/Tokyo")
+        gap.startTime = try XCTUnwrap(formatter.date(from: "2026-03-07T17:30:00Z")) // 02:30 JST
+        XCTAssertEqual(gap.rezoned(from: "Asia/Tokyo", to: "America/New_York").startTime,
+                       formatter.date(from: "2026-03-08T07:30:00Z")) // 03:30 EDT
     }
 
     func testLegacyCommonTimezoneBecomesEventDefaultAndMissingZoneUsesHome() async throws {

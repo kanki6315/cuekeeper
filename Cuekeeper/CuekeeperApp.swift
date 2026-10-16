@@ -51,8 +51,7 @@ struct CuekeeperApp: App {
         }
         #if DEBUG
         if ProcessInfo.processInfo.isUITesting, arguments.contains("--reset-test-store") {
-            UserDefaults.standard.set(arguments.contains("--today-fixtures") ? "Today" : "All", forKey: "upcoming.scope")
-            for key in ["firstLaunchCompleted", "defaultRole", "homeTimeZone", "homeLocation", "appearance", "defaultCurrency", "displayCurrencies", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
+            for key in [UpcomingView.modeKey, UpcomingView.modeSetKey, "upcoming.scope", "upcoming.dismissedAttention", "firstLaunchCompleted", "defaultRole", "homeTimeZone", "homeLocation", "appearance", "defaultCurrency", "displayCurrencies", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
                 UserDefaults.standard.removeObject(forKey: key)
             }
         }
@@ -133,7 +132,7 @@ struct CuekeeperApp: App {
                 }
                 guard url.scheme == "cuekeeper", url.host == "today" else { return }
                 calendarLink = nil
-                UserDefaults.standard.set("Today", forKey: "upcoming.scope")
+                UpcomingView.requestNow()
                 NotificationCenter.default.post(name: Notification.Name("CuekeeperOpenToday"), object: nil)
             }
             .tint(Color("AccentColor"))

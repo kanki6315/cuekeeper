@@ -5,22 +5,25 @@ final class TodayTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 15))
-        app.buttons["upcoming-scope-All"].tap()
-        XCTAssertTrue(app.textFields["search-jobs"].waitForExistence(timeout: 3))
+        let now = app.buttons["upcoming-mode-now"], plan = app.buttons["upcoming-mode-plan"]
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(now.isSelected)
+        plan.tap()
+        XCTAssertTrue(app.staticTexts["Coming up"].firstMatch.waitForExistence(timeout: 3))
         app.open(URL(string: "cuekeeper://today")!)
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["upcoming-mode-now"].isSelected)
         app.staticTexts["Qualifying"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Qualifying"].waitForExistence(timeout: 3))
         app.open(URL(string: "cuekeeper://today")!)
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
     }
     func testTodayLargeText() {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .portrait
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures", "--design-dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Day schedule"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["upcoming-mode-now"].waitForExistence(timeout: 15))
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)
         Thread.sleep(forTimeInterval: 0.6)
@@ -49,7 +52,7 @@ final class TodayTests: XCTestCase {
             for route in ["root", "widgets"] {
                 app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures", "--design-screen=\(route)"] + (theme == "dark" ? ["--design-dark"] : [])
                 app.launch()
-                XCTAssertTrue(app.staticTexts[route == "root" ? "Day schedule" : "Small widget · one event"].firstMatch.waitForExistence(timeout: 15))
+                XCTAssertTrue(app.staticTexts[route == "root" ? "Run of show" : "Small widget · one event"].firstMatch.waitForExistence(timeout: 15))
                 if route == "root" {
                     XCTAssertTrue(app.staticTexts["Qualifying"].firstMatch.exists)
                     XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)

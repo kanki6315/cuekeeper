@@ -60,13 +60,13 @@ final class DesignSupplementTests: XCTestCase {
                 app.launch()
                 XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
                 if route == "root" {
-                    let week = app.buttons["upcoming-scope-Week"]
-                    let all = app.buttons["upcoming-scope-All"]
-                    XCTAssertTrue(week.waitForExistence(timeout: 10))
-                    week.tap()
-                    XCTAssertTrue(week.isSelected)
-                    all.tap()
-                    XCTAssertTrue(all.isSelected)
+                    let plan = app.buttons["upcoming-mode-plan"]
+                    let now = app.buttons["upcoming-mode-now"]
+                    XCTAssertTrue(plan.waitForExistence(timeout: 10))
+                    plan.tap()
+                    XCTAssertTrue(plan.isSelected)
+                    now.tap()
+                    XCTAssertTrue(now.isSelected)
                     XCTAssertTrue(app.buttons["add-job"].isHittable)
                 }
                 Thread.sleep(forTimeInterval: 1)

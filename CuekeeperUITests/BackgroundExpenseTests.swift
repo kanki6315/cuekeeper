@@ -36,8 +36,16 @@ final class BackgroundExpenseUITests: XCTestCase {
     }
     func testSettingsInstructionsAndPendingPrompt() {
         let app = launch("pending-root")
+        // Upcoming lists drafts without an event under Plan's To settle.
+        let plan = app.buttons["upcoming-mode-plan"]
+        XCTAssertTrue(plan.waitForExistence(timeout: 15)); plan.tap()
+        let settle = app.buttons["settle-toggle"]
+        XCTAssertTrue(settle.waitForExistence(timeout: 5)); settle.tap()
+        XCTAssertTrue(app.staticTexts["Receipt to finish"].firstMatch.waitForExistence(timeout: 5)); shot("pending-upcoming-settle")
+        let expenses = app.buttons["Expenses"].firstMatch
+        if expenses.exists { expenses.tap() } else { app.staticTexts["Expenses"].firstMatch.tap() }
         let pending = app.buttons["pending-expenses"].firstMatch
-        XCTAssertTrue(pending.waitForExistence(timeout: 15)); shot("pending-upcoming-prompt")
+        XCTAssertTrue(pending.waitForExistence(timeout: 10))
         pending.tap()
         XCTAssertTrue(app.navigationBars["Expenses to complete"].waitForExistence(timeout: 5))
         app.buttons["Wallet automation setup"].tap()

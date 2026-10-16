@@ -6,7 +6,7 @@ final class EventVisualTests: XCTestCase {
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures",
                                "--design-screen=root", "-appearance", "light"]
         app.launch()
-        XCTAssertTrue(app.buttons["upcoming-scope-All"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["upcoming-mode-now"].waitForExistence(timeout: 10))
         let events = app.buttons["Events"].firstMatch
         if events.exists { events.tap() } else { app.staticTexts["Events"].firstMatch.tap() }
         let active = app.buttons["event-status-scope-Active"]

@@ -41,6 +41,7 @@ struct JobDetailView: View {
     @State private var showingFee = false
     @State private var editingSession: WorkSession?
     @State private var reviewingExpense: Expense?
+    @State private var scanningReceipt = false
     @State private var openedInvoice: Invoice?
 
     init(job: Job) {
@@ -140,6 +141,7 @@ struct JobDetailView: View {
             if let editingSession { SessionEditorView(job: job, session: editingSession) }
         }
         .sheet(item: $reviewingExpense) { ExpenseEditorView(job: job, expense: $0) }
+        .sheet(isPresented: $scanningReceipt) { ExpenseEditorView(job: job) }
     }
 
     // MARK: Schedule
@@ -216,7 +218,9 @@ struct JobDetailView: View {
             .accessibilityIdentifier("job-fee")
             DaybookSections {
                 JobBillingSection(job: job, onInvoice: { addingInvoice = true }, onPayment: { addingPayment = true })
-                EventExpensesSection(job: job)
+                EventExpensesSection(job: job) { expense in
+                    if let expense { reviewingExpense = expense } else { scanningReceipt = true }
+                }
             }
         }
     }

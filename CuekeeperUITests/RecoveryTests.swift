@@ -122,23 +122,24 @@ final class RecoveryTests: XCTestCase {
         XCTAssertTrue(export.waitForExistence(timeout: 5))
         export.tap()
         let save = app.buttons["DOCPicker.actionButton"]
-        XCTAssertTrue(save.waitForExistence(timeout: 15))
+        XCTAssertTrue(save.waitForExistence(timeout: 30))
         capture("backup-export-picker")
         save.tap()
-        XCTAssertTrue(app.staticTexts["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 30))
         revealFiles(app)
         let importer = button(app, "backup-import", "Import a Backup")
         XCTAssertTrue(importer.waitForExistence(timeout: 5))
         importer.tap()
         let file = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@", "Cuekeeper-")).firstMatch
-        if !file.waitForExistence(timeout: 5) {
+        // The system picker loads slowly when UI tests run in parallel; keep steering it to local files.
+        for _ in 0..<6 where !file.waitForExistence(timeout: 5) {
             let browse = app.buttons["Browse"].firstMatch
             if browse.exists { browse.tap() }
             let local = app.staticTexts[UIDevice.current.userInterfaceIdiom == .pad ? "On My iPad" : "On My iPhone"].firstMatch
-            if local.exists { local.tap() }
+            if local.waitForExistence(timeout: 3) { local.tap() }
         }
         capture("backup-import-picker")
-        if !file.waitForExistence(timeout: 10) { print(app.debugDescription) }
+        if !file.exists { print(app.debugDescription) }
         XCTAssertTrue(file.exists)
         file.tap()
         XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 10))

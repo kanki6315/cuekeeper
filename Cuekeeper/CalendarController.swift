@@ -337,7 +337,13 @@ private actor CalendarWorker {
             }
             for (key, desired) in plan.desired {
                 let matches = grouped[key] ?? []
-                let event = matches.first ?? EKEvent(eventStore: store)
+                let event: EKEvent
+                if let match = matches.first { event = match } else {
+                    event = EKEvent(eventStore: store)
+                    // Entries are schedule markers, not reminders: request no alerts.
+                    // Existing entries keep any alerts the user added themselves.
+                    event.alarms = []
+                }
                 for duplicate in matches.dropFirst() { try store.remove(duplicate, span: .thisEvent, commit: false); changed = true }
                 if event.calendar == nil { event.calendar = calendar }
                 // Save only actual changes; EventKit notifications must not create a sync loop.

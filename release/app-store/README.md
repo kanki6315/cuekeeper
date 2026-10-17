@@ -36,6 +36,12 @@ Do not ship the new links until their destinations work.
 - Main app: `NSPrivacyAccessedAPICategoryDiskSpace`, reason `E174.1`.
   `BackupLimits.requireSpace` reads `volumeAvailableCapacityForImportantUsageKey`
   before writing a backup and refuses to start when free space is insufficient.
+- Main app: `NSPrivacyAccessedAPICategoryFileTimestamp`, reason `C617.1`.
+  `EventWeatherStore` reads `contentModificationDateKey` on its own
+  Application Support cache (`Weather/local-cache.json`) to recover the fetch
+  budget when the cache no longer decodes. The debug-only UI-test backup helper
+  also reads it in the app's temporary directory. Both are app-container files.
+  ZIPFoundation's bundled manifest covers only that SDK's own usage.
 - Widget: no direct required-reason API usage found. The shared schedule is a JSON
   file in the App Group, not shared UserDefaults, so `1C8F.1` is not declared.
 - Both manifests declare no tracking, tracking domains or collected data types.
@@ -45,9 +51,9 @@ Do not ship the new links until their destinations work.
   on-device model goes to Apple Private Cloud Compute. This is not a claim that nothing
   leaves the device.
 - The backup file-size read uses `URLResourceKey.fileSizeKey`; that key is not on
-  Apple's current required-reason API list. Apart from the disk-space check
-  above, no direct timestamp, disk-capacity, active-keyboard or system-uptime API
-  calls were found in shipping source.
+  Apple's current required-reason API list. Apart from the disk-space and
+  file-timestamp uses above, no direct timestamp, disk-capacity, active-keyboard
+  or system-uptime API calls were found in shipping source.
 - XcodeGen includes each manifest in its own target's resources. Inspect the
   final archive as well; a plist lint alone does not prove distribution acceptance.
 - Re-audit if a dependency, telemetry endpoint, shared-defaults implementation or

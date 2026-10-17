@@ -1,5 +1,3 @@
-APP REVIEW NOTES — DRAFT; ADD THE FINAL BUILD AND REVIEW CONTACT IN APP STORE CONNECT
-
 Cuekeeper is a native daybook for broadcast freelancers. No Cuekeeper login or demo account is required. Core local event, session and financial entry can be reviewed without connecting Calendar or iCloud.
 
 Suggested walkthrough:
@@ -16,5 +14,3 @@ Optional integrations:
 - Expense-completion notifications are optional local notifications with generic text.
 - Home/Lock Screen widgets read the main app's schedule snapshot. They do not independently sync CloudKit; open the app to refresh the snapshot. OS scheduling controls widget reloads.
 - Selected-venue maps and weather use Apple's services, not device GPS permission.
-
-Before submitting these notes: enter the actual review contact name, phone and email in App Store Connect; confirm all public links load and the final signed build has passed the production schema and physical-device checks. Do not submit this preparation paragraph.

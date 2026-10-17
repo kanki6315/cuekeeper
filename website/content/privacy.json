@@ -52,7 +52,7 @@
       "id": "widgets",
       "title": "Widgets",
       "paragraphs": [
-        "Cuekeeper shares a schedule snapshot with its widgets on your device: event and client names and session times for today and upcoming days, but no notes or financial details. Depending on your system settings, widget content can be visible on your Home or Lock Screen."
+        "Cuekeeper shares a schedule snapshot with its widgets on your device: event names, dates and booking status, client names, and session names, times and confirmation, for events that aren't deleted or cancelled. It excludes notes, links, venues and financial details. Depending on your system settings, widget content can be visible on your Home or Lock Screen."
       ]
     },
     {

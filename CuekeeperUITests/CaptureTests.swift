@@ -115,11 +115,11 @@ final class EventDateEditingTests: EventWorkflowTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: save)], timeout: 10), .completed)
         save.tap()
         XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "edit-event-dates", "Silverstone")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "event-location", "Silverstone")).firstMatch.waitForExistence(timeout: 5))
         app.buttons["edit-event"].tap()
         reveal(location, in: app); location.tap(); location.typeText(" discarded\n")
         app.buttons["Cancel"].tap(); app.buttons["Discard Changes"].tap()
         XCTAssertTrue(app.buttons["save-event"].waitForNonExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["edit-event-dates"].label.contains("discarded"))
+        XCTAssertFalse(app.descendants(matching: .any)["event-location"].label.contains("discarded"))
     }
 }

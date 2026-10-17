@@ -333,10 +333,16 @@ struct WizardSessionFields: View {
 
 func zoneLabel(_ identifier: String, date: Date = Date()) -> String {
     guard let zone = TimeZone(identifier: identifier) else { return "Unspecified" }
-    let name = zone.localizedName(for: .generic, locale: .current) ?? identifier
+    let name = zoneName(identifier)
     let seconds = zone.secondsFromGMT(for: date)
     let offset = String(format: "UTC%@%02d:%02d", seconds < 0 ? "−" : "+", abs(seconds) / 3600, abs(seconds) % 3600 / 60)
     return "\(name) · \(offset)"
+}
+
+/// The zone's name without its offset, for rows too narrow for the full label.
+func zoneName(_ identifier: String) -> String {
+    guard let zone = TimeZone(identifier: identifier) else { return "Unspecified" }
+    return zone.localizedName(for: .generic, locale: .current) ?? identifier
 }
 
 /// Zones are never picked directly; this shows the one a place set, or the home fallback.
@@ -439,20 +445,27 @@ struct TimeZoneValueLabel: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     let title: String
     let value: String
+    /// A shorter value tried on one line before the label stacks.
+    var compactValue: String? = nil
     var body: some View {
         if typeSize.isAccessibilitySize {
             stackedLabel
         } else {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 16) {
-                    Text(title).fixedSize()
-                    Spacer(minLength: 0)
-                    Text(value)
-                        .foregroundStyle(Color("SecondaryText"))
-                        .fixedSize()
-                }
+                inlineLabel(value)
+                if let compactValue { inlineLabel(compactValue).accessibilityLabel("\(title), \(value)") }
                 stackedLabel
             }
+        }
+    }
+
+    private func inlineLabel(_ text: String) -> some View {
+        HStack(spacing: 16) {
+            Text(title).fixedSize()
+            Spacer(minLength: 0)
+            Text(text)
+                .foregroundStyle(Color("SecondaryText"))
+                .fixedSize()
         }
     }
 

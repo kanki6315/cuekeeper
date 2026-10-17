@@ -71,24 +71,37 @@ enum EventTimeText {
 struct EventHeader: View {
     @ObservedObject var job: Job
     let onStatus: (BookingStatus) -> Void
-    let onEditDates: () -> Void
+    let onEdit: () -> Void
     private var status: BookingStatus { BookingStatus(rawValue: job.bookingStatus) ?? .tentative }
-    private var work: String {
-        let arrangement = WorkArrangement(rawValue: job.workArrangement)
-        return (job.roleNames + (arrangement == nil || arrangement == .unspecified ? [] : [arrangement!.title])).joined(separator: " · ")
-    }
+    private var arrangement: WorkArrangement { WorkArrangement(rawValue: job.workArrangement) ?? .unspecified }
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button(action: onEditDates) {
-                Text([job.eventDateDescription, job.eventLocation].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText")).multilineTextAlignment(.leading)
-            }.buttonStyle(.plain).accessibilityHint("Edits the event dates").accessibilityIdentifier("edit-event-dates")
-            Text(job.eventTitle).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 8) {
+            // Drop the year before letting the facts wrap onto a second row.
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { statusMenu; facts }
-                VStack(alignment: .leading, spacing: 6) { statusMenu; facts }
-            }.padding(.top, 2)
+                HStack(spacing: 6) { facts(date: job.eventDateDescription) }
+                HStack(spacing: 6) { facts(date: shortDate) }
+                ChipFlow(spacing: 6) { facts(date: shortDate) }
+            }
+            Text(job.eventTitle).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+            ChipFlow(spacing: 6) {
+                statusMenu
+                client
+            }
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private var shortDate: String {
+        guard let start = Day.date(from: job.eventStartDay), let end = Day.date(from: job.eventEndDay) else { return job.eventDateDescription }
+        let style = Date.FormatStyle().month(.abbreviated).day()
+        return job.eventStartDay == job.eventEndDay ? start.formatted(style) : (start..<end).formatted(.interval.month(.abbreviated).day())
+    }
+    @ViewBuilder private func facts(date: String) -> some View {
+        Button(action: onEdit) { EventFactChip(symbol: "calendar", text: date) }
+            .buttonStyle(.plain).accessibilityHint("Edits the event dates").accessibilityIdentifier("edit-event-dates")
+        if !job.roleNames.isEmpty { EventFactChip(symbol: "person", text: job.roleNames.joined(separator: ", ")) }
+        if arrangement != .unspecified { EventFactChip(symbol: "mappin", text: arrangement.title) }
+        if !job.eventLocation.isEmpty {
+            EventFactChip(symbol: "map", text: job.eventLocation).accessibilityIdentifier("event-location")
+        }
     }
     private var statusMenu: some View {
         Menu {
@@ -97,17 +110,108 @@ struct EventHeader: View {
                     if option == status { Label(option.title, systemImage: "checkmark") } else { Text(option.title) }
                 }.accessibilityIdentifier("booking-status-\(option.rawValue)")
             }
-        } label: { BookingBadge(status: status.rawValue) }
+        } label: { StatusChip(status: status) }
             .accessibilityLabel("Booking status, \(status.title)")
             .accessibilityHint("Changes the booking status")
             .accessibilityIdentifier("booking-status")
     }
-    private var facts: some View {
-        HStack(spacing: 6) {
-            Text(job.client?.name ?? "Client to add").fontWeight(.semibold)
-                .foregroundStyle(job.client == nil ? Color("SecondaryText") : Color.accentColor)
-            if !work.isEmpty { Text(work).foregroundStyle(Color("SecondaryText")) }
-        }.font(.subheadline)
+    @ViewBuilder private var client: some View {
+        if let client = job.client {
+            NavigationLink { LibraryDetailView(record: client, kind: .client) } label: {
+                EventChip(tint: .accentColor) {
+                    Text(client.name).fontWeight(.semibold)
+                    Image(systemName: "chevron.right").font(.caption2.weight(.bold))
+                }
+            }.buttonStyle(.plain).accessibilityLabel("Client, \(client.name)").accessibilityIdentifier("event-client")
+        } else {
+            Button(action: onEdit) {
+                EventChip(tint: Color("SecondaryText")) { Image(systemName: "plus"); Text("Add client") }
+            }.buttonStyle(.plain).accessibilityIdentifier("event-add-client")
+        }
+    }
+}
+
+/// The status is the one solid chip so it reads as the event's state, not another fact.
+private struct StatusChip: View {
+    @ScaledMetric(relativeTo: .subheadline) private var height = 30
+    let status: BookingStatus
+    private var fill: Color {
+        switch status {
+        case .tentative: return Color("AmberText")
+        case .booked, .completed: return .accentColor
+        case .cancelled: return Color("SecondaryText")
+        }
+    }
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(status.title)
+            Image(systemName: "chevron.down").font(.caption2.weight(.bold))
+        }
+        .font(.subheadline.weight(.semibold)).foregroundStyle(Color("PageBackground"))
+        .padding(.horizontal, 11).frame(minHeight: height)
+        .background(fill, in: Capsule())
+    }
+}
+
+private struct EventChip<Content: View>: View {
+    @ScaledMetric(relativeTo: .subheadline) private var height = 30
+    @Environment(\.colorSchemeContrast) private var contrast
+    var tint: Color = .primary
+    @ViewBuilder var content: Content
+    var body: some View {
+        HStack(spacing: 5) { content }
+            .font(.subheadline).foregroundStyle(tint)
+            .padding(.horizontal, 11).frame(minHeight: height)
+            .background(Color("SurfaceBackground"), in: Capsule())
+            .overlay { Capsule().strokeBorder(tint == .primary ? Color.primary.opacity(contrast == .increased ? 0.45 : 0.16) : tint.opacity(0.55), lineWidth: 0.5) }
+    }
+}
+
+private struct EventFactChip: View {
+    let symbol: String
+    let text: String
+    var body: some View {
+        EventChip {
+            Image(systemName: symbol).foregroundStyle(Color("SecondaryText"))
+            Text(text)
+        }.accessibilityElement(children: .combine)
+    }
+}
+
+/// Lays chips out on one row, wrapping to further rows only when they don't fit.
+private struct ChipFlow: Layout {
+    var spacing: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = rows(width: proposal.width ?? .infinity, subviews: subviews)
+        let width = rows.map { row in row.reduce(0) { $0 + $1.width } + spacing * CGFloat(max(row.count - 1, 0)) }.max() ?? 0
+        let height = rows.reduce(0) { $0 + ($1.map(\.height).max() ?? 0) } + spacing * CGFloat(max(rows.count - 1, 0))
+        return CGSize(width: min(width, proposal.width ?? width), height: height)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in rows(width: bounds.width, subviews: subviews) {
+            var x = bounds.minX
+            let height = row.map(\.height).max() ?? 0
+            for item in row {
+                subviews[item.index].place(at: CGPoint(x: x, y: y + (height - item.height) / 2), proposal: ProposedViewSize(width: item.width, height: item.height))
+                x += item.width + spacing
+            }
+            y += height + spacing
+        }
+    }
+    private struct Item { let index: Int; let width: CGFloat; let height: CGFloat }
+    private func rows(width: CGFloat, subviews: Subviews) -> [[Item]] {
+        var rows: [[Item]] = [[]], used: CGFloat = 0
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil))
+            let item = Item(index: index, width: min(size.width, width), height: size.height)
+            if !rows[rows.count - 1].isEmpty && used + spacing + item.width > width {
+                rows.append([]); used = 0
+            }
+            used += (rows[rows.count - 1].isEmpty ? 0 : spacing) + item.width
+            rows[rows.count - 1].append(item)
+        }
+        return rows
     }
 }
 
@@ -304,11 +408,10 @@ struct RunOfShowDayView<Row: View>: View {
                 DaybookDateRail(day: day.key)
             }
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(coverage)
-                    Spacer(minLength: 8)
-                    if let weather { Text(weather) }
-                }.font(.footnote).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
+                if let weather {
+                    Text(weather).font(.footnote).foregroundStyle(Color("SecondaryText"))
+                        .frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 4)
+                }
                 VStack(spacing: 0) {
                     ForEach(Array(day.sessions.enumerated()), id: \.element.id) { index, session in
                         if index > 0 { EventPanelDivider() }
@@ -317,11 +420,6 @@ struct RunOfShowDayView<Row: View>: View {
                 }.eventPanel()
             }
         }
-    }
-    private var coverage: String {
-        if day.key.isEmpty { return "Date to come" }
-        let covering = day.coveringCount
-        return covering == day.sessions.count ? "Covering \(covering)" : "Covering \(covering) of \(day.sessions.count)"
     }
 }
 

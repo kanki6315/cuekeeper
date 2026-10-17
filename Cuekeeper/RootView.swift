@@ -297,8 +297,11 @@ private struct JobsView: View {
 func dateRange(_ job: Job) -> String { job.eventDateDescription }
 
 struct SettingsView: View {
-    @ScaledMetric(relativeTo: .body) private var libraryIconWidth = 26
+    @ScaledMetric(relativeTo: .body) private var tileSize = 30
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+    @EnvironmentObject private var calendar: CalendarController
     @State private var showingSetup = false
     @State private var webPage: WebPageLink?
     @State private var latestBackup: String?
@@ -313,19 +316,6 @@ struct SettingsView: View {
             .containerValue(\.daybookUnframed, true)
             .containerValue(\.daybookFlushTop, true)
             Section { PreferenceFields() }.containerValue(\.daybookUnframed, true)
-            Section {
-                Button("Run setup again") { showingSetup = true }.frame(minHeight: 44)
-                    .accessibilityIdentifier("run-setup-again")
-            }
-            Section("Integrations") {
-                DaybookLink { CalendarSettingsView() } label: { Label("Calendar", systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading) }
-                DaybookLink { ExpenseAutomationSettingsView() } label: { Label("Wallet Automation", systemImage: "creditcard").frame(maxWidth: .infinity, alignment: .leading) }.accessibilityIdentifier("wallet-automation-settings")
-            }
-            Section("Libraries") {
-                DaybookLink { LibraryView(kind: .series) } label: { libraryLabel("Series", symbol: "rectangle.stack") }
-                DaybookLink { LibraryView(kind: .client) } label: { libraryLabel("Clients", symbol: "person.2") }
-                DaybookLink { LibraryView(kind: .role) } label: { libraryLabel("Roles", symbol: "person.text.rectangle") }
-            }
             Section("Your data") {
                 let activity = persistence.syncActivity
                 SyncSummaryRow(summary: activity.summary(accountStatus: persistence.accountStatus, lastTransfer: persistence.lastTransfer))
@@ -343,10 +333,38 @@ struct SettingsView: View {
                     Text(setupStatus)
                 }
             }
+            Section("Integrations") {
+                DaybookLink { CalendarSettingsView() } label: {
+                    HStack {
+                        tiledLabel("Calendar", symbol: "calendar")
+                        Spacer(minLength: 8)
+                        Text(calendar.connected ? "On" : "Off").foregroundStyle(Color("SecondaryText"))
+                    }
+                }
+                .accessibilityIdentifier("calendar-settings")
+                DaybookLink { ExpenseAutomationSettingsView() } label: { tiledLabel("Wallet Automation", symbol: "creditcard") }
+                    .accessibilityIdentifier("wallet-automation-settings")
+            }
+            Section("Libraries") {
+                if typeSize.isAccessibilitySize {
+                    DaybookLink { LibraryView(kind: .series) } label: { tiledLabel("Series", symbol: "rectangle.stack") }
+                    DaybookLink { LibraryView(kind: .client) } label: { tiledLabel("Clients", symbol: "person.2") }
+                    DaybookLink { LibraryView(kind: .role) } label: { tiledLabel("Roles", symbol: "person.text.rectangle") }
+                } else {
+                    HStack(spacing: 0) {
+                        libraryButton("Series", symbol: "rectangle.stack", kind: .series)
+                        libraryDivider
+                        libraryButton("Clients", symbol: "person.2", kind: .client)
+                        libraryDivider
+                        libraryButton("Roles", symbol: "person.text.rectangle", kind: .role)
+                    }
+                    .padding(.vertical, -4)
+                }
+            }
             Section("Recovery & backups") {
                 DaybookLink { BackupView() } label: {
                     HStack {
-                        Label("Backups", systemImage: "icloud.and.arrow.up")
+                        tiledLabel("Backups", symbol: "icloud.and.arrow.up")
                         Spacer(minLength: 8)
                         if let latestBackup {
                             Text(latestBackup).foregroundStyle(Color("SecondaryText"))
@@ -355,7 +373,7 @@ struct SettingsView: View {
                     }
                 }
                 .accessibilityIdentifier("backups-link")
-                DaybookLink { RecentlyDeletedView() } label: { Label("Recently Deleted", systemImage: "trash") }
+                DaybookLink { RecentlyDeletedView() } label: { tiledLabel("Recently Deleted", symbol: "trash") }
             }
             Section("About") {
                 Button("Help & Support", systemImage: "questionmark.circle") {
@@ -364,6 +382,8 @@ struct SettingsView: View {
                 Button("Privacy Policy", systemImage: "hand.raised") {
                     webPage = WebPageLink(title: "Privacy Policy", url: URL(string: "https://cuekeeper.arjunakankipati.com/privacy")!)
                 }
+                Button("Run setup again", systemImage: "arrow.counterclockwise") { showingSetup = true }
+                    .accessibilityIdentifier("run-setup-again")
                 LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"))")
             }
         }
@@ -402,12 +422,35 @@ struct SettingsView: View {
             : date.formatted(.dateTime.month(.abbreviated).day().year())
     }
 
-    private func libraryLabel(_ title: String, symbol: String) -> some View {
+    /// A row label led by its symbol in a small tinted tile.
+    private func tiledLabel(_ title: String, symbol: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol).frame(width: libraryIconWidth).accessibilityHidden(true)
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: tileSize, height: tileSize)
+                .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityHidden(true)
             Text(title)
         }
-        .foregroundStyle(Color.accentColor)
+    }
+
+    private func libraryButton(_ title: String, symbol: String, kind: LibraryKind) -> some View {
+        NavigationLink { LibraryView(kind: kind) } label: {
+            VStack(spacing: 6) {
+                Image(systemName: symbol).font(.title3).accessibilityHidden(true)
+                Text(title).font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(Color.accentColor)
+            .frame(maxWidth: .infinity, minHeight: 60)
+            .contentShape(Rectangle())
+        }
+        .accessibilityIdentifier("library-\(title.lowercased())")
+    }
+
+    private var libraryDivider: some View {
+        Rectangle().fill(Color.primary.opacity(contrast == .increased ? 0.45 : 0.16))
+            .frame(width: 0.5).padding(.vertical, 6)
     }
 }
 

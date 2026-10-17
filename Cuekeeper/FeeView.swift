@@ -28,18 +28,18 @@ struct FeeEditingFields: View {
                                 VStack(alignment: .leading, spacing: 6) { Text("Quantity").font(.caption).foregroundStyle(Color("SecondaryText")); DaybookTextField("Quantity", text: $line.quantity).keyboardType(.decimalPad) }.frame(maxWidth: 80)
                                 Text("×").foregroundStyle(Color("SecondaryText"))
                                 VStack(alignment: .leading, spacing: 6) { Text("Rate").font(.caption).foregroundStyle(Color("SecondaryText")); DaybookTextField("Rate (negative for adjustments)", text: $line.rate).keyboardType(.numbersAndPunctuation) }
-                                if let total = try? line.total(currency: draft.currency) { Text(Money.format(total, currency: draft.currency)).font(.subheadline.weight(.semibold)).monospacedDigit() }
+                                if let total = try? line.total(currency: draft.currency, typedIn: .current) { Text(Money.format(total, currency: draft.currency)).font(.subheadline.weight(.semibold)).monospacedDigit() }
                             }
                             Button("Remove Item", role: .destructive) { draft.lines.removeAll { $0.id == line.id } }
                         }.padding(.vertical, 4)
                     }
                     Button("Add Breakdown Item", systemImage: "plus") { draft.lines.append(FeeLine()) }.accessibilityIdentifier("add-fee-item")
                     if !draft.lines.isEmpty {
-                        if let sum = try? FeeValue(currency: draft.currency, lines: draft.lines).total() {
+                        if let sum = try? FeeValue(currency: draft.currency, lines: draft.lines).total(typedIn: .current) {
                             LabeledContent("Breakdown total", value: Money.format(sum, currency: draft.currency))
-                            if (try? Money.parse(draft.amount, currency: draft.currency)) != sum {
+                            if (try? Money.parseInput(draft.amount, currency: draft.currency)) != sum {
                                 Label {
-                                    if let amount = try? Money.parse(draft.amount, currency: draft.currency), let delta = try? Money.minorUnits(Decimal(sum) - Decimal(amount)) {
+                                    if let amount = try? Money.parseInput(draft.amount, currency: draft.currency), let delta = try? Money.minorUnits(Decimal(sum) - Decimal(amount)) {
                                         Text("Breakdown is \(Money.format(abs(delta), currency: draft.currency)) \(delta > 0 ? "above" : "below") the overall fee.")
                                     } else { Text("The overall fee hasn’t been set.") }
                                 } icon: { Image(systemName: "exclamationmark.circle") }
@@ -47,7 +47,7 @@ struct FeeEditingFields: View {
                             }
                             Button("Use Breakdown Total") {
                                 guard sum >= 0 else { error = "The overall fee cannot be negative."; return }
-                                draft.amount = Money.text(sum, currency: draft.currency)
+                                draft.amount = Money.inputText(sum, currency: draft.currency)
                             }
                         } else { Text("Complete each quantity and rate to calculate the breakdown.").foregroundStyle(Color("SecondaryText")) }
                     }

@@ -30,6 +30,8 @@ struct InvoiceEditorView: View {
     @State private var seeded = false
     @State private var referenceBasis: String?
     @State private var showsNotes = false
+    /// Receipts on an open draft whose totals were corrected since they were added.
+    @State private var refreshedReceipts = false
     @State private var search = ""
     @State private var details = InvoicingDraft()
     @State private var detailsBaseline = InvoicingDraft()
@@ -52,7 +54,7 @@ struct InvoiceEditorView: View {
         var amounts: [UUID: String] = [:]
         if let id = job.id, job.client != nil {
             value.value.lines = [BilledLine(jobID: id, jobName: job.displayName, amount: fee?.amount ?? 0)]
-            amounts[id] = Money.text(fee?.amount, currency: value.value.currency)
+            amounts[id] = Money.inputText(fee?.amount, currency: value.value.currency)
         }
         let origin = job.id.map { (id: $0, title: job.displayName) }
         self.init(draft: value, amounts: amounts, step: job.client == nil ? .client : .lines, hasClient: job.client?.id != nil, origin: origin)
@@ -66,18 +68,18 @@ struct InvoiceEditorView: View {
         value.value.lines = ready.jobs.compactMap { job in
             guard let id = job.id else { return nil }
             let amount = (try? job.currentFee().amount).flatMap { $0 }
-            amounts[id] = Money.text(amount, currency: ready.currency)
+            amounts[id] = Money.inputText(amount, currency: ready.currency)
             return BilledLine(jobID: id, jobName: job.displayName, amount: amount ?? 0)
         }
         let receipts = ready.expenses.compactMap { Self.billed($0) }
-        value.value.expenseLines = receipts.isEmpty ? nil : receipts
+        value.value.expenseLines = receipts
         let origin = ready.jobs.count == 1 ? ready.jobs.first.flatMap { job in job.id.map { (id: $0, title: job.displayName) } } : nil
         self.init(draft: value, amounts: amounts, step: startsOnRecord && !value.value.lines.isEmpty ? .record : .lines, hasClient: true, origin: origin)
     }
 
     /// Editing a saved invoice, or reviewing one version of a conflicting edit.
     init(invoice: Invoice, draft: InvoiceDraft) {
-        let amounts = Dictionary(draft.value.lines.map { ($0.jobID, Money.text($0.amount, currency: draft.value.currency)) }, uniquingKeysWith: { a, _ in a })
+        let amounts = Dictionary(draft.value.lines.map { ($0.jobID, Money.inputText($0.amount, currency: draft.value.currency)) }, uniquingKeysWith: { a, _ in a })
         self.init(draft: draft, amounts: amounts, step: .record, hasClient: true, origin: nil)
         _invoice = State(initialValue: invoice)
         _showsNotes = State(initialValue: !draft.value.notes.isEmpty)
@@ -124,7 +126,7 @@ struct InvoiceEditorView: View {
 
     private func candidates(_ events: [EventReadiness]) -> InvoiceCandidates {
         var billed: [UUID: [EventExpenseFact]] = [:]
-        for line in savedValue?.billedExpenses ?? [] {
+        for line in savedValue?.expenseLines ?? [] {
             guard let jobID = expenses.first(where: { $0.id == line.expenseID })?.job?.id else { continue }
             billed[jobID, default: []].append(EventExpenseFact(id: line.expenseID, merchant: line.label, amount: line.amount, currency: currency))
         }
@@ -145,19 +147,21 @@ struct InvoiceEditorView: View {
     }
 
     private func parsedAmount(_ jobID: UUID) -> Int64? {
-        let amount: Int64?? = try? Money.parse(amounts[jobID] ?? "", currency: currency)
+        let amount: Int64?? = try? Money.parseInput(amounts[jobID] ?? "", currency: currency)
         return amount ?? nil
     }
 
     private var liveTotal: Int64 {
-        draft.value.lines.reduce(Int64(0)) { $0 + (parsedAmount($1.jobID) ?? 0) } + draft.value.billedExpenses.reduce(0) { $0 + $1.amount }
+        draft.value.lines.reduce(Int64(0)) { $0 + (parsedAmount($1.jobID) ?? 0) } + draft.value.expenseLines.reduce(0) { $0 + $1.amount }
     }
+
+    private var nothingSelected: Bool { draft.value.lines.isEmpty && draft.value.expenseLines.isEmpty }
 
     private var unknownAmounts: Int { draft.value.lines.filter { parsedAmount($0.jobID) == nil }.count }
 
     private var selectionSummary: String {
-        let events = draft.value.lines.count, receipts = draft.value.billedExpenses.count
-        var parts = [events == 1 ? "1 event" : "\(events) events"]
+        let events = draft.value.lines.count, receipts = draft.value.expenseLines.count
+        var parts = events == 0 ? [] : [events == 1 ? "1 event" : "\(events) events"]
         if receipts > 0 { parts.append(receipts == 1 ? "1 receipt" : "\(receipts) receipts") }
         if unknownAmounts > 0 { parts.append(unknownAmounts == 1 ? "1 amount to enter" : "\(unknownAmounts) amounts to enter") }
         return parts.joined(separator: " · ")
@@ -184,11 +188,10 @@ struct InvoiceEditorView: View {
                 Button("Keep Editing", role: .cancel) {}
             }
             .onChange(of: draft.value.status) { _, status in
-                guard status == "sent" else { return }
-                if draft.value.sentDay.isEmpty { draft.value.sentDay = Day.string(from: Date()) }
-                // Terms on file set the due date; an explicit due date is kept.
-                if draft.value.dueDay.isEmpty, let due = client?.invoicing.dueDay(sent: draft.value.sentDay) { draft.value.dueDay = due }
+                // Terms on file set an empty due date, which then follows the sent date; a chosen due date is kept.
+                if status == "sent" { draft.value.markSent(today: Day.string(from: Date()), terms: client?.invoicing) }
             }
+            .onChange(of: draft.value.sentDay) { _, _ in draft.value.followTerms(client?.invoicing) }
             .task { seed() }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
             .preservesDraftOnTodayLink()
@@ -230,7 +233,7 @@ struct InvoiceEditorView: View {
                         .lineLimit(1).minimumScaleFactor(0.6)
                     // Accessibility sizes keep the bar short; the selection itself shows the count.
                     if !large {
-                        Text(draft.value.lines.isEmpty ? "Choose the work to bill" : selectionSummary)
+                        Text(nothingSelected ? "Choose the work to bill" : selectionSummary)
                             .font(.footnote).foregroundStyle(Color("SecondaryText"))
                     }
                 }
@@ -238,7 +241,7 @@ struct InvoiceEditorView: View {
                 .accessibilityIdentifier("invoice-running-total")
                 if !large { Spacer(minLength: 0) }
                 Button { step = .record } label: { Text("Next").frame(maxWidth: large ? .infinity : nil) }
-                    .buttonStyle(DaybookPrimaryButton()).disabled(draft.value.lines.isEmpty)
+                    .buttonStyle(DaybookPrimaryButton()).disabled(nothingSelected)
                     .accessibilityIdentifier("invoice-next")
             }
             .padding(.horizontal, 20).padding(.vertical, large ? 8 : 12).background(.bar)
@@ -351,6 +354,19 @@ struct InvoiceEditorView: View {
                     Text("You can still include these. Enter any unknown fee on the next step.")
                 }
             }
+            if !work.receiptsOnly.isEmpty {
+                Section {
+                    ForEach(work.receiptsOnly) { candidate in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(candidate.title).fontWeight(.semibold)
+                            Text([candidate.dates, candidate.note].joined(separator: " · ")).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        }.accessibilityElement(children: .combine)
+                        receiptRows(candidate.receipts, enabled: true)
+                    }
+                } header: { Text("Receipts to bill on their own") } footer: {
+                    Text("These events' fees are already invoiced or billed in another currency. Their \(currency) receipts can go on this invoice without billing the fee again; amounts are never converted.")
+                }
+            }
             if !drafts.isEmpty {
                 Section("Or add to a draft") {
                     ForEach(drafts, id: \.invoice.objectID) { item in
@@ -412,15 +428,19 @@ struct InvoiceEditorView: View {
         }
         .toggleStyle(InvoiceCheckStyle(size: .event))
         .accessibilityIdentifier("invoice-line-\(candidate.title)")
-        ForEach(candidate.receipts) { receipt in
-            let on = draft.value.billedExpenses.contains { $0.expenseID == receipt.id }
+        receiptRows(candidate.receipts, enabled: included)
+    }
+
+    @ViewBuilder private func receiptRows(_ receipts: [EventExpenseFact], enabled: Bool) -> some View {
+        ForEach(receipts) { receipt in
+            let on = draft.value.expenseLines.contains { $0.expenseID == receipt.id }
             Toggle(isOn: Binding(get: { on }, set: { toggle(receipt: receipt, on: $0) })) {
                 (Text(receipt.merchant.isEmpty ? "Receipt" : receipt.merchant) + Text(" · receipt").foregroundStyle(Color("SecondaryText"))).font(.subheadline)
             } trailing: {
                 Text(receipt.amount.map { Money.format($0, currency: currency) } ?? "").font(.subheadline).monospacedDigit()
             }
             .toggleStyle(InvoiceCheckStyle(size: .receipt))
-            .disabled(!included)
+            .disabled(!enabled)
             .accessibilityIdentifier("invoice-receipt-\(receipt.merchant)")
         }
     }
@@ -457,11 +477,12 @@ struct InvoiceEditorView: View {
                     }
                 }
                 Toggle("Due date", isOn: Binding(get: { !draft.value.dueDay.isEmpty }, set: { on in
-                    draft.value.dueDay = on ? (client?.invoicing.dueDay(sent: draft.value.sentDay.isEmpty ? Day.string(from: Date()) : draft.value.sentDay) ?? Day.string(from: Date())) : ""
+                    draft.value.showDue(on, today: Day.string(from: Date()), terms: client?.invoicing)
                 })).accessibilityIdentifier("invoice-due-toggle")
                 if !draft.value.dueDay.isEmpty {
                     InvoiceFieldRow(label: "Due", centered: true) {
-                        DatePicker("Due", selection: dayBinding($draft.value.dueDay), displayedComponents: .date).labelsHidden()
+                        DatePicker("Due", selection: dayBinding(Binding(get: { draft.value.dueDay }, set: { draft.value.chooseDue($0) })), displayedComponents: .date).labelsHidden()
+                            .accessibilityIdentifier("invoice-due-day")
                     }
                 }
                 if draft.value.status == "void" {
@@ -481,7 +502,7 @@ struct InvoiceEditorView: View {
                             .accessibilityIdentifier("billed-\(line.jobName)")
                     }
                 }
-                ForEach(draft.value.billedExpenses) { line in
+                ForEach(draft.value.expenseLines) { line in
                     LabeledContent {
                         Text(Money.format(line.amount, currency: currency)).monospacedDigit().foregroundStyle(.primary)
                     } label: { Text(line.label).foregroundStyle(Color("SecondaryText")) }
@@ -497,8 +518,8 @@ struct InvoiceEditorView: View {
                     }
                 }
             } footer: {
-                Text(locked || draft.value.status == "sent" ? "Sent invoices keep these amounts, whatever fees change later."
-                     : "Each booking can belong to one active invoice. Unknown fees need an explicit billed amount, including 0 for unpaid work.")
+                Text(locked || draft.value.status == "sent" ? "Sent invoices keep these amounts, whatever fees or receipts change later."
+                     : (refreshedReceipts ? "Receipt totals were updated from corrected receipts. " : "") + "Each booking can belong to one active invoice. Unknown fees need an explicit billed amount, including 0 for unpaid work.")
             }
             if showsNotes || !draft.value.notes.isEmpty {
                 Section("Notes") {
@@ -547,9 +568,14 @@ struct InvoiceEditorView: View {
     private func seed() {
         guard !seeded else { return }
         seeded = true
-        if let origin, invoice == nil, draft.value.expenseLines == nil, draft.value.lines.contains(where: { $0.jobID == origin.id }),
+        if let origin, invoice == nil, draft.value.expenseLines.isEmpty, draft.value.lines.contains(where: { $0.jobID == origin.id }),
            let candidate = candidates(readiness()).all.first(where: { $0.id == origin.id }) {
             for receipt in candidate.receipts { toggle(receipt: receipt, on: true) }
+        }
+        // A draft bills receipts as they are now; only a sent invoice keeps the totals it went out with.
+        if invoice != nil, !locked, draft.value.status == "draft" {
+            let current = draft.value.expenseLines.map { line in expenses.first { $0.id == line.expenseID }.flatMap(Self.billed) ?? line }
+            if current != draft.value.expenseLines { draft.value.expenseLines = current; refreshedReceipts = true }
         }
         suggestReference()
         loadDetails()
@@ -561,7 +587,7 @@ struct InvoiceEditorView: View {
         let sameClient = hasClient && draft.value.clientID == clientID && draft.value.currency == currency
         draft.value.clientID = clientID; draft.value.currency = currency; hasClient = true
         if !sameClient {
-            draft.value.lines = []; draft.value.expenseLines = nil; amounts = [:]
+            draft.value.lines = []; draft.value.expenseLines = []; amounts = [:]
             draft.value.reference = ""; referenceBasis = nil
             if tickReady { for candidate in candidates(events).ready { toggle(candidate, on: true) } }
         }
@@ -572,7 +598,7 @@ struct InvoiceEditorView: View {
     private func changeCurrency(_ code: String) {
         guard code != currency, !locked else { return }
         draft.value.currency = code
-        draft.value.lines = []; draft.value.expenseLines = nil; amounts = [:]
+        draft.value.lines = []; draft.value.expenseLines = []; amounts = [:]
     }
 
     private func toggle(_ candidate: InvoiceCandidate, on: Bool) {
@@ -581,7 +607,7 @@ struct InvoiceEditorView: View {
             let saved = savedValue?.lines.first { $0.jobID == candidate.id }
             let amount = saved?.amount ?? candidate.event.amount
             draft.value.lines.append(BilledLine(jobID: candidate.id, jobName: candidate.title, amount: amount ?? 0))
-            amounts[candidate.id] = Money.text(amount, currency: currency)
+            amounts[candidate.id] = Money.inputText(amount, currency: currency)
             for receipt in candidate.receipts { toggle(receipt: receipt, on: true) }
         } else {
             draft.value.lines.removeAll { $0.jobID == candidate.id }
@@ -591,26 +617,26 @@ struct InvoiceEditorView: View {
     }
 
     private func toggle(receipt: EventExpenseFact, on: Bool) {
-        var lines = draft.value.billedExpenses.filter { $0.expenseID != receipt.id }
+        var lines = draft.value.expenseLines.filter { $0.expenseID != receipt.id }
         if on {
-            if let saved = savedValue?.billedExpenses.first(where: { $0.expenseID == receipt.id }) { lines.append(saved) }
-            else if let expense = expenses.first(where: { $0.id == receipt.id }), let line = Self.billed(expense) { lines.append(line) }
+            if let expense = expenses.first(where: { $0.id == receipt.id }), let line = Self.billed(expense) { lines.append(line) }
+            else if let saved = savedValue?.expenseLines.first(where: { $0.expenseID == receipt.id }) { lines.append(saved) }
         }
-        draft.value.expenseLines = lines.isEmpty ? nil : lines
+        draft.value.expenseLines = lines
     }
 
     /// Opens a saved draft in this editor. Keeping the selection adds the work already ticked here to it.
     private func open(_ other: Invoice, keepingSelection: Bool) {
         do {
             let saved = try InvoiceDraft(invoice: other)
-            let savedAmounts = Dictionary(saved.value.lines.map { ($0.jobID, Money.text($0.amount, currency: saved.value.currency)) }, uniquingKeysWith: { a, _ in a })
+            let savedAmounts = Dictionary(saved.value.lines.map { ($0.jobID, Money.inputText($0.amount, currency: saved.value.currency)) }, uniquingKeysWith: { a, _ in a })
             var merged = saved, mergedAmounts = savedAmounts
             if keepingSelection && saved.value.currency == currency {
                 for line in draft.value.lines where !merged.value.lines.contains(where: { $0.jobID == line.jobID }) {
                     merged.value.lines.append(line); mergedAmounts[line.jobID] = amounts[line.jobID]
                 }
-                let receipts = merged.value.billedExpenses + draft.value.billedExpenses.filter { line in !merged.value.billedExpenses.contains { $0.expenseID == line.expenseID } }
-                merged.value.expenseLines = receipts.isEmpty ? nil : receipts
+                let receipts = merged.value.expenseLines + draft.value.expenseLines.filter { line in !merged.value.expenseLines.contains { $0.expenseID == line.expenseID } }
+                merged.value.expenseLines = receipts
             }
             invoice = other; hasClient = true; referenceBasis = nil
             draft = merged; amounts = mergedAmounts
@@ -658,7 +684,7 @@ struct InvoiceEditorView: View {
         var value = draft.value
         value.reference = value.reference.trimmingCharacters(in: .whitespacesAndNewlines)
         for index in value.lines.indices {
-            guard let amount = try Money.parse(amounts[value.lines[index].jobID] ?? "", currency: value.currency) else { throw RecordError.invalid("Enter a billed amount for each included booking.") }
+            guard let amount = try Money.parseInput(amounts[value.lines[index].jobID] ?? "", currency: value.currency) else { throw RecordError.invalid("Enter a billed amount for each included booking.") }
             value.lines[index].amount = amount
         }
         try value.validate(); return value

@@ -167,22 +167,18 @@ final class PaymentsReadinessTests: XCTestCase {
         XCTAssertEqual(try InvoicingDraft(ClientInvoicing()).with(terms: " 14 ").value().termsDays, 14)
     }
 
-    func testExpenseLinesCountTowardTotalAndStayOptionalInJSON() throws {
+    func testExpenseLinesCountTowardTotalAndBilledTerms() throws {
         var value = InvoiceValue(clientID: client, currency: "EUR")
         value.lines = [BilledLine(jobID: UUID(), jobName: "Cup", amount: 65_000)]
-        let plain = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
-        XCTAssertFalse(plain.contains("expenseLines"))
+        let plain = value
         let receipt = BilledExpense(expenseID: UUID(), label: "Parking · 13 Oct", amount: 2580)
         value.expenseLines = [receipt]
         XCTAssertEqual(try value.total(), 67_580)
         XCTAssertNoThrow(try value.validate())
         value.expenseLines = [receipt, receipt]
         XCTAssertThrowsError(try value.validate())
-        // An older build's value without expense lines decodes and compares as different billed terms.
-        let decoded = try JSONDecoder().decode(InvoiceValue.self, from: Data(plain.utf8))
-        XCTAssertNil(decoded.expenseLines)
         value.expenseLines = [receipt]
-        XCTAssertFalse(value.sameBilledTerms(as: decoded))
+        XCTAssertFalse(value.sameBilledTerms(as: plain), "Receipts are part of what an invoice bills")
     }
 }
 

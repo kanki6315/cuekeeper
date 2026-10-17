@@ -317,7 +317,7 @@ extension EventDetailFacts {
             },
             fee: fee,
             billing: Self.billing(job: job, context: context, index: index),
-            expenseDrafts: (job.expenses ?? []).filter { $0.isDraft && $0.value.discarded != true }
+            expenseDrafts: (job.expenses ?? []).filter { $0.isDraft && !$0.value.discarded }
                 .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
                 .compactMap { expense in
                     guard let id = expense.id else { return nil }
@@ -325,7 +325,7 @@ extension EventDetailFacts {
                     return EventExpenseFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount, currency: value.currency)).flatMap { $0 }, currency: value.currency)
                 },
             clientDetailsMissing: job.client?.invoicing.missing ?? [],
-            blockingReceipts: (job.expenses ?? []).filter { $0.isDraft && $0.value.discarded != true }.count
+            blockingReceipts: (job.expenses ?? []).filter { $0.isDraft && !$0.value.discarded }.count
         )
     }
 

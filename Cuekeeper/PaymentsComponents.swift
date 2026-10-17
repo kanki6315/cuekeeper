@@ -672,7 +672,7 @@ struct ReadinessSheet: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("gate-\(gate.rawValue)")
         if gate == .receipts && state == .missing {
-            ForEach(expenses.filter { $0.job == job && $0.isDraft && $0.value.discarded != true }, id: \.objectID) { expense in
+            ForEach(expenses.filter { $0.job == job && $0.isDraft && !$0.value.discarded }, id: \.objectID) { expense in
                 Button { reviewing = expense } label: {
                     HStack {
                         Text(expense.value.merchant.isEmpty ? "Receipt" : expense.value.merchant)

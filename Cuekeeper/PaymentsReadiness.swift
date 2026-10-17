@@ -295,7 +295,7 @@ extension ReadinessFacts {
     init(job: Job, context: NSManagedObjectContext, index: InvoiceIndex) {
         let fee: EventFeeFact
         do { fee = .value(try job.currentFee()) } catch { fee = .conflict }
-        let expenses = (job.expenses ?? []).filter { $0.value.discarded != true }
+        let expenses = (job.expenses ?? []).filter { !$0.value.discarded }
             .sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
         func fact(_ expense: Expense) -> EventExpenseFact? {
             guard let id = expense.id else { return nil }
@@ -332,13 +332,15 @@ extension PaymentsMonth {
         var clients: [UUID: ClientInfo] = [:]
         for job in jobs { if let client = job.client, let id = client.id { clients[id] = ClientInfo(id: id, name: client.name, detailsMissing: client.invoicing.missing, termsDays: client.invoicing.termsDays) } }
         let starts = Dictionary(jobs.compactMap { job in job.id.map { ($0, job.eventStartDay) } }, uniquingKeysWith: { a, _ in a })
+        // A receipts-only invoice dates from its receipts' events.
+        let receiptStarts = Dictionary(jobs.flatMap { job in (job.expenses ?? []).compactMap { expense in expense.id.map { ($0, job.eventStartDay) } } }, uniquingKeysWith: { a, _ in a })
         let open: [OpenInvoice] = invoices.compactMap { invoice in
             guard let id = invoice.id, invoice.issue(in: context, index: index) == nil, let value = try? invoice.currentValue(), value.status != "void",
                   let balance = try? invoice.balance(), let total = try? value.total() else { return nil }
             guard value.status == "draft" || balance > 0 else { return nil }
             return OpenInvoice(id: id, reference: value.reference.isEmpty ? "Draft invoice" : value.reference, clientName: invoice.client?.name ?? "Client syncing",
                                balance: balance, currency: value.currency, dueDay: value.dueDay, draft: value.status == "draft",
-                               paid: (try? invoice.paid()) ?? 0, total: total, eventDays: value.lines.compactMap { starts[$0.jobID] })
+                               paid: (try? invoice.paid()) ?? 0, total: total, eventDays: value.lines.compactMap { starts[$0.jobID] } + value.expenseLines.compactMap { receiptStarts[$0.expenseID] })
         }
         return PaymentsMonth(month: month, events: events, clients: clients, openInvoices: open, displayed: displayed)
     }

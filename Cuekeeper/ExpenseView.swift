@@ -349,7 +349,7 @@ struct EventExpensesSection: View {
     }
     var body: some View {
         Section("Expenses") {
-            ForEach(expenses.filter { $0.value.discarded != true }, id: \.objectID) { expense in
+            ForEach(expenses.filter { !$0.value.discarded }, id: \.objectID) { expense in
                 Button { if let onOpen { onOpen(expense) } else { selected = expense } } label: {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(expense.isDraft ? "Review receipt" : expense.value.merchant).font(.headline)
@@ -416,7 +416,7 @@ struct ExpenseEditorView: View {
         let isBusiness = template != nil || expense?.isBusiness == true
         _business = State(initialValue: isBusiness); initialBusiness = isBusiness
         prefilled = !(template?.merchant.isEmpty ?? true)
-        let value = expense?.value ?? template ?? ExpenseValue()
+        let value = (expense?.value ?? template ?? ExpenseValue()).editingAmounts()
         _draft = State(initialValue: value); _initial = State(initialValue: value)
         _recordID = State(initialValue: expense?.objectID); _revision = State(initialValue: expense?.revision ?? "")
         _photo = State(initialValue: expense?.photo); _isDraft = State(initialValue: expense?.isDraft ?? true)
@@ -509,13 +509,15 @@ struct ExpenseEditorView: View {
                         field("Tax included (optional)", text: $draft.tax, identifier: "expense-tax", decimal: true)
                         DaybookPicker("Category", selection: $draft.category) { ForEach(ExpenseValue.categories, id: \.self) { Text($0).tag($0) } }
                         if business {
-                            Toggle("Repeats monthly", isOn: Binding(get: { draft.repeatsMonthly == true }, set: { draft.repeatsMonthly = $0 ? true : nil }))
+                            Toggle("Repeats monthly", isOn: $draft.repeatsMonthly)
                                 .accessibilityIdentifier("expense-repeats")
                         } else {
                             Toggle("Reimbursable", isOn: $draft.reimbursable)
                         }
                         field("Notes (optional)", text: $draft.notes, identifier: "expense-notes")
-                    } header: { Text("Review details") } footer: { Text("Check the date, currency and final total against the photo. Empty fields need your input. Tax is already included in the total.") }
+                    } header: { Text("Review details") } footer: {
+                        Text([billingNote, "Check the date, currency and final total against the photo. Empty fields need your input. Tax is already included in the total."].compactMap { $0 }.joined(separator: " "))
+                    }
                     .disabled(busy)
                 }
             }
@@ -603,6 +605,14 @@ struct ExpenseEditorView: View {
                 Button("Keep Editing", role: .cancel) {}
             }
         }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
+    }
+    /// Explains what stays fixed while the receipt is on an active invoice.
+    private var billingNote: String? {
+        guard let recordID, let expense = try? context.existingObject(with: recordID) as? Expense, !expense.isDraft, expense.job != nil,
+              let invoice = try? expense.activeInvoices(index: InvoiceIndex(in: context)).first, let value = try? invoice.currentValue(),
+              let line = value.expenseLines.first(where: { $0.expenseID == expense.id }) else { return nil }
+        if value.status == "draft" { return "On a draft invoice. Remove it there before changing its event, currency or reimbursable setting." }
+        return "Billed on \(value.reference) as \(Money.format(line.amount, currency: value.currency)). Its event, currency and reimbursable setting stay as billed, and correcting the total does not change the sent invoice."
     }
     /// The receipt date stays empty until it is read or chosen, so a blank never silently becomes today.
     @ViewBuilder private var dateField: some View {

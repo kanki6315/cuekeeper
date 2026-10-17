@@ -534,6 +534,18 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first).balance(), 7500)
     }
 
+    /// Values saved by earlier versions, before newer keys existed, still read in full.
+    func testValuesSavedBeforeNewerKeysStillDecode() throws {
+        let invoice = #"{"clientID":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74","currency":"USD","reference":"INV-1","status":"sent","sentDay":"2026-10-01","dueDay":"","notes":"","lines":[{"jobID":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD","jobName":"Broadcast","amount":10000}]}"#
+        let decoded = try JSONDecoder().decode(InvoiceValue.self, from: Data(invoice.utf8))
+        XCTAssertEqual(decoded.reference, "INV-1"); XCTAssertEqual(try decoded.total(), 10000)
+        XCTAssertTrue(decoded.expenseLines.isEmpty); XCTAssertFalse(decoded.dueDayAutomatic)
+        let expense = #"{"merchant":"Hotel","day":"2026-10-01","amount":"120.00","currency":"USD","tax":"","category":"Accommodation","reimbursable":true,"notes":""}"#
+        let receipt = try JSONDecoder().decode(ExpenseValue.self, from: Data(expense.utf8))
+        XCTAssertEqual(receipt.merchant, "Hotel"); XCTAssertEqual(receipt.amount, "120.00"); XCTAssertTrue(receipt.reimbursable)
+        XCTAssertFalse(receipt.discarded); XCTAssertFalse(receipt.repeatsMonthly)
+    }
+
     /// #11: every data model change since backups began is described by BackupSchema.changes.
     func testBackupSchemaChangesDescribeEveryModelVersion() throws {
         let bundle = Bundle(for: PersistenceController.self)

@@ -450,3 +450,21 @@ struct PaymentDraft: Equatable {
         if transaction == nil { try writer.save(); context.refreshAllObjects() }
     }
 }
+
+extension InvoiceValue {
+    /// Invoice revisions saved before receipt lines and automatic due dates existed
+    /// lack those keys; they read as having none rather than as unreadable history.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        clientID = try c.decode(UUID.self, forKey: .clientID)
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "USD"
+        reference = try c.decodeIfPresent(String.self, forKey: .reference) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? "draft"
+        sentDay = try c.decodeIfPresent(String.self, forKey: .sentDay) ?? ""
+        dueDay = try c.decodeIfPresent(String.self, forKey: .dueDay) ?? ""
+        notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        lines = try c.decodeIfPresent([BilledLine].self, forKey: .lines) ?? []
+        expenseLines = try c.decodeIfPresent([BilledExpense].self, forKey: .expenseLines) ?? []
+        dueDayAutomatic = try c.decodeIfPresent(Bool.self, forKey: .dueDayAutomatic) ?? false
+    }
+}

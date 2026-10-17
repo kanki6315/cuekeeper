@@ -115,6 +115,7 @@ private struct HomeLocationPicker: View {
 private struct DefaultRolePicker: View {
     @Binding var selection: String
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \WorkRole.name, ascending: true)]) private var roles: FetchedResults<WorkRole>
     @State private var custom = ""
     private var choices: [String] {
@@ -128,11 +129,30 @@ private struct DefaultRolePicker: View {
                 ForEach(choices, id: \.self) { choice($0, value: $0) }
             }
             Section("Custom role") {
-                TextField("Role name", text: $custom).textInputAutocapitalization(.words)
-                Button("Use role") { selection = custom.trimmingCharacters(in: .whitespacesAndNewlines); dismiss() }
-                    .disabled(custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                // The confirm action lives inside the field and only appears once there is a name to use.
+                HStack(spacing: 8) {
+                    TextField("Role name", text: $custom)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done).onSubmit(useCustom)
+                    if !trimmedCustom.isEmpty {
+                        Button("Use", action: useCustom)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color("PrimaryButtonText"))
+                            .buttonStyle(.glassProminent).buttonBorderShape(.capsule).controlSize(.small)
+                            .accessibilityLabel("Use \(trimmedCustom) as default role")
+                            .accessibilityIdentifier("custom-role-use")
+                            .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
+                    }
+                }
+                .frame(minHeight: 44)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: trimmedCustom.isEmpty)
             }
         }.navigationTitle("Default role").navigationBarTitleDisplayMode(.inline)
+    }
+    private var trimmedCustom: String { custom.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private func useCustom() {
+        guard !trimmedCustom.isEmpty else { return }
+        selection = trimmedCustom; dismiss()
     }
     private func choice(_ title: String, value: String) -> some View {
         Button { selection = value; dismiss() } label: {

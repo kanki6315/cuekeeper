@@ -45,6 +45,8 @@ DEFINE SCHEMA
         CD_defaultCurrency_ckAsset ASSET,
         CD_entityName              STRING QUERYABLE SEARCHABLE SORTABLE,
         CD_id                      STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_invoicingJSON           STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_invoicingJSON_ckAsset   ASSET,
         CD_moveReceipt             BYTES QUERYABLE SORTABLE,
         CD_moveReceipt_ckAsset     ASSET,
         CD_name                    STRING QUERYABLE SEARCHABLE SORTABLE,

@@ -53,17 +53,19 @@ final class ExpensesMonthUITests: DaybookUITestCase {
         XCTAssertTrue(app.staticTexts["Holding up invoicing"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["Older than 30 days"].exists)
         let showAll = app.buttons["expenses-inbox-show-stale"]
-        for _ in 0..<6 where !showAll.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        for _ in 0..<6 where !showAll.isHittable { app.swipeUp() }
         XCTAssertTrue(showAll.isHittable, "Seven stale drafts show five at first")
         captureScreenshot("expenses-inbox-groups")
         showAll.tap()
         XCTAssertFalse(showAll.exists)
 
-        app.scrollViews.firstMatch.swipeDown(); app.scrollViews.firstMatch.swipeDown()
+        app.swipeDown(); app.swipeDown()
         element("expenses-inbox-select", in: app).tap()
         let picks = app.buttons.matching(identifier: "expenses-inbox-pick")
         XCTAssertTrue(picks.firstMatch.waitForExistence(timeout: 5))
-        let initial = picks.count
+        // The list only builds rows on screen, so follow the chosen drafts by name rather than counting rows.
+        let chosen = [picks.element(boundBy: 0).label, picks.element(boundBy: 1).label]
+        func row(_ label: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch }
         picks.element(boundBy: 0).tap(); picks.element(boundBy: 1).tap()
         XCTAssertTrue(app.staticTexts["2 selected"].exists)
         captureScreenshot("expenses-inbox-selecting")
@@ -73,11 +75,46 @@ final class ExpensesMonthUITests: DaybookUITestCase {
         XCTAssertTrue(app.buttons["Remove 2 Drafts"].waitForExistence(timeout: 5))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
         XCTAssertFalse(app.buttons["Remove 2 Drafts"].waitForExistence(timeout: 2))
-        XCTAssertEqual(picks.count, initial)
+        XCTAssertTrue(chosen.allSatisfy { row($0).exists })
         app.buttons["expenses-inbox-remove"].tap()
         app.buttons["Remove 2 Drafts"].tap()
         XCTAssertFalse(element("expenses-inbox-remove", in: app).waitForExistence(timeout: 3))
         element("expenses-inbox-select", in: app).tap()
-        XCTAssertEqual(picks.count, initial - 2)
+        XCTAssertTrue(picks.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(chosen.contains { row($0).exists })
+    }
+
+    func testInboxSwipesChooseEventAndRemove() {
+        let app = launch("expenses-inbox")
+        let hotel = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hotel")).firstMatch
+        XCTAssertTrue(hotel.waitForExistence(timeout: 15))
+        XCTAssertTrue(hotel.label.contains("No event yet"))
+        for _ in 0..<4 where !hotel.isHittable || hotel.frame.maxY > app.frame.maxY * 0.8 { app.swipeUp() }
+
+        // Swiping right offers Choose Event; a full swipe runs it straight away.
+        hotel.swipeRight()
+        if !app.navigationBars["Choose Event"].waitForExistence(timeout: 2) {
+            let choose = app.buttons["Choose Event"].firstMatch
+            XCTAssertTrue(choose.waitForExistence(timeout: 5))
+            captureScreenshot("expenses-inbox-swipe-right")
+            choose.tap()
+        }
+        let event = app.buttons["choose-expense-event-row"].firstMatch
+        XCTAssertTrue(event.waitForExistence(timeout: 5)); event.tap()
+        // Still a draft, now holding up its event's invoice.
+        XCTAssertTrue(hotel.waitForExistence(timeout: 5))
+        XCTAssertFalse(hotel.label.contains("No event yet"))
+
+        // Swiping left offers Remove, which always asks first.
+        let shell = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Shell")).firstMatch
+        for _ in 0..<6 where !shell.isHittable { app.swipeUp() }
+        shell.swipeLeft()
+        let remove = app.buttons["Remove"].firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        captureScreenshot("expenses-inbox-swipe-left")
+        remove.tap()
+        let confirm = app.buttons["Remove Draft"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5)); confirm.tap()
+        XCTAssertFalse(shell.waitForExistence(timeout: 3))
     }
 }

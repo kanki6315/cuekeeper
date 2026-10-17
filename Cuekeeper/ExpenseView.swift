@@ -27,6 +27,7 @@ struct ExpensesView: View {
     @State private var selection: Set<UUID> = []
     @State private var removing = false
     @State private var showAllStale = false
+    @State private var assigning: Expense?
     @State private var error: String?
     @State private var sheet: ExpenseSheet?
     @State private var choosingEvent = false
@@ -38,20 +39,32 @@ struct ExpensesView: View {
     var body: some View {
         _ = jobs.count + clients.count + invoiceRevisions.count + payments.count
         let ledger = ExpensesLedger.load(filter: filter, expenses: Array(expenses), context: context)
-        return DaybookForm(topPadding: 12) {
-            Section {
-                DaybookTabHeader {
-                    Button("Scan Receipt", systemImage: "receipt") { choosingEvent = true }
-                        .buttonStyle(DaybookPrimaryButton())
-                        .accessibilityIdentifier("scan-receipt-overview")
+        return Group {
+            // The inbox is a native list so its rows can be swiped; the ledger keeps the ruled panels.
+            if mode == .inbox {
+                DaybookList {
+                    // A header, not rows: list rows squeeze the tab header and merge its buttons' taps.
+                    Section {} header: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            tabHeader
+                            modePicker(ledger.inbox.count)
+                            if ledger.inbox.count > 0 { inboxSummary(ledger.inbox) }
+                        }
+                        .textCase(nil).font(.body)
+                        .listRowInsets(EdgeInsets())
+                    }
+                    inboxSections(ledger.inbox)
                 }
-            }.containerValue(\.daybookUnframed, true).containerValue(\.daybookFlushTop, true)
-            Section {
-                DaybookSegments(title: "Expenses view", selection: $mode, options: ExpensesMode.allCases,
-                                identifier: "expenses-mode", label: \.rawValue,
-                                badge: { $0 == .inbox ? ledger.inbox.count : 0 })
-            }.containerValue(\.daybookUnframed, true)
-            if mode == .inbox { inboxSections(ledger.inbox) } else { ledgerSections(ledger) }
+                // Match the ledger's 20-point page margin.
+                .contentMargins(.horizontal, 20, for: .scrollContent)
+                .contentMargins(.top, 12, for: .scrollContent)
+            } else {
+                DaybookForm(topPadding: 12) {
+                    Section { tabHeader }.containerValue(\.daybookUnframed, true).containerValue(\.daybookFlushTop, true)
+                    Section { modePicker(ledger.inbox.count) }.containerValue(\.daybookUnframed, true)
+                    ledgerSections(ledger)
+                }
+            }
         }
         .navigationTitle("").navigationBarTitleDisplayMode(.inline)
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
@@ -62,8 +75,16 @@ struct ExpensesView: View {
         .confirmationDialog(selection.count == 1 ? "Remove this draft?" : "Remove \(selection.count) drafts?",
                             isPresented: $removing, titleVisibility: .visible) {
             Button(selection.count == 1 ? "Remove Draft" : "Remove \(selection.count) Drafts", role: .destructive) { removeSelected() }
-            Button("Keep Drafts", role: .cancel) {}
-        } message: { Text("They leave your inbox. A repeated Wallet transaction with the same transaction ID won’t recreate them.") }
+            Button(selection.count == 1 ? "Keep Draft" : "Keep Drafts", role: .cancel) {}
+        } message: {
+            Text(selection.count == 1 ? "It leaves your inbox. A repeated Wallet transaction with the same transaction ID won’t recreate it."
+                                      : "They leave your inbox. A repeated Wallet transaction with the same transaction ID won’t recreate them.")
+        }
+        // A swiped Remove borrows the selection for one draft; cancelling gives it back.
+        .onChange(of: removing) { _, open in if !open && !selecting { selection = [] } }
+        .sheet(item: $assigning) { expense in
+            ExpenseEventSelection { jobID in assign(expense, to: jobID) }
+        }
         .saveErrorAlert($error)
         .sheet(item: $sheet) { sheet in
             switch sheet {
@@ -86,6 +107,20 @@ struct ExpensesView: View {
         }
     }
 
+    private var tabHeader: some View {
+        DaybookTabHeader {
+            Button("Scan Receipt", systemImage: "receipt") { choosingEvent = true }
+                .buttonStyle(DaybookPrimaryButton())
+                .accessibilityIdentifier("scan-receipt-overview")
+        }
+    }
+
+    private func modePicker(_ inboxCount: Int) -> some View {
+        DaybookSegments(title: "Expenses view", selection: $mode, options: ExpensesMode.allCases,
+                        identifier: "expenses-mode", label: \.rawValue,
+                        badge: { $0 == .inbox ? inboxCount : 0 })
+    }
+
     // MARK: Inbox
 
     @ViewBuilder private func inboxSections(_ inbox: ExpenseInbox) -> some View {
@@ -96,14 +131,11 @@ struct ExpensesView: View {
                     .accessibilityIdentifier("expenses-inbox-empty")
             }
         } else {
-            Section { inboxSummary(inbox) }.containerValue(\.daybookUnframed, true)
             ForEach(inbox.sections) { section in
                 let stale = section.group == .stale
                 let items = stale && !showAllStale ? Array(section.items.prefix(stalePreview)) : section.items
                 Section {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        inboxRow(item, primary: !selecting && section.id == inbox.sections.first?.id && index == 0)
-                    }
+                    ForEach(items) { inboxRow($0) }
                     if stale && !showAllStale && section.items.count > stalePreview {
                         Button("Show All \(section.items.count)") { withAnimation(.easeOut(duration: 0.2)) { showAllStale = true } }
                             .fontWeight(.semibold).frame(minHeight: 44)
@@ -114,14 +146,16 @@ struct ExpensesView: View {
                         Text(section.group.title)
                         AmberCount(count: section.items.count)
                     }
+                    .font(.headline).foregroundStyle(Color.primary).textCase(nil)
                 } footer: {
-                    if stale { Text("Probably personal purchases. Select the ones you don’t need and remove them.") }
+                    if stale { Text("Probably personal purchases. Swipe left to remove one, or select several.") }
                     else if section.group == .blocking { Text("An event can’t be invoiced while it has a receipt to finish.") }
+                    else if section.group == .recent { Text("Swipe right to choose an event, left to remove.") }
                 }
             }
         }
         Section {
-            DaybookLink { ExpenseAutomationSettingsView() } label: { Label("Wallet automation", systemImage: "creditcard") }
+            NavigationLink { ExpenseAutomationSettingsView() } label: { Label("Wallet automation", systemImage: "creditcard") }
         }
     }
 
@@ -139,7 +173,9 @@ struct ExpensesView: View {
         }
     }
 
-    @ViewBuilder private func inboxRow(_ item: FinishItem, primary: Bool) -> some View {
+    /// The whole row opens the draft or the due month. Drafts swipe right to choose an event and left to remove.
+    @ViewBuilder private func inboxRow(_ item: FinishItem) -> some View {
+        let draft = item.draftID.flatMap { id in expenses.first { $0.id == id } }
         if selecting, let id = item.draftID {
             let selected = selection.contains(id)
             Button {
@@ -157,19 +193,19 @@ struct ExpensesView: View {
             .accessibilityAddTraits(selected ? [.isSelected] : [])
             .accessibilityIdentifier("expenses-inbox-pick")
         } else {
-            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
-            layout {
-                itemText(item)
-                Group {
-                    if primary {
-                        Button(item.actionTitle) { perform(item) }.buttonStyle(DaybookPrimaryButton()).controlSize(.small)
-                    } else {
-                        Button(item.actionTitle) { perform(item) }.font(.subheadline.weight(.semibold)).frame(minWidth: 44, minHeight: 44)
-                    }
+            Button { perform(item) } label: {
+                HStack(spacing: 10) {
+                    itemText(item)
+                    Text(item.actionTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
                 }
-                .disabled(selecting)
-                .accessibilityIdentifier("expenses-finish-\(item.actionTitle.lowercased())")
+                .frame(minHeight: 44).contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityHint(item.actionTitle == "Add" ? "Adds this month’s cost" : "Opens the draft to finish it")
+            .accessibilityIdentifier("expenses-finish-\(item.actionTitle.lowercased())")
+            .modifier(InboxRowActions(draft: draft, canAssign: item.group != .blocking,
+                                      assign: { assigning = $0 }, remove: { confirmRemove($0) }))
         }
     }
 
@@ -194,6 +230,19 @@ struct ExpensesView: View {
         }
         .padding(.horizontal, 20).padding(.vertical, 6)
         .background(.bar)
+    }
+
+    private func confirmRemove(_ expense: Expense) {
+        guard let id = expense.id else { return }
+        selection = [id]; removing = true
+    }
+
+    private func assign(_ expense: Expense, to jobID: NSManagedObjectID) {
+        assigning = nil
+        do {
+            // Stays a draft: choosing the event is one step, the receipt and details still need review.
+            try Expense.save(expense.value, id: expense.objectID, revision: expense.revision, confirmed: false, jobID: jobID, in: context)
+        } catch { self.error = error.localizedDescription }
     }
 
     private func endSelecting() { selecting = false; selection = [] }
@@ -491,6 +540,38 @@ struct ExpensesView: View {
             Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
         }
         .frame(minHeight: 44).contentShape(Rectangle())
+    }
+}
+
+/// Swipe, long-press and VoiceOver actions for an inbox draft. Removing never happens on a full swipe.
+private struct InboxRowActions: ViewModifier {
+    let draft: Expense?
+    let canAssign: Bool
+    let assign: (Expense) -> Void
+    let remove: (Expense) -> Void
+
+    func body(content: Content) -> some View {
+        if let draft {
+            content
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    if canAssign {
+                        Button("Choose Event", systemImage: "calendar.badge.plus") { assign(draft) }.tint(Color.accentColor)
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button("Remove", systemImage: "trash") { remove(draft) }.tint(.red)
+                }
+                .contextMenu {
+                    if canAssign { Button("Choose Event", systemImage: "calendar.badge.plus") { assign(draft) } }
+                    Button("Remove Draft", systemImage: "trash", role: .destructive) { remove(draft) }
+                }
+                .accessibilityActions {
+                    if canAssign { Button("Choose Event") { assign(draft) } }
+                    Button("Remove Draft") { remove(draft) }
+                }
+        } else {
+            content
+        }
     }
 }
 

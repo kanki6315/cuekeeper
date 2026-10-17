@@ -12,6 +12,7 @@
 		054F12566E7AC62975AE4599 /* ExpensesMonthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF559422C0BEE4D17587EC25 /* ExpensesMonthTests.swift */; };
 		062400846722C32FFC23825F /* DaybookStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */; };
 		122713CA8BFE6DC9CCAFCA22 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C523DAE46E20D652126E21F3 /* UITestSupport.swift */; };
+		17C6E49089A6B15B111F315F /* IdentityReviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD3FB727A6695C1733406E9 /* IdentityReviewTests.swift */; };
 		1DDC24A942627579A1EDAB3D /* UpcomingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB8169DE40CC3D98FB90106 /* UpcomingView.swift */; };
 		1ED3D411CEF476412227AA25 /* SchedulePublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */; };
 		2072D82545AF7460598BAF1D /* ClientSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0476B84B0DEAC41AD31C919 /* ClientSummaryTests.swift */; };
@@ -37,7 +38,6 @@
 		3BA78FB33141569F77DBA9A3 /* UpcomingSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D404E63E0CA7BA010061FA4 /* UpcomingSummaryTests.swift */; };
 		3D34152724DEAC69AD5E7B5C /* EventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C96A98C9B9BAB0D065741A /* EventView.swift */; };
 		3F6B9BDFB7A906E3B4F8D755 /* RecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658D5107A3868AF488F32DDE /* RecoveryTests.swift */; };
-		C090738BDD19FE26A248589D /* IdentityReviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB6D15A6D81EE0627DFBD130 /* IdentityReviewTests.swift */; };
 		40CC77A126552FDDBE397EC0 /* EventDetailSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EADBC2E574A8868BC2101485 /* EventDetailSummaryTests.swift */; };
 		41B304D19B61465775986906 /* DesignFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AEB83E7804374638D4D0136 /* DesignFixtures.swift */; };
 		471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42AD7432BF268805135A824 /* CalendarSettingsView.swift */; };
@@ -210,6 +210,7 @@
 		2B406C18DE001292BB7EC4D5 /* PaymentsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsComponents.swift; sourceTree = "<group>"; };
 		2BE8FC36A37D1122F844EE96 /* RecoveryBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryBackupTests.swift; sourceTree = "<group>"; };
 		2CC25F847FFB2944BBBC0D0D /* FeeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeView.swift; sourceTree = "<group>"; };
+		2CD3FB727A6695C1733406E9 /* IdentityReviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityReviewTests.swift; sourceTree = "<group>"; };
 		2DBF588394D95094941421C3 /* CuekeeperV9.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV9.xcdatamodel; sourceTree = "<group>"; };
 		2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = CuekeeperWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		33F836C8BA3141120B7425E7 /* DaySchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySchedule.swift; sourceTree = "<group>"; };
@@ -238,7 +239,6 @@
 		60A535829E430BC6AF335536 /* EventWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventWizardView.swift; sourceTree = "<group>"; };
 		618C864D7A24CC9C62D1E183 /* Billing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Billing.swift; sourceTree = "<group>"; };
 		658D5107A3868AF488F32DDE /* RecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryTests.swift; sourceTree = "<group>"; };
-		FB6D15A6D81EE0627DFBD130 /* IdentityReviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityReviewTests.swift; sourceTree = "<group>"; };
 		66121AC5123A30AEEDEB1B39 /* CuekeeperV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV2.xcdatamodel; sourceTree = "<group>"; };
 		66BCF474DBEC80465600AB43 /* RecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryView.swift; sourceTree = "<group>"; };
 		6813AB65D56DEB9B484FB834 /* JobDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobDetailView.swift; sourceTree = "<group>"; };
@@ -356,9 +356,9 @@
 				A69C16751D64E2080FCAD476 /* ExpenseTests.swift */,
 				EAE78E9489C239158E347DB7 /* FeeAndInvoiceTests.swift */,
 				9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */,
+				2CD3FB727A6695C1733406E9 /* IdentityReviewTests.swift */,
 				8CC3E7DF08A543BC402EDE65 /* PaymentsTests.swift */,
 				658D5107A3868AF488F32DDE /* RecoveryTests.swift */,
-				FB6D15A6D81EE0627DFBD130 /* IdentityReviewTests.swift */,
 				0B5DD4F16CD97B0B59D5309C /* SiriEventTests.swift */,
 				7221AB0C0B361F73E157FAEF /* SyncFeedbackTests.swift */,
 				E8A69458582EB391A16E9C37 /* TodayCaptureTests.swift */,
@@ -751,9 +751,9 @@
 				EB4DAC28660BECD06FCE08F0 /* ExpensesMonthUITests.swift in Sources */,
 				5A572CBD38F92272C8BC8657 /* FeeAndInvoiceTests.swift in Sources */,
 				8FCB4E47836A4382380C6D83 /* FirstLaunchTests.swift in Sources */,
+				17C6E49089A6B15B111F315F /* IdentityReviewTests.swift in Sources */,
 				DE9A2949C4C78D6CD04EBCEA /* PaymentsTests.swift in Sources */,
 				3F6B9BDFB7A906E3B4F8D755 /* RecoveryTests.swift in Sources */,
-				C090738BDD19FE26A248589D /* IdentityReviewTests.swift in Sources */,
 				34013DCD7F646C106E4C7E6E /* SiriEventTests.swift in Sources */,
 				ACB8D4B0387950A8AA921500 /* SyncFeedbackTests.swift in Sources */,
 				7BB717E1A46FDBF29B846F09 /* TodayCaptureTests.swift in Sources */,

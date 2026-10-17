@@ -408,9 +408,12 @@ struct RunOfShowDayView<Row: View>: View {
                 DaybookDateRail(day: day.key)
             }
             VStack(alignment: .leading, spacing: 8) {
-                if let weather {
-                    Text(weather).font(.footnote).foregroundStyle(Color("SecondaryText"))
-                        .frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 4)
+                if day.key.isEmpty || weather != nil {
+                    HStack {
+                        if day.key.isEmpty { Text("Date to come") }
+                        Spacer(minLength: 8)
+                        if let weather { Text(weather) }
+                    }.font(.footnote).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
                 }
                 VStack(spacing: 0) {
                     ForEach(Array(day.sessions.enumerated()), id: \.element.id) { index, session in

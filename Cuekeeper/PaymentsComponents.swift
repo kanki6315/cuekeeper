@@ -70,15 +70,21 @@ struct MonthStepper: View {
             VStack(alignment: inline ? .leading : .center, spacing: 2) {
                 Text(Self.title(month)).font(inline ? .title2.bold() : .title3.bold())
                     .accessibilityIdentifier("payments-month")
-                Text(eventCount == 1 ? "1 event" : "\(eventCount) events").font(.footnote).foregroundStyle(Color("SecondaryText"))
+                HStack(spacing: 6) {
+                    Text(eventCount == 1 ? "1 event" : "\(eventCount) events").foregroundStyle(Color("SecondaryText"))
+                    if month != PaymentsView.currentMonth {
+                        Text("·").foregroundStyle(Color("SecondaryText"))
+                        // Tap area grows to 44pt without pushing the stepper taller.
+                        Button("This month") { month = PaymentsView.currentMonth }.fontWeight(.semibold)
+                            .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
+                            .accessibilityIdentifier("month-current")
+                    }
+                }
+                .font(.footnote)
             }
             if !inline { Spacer(minLength: 0) }
             Button { shift(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
                 .accessibilityLabel("Next month").accessibilityIdentifier("month-next")
-            if month != PaymentsView.currentMonth {
-                Button("This month") { month = PaymentsView.currentMonth }.font(.subheadline.weight(.semibold))
-                    .frame(minHeight: 44).accessibilityIdentifier("month-current")
-            }
         }
         .font(.body.weight(.semibold))
     }
@@ -168,6 +174,8 @@ struct StepBar: View {
 
 /// Names each segment of the step bar, aligned with the rows' bars.
 struct StepBarKey: View {
+    /// Indents the key to line up with the bars in the event rows below it.
+    var alignsWithRows = true
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var railWidth = 47
     @ScaledMetric(relativeTo: .caption) private var column = 56
@@ -183,12 +191,11 @@ struct StepBarKey: View {
     }
 
     private var columns: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .bottom, spacing: 3) {
                 ForEach(ReadinessGate.allCases, id: \.self) { gate in
                     VStack(spacing: 2) {
                         Text(gate.label).font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).lineLimit(1).minimumScaleFactor(0.8)
-                        Image(systemName: "arrow.down").font(.caption2.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
                         RoundedRectangle(cornerRadius: 2).fill(sample[gate]!.fill).frame(height: 6)
                     }
                     .frame(width: column)
@@ -203,7 +210,7 @@ struct StepBarKey: View {
                 }
             }
         }
-        .padding(.leading, railWidth + 12)
+        .padding(.leading, alignsWithRows ? railWidth + 12 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Each event's bar shows work, fee, receipts and client, in that order: done, missing, or not yet.")
     }
@@ -286,27 +293,40 @@ struct ClientGroupHeader: View {
     let group: ClientMonthGroup
     let clientObject: Client?
     let onDetails: (Client) -> Void
+    /// Starts an invoice for the ready events in one currency.
+    var onInvoice: ((String) -> Void)? = nil
     var body: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        let totals = group.clientID != nil && onInvoice != nil ? group.readyTotals : []
         layout {
             VStack(alignment: .leading, spacing: 3) {
                 Text(group.name).font(.headline)
                 if group.clientID != nil && group.billable {
                     if group.detailsMissing.isEmpty {
-                        Text("Details complete · \(group.termsDays ?? 0)-day terms").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        let terms = "\(group.termsDays ?? 0)-day terms"
+                        Text(group.ready.isEmpty ? "Details complete · \(terms)" : "\(group.ready.count) ready · \(terms)")
+                            .font(.subheadline).foregroundStyle(Color("SecondaryText"))
                     } else {
                         Text(ListFormatter.localizedString(byJoining: group.detailsMissing).capitalizedFirst + " missing")
                             .font(.subheadline.weight(.semibold)).foregroundStyle(Color("AmberText"))
                     }
                 }
             }
+            .accessibilityElement(children: .combine)
             if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
             if let clientObject, group.billable, !group.detailsMissing.isEmpty {
                 Button("Add details") { onDetails(clientObject) }.font(.subheadline.weight(.semibold))
                     .frame(minHeight: 44).accessibilityIdentifier("client-details-\(group.name)")
+            } else if let onInvoice, !totals.isEmpty {
+                VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 8) {
+                    ForEach(totals, id: \.currency) { total in
+                        Button("Invoice \(Money.format(total.amount, currency: total.currency))") { onInvoice(total.currency) }
+                            .buttonStyle(DaybookPrimaryButton()).fixedSize()
+                            .accessibilityIdentifier("invoice-ready-\(group.name)")
+                    }
+                }
             }
         }
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -381,17 +401,8 @@ struct MonthLedgerTable: View {
                 ForEach(groups) { group in
                     Divider()
                     GridRow {
-                        HStack(spacing: 12) {
-                            ClientGroupHeader(group: group, clientObject: client(group.clientID), onDetails: onDetails)
-                            if let _ = group.clientID {
-                                ForEach(group.readyTotals, id: \.currency) { total in
-                                    Button("Invoice \(group.ready.filter { $0.currency == total.currency }.count) ready · \(Money.format(total.amount, currency: total.currency))") { onInvoice(group, total.currency) }
-                                        .buttonStyle(DaybookPrimaryButton()).fixedSize()
-                                        .accessibilityIdentifier("invoice-ready-\(group.name)")
-                                }
-                            }
-                        }
-                        .gridCellColumns(7)
+                        ClientGroupHeader(group: group, clientObject: client(group.clientID), onDetails: onDetails) { onInvoice(group, $0) }
+                            .gridCellColumns(7)
                     }
                     .padding(.vertical, 8)
                     .background(Color.accentColor.opacity(0.04))

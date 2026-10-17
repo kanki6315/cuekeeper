@@ -283,7 +283,7 @@ Otherwise all four done is *Ready to invoice*, work done with a gap is *Held up*
 come is upcoming. Receipts settle invoices as a whole; no per-event paid amount is derived.
 
 Compact layout: tab header with Add Invoice; the Wallet expenses prompt when drafts are pending;
-month stepper (chevrons, *This month* when away); a panel with one bar per currency split into
+month stepper (chevrons, *This month* beside the event count when away); a panel with one bar per currency split into
 Paid, Invoiced, Ready to invoice, Held up and Still to happen (accent at full, 62% and 32%,
 orange, faint ink), with totals, unknown-fee counts and a legend; *By client* with the step-bar
 key (gate labels with arrows into a sample bar, then Done / Missing / Not yet). Client panels show

@@ -398,9 +398,6 @@ struct ClientDetailView: View {
                     Text(ListFormatter.localizedString(byJoining: invoicing.missing).capitalizedFirst + (invoicing.missing.count == 1 ? " is" : " are") + " needed before \(client.name) events can be ready to invoice.")
                 }
             }
-            Section("Defaults") {
-                LabeledContent("Currency for new events", value: client.defaultCurrency)
-            }
             if !client.notes.isEmpty {
                 Section("Notes") { Text(client.notes).textSelection(.enabled) }
             }

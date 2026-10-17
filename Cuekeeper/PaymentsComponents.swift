@@ -54,6 +54,7 @@ struct MonthStepper: View {
     @Binding var month: String
     let eventCount: Int
     var inline = false
+    var noun = (one: "event", many: "events")
 
     static func date(_ month: String) -> Date? { Day.date(from: month + "-01") }
     static func title(_ month: String) -> String { date(month)?.formatted(.dateTime.month(.wide).year()) ?? month }
@@ -71,7 +72,7 @@ struct MonthStepper: View {
                 Text(Self.title(month)).font(inline ? .title2.bold() : .title3.bold())
                     .accessibilityIdentifier("payments-month")
                 HStack(spacing: 6) {
-                    Text(eventCount == 1 ? "1 event" : "\(eventCount) events").foregroundStyle(Color("SecondaryText"))
+                    Text(eventCount == 1 ? "1 \(noun.one)" : "\(eventCount) \(noun.many)").foregroundStyle(Color("SecondaryText"))
                     if month != PaymentsView.currentMonth {
                         Text("·").foregroundStyle(Color("SecondaryText"))
                         // Tap area grows to 44pt without pushing the stepper taller.
@@ -136,22 +137,38 @@ struct MonthMoneyPanel: View {
 struct MoneyBar: View {
     let buckets: CurrencyBuckets
     var body: some View {
-        let parts = MoneyBucket.allCases.compactMap { bucket in (buckets.amounts[bucket] ?? 0) > 0 ? (bucket, buckets.amounts[bucket]!) : nil }
-        let total = max(1, parts.reduce(0) { $0 + $1.1 })
+        SegmentedMoneyBar(currency: buckets.currency, parts: MoneyBucket.allCases.compactMap { bucket in
+            (buckets.amounts[bucket] ?? 0) > 0 ? .init(label: bucket.label, fill: bucket.fill, amount: buckets.amounts[bucket]!) : nil
+        })
+    }
+}
+
+/// One currency's money split into proportional colored segments.
+struct SegmentedMoneyBar: View {
+    struct Part: Identifiable {
+        let label: String
+        let fill: Color
+        let amount: Int64
+        var id: String { label }
+    }
+    let currency: String
+    let parts: [Part]
+    var body: some View {
+        let total = max(1, parts.reduce(0) { $0 + $1.amount })
         GeometryReader { geometry in
             HStack(spacing: 2) {
                 if parts.isEmpty { Capsule().fill(Color.primary.opacity(0.08)) }
-                ForEach(parts, id: \.0) { bucket, amount in
-                    Rectangle().fill(bucket.fill)
-                        .frame(width: max(3, (geometry.size.width - CGFloat(parts.count - 1) * 2) * CGFloat(amount) / CGFloat(total)))
+                ForEach(parts) { part in
+                    Rectangle().fill(part.fill)
+                        .frame(width: max(3, (geometry.size.width - CGFloat(parts.count - 1) * 2) * CGFloat(part.amount) / CGFloat(total)))
                 }
             }
         }
         .frame(height: 12)
         .clipShape(Capsule())
         .accessibilityElement()
-        .accessibilityLabel(buckets.currency)
-        .accessibilityValue(parts.isEmpty ? "Nothing yet" : parts.map { "\(Money.format($0.1, currency: buckets.currency)) \($0.0.label.lowercased())" }.joined(separator: ", "))
+        .accessibilityLabel(currency)
+        .accessibilityValue(parts.isEmpty ? "Nothing yet" : parts.map { "\(Money.format($0.amount, currency: currency)) \($0.label.lowercased())" }.joined(separator: ", "))
     }
 }
 

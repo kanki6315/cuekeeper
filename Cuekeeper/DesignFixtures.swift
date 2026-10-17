@@ -92,6 +92,13 @@ enum DesignFixtures {
                 let expense = try context.existingObject(with: id) as! Expense
                 try Expense.save(ExpenseValue(merchant: merchant, day: "2026-10-14", amount: index == 0 ? "18.50" : "86.00", currency: index == 0 ? "USD" : "EUR", category: index == 0 ? "Meals" : "Travel", reimbursable: index == 1), id: id, revision: expense.revision, in: context)
             }
+            // Business costs with no event; Claude Pro's next month is due.
+            for (merchant, day, amount, currency, repeats) in [("Claude Pro", "2026-09-01", "20.00", "USD", true), ("Adobe Creative Cloud", "2026-10-04", "59.99", "USD", true),
+                                                               ("Dropbox Plus", "2026-10-09", "11.99", "EUR", false)] {
+                var value = ExpenseValue(merchant: merchant, day: day, amount: amount, currency: currency, category: "Software")
+                value.repeatsMonthly = repeats ? true : nil
+                _ = try Expense.createBusiness(value, in: context)
+            }
         }
         if let client = created[0].client {
             let original = LibraryDraft(record: client)

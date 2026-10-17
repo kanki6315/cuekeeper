@@ -61,8 +61,9 @@ final class BackgroundExpenseUITests: RegressionUITestCase {
         let settle = app.buttons["settle-toggle"]
         XCTAssertTrue(settle.waitForExistence(timeout: 5)); settle.tap()
         XCTAssertTrue(app.staticTexts["Receipt to finish"].firstMatch.waitForExistence(timeout: 5)); shot("pending-upcoming-settle")
-        let expenses = app.buttons["Expenses"].firstMatch
-        if expenses.exists { expenses.tap() } else { app.staticTexts["Expenses"].firstMatch.tap() }
+        // The Expenses tab lists drafts under To finish; the full completion list opens from Payments.
+        let payments = app.buttons["Payments"].firstMatch
+        if payments.exists { payments.tap() } else { app.staticTexts["Payments"].firstMatch.tap() }
         let pending = app.buttons["pending-expenses"].firstMatch
         XCTAssertTrue(pending.waitForExistence(timeout: 10))
         pending.tap()

@@ -166,19 +166,33 @@ DaybookDateRail stacks abbreviated weekday, day number and month in accent color
 
 Upcoming, Events, Payments, Expenses and Settings form the tab/sidebar destinations. The sidebar groups the brand, native sidebar list and sync feedback into one floating glass surface with an opaque accessibility fallback. Native navigation and tab bar backgrounds use automatic material behavior. Sync feedback leads to Settings and describes observed activity without claiming that every device is current.
 
-### Expenses overview
+### Expenses month
 
-Expenses reuses DaybookForm and DaybookTabHeader with a primary Scan Receipt action,
-followed directly by All / Saved / Needs review segments, without a repeated title or search field. Rows lead with merchant
-and amount, then subdued event/client, date/category and reimbursement metadata;
-drafts carry an amber Needs review label. Records sort by expense date, newest
-first. Rows open the existing expense editor; expenses linked to deleted events
-remain visible with restoration guidance and cannot be opened. Scan Receipt asks
-for an event before capture. The empty state offers capture guidance or suggests
-changing the filter. This extension was source-reviewed and passed
-build-for-testing plus all 22 ExpenseTests and BackgroundExpenseTests. iPhone and
-iPad simulator captures verified the compact rows; those captures predate removal
-of the heading and search field. The final heading removal also passed a build.
+Built from `ExpensesMonth` (`Cuekeeper/ExpensesMonth.swift`), derived on each render from expenses,
+their events and invoices; nothing is stored. Order: tab header with Scan Receipt, the shared month
+stepper (expense count, *This month* when away), a panel with one bar per currency split into Paid
+back, On an invoice, To rebill (blue), To finish (orange) and Your cost (faint ink), then:
+
+- **To finish**: collapsed to its first item with an amber count; expanded it lists every unfinished
+  receipt or Wallet capture from any month (Finish) and each repeating business cost whose next month
+  is due (Add, which opens a prefilled business cost). Oldest first. Hidden when empty.
+- **To rebill**: finished reimbursable receipts in the month not yet on an invoice, per client and
+  currency, with *Invoice* when at least one of their events is on no active invoice (invoices still
+  need an event line). It starts the existing ready-invoice flow with those events and receipts.
+- **Expenses**: All / Events / Business segments over one date-ordered list, with date rails per day.
+  Rows show merchant, event · category (or *Business · category*, or amber *Event to choose*), amount
+  and state: To finish, Your cost, To rebill, On INV-…, Paid back, Billing review, or *Monthly* for a
+  repeating business cost. Expenses on deleted events stay listed with restoration guidance.
+- *Still to rebill from earlier* jumps to the latest earlier month holding unbilled receipts.
+
+Business costs are finished expenses with no event (for example software subscriptions). They count
+as Your cost, are never reimbursable or rebilled, and need no photo. Scan Receipt offers *Business cost*
+above the event list; the editor's *What it's for* segments (An event / Business) switch an expense
+between them, and *Repeats monthly* links each month into a series. The next month is offered under
+To finish once due rather than created automatically, so devices never create duplicates. No schema
+change: `repeatsMonthly` and `seriesID` live in the expense value JSON and older builds ignore them;
+older builds reject the new Software category only when that expense is edited there. The pending
+expenses prompt now appears only in Payments.
 
 ### Event capture and editing
 

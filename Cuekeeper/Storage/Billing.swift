@@ -276,7 +276,7 @@ extension Expense {
         try index.invoices(for: self, excluding: excluded)
     }
     /// A finished reimbursable receipt that can be billed to its event's client.
-    var isRebillable: Bool { !isDraft && value.reimbursable && value.discarded != true && job?.deletedAt == nil }
+    var isRebillable: Bool { !isDraft && value.reimbursable && value.discarded != true && job != nil && job?.deletedAt == nil }
 }
 
 extension Job {

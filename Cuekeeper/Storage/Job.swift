@@ -69,9 +69,44 @@ enum Day {
         formatter(timeZone: timeZone).string(from: date)
     }
 
+    /// The first instant of the civil day. Where local midnight is skipped (e.g. Santiago, Cairo)
+    /// that is the first time the day has, such as 01:00. Only a day the zone skipped entirely is nil.
     static func date(from value: String, timeZone: TimeZone = .current) -> Date? {
-        formatter(timeZone: timeZone).date(from: value)
+        guard let parts = components(value) else { return nil }
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = timeZone
+        var noon = parts; noon.hour = 12
+        guard let midday = calendar.date(from: noon) else { return nil }
+        let start = calendar.startOfDay(for: midday)
+        return string(from: start, timeZone: timeZone) == value ? start : nil
     }
+
+    /// Strict YYYY-MM-DD, validated by its civil components rather than by any local midnight.
+    static func components(_ value: String) -> DateComponents? {
+        let fields = value.split(separator: "-", omittingEmptySubsequences: false)
+        guard fields.count == 3, fields.map(\.count) == [4, 2, 2], fields.allSatisfy({ $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }),
+              let year = Int(fields[0]), let month = Int(fields[1]), let day = Int(fields[2]) else { return nil }
+        let parts = DateComponents(year: year, month: month, day: day)
+        guard let date = utc.date(from: parts), utc.dateComponents([.year, .month, .day], from: date) == parts else { return nil }
+        return parts
+    }
+
+    /// Civil day arithmetic, independent of any timezone's clock changes.
+    static func adding(days: Int, to value: String) -> String? {
+        guard let parts = components(value), let date = utc.date(from: parts),
+              let result = utc.date(byAdding: .day, value: days, to: date) else { return nil }
+        return string(from: result, timeZone: utc.timeZone)
+    }
+
+    /// Whole civil days from one day to another; DST transitions never shorten the count.
+    static func days(from start: String, to end: String) -> Int? {
+        guard let first = components(start).flatMap(utc.date(from:)), let last = components(end).flatMap(utc.date(from:)) else { return nil }
+        return utc.dateComponents([.day], from: first, to: last).day
+    }
+
+    private static let utc: Calendar = {
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }()
 
     /// Reader-facing form of a stored day; falls back to the raw value if it doesn't parse.
     static func display(_ value: String) -> String {
@@ -84,7 +119,6 @@ enum Day {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = timeZone
         formatter.dateFormat = "yyyy-MM-dd"
-        formatter.isLenient = false
         return formatter
     }
 }

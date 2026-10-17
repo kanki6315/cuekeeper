@@ -217,9 +217,7 @@ struct UpcomingSummary: Equatable {
     }
 
     private static func nextWork(_ job: UpcomingJobFact, now: Date, zone: TimeZone) -> UpcomingNextWork {
-        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
-        let start = Day.date(from: job.facts.startDay, timeZone: zone) ?? now
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: start)).day ?? 0
+        let days = Day.days(from: Day.string(from: now, timeZone: zone), to: job.facts.startDay) ?? 0
         let first = job.facts.sessions.filter { $0.coverage != "notCovering" && ($0.call ?? $0.start) != nil }
             .min { ($0.call ?? $0.start!, $0.id.uuidString) < ($1.call ?? $1.start!, $1.id.uuidString) }
         return UpcomingNextWork(job: job, daysUntil: max(days, 0), first: first)

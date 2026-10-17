@@ -140,10 +140,7 @@ extension SessionDraft {
         }
         try validate()
         let zone = TimeZone.effective(timeZoneID)
-        var civil = Calendar(identifier: .gregorian); civil.timeZone = TimeZone(secondsFromGMT: 0)!
-        let source = Day.date(from: Day.string(from: sourceDate), timeZone: civil.timeZone)!
-        let destination = Day.date(from: Day.string(from: destinationDate), timeZone: civil.timeZone)!
-        let delta = civil.dateComponents([.day], from: source, to: destination).day!
+        let delta = Day.days(from: Day.string(from: sourceDate), to: Day.string(from: destinationDate))!
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
         func shift(_ date: Date?) throws -> Date? {
             guard let date else { return nil }
@@ -155,7 +152,7 @@ extension SessionDraft {
         }
         copy.startTime = try shift(startTime); copy.endTime = try shift(endTime); copy.callTime = try shift(callTime)
         if let start = copy.startTime { copy.day = Day.string(from: start, timeZone: zone) }
-        else if let date = Day.date(from: day, timeZone: zone), let shifted = try shift(date) { copy.day = Day.string(from: shifted, timeZone: zone) }
+        else if let shifted = Day.adding(days: delta, to: day) { copy.day = shifted }
         if let destinationTimeZoneID, destinationTimeZoneID != timeZoneID {
             guard let targetZone = TimeZone(identifier: destinationTimeZoneID) else {
                 throw RecordError.invalid("Choose the destination event timezone before copying times.")

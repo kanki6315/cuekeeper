@@ -147,10 +147,10 @@ struct ExpensesView: View {
         switch item.kind {
         case .draft(let id):
             if let expense = expenses.first(where: { $0.id == id }) { sheet = .edit(expense) }
-        case let .repeatDue(template, day):
+        case let .repeatDue(template, day, repeatDay):
             guard let expense = expenses.first(where: { $0.id == template }) else { return }
             var value = expense.value
-            value.day = day; value.capture = nil; value.notes = ""
+            value.day = day; value.repeatDay = repeatDay; value.capture = nil; value.notes = ""
             sheet = .business(value)
         }
     }

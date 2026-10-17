@@ -370,7 +370,7 @@ struct OpenInvoiceRow: View {
             Group {
                 if draft { Text("Draft · not sent").foregroundStyle(Color("SecondaryText")) }
                 else if !dueDay.isEmpty && dueDay < today {
-                    let days = Calendar.current.dateComponents([.day], from: Day.date(from: dueDay) ?? Date(), to: Day.date(from: today) ?? Date()).day ?? 0
+                    let days = Day.days(from: dueDay, to: today) ?? 0
                     Text(days == 1 ? "1 day late" : "\(days) days late").fontWeight(.semibold).foregroundStyle(Color("BookingCancelled"))
                 } else if dueDay == today { Text("Due today").fontWeight(.semibold).foregroundStyle(Color("AmberText")) }
                 else if !dueDay.isEmpty { Text("Due \(shortDay(dueDay))").foregroundStyle(Color("SecondaryText")) }

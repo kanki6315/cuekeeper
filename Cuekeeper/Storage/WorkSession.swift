@@ -248,9 +248,9 @@ extension SessionDraft {
     mutating func moveSchedule(to date: Date, zone: TimeZone) {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = zone
-        let previous = startTime ?? Day.date(from: day, timeZone: zone) ?? date
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: previous),
-                                           to: calendar.startOfDay(for: date)).day ?? 0
+        let previous = startTime.map { Day.string(from: $0, timeZone: zone) } ?? (Day.components(day) == nil ? nil : day)
+        let target = Day.string(from: date, timeZone: zone)
+        let days = previous.flatMap { Day.days(from: $0, to: target) } ?? 0
         startTime = startTime.flatMap { calendar.date(byAdding: .day, value: days, to: $0) }
         endTime = endTime.flatMap { calendar.date(byAdding: .day, value: days, to: $0) }
         callTime = callTime.flatMap { calendar.date(byAdding: .day, value: days, to: $0) }

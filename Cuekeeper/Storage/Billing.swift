@@ -40,8 +40,8 @@ struct ClientInvoicing: Codable, Equatable {
     }
     /// The due day for an invoice sent on `sentDay`, when terms are known.
     func dueDay(sent sentDay: String) -> String? {
-        guard let termsDays, let sent = Day.date(from: sentDay), let due = Calendar.current.date(byAdding: .day, value: termsDays, to: sent) else { return nil }
-        return Day.string(from: due)
+        guard let termsDays else { return nil }
+        return Day.adding(days: termsDays, to: sentDay)
     }
 }
 

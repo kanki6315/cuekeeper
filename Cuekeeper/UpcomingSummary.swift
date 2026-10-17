@@ -193,7 +193,7 @@ struct UpcomingSummary: Equatable {
         afterThis = later.first
         nextWork = flying.isEmpty ? later.first.map { Self.nextWork($0, now: now, zone: zone) } : nil
 
-        let items = Self.items(jobs, now: now)
+        let items = Self.items(jobs, now: now, zone: zone)
         self.items = items
         fortnight = Self.fortnight(jobs, now: now, zone: zone)
         comingUp = Self.comingUp(active, items: items, now: now)
@@ -295,7 +295,7 @@ struct UpcomingSummary: Equatable {
     /// Invoicing and receipt details are settled on the event page, Payments and Expenses; Plan leaves them out.
     private static let handledElsewhere: Set<OpenItem.Kind> = [.readyToInvoice, .clientDetails, .invoiceDraft, .balanceOwed, .billingReview, .expenseDraft]
 
-    private static func items(_ jobs: [UpcomingJobFact], now: Date) -> [UpcomingItem] {
+    private static func items(_ jobs: [UpcomingJobFact], now: Date, zone: TimeZone) -> [UpcomingItem] {
         var result: [UpcomingItem] = []
         for job in jobs {
             let facts = job.facts
@@ -314,14 +314,17 @@ struct UpcomingSummary: Equatable {
                 wrapped.detail = planDetail(item, status: status, day: wrapped.day, today: today, zone: facts.eventZone)
                 result.append(wrapped)
             }
-            if past && (status == "tentative" || status == "booked") {
+            if (status == "tentative" || status == "booked") && isOver(job, now: now, today: today) {
                 let day = shortDay(job.lastDay, zone: facts.eventZone)
                 let detailText = [day, job.client].compactMap { $0 }.joined(separator: " · ")
                 let item = OpenItem(kind: .eventOver, title: "\(job.title) is over", detail: detailText, tab: .schedule, action: .markCompleted)
                 var wrapped = UpcomingItem(item: item, jobID: job.id, eventTitle: job.title, rankDay: job.lastDay)
                 wrapped.day = job.lastDay
                 wrapped.zone = facts.eventZone
-                wrapped.detail = ["Ended " + (relativeDay(job.lastDay, today: today, zone: facts.eventZone) ?? day), job.client]
+                // Count days in the user's own clock: a London event is not "yesterday" in New York at 8 PM.
+                let ownToday = DaySchedule.dayKey(now, zone: zone)
+                let ended = min(endedDay(job, zone: zone), ownToday)
+                wrapped.detail = ["Ended " + (relativeDay(ended, today: ownToday, zone: zone) ?? day), job.client]
                     .compactMap { $0 }.joined(separator: " · ")
                 result.append(wrapped)
             }
@@ -343,6 +346,28 @@ struct UpcomingSummary: Equatable {
         default:
             return item.detail
         }
+    }
+
+    /// When the work finished: the last end among sessions not marked not-covering, known only
+    /// when every one of them has an end time.
+    static func lastEnd(_ job: UpcomingJobFact) -> Date? {
+        let work = job.facts.sessions.filter { $0.coverage != "notCovering" }
+        let ends = work.compactMap(\.end)
+        return !work.isEmpty && ends.count == work.count ? ends.max() : nil
+    }
+
+    /// An event is over once its last day has passed in its own timezone or, on that last day,
+    /// once its timed work has ended.
+    static func isOver(_ job: UpcomingJobFact, now: Date, today: String) -> Bool {
+        guard !job.lastDay.isEmpty else { return false }
+        if job.lastDay < today { return true }
+        guard job.lastDay == today, let end = lastEnd(job) else { return false }
+        return end <= now
+    }
+
+    /// The day the work ended in `zone`, or the event's own last day when its sessions are untimed.
+    static func endedDay(_ job: UpcomingJobFact, zone: TimeZone) -> String {
+        lastEnd(job).map { DaySchedule.dayKey($0, zone: zone) } ?? job.lastDay
     }
 
     /// "today", "tomorrow", "in 5 days", "3 days ago"; nil without a date.

@@ -406,6 +406,16 @@ an explicit `OS=` version. The simulator is retained for subsequent runs; Xcode
 manages parallel worker clones. Missing runtimes produce an actionable error;
 the script does not download runtimes automatically.
 
+Unit and UI tests run as separate labelled stages. Each stage streams Xcode output,
+prints elapsed time every 15 seconds while running, and ends with an explicit
+pass/fail result. Parallel workers can delay individual test results until they
+finish; an elapsed-time update confirms the command is still running, not that a
+test has passed. `TEST_WORKERS` sets the worker count (default: 4).
+Unfiltered output is saved as `CuekeeperTests.log` and `CuekeeperUITests.log` in
+that release's output directory. The terminal replaces repeated Xcode
+debugger-version metadata notices with one explanation; the raw logs retain them.
+Either stage failing stops the release before archiving.
+
 Set `TEST_DESTINATION` in `.release.env` for another named simulator or an explicit
 UUID. Named devices are prepared automatically; explicit UUIDs and other
 platform destinations are passed through unchanged. `--skip-tests` skips device

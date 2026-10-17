@@ -154,16 +154,20 @@ if [ "$run_tests" = 1 ]; then
     python3 -m unittest discover -s scripts/tests
     log "Prepare test simulator"
     test_destination="$(python3 scripts/prepare_test_simulator.py --destination "${TEST_DESTINATION:-platform=iOS Simulator,name=iPhone 18 Pro}")"
-    log "Unit and UI tests ($test_destination)"
-    # Avoid simctl diagnose hanging after tests finish; keep ordinary results and coverage.
-    xcodebuild test \
-        -project Cuekeeper.xcodeproj -scheme Cuekeeper \
-        -destination "$test_destination" \
-        -derivedDataPath build/tests \
-        -collect-test-diagnostics never \
-        -parallel-testing-worker-count "${TEST_WORKERS:-4}" \
-        CODE_SIGNING_ALLOWED=NO \
-        | pretty
+    # Separate stages keep the unit suite's "All tests passed" from looking final.
+    # Preserve raw stdout/stderr and show progress even while parallel workers are quiet.
+    for test_target in CuekeeperTests CuekeeperUITests; do
+        if [ "$test_target" = CuekeeperTests ]; then test_label="Unit tests"; else test_label="UI tests"; fi
+        python3 scripts/run_test_stage.py --label "$test_label" --log "$out/$test_target.log" -- \
+            xcodebuild test \
+            -project Cuekeeper.xcodeproj -scheme Cuekeeper \
+            -destination "$test_destination" \
+            -derivedDataPath build/tests \
+            -only-testing:"$test_target" \
+            -collect-test-diagnostics never \
+            -parallel-testing-worker-count "${TEST_WORKERS:-4}" \
+            CODE_SIGNING_ALLOWED=NO
+    done
 fi
 
 # --- Archive ---------------------------------------------------------------

@@ -13,8 +13,7 @@ final class TodayNavigationTests: RegressionUITestCase {
         XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
         XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["upcoming-mode-now"].isSelected)
-        app.staticTexts["Qualifying"].firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Qualifying"].waitForExistence(timeout: 3))
+        openUpcomingSession("Qualifying", in: app)
         XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
         XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
     }
@@ -34,8 +33,7 @@ final class TodayNavigationTests: RegressionUITestCase {
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["Evening review"].firstMatch.waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["Studio highlights"].firstMatch.exists)
-        app.staticTexts["Evening review"].firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Evening review"].waitForExistence(timeout: 3))
+        openUpcomingSession("Evening review", in: app)
     }
 }
 
@@ -67,9 +65,8 @@ final class TodayDraftRoutingTests: RegressionUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures"]
         app.launch()
-        let session = app.staticTexts["Qualifying"].firstMatch
-        XCTAssertTrue(session.waitForExistence(timeout: 15))
-        session.tap()
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
+        openUpcomingSession("Qualifying", in: app)
         app.buttons["edit-session"].tap()
         let name = app.textFields["session-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))

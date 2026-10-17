@@ -17,6 +17,7 @@ class ReleaseGateTests(unittest.TestCase):
         shutil.copy(ROOT / "release.sh", self.root)
         shutil.copy(ROOT / "project.yml", self.root)
         (self.root / "scripts").mkdir()
+        shutil.copy(ROOT / "scripts/run_test_stage.py", self.root / "scripts")
         (self.root / "scripts/cloudkit_schema.py").write_text('import sys\nsys.exit(42)\n')
         (self.root / "scripts/prepare_test_simulator.py").write_text(
             'import os, sys\n'
@@ -112,21 +113,29 @@ class ReleaseGateTests(unittest.TestCase):
         (self.root / "bin/xcodebuild").write_text(
             '#!/bin/sh\n'
             'echo "$*" >> "$BUILD_MARKER"\n'
-            'if [ "$1" = test ]; then exit "${TEST_EXIT_CODE:-0}"; fi\n')
+            'if [ "$1" = test ]; then\n'
+            '  case "$*" in *-only-testing:CuekeeperUITests*) exit "${UI_EXIT_CODE:-0}";; esac\n'
+            '  exit "${TEST_EXIT_CODE:-0}"\n'
+            'fi\n')
         marker = self.root / 'build-called'
-        for exit_code in (0, 65):
-            with self.subTest(exit_code=exit_code):
+        for unit_exit, ui_exit in ((0, 0), (65, 0), (0, 65)):
+            exit_code = unit_exit or ui_exit
+            with self.subTest(unit_exit=unit_exit, ui_exit=ui_exit):
                 marker.unlink(missing_ok=True)
                 result = subprocess.run(
                     ['bash', str(self.root / 'release.sh'), '--no-upload', '--skip-cloudkit-check'],
-                    cwd=self.root, env={**self.env, 'TEST_EXIT_CODE': str(exit_code)},
+                    cwd=self.root, env={**self.env, 'TEST_EXIT_CODE': str(unit_exit), 'UI_EXIT_CODE': str(ui_exit)},
                     capture_output=True, text=True)
                 self.assertEqual(result.returncode, exit_code, result.stdout + result.stderr)
                 calls = marker.read_text().splitlines()
                 self.assertTrue(calls[0].startswith('test '))
                 self.assertIn('-collect-test-diagnostics never', calls[0])
                 self.assertIn('-destination platform=iOS Simulator,id=prepared-device', calls[0])
-                self.assertEqual(len(calls), 3 if exit_code == 0 else 1)
+                self.assertIn('-only-testing:CuekeeperTests', calls[0])
+                if exit_code == 0:
+                    self.assertIn('-only-testing:CuekeeperUITests', calls[1])
+                    self.assertIn('[UI tests] PASSED', result.stdout)
+                self.assertEqual(len(calls), 1 if unit_exit else (2 if ui_exit else 4))
 
 
 if __name__ == '__main__':

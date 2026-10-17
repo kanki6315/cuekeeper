@@ -46,7 +46,7 @@ struct PaymentsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
         .sheet(isPresented: $adding) { InvoiceEditorView() }
-        .sheet(item: $invoicing) { InvoiceEditorView(ready: $0) }
+        .sheet(item: $invoicing) { InvoiceEditorView(ready: $0, startsOnRecord: true) }
         .sheet(item: $readiness) { ReadinessSheet(job: $0.object) }
         .sheet(item: $detailsClient) { ClientInvoicingEditor(client: $0.object) }
     }

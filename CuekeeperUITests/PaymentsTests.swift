@@ -58,14 +58,22 @@ final class PaymentsTests: RegressionUITestCase {
         XCTAssertTrue(app.staticTexts["payments-month"].waitForExistence(timeout: 10))
         reveal(ready, in: app)
         ready.tap()
-        let receipt = app.switches["invoice-receipt-Etihad parking"]
-        reveal(receipt, in: app)
-        XCTAssertTrue(receipt.waitForExistence(timeout: 5))
-        XCTAssertEqual(receipt.value as? String, "1")
-        capture("invoice-from-ready-group")
+        // A whole ready group opens on recording, with its events and receipt already on it.
         let reference = app.textFields["invoice-reference"]
-        reveal(reference, in: app, up: false)
-        reference.tap(); reference.typeText("INV-0414")
+        XCTAssertTrue(reference.waitForExistence(timeout: 5))
+        // Follows Northside's INV-0409, skipping INV-0410, which another client's invoice uses.
+        XCTAssertEqual(reference.value as? String, "INV-0411")
+        let receipt = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Etihad parking")).firstMatch
+        reveal(receipt, in: app)
+        XCTAssertTrue(receipt.exists)
+        capture("invoice-from-ready-group")
+        app.buttons["invoice-edit-lines"].tap()
+        let receiptLine = app.descendants(matching: .any)["invoice-receipt-Etihad parking"]
+        reveal(receiptLine, in: app)
+        XCTAssertTrue(receiptLine.waitForExistence(timeout: 5))
+        XCTAssertTrue(receiptLine.isSelected)
+        capture("invoice-lines-from-ready-group")
+        app.buttons["invoice-next"].tap()
         app.buttons["save-invoice"].tap()
         let cup = app.buttons["readiness-Cup quarter-final"]
         reveal(cup, in: app)
@@ -91,6 +99,30 @@ final class PaymentsTests: RegressionUITestCase {
             XCTAssertTrue(dark.staticTexts["payments-month"].waitForExistence(timeout: 10))
             capture("payments-dark")
         }
+    }
+
+    func testBlankInvoiceChoosesClientInDarkAccessibilityLayout() {
+        let app = launch(dark: true, large: true)
+        XCTAssertTrue(app.staticTexts["payments-month"].waitForExistence(timeout: 10))
+        let add = app.buttons["add-invoice-overview"]
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        add.tap()
+        let northside = app.buttons["invoice-client-Northside Sports-EUR"]
+        XCTAssertTrue(northside.waitForExistence(timeout: 5))
+        capture("invoice-client-dark-ax")
+        northside.tap()
+        let cup = app.descendants(matching: .any)["invoice-line-Cup quarter-final"]
+        XCTAssertTrue(cup.waitForExistence(timeout: 5))
+        XCTAssertTrue(cup.isSelected, "choosing a ready client ticks its ready work")
+        capture("invoice-lines-dark-ax")
+        app.buttons["invoice-next"].tap()
+        let sent = app.buttons["invoice-status-sent"]
+        XCTAssertTrue(sent.waitForExistence(timeout: 5))
+        sent.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["invoice-sent-day"].waitForExistence(timeout: 5))
+        capture("invoice-record-dark-ax")
+        app.buttons["invoice-back"].tap()
+        XCTAssertTrue(app.buttons["invoice-next"].waitForExistence(timeout: 5))
     }
 
     func testIPadPortraitAndWideLedger() throws {

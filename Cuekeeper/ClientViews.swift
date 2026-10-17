@@ -226,7 +226,7 @@ struct ClientDetailView: View {
             ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = true }.accessibilityIdentifier("edit-client") }
         }
         .sheet(isPresented: $editing) { ClientEditor(record: client) }
-        .sheet(item: $invoicing) { InvoiceEditorView(ready: $0) }
+        .sheet(item: $invoicing) { InvoiceEditorView(ready: $0, startsOnRecord: true) }
     }
 
     /// The first address in the contact details, else the billing email.

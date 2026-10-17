@@ -8,16 +8,22 @@ final class InvoicePaymentWorkflowTests: EventWorkflowTestCase {
         let addInvoice = app.buttons["add-job-invoice"]
         reveal(addInvoice, in: app)
         addInvoice.tap()
+        // The event it started from is already ticked, even before its fee is known.
+        let line = app.descendants(matching: .any)["invoice-line-Invoiced show"]
+        XCTAssertTrue(line.waitForExistence(timeout: 5))
+        XCTAssertTrue(line.isSelected)
+        captureScreenshot("Invoice lines")
+        app.buttons["invoice-next"].tap()
         let reference = app.textFields["invoice-reference"]
         XCTAssertTrue(reference.waitForExistence(timeout: 5))
+        let status = app.buttons["invoice-status-sent"]
+        reveal(status, in: app)
+        status.tap()
         reference.tap(); reference.typeText("INV-200")
         let billed = app.textFields.matching(NSPredicate(format: "identifier BEGINSWITH %@", "billed-")).firstMatch
         reveal(billed, in: app)
         billed.tap(); billed.typeText("200")
         if app.keyboards.buttons["Return"].exists { billed.typeText("\n") }
-        let status = app.buttons["invoice-status"]
-        reveal(status, in: app)
-        status.tap(); app.buttons["Sent"].tap()
         captureScreenshot("Invoice editor")
         XCTAssertEqual(reference.value as? String, "INV-200")
         app.buttons["save-invoice"].tap()
@@ -40,9 +46,9 @@ final class InvoicePaymentWorkflowTests: EventWorkflowTestCase {
         XCTAssertTrue(balance.waitForExistence(timeout: 5))
         XCTAssertEqual(balance.value as? String, "$125.00")
         captureScreenshot("Invoice partial balance")
-        let sidebar = app.collectionViews["Sidebar"]
-        if sidebar.exists { sidebar.cells.containing(.staticText, identifier: "Payments").firstMatch.tap() }
-        else { app.buttons["Payments"].firstMatch.tap() }
+        // iPhone shows a tab bar; the iPad sidebar lists sections as cells labelled by name.
+        let tab = app.tabBars.buttons["Payments"]
+        if tab.exists { tab.tap() } else { app.cells.matching(NSPredicate(format: "label == %@", "Payments")).firstMatch.tap() }
         XCTAssertTrue(app.staticTexts["payments-month"].waitForExistence(timeout: 5))
         let paymentRow = app.buttons["readiness-Invoiced show"]
         reveal(paymentRow, in: app)

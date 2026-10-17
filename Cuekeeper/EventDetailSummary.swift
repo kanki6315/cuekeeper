@@ -78,7 +78,9 @@ struct NextCall: Equatable {
     let session: EventSessionFact
     /// The call time when known, otherwise the session start.
     let at: Date
-    var isCallTime: Bool { session.call != nil }
+    /// The session is on air right now; `at` is its start.
+    var isLive = false
+    var isCallTime: Bool { !isLive && session.call != nil }
 }
 
 struct OpenItem: Equatable, Identifiable {
@@ -174,7 +176,13 @@ struct EventDetailSummary: Equatable {
     }
 
     private static func nextCall(_ sessions: [EventSessionFact], now: Date) -> NextCall? {
-        sessions.compactMap { session -> NextCall? in
+        // A session on air outranks whatever is next.
+        let live = sessions.filter { session in
+            guard session.coverage == "covering", let start = session.start, let end = session.end else { return false }
+            return start <= now && end > now
+        }.min { ($0.end!, $0.id.uuidString) < ($1.end!, $1.id.uuidString) }
+        if let live, let start = live.start { return NextCall(session: live, at: start, isLive: true) }
+        return sessions.compactMap { session -> NextCall? in
             guard session.coverage == "covering", let at = session.call ?? session.start,
                   at > now, at.timeIntervalSince(now) <= heroWindow else { return nil }
             return NextCall(session: session, at: at)

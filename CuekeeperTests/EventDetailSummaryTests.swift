@@ -64,6 +64,18 @@ final class EventDetailSummaryTests: XCTestCase {
         XCTAssertNil(EventDetailSummary(facts: facts(status: "cancelled", sessions: [race]), now: now).nextCall)
     }
 
+    func testSessionOnAirOutranksTheNextCall() {
+        let race = session("Race", day: "2026-10-18", start: "2026-10-18T13:00:00Z", end: "2026-10-18T15:00:00Z")
+        let podium = session("Podium", day: "2026-10-18", start: "2026-10-18T15:30:00Z", call: "2026-10-18T15:15:00Z")
+        let during = EventDetailSummary(facts: facts(sessions: [race, podium]), now: date("2026-10-18T14:00:00Z")).nextCall
+        XCTAssertEqual(during?.session.title, "Race")
+        XCTAssertEqual(during?.isLive, true)
+        XCTAssertEqual(during?.isCallTime, false)
+        let after = EventDetailSummary(facts: facts(sessions: [race, podium]), now: date("2026-10-18T15:00:00Z")).nextCall
+        XCTAssertEqual(after?.session.title, "Podium")
+        XCTAssertEqual(after?.isLive, false)
+    }
+
     func testRemoteWorkOffersYourTimeFirstAndOnSiteUsesTrackTime() {
         let remote = EventDetailSummary(facts: facts(workZone: newYork), now: now)
         XCTAssertTrue(remote.offersTimeChoice)

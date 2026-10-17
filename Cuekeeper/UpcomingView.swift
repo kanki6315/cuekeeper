@@ -157,10 +157,12 @@ struct UpcomingView: View {
         } else {
             VStack(alignment: .leading, spacing: 24) {
                 if let next = summary.nextCall, let fact = summary.inFlight.first(where: { $0.id == next.jobID }) {
-                    let remote = fact.facts.workZone != nil
-                    NextCallPanel(next: next.call, zone: remote ? summary.displayZone : fact.facts.eventZone,
-                                  otherZone: remote && summary.displayZone.identifier != fact.facts.eventZone.identifier ? fact.facts.eventZone : nil,
-                                  showsYourTime: remote,
+                    // Read the hero in the same clock as the run of show: on-site work keeps track time, anything else the user's own.
+                    let local = fact.arrangement != .onSite || fact.facts.workZone != nil
+                    let zone = local ? summary.displayZone : fact.facts.eventZone
+                    NextCallPanel(next: next.call, zone: zone,
+                                  otherZone: zone.identifier != fact.facts.eventZone.identifier ? fact.facts.eventZone : nil,
+                                  showsYourTime: local,
                                   subtitle: summary.inFlight.count > 1 || fact.client == nil ? fact.title : "\(fact.title) · \(fact.client!)")
                 }
                 if summary.inFlight.count == 1, let only = summary.inFlight.first {

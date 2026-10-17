@@ -29,6 +29,14 @@ struct FirstLaunchBackupView: View {
                 Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText"))
             }
             if busy { BackupProgressView(workflow: workflow) }
+            if workflow.canRetryRestore {
+                HStack {
+                    Button("Review restore again") { workflow.reviewAgain() }
+                        .accessibilityIdentifier("setup-retry-restore")
+                    Spacer()
+                    Button("Discard", role: .destructive) { workflow.discardArchive() }
+                }.frame(minHeight: 44)
+            }
             if loaded && entries.isEmpty {
                 ContentUnavailableView("No backups found", systemImage: "archivebox")
             }
@@ -85,8 +93,8 @@ struct FirstLaunchBackupView: View {
                 }
             }
             .disabled(persistence.syncActivity.restoreUnavailableReason != nil)
-            Button("Cancel", role: .cancel) { workflow.archive = nil }
-        } message: { Text(persistence.syncActivity.restoreUnavailableReason ?? workflow.reviewSummary) }
+            Button("Cancel", role: .cancel) { workflow.discardArchive() }
+        } message: { Text(persistence.syncActivity.restoreUnavailableReason ?? [persistence.syncActivity.restoreCaution, workflow.reviewSummary].compactMap { $0 }.joined(separator: "\n\n")) }
 
         .alert("Backup recovered", isPresented: $restored) {
             Button("Continue setup", action: onRestore)

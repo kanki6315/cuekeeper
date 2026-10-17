@@ -323,6 +323,356 @@ final class RecoveryBackupTests: XCTestCase {
         return [a, b]
     }
 
+    /// Simulates CloudKit delivering another device's records: separate objects
+    /// carrying the same application UUIDs and relationships.
+    @discardableResult
+    private func cloudCopy(from source: NSManagedObjectContext, into target: NSManagedObjectContext,
+                           author: String? = nil) throws -> [NSManagedObjectID: NSManagedObject] {
+        target.transactionAuthor = author
+        defer { target.transactionAuthor = nil }
+        var copies: [NSManagedObjectID: NSManagedObject] = [:]
+        let entities = source.persistentStoreCoordinator!.managedObjectModel.entities
+        for entity in entities {
+            for object in try source.fetch(NSFetchRequest<NSManagedObject>(entityName: entity.name!)) {
+                let copy = NSEntityDescription.insertNewObject(forEntityName: entity.name!, into: target)
+                for name in entity.attributesByName.keys { copy.setValue(object.value(forKey: name), forKey: name) }
+                copies[object.objectID] = copy
+            }
+        }
+        for (id, copy) in copies {
+            let object = try source.existingObject(with: id)
+            for (name, relationship) in object.entity.relationshipsByName {
+                if relationship.isToMany {
+                    let related = (object.value(forKey: name) as? Set<NSManagedObject> ?? []).compactMap { copies[$0.objectID] }
+                    copy.mutableSetValue(forKey: name).addObjects(from: related)
+                } else if let related = object.value(forKey: name) as? NSManagedObject {
+                    copy.setValue(copies[related.objectID], forKey: name)
+                }
+            }
+        }
+        try target.save()
+        return copies
+    }
+
+    /// #3: restore while iCloud cannot deliver (offline, account problem, or before
+    /// signing in), then iCloud's copies arrive as separate objects with the same UUIDs.
+    func testRestoreBeforeCloudImportReconcilesArrivingCopies() async throws {
+        let cloud = try await context(); let job = try fixture(cloud)
+        let snapshot = try BackupArchive.capture(in: cloud)
+        job.name = "Edited in iCloud"; try Job.remove(job.objectID, in: cloud)
+        for conflicting in [false, true] {
+            let target = try await context()
+            let workflow = BackupWorkflow(); workflow.archive = snapshot
+            var activity = SyncActivity(); activity.checkingAccount = false; activity.offline = true
+            XCTAssertNil(activity.restoreUnavailableReason); XCTAssertNotNil(activity.restoreCaution)
+            let restored = expectation(description: "Offline restore")
+            workflow.restore(context: target, syncActivity: { activity }) { _ in restored.fulfill() }
+            await fulfillment(of: [restored], timeout: 5)
+            let ledger = try XCTUnwrap(RestoreLedger.load(target.persistentStoreCoordinator!))
+            XCTAssertEqual(ledger.entries.count, snapshot.records.count)
+
+            let copies = try cloudCopy(from: cloud, into: target)
+            if conflicting {
+                let payment = try XCTUnwrap(copies.values.first { $0.entity.name == "PaymentRecord" })
+                payment.setValue(Int64(9900), forKey: "amount"); try target.save()
+            }
+            let report = try IdentityReconciliation.reconcile(in: target)
+            let count = { (entity: String) in try target.count(for: NSFetchRequest<NSManagedObject>(entityName: entity)) }
+            for entity in ["Job", "Client", "WorkSession", "Invoice", "FeeRevision", "InvoiceRevision"] { XCTAssertEqual(try count(entity), 1, entity) }
+            let merged = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+            XCTAssertEqual(merged.name, "Edited in iCloud", "iCloud's newer edit wins over the backup")
+            XCTAssertNil(merged.deletedAt, "The restore still recovers the deletion the backup did not have")
+            XCTAssertEqual(merged.activeSessions.count, 1); XCTAssertEqual(merged.client?.jobs?.count, 1)
+            XCTAssertEqual(try merged.currentFee().amount, 10000)
+            let invoice = try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first)
+            XCTAssertEqual(invoice.client, merged.client)
+            if !conflicting {
+                XCTAssertEqual(report, IdentityReconciliation.Report(merged: snapshot.records.count, conflicts: []))
+                XCTAssertEqual(try count("PaymentRecord"), 1); XCTAssertEqual(try invoice.balance(), 7500)
+                XCTAssertNil(RestoreLedger.load(target.persistentStoreCoordinator!), "Matched records leave the ledger")
+                let next = try BackupArchive.decode(BackupArchive.capture(in: target).encoded(), model: target.persistentStoreCoordinator!.managedObjectModel)
+                XCTAssertEqual(try next.restore(in: target).added, 0)
+                XCTAssertEqual(try snapshot.restore(in: target).added, 0)
+            } else {
+                // Differing financial history is never combined or discarded.
+                XCTAssertEqual(report.conflicts, ["PaymentRecord"]); XCTAssertNotNil(report.message)
+                XCTAssertEqual(try count("PaymentRecord"), 2)
+                XCTAssertThrowsError(try invoice.balance())
+                XCTAssertNotNil(RestoreLedger.load(target.persistentStoreCoordinator!))
+                // Backups and restores carry on: both copies travel in the backup for review.
+                let backup = try BackupArchive.decode(BackupArchive.capture(in: target).encoded(), model: target.persistentStoreCoordinator!.managedObjectModel)
+                XCTAssertEqual(backup.conflicts.map(\.key.entity), ["PaymentRecord"])
+                XCTAssertEqual(try snapshot.restore(in: target).added, 0)
+                let fresh = try await context()
+                _ = try backup.restore(in: fresh)
+                XCTAssertEqual(try IdentityReconciliation.conflicts(in: fresh).map(\.entity), ["PaymentRecord"])
+                XCTAssertEqual(try backup.restore(in: fresh).added, 0, "Restoring again adds no third copy")
+                XCTAssertEqual(try count("PaymentRecord"), 2)
+            }
+        }
+    }
+
+    /// #2/#3: a restored record merges field by field against the values it was
+    /// restored with. One-sided edits win silently; only a field both sides changed
+    /// is asked about. A deletion made in iCloud after the restore stands.
+    func testRestoredCopyMergesThreeWayWithICloud() async throws {
+        let cloud = try await context(); let job = try fixture(cloud)
+        let snapshot = try BackupArchive.capture(in: cloud)
+        let target = try await context()
+        _ = try snapshot.restore(in: target)
+        let local = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        local.notes = "Edited offline"; local.location = "Silverstone"; try target.save()
+        job.name = "Edited in iCloud"; job.location = "Brands Hatch"
+        try XCTUnwrap(job.activeSessions.first).deletedAt = Date(); try cloud.save()
+        try cloudCopy(from: cloud, into: target)
+
+        XCTAssertEqual(try IdentityReconciliation.reconcile(in: target).conflicts, ["Job"])
+        let conflict = try XCTUnwrap(IdentityReconciliation.conflicts(in: target).first)
+        XCTAssertEqual(conflict.fields, ["location"], "Only the field changed on both sides is asked about")
+        XCTAssertNotNil(conflict.base); XCTAssertNotNil(conflict.settled["notes"])
+        let mine = try XCTUnwrap(conflict.copies.first { $0 != conflict.base })
+        try IdentityReconciliation.resolve(conflict, choice: .fields(["location": mine]), in: target)
+
+        let merged = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+        XCTAssertEqual(merged.name, "Edited in iCloud"); XCTAssertEqual(merged.notes, "Edited offline")
+        XCTAssertEqual(merged.location, "Silverstone")
+        let session = try XCTUnwrap(target.fetch(NSFetchRequest<WorkSession>(entityName: "WorkSession")).first)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<WorkSession>(entityName: "WorkSession")), 1)
+        XCTAssertNotNil(session.deletedAt, "Deleted in iCloud after the restore, so it stays deleted")
+        XCTAssertEqual(try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first).balance(), 7500)
+        XCTAssertNil(RestoreLedger.load(target.persistentStoreCoordinator!))
+    }
+
+    /// Link differences never ask for review: a payment whose invoice hasn't arrived
+    /// combines and keeps the link; a link cleared in iCloud stays cleared.
+    func testLinkDifferencesCombineWithoutReview() async throws {
+        let cloud = try await context(); let job = try fixture(cloud)
+        let snapshot = try BackupArchive.capture(in: cloud)
+        let session = try XCTUnwrap(job.activeSessions.first)
+        session.job = nil; try cloud.save() // Deliberately detached in iCloud after the backup.
+        // Every device keeps the same survivor; check both orders it can take.
+        for keepCloudCopies in [false, true] {
+            let target = try await context()
+            _ = try snapshot.restore(in: target)
+            let copies = try cloudCopy(from: cloud, into: target)
+            let payment = try XCTUnwrap(copies.values.first { $0.entity.name == "PaymentRecord" })
+            payment.setValue(nil, forKey: "invoice"); try target.save()
+            let cloudIDs = Set(copies.values.map(\.objectID))
+            // #4: while only some copies have uploaded, nothing merges.
+            let partly = try IdentityReconciliation.reconcile(in: target, recordName: { cloudIDs.contains($0) ? $0.uriRepresentation().absoluteString : nil })
+            XCTAssertEqual(partly.merged, 0)
+            let report = try IdentityReconciliation.reconcile(in: target, recordName: {
+                (keepCloudCopies == cloudIDs.contains($0) ? "a" : "b") + $0.uriRepresentation().absoluteString
+            })
+            XCTAssertEqual(report.conflicts, [])
+            let kept = try XCTUnwrap(target.fetch(NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")).first)
+            XCTAssertEqual(try target.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 1)
+            XCTAssertNotNil(kept.invoice, "The combined payment keeps the delivered link")
+            XCTAssertEqual(try XCTUnwrap(kept.invoice).balance(), 7500)
+            let merged = try XCTUnwrap(target.fetch(NSFetchRequest<WorkSession>(entityName: "WorkSession")).first)
+            XCTAssertEqual(try target.count(for: NSFetchRequest<WorkSession>(entityName: "WorkSession")), 1)
+            XCTAssertNil(merged.job, "iCloud's deliberate change wins over the backup's link")
+            XCTAssertTrue(try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first).activeSessions.isEmpty)
+        }
+    }
+
+    /// Conflicts nothing can tell apart (no restore ledger) wait for an explicit choice:
+    /// events field by field, payments as one whole copy.
+    func testReviewedConflictsResolveFieldByFieldAndWholeCopy() async throws {
+        let cloud = try await context(); let job = try fixture(cloud)
+        let snapshot = try BackupArchive.capture(in: cloud)
+        let target = try await context()
+        _ = try snapshot.restore(in: target)
+        try RestoreLedger.save(nil, target.persistentStoreCoordinator!) // Duplicates from before the ledger existed.
+        job.name = "Edited in iCloud"; job.notes = "Pit lane"; try cloud.save()
+        let copies = try cloudCopy(from: cloud, into: target)
+        let cloudPayment = try XCTUnwrap(copies.values.first { $0.entity.name == "PaymentRecord" })
+        cloudPayment.setValue(Int64(9900), forKey: "amount"); try target.save()
+
+        XCTAssertEqual(try IdentityReconciliation.reconcile(in: target).conflicts, ["Job", "PaymentRecord"])
+        let conflicts = try IdentityReconciliation.conflicts(in: target)
+        let event = try XCTUnwrap(conflicts.first { $0.entity == "Job" })
+        let payment = try XCTUnwrap(conflicts.first { $0.entity == "PaymentRecord" })
+        XCTAssertEqual(event.fields, ["name", "notes"]); XCTAssertFalse(event.wholeRecord)
+        XCTAssertTrue(payment.wholeRecord)
+        XCTAssertThrowsError(try IdentityReconciliation.resolve(payment, choice: .fields([:]), in: target))
+
+        // The cloud name with the backup's notes: fields come from the copy chosen for each.
+        let edited = try XCTUnwrap(event.copies.first { (try target.existingObject(with: $0) as! Job).name == "Edited in iCloud" })
+        let original = try XCTUnwrap(event.copies.first { $0 != edited })
+        try IdentityReconciliation.resolve(event, choice: .fields(["name": edited, "notes": original]), in: target)
+        XCTAssertThrowsError(try IdentityReconciliation.resolve(event, choice: .keep(edited), in: target), "Stale review")
+        let kept = try XCTUnwrap(payment.copies.first { (try target.existingObject(with: $0) as! PaymentRecord).amount == 2500 })
+        try IdentityReconciliation.resolve(payment, choice: .keep(kept), in: target)
+
+        XCTAssertTrue(try IdentityReconciliation.conflicts(in: target).isEmpty)
+        let merged = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+        XCTAssertEqual(merged.name, "Edited in iCloud"); XCTAssertEqual(merged.notes, "")
+        XCTAssertEqual(merged.activeSessions.count, 1)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 1)
+        XCTAssertEqual(try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first).balance(), 7500)
+        XCTAssertEqual(try snapshot.restore(in: target).added, 0)
+        XCTAssertNoThrow(try BackupArchive.capture(in: target))
+    }
+
+    /// #6: duplicates from before the ledger existed: the copy CloudKit imported
+    /// (per change history) wins silently over the one inserted on this device.
+    func testOlderDuplicatesUseChangeHistoryToPreferICloud() async throws {
+        let cloud = try await context(); let job = try fixture(cloud)
+        let snapshot = try BackupArchive.capture(in: cloud)
+        let target = try await context()
+        _ = try snapshot.restore(in: target)
+        try RestoreLedger.save(nil, target.persistentStoreCoordinator!)
+        job.name = "Edited in iCloud"; try cloud.save()
+        try cloudCopy(from: cloud, into: target, author: IdentityReconciliation.importAuthor)
+        XCTAssertEqual(try IdentityReconciliation.reconcile(in: target).conflicts, [])
+        let merged = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+        XCTAssertEqual(try target.count(for: NSFetchRequest<Job>(entityName: "Job")), 1)
+        XCTAssertEqual(merged.name, "Edited in iCloud")
+        XCTAssertEqual(try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first).balance(), 7500)
+    }
+
+    /// #11: every data model change since backups began is described by BackupSchema.changes.
+    func testBackupSchemaChangesDescribeEveryModelVersion() throws {
+        let bundle = Bundle(for: PersistenceController.self)
+        func shape(_ version: Int) throws -> [String: (attributes: Set<String>, relationships: Set<String>)] {
+            let url = try XCTUnwrap(bundle.url(forResource: "CuekeeperV\(version)", withExtension: "mom", subdirectory: "Cuekeeper.momd"))
+            let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: url))
+            return Dictionary(uniqueKeysWithValues: model.entities.map { ($0.name!, (Set($0.attributesByName.keys), Set($0.relationshipsByName.keys))) })
+        }
+        for version in (BackupSchema.oldest + 1)...BackupSchema.current {
+            let before = try shape(version - 1), after = try shape(version)
+            var found: [String] = []
+            for name in Set(before.keys).union(after.keys).sorted() {
+                guard let old = before[name] else { found.append("addedEntity \(name)"); continue }
+                guard let new = after[name] else { found.append("removedEntity \(name)"); continue }
+                found += new.attributes.subtracting(old.attributes).map { "addedAttribute \(name).\($0)" }
+                found += old.attributes.subtracting(new.attributes).map { "removedAttribute \(name).\($0)" }
+                found += new.relationships.subtracting(old.relationships).map { "addedRelationship \(name).\($0)" }
+                found += old.relationships.subtracting(new.relationships).map { "removedRelationship \(name).\($0)" }
+            }
+            let listed: [String] = BackupSchema.changes.filter { $0.version == version }.map {
+                switch $0.change {
+                case .addedEntity(let e): return "addedEntity \(e)"
+                case .removedEntity(let e): return "removedEntity \(e)"
+                case .addedAttribute(let e, let n): return "addedAttribute \(e).\(n)"
+                case .addedRelationship(let e, let n): return "addedRelationship \(e).\(n)"
+                case .removedRelationship(let e, let n): return "removedRelationship \(e).\(n)"
+                }
+            }
+            XCTAssertEqual(Set(found), Set(listed), "Model \(version) changed without a matching BackupSchema.changes entry")
+        }
+    }
+
+    /// #25: a failed restore keeps the prepared archive (and its files) for a retry.
+    func testFailedRestoreKeepsPreparedArchiveUntilCommitOrDiscard() async throws {
+        let source = try await context(); _ = try fixture(source)
+        let model = source.persistentStoreCoordinator!.managedObjectModel
+        let data = try BackupArchive.capture(in: source).encoded()
+        let target = try await context()
+        _ = try BackupArchive.decode(data, model: model).restore(in: target)
+        let payment = try XCTUnwrap(target.fetch(NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")).first)
+        payment.amount = 1; try target.save()
+        let workflow = BackupWorkflow(); workflow.archive = try BackupArchive.decode(data, model: model)
+        let files = try XCTUnwrap(workflow.archive?.workspace?.url)
+        var activity = SyncActivity(); activity.enabled = false
+        let restore = {
+            workflow.restore(context: target, syncActivity: { activity })
+            while workflow.busy { try await Task.sleep(for: .milliseconds(10)) }
+        }
+        try await restore()
+        XCTAssertNotNil(workflow.error); XCTAssertTrue(workflow.canRetryRestore)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: files.path))
+        target.delete(payment); try target.save()
+        workflow.reviewAgain(); XCTAssertNil(workflow.error)
+        try await restore()
+        XCTAssertNil(workflow.error); XCTAssertNil(workflow.archive)
+        XCTAssertEqual(try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first).balance(), 7500)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: files.path))
+        workflow.archive = try BackupArchive.decode(data, model: model)
+        let discarded = try XCTUnwrap(workflow.archive?.workspace?.url)
+        workflow.discardArchive()
+        XCTAssertNil(workflow.archive); XCTAssertFalse(FileManager.default.fileExists(atPath: discarded.path))
+    }
+
+    /// #18: frozen archives in each supported older shape restore; others are rejected.
+    func testVersionedBackupFixturesMigrateAndUnsupportedShapesAreRejected() async throws {
+        let model = try await context().persistentStoreCoordinator!.managedObjectModel
+        XCTAssertEqual(model.versionIdentifiers, [String(BackupSchema.current)], "List new model changes in BackupSchema.changes")
+        func package(_ json: String, _ edit: (inout [String: Any]) -> Void = { _ in }) throws -> URL {
+            var object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]); edit(&object)
+            let records = try JSONSerialization.data(withJSONObject: object)
+            let folder = self.folder.appending(path: UUID().uuidString)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try records.write(to: folder.appending(path: "records.json"))
+            try JSONEncoder().encode(BackupArchive.Manifest(format: "com.cuekeeper.backup", version: 2, recordsSHA256: BackupFiles.digest(records), receipts: 0))
+                .write(to: folder.appending(path: "manifest.json"))
+            let url = folder.appending(path: "backup.zip")
+            let zip = try Archive(url: url, accessMode: .create)
+            for name in ["manifest.json", "records.json"] { try zip.addEntry(with: name, relativeTo: folder) }
+            return url
+        }
+        for fixture in [LegacyBackups.v11, LegacyBackups.v13] {
+            let target = try await context()
+            let archive = try BackupArchive.readPackage(try package(fixture), model: model)
+            XCTAssertFalse(archive.records.contains { $0.key.entity == "BroadcastLink" })
+            XCTAssertEqual(try archive.restore(in: target).added, archive.records.count)
+            let job = try XCTUnwrap(target.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+            XCTAssertEqual(job.client?.invoicingJSON, ""); XCTAssertNil(job.event?.ownerJobID); XCTAssertEqual(job.event?.id, job.id)
+            XCTAssertEqual(job.activeSessions.count, 1); XCTAssertEqual(try job.currentFee().amount, 10000)
+            XCTAssertEqual(try XCTUnwrap(target.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first).balance(), 7500)
+            XCTAssertNoThrow(try BackupArchive.capture(in: target))
+        }
+        let rejected: [(String, (inout [String: Any]) -> Void, String)] = [
+            ("newer", { $0["model"] = BackupSchema.current + 1 }, "Update Cuekeeper"),
+            ("declared current with old shape", { $0["model"] = BackupSchema.current }, "Job is missing expenses"),
+            ("contradictory shape", { archive in
+                var records = archive["records"] as! [[String: Any]]
+                let index = records.firstIndex { ($0["key"] as! [String: Any])["entity"] as! String == "Client" }!
+                var attributes = records[index]["attributes"] as! [String: Any]
+                attributes["invoicingJSON"] = ["string": ["_0": ""]]; records[index]["attributes"] = attributes
+                archive["records"] = records
+            }, "damaged or was edited"),
+        ]
+        for (name, edit, message) in rejected {
+            XCTAssertThrowsError(try BackupArchive.readPackage(try package(LegacyBackups.v11, edit), model: model), name) { error in
+                XCTAssertTrue(error.localizedDescription.contains(message), "\(name): \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func testCrossStoreRestoreOfDuplicateEventMetadataStabilizes() async throws {
+        let a = try await context(); let job = try fixture(a)
+        _ = try conflictingPromotions(in: a, job: job)
+        let b = try await context(); try cloudCopy(from: a, into: b)
+        let count = { (context: NSManagedObjectContext) in try context.count(for: NSFetchRequest<WorkEvent>(entityName: "WorkEvent")) }
+        XCTAssertEqual(try count(a), 3); XCTAssertEqual(try count(b), 3)
+        for _ in 0..<2 {
+            _ = try BackupArchive.capture(in: a).restore(in: b)
+            _ = try BackupArchive.capture(in: b).restore(in: a)
+        }
+        XCTAssertEqual(try count(a), 3, "Restoring the same metadata must not add copies")
+        XCTAssertEqual(try count(b), 3)
+        XCTAssertEqual(Set(try BackupArchive.capture(in: a).records.map(\.key)), Set(try BackupArchive.capture(in: b).records.map(\.key)))
+        for context in [a, b] {
+            let owner = try XCTUnwrap(context.fetch(NSFetchRequest<Job>(entityName: "Job")).first)
+            XCTAssertEqual(owner.event?.notes, "Device B notes")
+            XCTAssertEqual(owner.event?.id, owner.id)
+            XCTAssertEqual(try context.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent")).filter { $0.notes == "Device A notes" }.count, 1)
+        }
+        // #10: a store restored before iCloud arrived holds the duplicate under its
+        // derived ID; once iCloud's original arrives, that orphan copy is removed.
+        let c = try await context()
+        _ = try BackupArchive.capture(in: a).restore(in: c)
+        try cloudCopy(from: a, into: c)
+        _ = try IdentityReconciliation.reconcile(in: c)
+        XCTAssertEqual(try count(c), 3)
+        XCTAssertEqual(try c.fetch(NSFetchRequest<WorkEvent>(entityName: "WorkEvent")).filter { $0.notes == "Device A notes" }.count, 1)
+        XCTAssertEqual(try XCTUnwrap(c.fetch(NSFetchRequest<Job>(entityName: "Job")).first).event?.notes, "Device B notes")
+    }
+
     func testBackupPreservesBothOfflinePromotionsAndRestoresIdempotently() async throws {
         let source = try await context(); let job = try fixture(source)
         let promotions = try conflictingPromotions(in: source, job: job)
@@ -392,9 +742,16 @@ final class RecoveryBackupTests: XCTestCase {
         try EventDraft(anchor: job).save(in: source, anchorID: job.objectID)
         job.event!.id = job.id; job.event!.ownerJobID = nil
         try source.save()
+        // A model 12 archive: no ownership field, no client invoicing, sessions still had links.
         var oldArchive = try BackupArchive.capture(in: source)
-        for index in oldArchive.records.indices where oldArchive.records[index].key.entity == "WorkEvent" {
-            oldArchive.records[index].attributes.removeValue(forKey: "ownerJobID")
+        oldArchive.model = nil
+        for index in oldArchive.records.indices {
+            switch oldArchive.records[index].key.entity {
+            case "WorkEvent": oldArchive.records[index].attributes.removeValue(forKey: "ownerJobID")
+            case "Client": oldArchive.records[index].attributes.removeValue(forKey: "invoicingJSON")
+            case "WorkSession": oldArchive.records[index].relationships["links"] = []
+            default: break
+            }
         }
         let target = try await context()
         let decoded = try BackupArchive.decode(oldArchive.encoded(), model: target.persistentStoreCoordinator!.managedObjectModel)
@@ -411,23 +768,6 @@ final class RecoveryBackupTests: XCTestCase {
         // No other missing attribute is accepted as an older schema.
         oldArchive.records[0].attributes.removeValue(forKey: "id")
         XCTAssertThrowsError(try oldArchive.validate(model: target.persistentStoreCoordinator!.managedObjectModel))
-    }
-
-    func testPreV14BackupDropsBroadcastLinks() async throws {
-        let source = try await context(); _ = try fixture(source)
-        var oldArchive = try BackupArchive.capture(in: source)
-        let sessionIndex = try XCTUnwrap(oldArchive.records.firstIndex { $0.key.entity == "WorkSession" })
-        let linkKey = BackupArchive.Key(entity: "BroadcastLink", id: UUID())
-        oldArchive.records[sessionIndex].relationships["links"] = [linkKey]
-        oldArchive.records.append(BackupArchive.Record(key: linkKey, attributes: [
-            "id": .uuid(linkKey.id), "label": .string(""), "url": .string("https://example.com/live"), "notes": .string("")
-        ], relationships: ["session": [oldArchive.records[sessionIndex].key]]))
-        let target = try await context()
-        let decoded = try BackupArchive.decode(oldArchive.encoded(), model: target.persistentStoreCoordinator!.managedObjectModel)
-        XCTAssertFalse(decoded.records.contains { $0.key.entity == "BroadcastLink" })
-        let result = try decoded.restore(in: target)
-        XCTAssertEqual(result.added, oldArchive.records.count - 1)
-        XCTAssertEqual(try target.count(for: NSFetchRequest<WorkSession>(entityName: "WorkSession")), 1)
     }
 
     func testDuplicateEventMetadataKeepsDistinctBookingRelationships() async throws {
@@ -454,7 +794,7 @@ final class RecoveryBackupTests: XCTestCase {
         XCTAssertEqual(try archive.restore(in: source).added, 0)
     }
 
-    func testLiveFinancialDuplicateStillRejectsBackupAndRestore() async throws {
+    func testIdenticalLiveFinancialDuplicateMergesOnRestore() async throws {
         let context = try await context(); _ = try fixture(context)
         let archive = try BackupArchive.capture(in: context)
         let payment = try XCTUnwrap(context.fetch(NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")).first)
@@ -464,10 +804,12 @@ final class RecoveryBackupTests: XCTestCase {
         }
         duplicate.setValue(payment.value(forKey: "invoice"), forKey: "invoice")
         try context.save()
-        XCTAssertThrowsError(try BackupArchive.capture(in: context))
-        XCTAssertThrowsError(try archive.restore(in: context))
-        XCTAssertFalse(context.hasChanges)
-        XCTAssertEqual(try context.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 2)
+        XCTAssertEqual(try BackupArchive.capture(in: context).conflicts.count, 1, "Backups save the copy as it is")
+        // Identical copies are one record: restore merges them before matching identities.
+        XCTAssertEqual(try archive.restore(in: context).added, 0)
+        XCTAssertEqual(try context.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 1)
+        XCTAssertEqual(try XCTUnwrap(context.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")).first).balance(), 7500)
+        XCTAssertNoThrow(try BackupArchive.capture(in: context))
     }
     func testImmutableFinancialConflictRollsBackWholeRestore() async throws {
         let context = try await context(); _ = try fixture(context)
@@ -602,6 +944,12 @@ final class RecoveryBackupTests: XCTestCase {
 }
 
 private final class BackupCancellationHolder: @unchecked Sendable { var control: BackupControl? }
+
+/// Archives frozen in the shape older Cuekeeper versions wrote (no `model` field).
+private enum LegacyBackups {
+    static let v11 = #"{"createdAt":813933733.038917,"format":"com.cuekeeper.backup","records":[{"attributes":{"contact":{"string":{"_0":""}},"defaultCurrency":{"string":{"_0":"USD"}},"id":{"uuid":{"_0":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"}},"name":{"string":{"_0":"Network"}},"notes":{"string":{"_0":""}}},"key":{"entity":"Client","id":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"},"relationships":{"invoices":[{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"}],"jobs":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}]}},{"attributes":{"createdAt":{"date":{"_0":813933733.027728}},"id":{"uuid":{"_0":"D2C2B553-8116-496F-A431-F07D505C8580"}},"parentsJSON":{"string":{"_0":"[]"}},"valueJSON":{"string":{"_0":"{\"currency\":\"USD\",\"amount\":10000,\"agreement\":\"unknown\",\"lines\":[]}"}}},"key":{"entity":"FeeRevision","id":"D2C2B553-8116-496F-A431-F07D505C8580"},"relationships":{"job":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}]}},{"attributes":{"createdAt":{"date":{"_0":813933733.032361}},"id":{"uuid":{"_0":"CD54017B-4942-4DBC-BEED-92C00E79D408"}}},"key":{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"},"relationships":{"client":[{"entity":"Client","id":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"}],"payments":[{"entity":"PaymentRecord","id":"EC153489-1C2C-462D-B451-F593CC3EBF8C"}],"revisions":[{"entity":"InvoiceRevision","id":"6B8D48F9-30DF-417F-9BFE-A17A501F7BB0"}]}},{"attributes":{"createdAt":{"date":{"_0":813933733.032445}},"id":{"uuid":{"_0":"6B8D48F9-30DF-417F-9BFE-A17A501F7BB0"}},"parentsJSON":{"string":{"_0":"[]"}},"valueJSON":{"string":{"_0":"{\"reference\":\"INV-RECOVERY\",\"status\":\"sent\",\"sentDay\":\"2026-10-17\",\"dueDay\":\"\",\"clientID\":\"DB57AF5C-2582-4160-AA1C-1B6FB899BD74\",\"currency\":\"USD\",\"notes\":\"\",\"lines\":[{\"jobName\":\"Broadcast weekend\",\"jobID\":\"B87C2C31-C2E0-4A97-8A09-2A7423292BDD\",\"amount\":10000}]}"}}},"key":{"entity":"InvoiceRevision","id":"6B8D48F9-30DF-417F-9BFE-A17A501F7BB0"},"relationships":{"invoice":[{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"}]}},{"attributes":{"bookingStatus":{"string":{"_0":"tentative"}},"createdAt":{"date":{"_0":813933733.02702}},"deletedAt":{"null":{}},"endDay":{"string":{"_0":"2026-10-17"}},"id":{"uuid":{"_0":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}},"location":{"string":{"_0":""}},"name":{"string":{"_0":"Broadcast weekend"}},"notes":{"string":{"_0":""}},"recoveryDiscardedAt":{"null":{}},"startDay":{"string":{"_0":"2026-10-17"}},"timeZoneID":{"string":{"_0":"Europe/London"}},"trackPlaceID":{"string":{"_0":""}},"workArrangement":{"string":{"_0":"unspecified"}}},"key":{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"},"relationships":{"additionalSeries":[],"client":[{"entity":"Client","id":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"}],"event":[{"entity":"WorkEvent","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}],"feeRevisions":[{"entity":"FeeRevision","id":"D2C2B553-8116-496F-A431-F07D505C8580"}],"payments":[],"project":[],"roles":[{"entity":"WorkRole","id":"4E4F1464-5AE4-4D3F-9DD4-29366EECD14C"}],"series":[],"sessions":[{"entity":"WorkSession","id":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"}]}},{"attributes":{"amount":{"integer":{"_0":2500}},"createdAt":{"date":{"_0":813933733.033922}},"currency":{"string":{"_0":"USD"}},"id":{"uuid":{"_0":"EC153489-1C2C-462D-B451-F593CC3EBF8C"}},"note":{"string":{"_0":""}},"receivedAt":{"date":{"_0":813933733.032978}},"reversesID":{"null":{}}},"key":{"entity":"PaymentRecord","id":"EC153489-1C2C-462D-B451-F593CC3EBF8C"},"relationships":{"invoice":[{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"}],"job":[]}},{"attributes":{"endDay":{"string":{"_0":"2026-10-17"}},"id":{"uuid":{"_0":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}},"location":{"string":{"_0":""}},"notes":{"string":{"_0":""}},"startDay":{"string":{"_0":"2026-10-17"}},"timeZoneID":{"string":{"_0":"Europe/London"}},"title":{"string":{"_0":"Broadcast weekend"}},"trackPlaceID":{"string":{"_0":""}}},"key":{"entity":"WorkEvent","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"},"relationships":{"bookings":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}]}},{"attributes":{"id":{"uuid":{"_0":"4E4F1464-5AE4-4D3F-9DD4-29366EECD14C"}},"name":{"string":{"_0":"Commentator"}}},"key":{"entity":"WorkRole","id":"4E4F1464-5AE4-4D3F-9DD4-29366EECD14C"},"relationships":{"jobs":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}],"sessions":[]}},{"attributes":{"callTime":{"null":{}},"coverage":{"string":{"_0":"covering"}},"day":{"string":{"_0":"2026-10-17"}},"deletedAt":{"null":{}},"endTime":{"date":{"_0":813937333.029758}},"id":{"uuid":{"_0":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"}},"name":{"string":{"_0":""}},"notes":{"string":{"_0":""}},"overridesRoles":{"boolean":{"_0":false}},"overridesSeries":{"boolean":{"_0":false}},"recoveryDiscardedAt":{"null":{}},"scheduleStatus":{"string":{"_0":"confirmed"}},"startTime":{"date":{"_0":813933733.029758}},"timeZoneID":{"string":{"_0":"Europe/London"}}},"key":{"entity":"WorkSession","id":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"},"relationships":{"job":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}],"links":[{"entity":"BroadcastLink","id":"0B0ADCA5-7000-4000-8000-000000000011"}],"roles":[],"series":[]}},{"attributes":{"id":{"uuid":{"_0":"0B0ADCA5-7000-4000-8000-000000000011"}},"label":{"string":{"_0":"Feed"}},"notes":{"string":{"_0":""}},"url":{"string":{"_0":"https://example.com/live"}}},"key":{"entity":"BroadcastLink","id":"0B0ADCA5-7000-4000-8000-000000000011"},"relationships":{"session":[{"entity":"WorkSession","id":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"}]}}],"version":2}"#
+    static let v13 = #"{"createdAt":813933733.038917,"format":"com.cuekeeper.backup","records":[{"attributes":{"contact":{"string":{"_0":""}},"defaultCurrency":{"string":{"_0":"USD"}},"id":{"uuid":{"_0":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"}},"name":{"string":{"_0":"Network"}},"notes":{"string":{"_0":""}}},"key":{"entity":"Client","id":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"},"relationships":{"invoices":[{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"}],"jobs":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}]}},{"attributes":{"createdAt":{"date":{"_0":813933733.027728}},"id":{"uuid":{"_0":"D2C2B553-8116-496F-A431-F07D505C8580"}},"parentsJSON":{"string":{"_0":"[]"}},"valueJSON":{"string":{"_0":"{\"currency\":\"USD\",\"amount\":10000,\"agreement\":\"unknown\",\"lines\":[]}"}}},"key":{"entity":"FeeRevision","id":"D2C2B553-8116-496F-A431-F07D505C8580"},"relationships":{"job":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}]}},{"attributes":{"createdAt":{"date":{"_0":813933733.032361}},"id":{"uuid":{"_0":"CD54017B-4942-4DBC-BEED-92C00E79D408"}}},"key":{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"},"relationships":{"client":[{"entity":"Client","id":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"}],"payments":[{"entity":"PaymentRecord","id":"EC153489-1C2C-462D-B451-F593CC3EBF8C"}],"revisions":[{"entity":"InvoiceRevision","id":"6B8D48F9-30DF-417F-9BFE-A17A501F7BB0"}]}},{"attributes":{"createdAt":{"date":{"_0":813933733.032445}},"id":{"uuid":{"_0":"6B8D48F9-30DF-417F-9BFE-A17A501F7BB0"}},"parentsJSON":{"string":{"_0":"[]"}},"valueJSON":{"string":{"_0":"{\"reference\":\"INV-RECOVERY\",\"status\":\"sent\",\"sentDay\":\"2026-10-17\",\"dueDay\":\"\",\"clientID\":\"DB57AF5C-2582-4160-AA1C-1B6FB899BD74\",\"currency\":\"USD\",\"notes\":\"\",\"lines\":[{\"jobName\":\"Broadcast weekend\",\"jobID\":\"B87C2C31-C2E0-4A97-8A09-2A7423292BDD\",\"amount\":10000}]}"}}},"key":{"entity":"InvoiceRevision","id":"6B8D48F9-30DF-417F-9BFE-A17A501F7BB0"},"relationships":{"invoice":[{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"}]}},{"attributes":{"bookingStatus":{"string":{"_0":"tentative"}},"createdAt":{"date":{"_0":813933733.02702}},"deletedAt":{"null":{}},"endDay":{"string":{"_0":"2026-10-17"}},"id":{"uuid":{"_0":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}},"location":{"string":{"_0":""}},"name":{"string":{"_0":"Broadcast weekend"}},"notes":{"string":{"_0":""}},"recoveryDiscardedAt":{"null":{}},"startDay":{"string":{"_0":"2026-10-17"}},"timeZoneID":{"string":{"_0":"Europe/London"}},"trackPlaceID":{"string":{"_0":""}},"workArrangement":{"string":{"_0":"unspecified"}}},"key":{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"},"relationships":{"additionalSeries":[],"client":[{"entity":"Client","id":"DB57AF5C-2582-4160-AA1C-1B6FB899BD74"}],"event":[{"entity":"WorkEvent","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}],"expenses":[],"feeRevisions":[{"entity":"FeeRevision","id":"D2C2B553-8116-496F-A431-F07D505C8580"}],"payments":[],"project":[],"roles":[{"entity":"WorkRole","id":"4E4F1464-5AE4-4D3F-9DD4-29366EECD14C"}],"series":[],"sessions":[{"entity":"WorkSession","id":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"}]}},{"attributes":{"amount":{"integer":{"_0":2500}},"createdAt":{"date":{"_0":813933733.033922}},"currency":{"string":{"_0":"USD"}},"id":{"uuid":{"_0":"EC153489-1C2C-462D-B451-F593CC3EBF8C"}},"note":{"string":{"_0":""}},"receivedAt":{"date":{"_0":813933733.032978}},"reversesID":{"null":{}}},"key":{"entity":"PaymentRecord","id":"EC153489-1C2C-462D-B451-F593CC3EBF8C"},"relationships":{"invoice":[{"entity":"Invoice","id":"CD54017B-4942-4DBC-BEED-92C00E79D408"}],"job":[]}},{"attributes":{"endDay":{"string":{"_0":"2026-10-17"}},"id":{"uuid":{"_0":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}},"location":{"string":{"_0":""}},"notes":{"string":{"_0":""}},"ownerJobID":{"null":{}},"startDay":{"string":{"_0":"2026-10-17"}},"timeZoneID":{"string":{"_0":"Europe/London"}},"title":{"string":{"_0":"Broadcast weekend"}},"trackPlaceID":{"string":{"_0":""}}},"key":{"entity":"WorkEvent","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"},"relationships":{"bookings":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}]}},{"attributes":{"id":{"uuid":{"_0":"4E4F1464-5AE4-4D3F-9DD4-29366EECD14C"}},"name":{"string":{"_0":"Commentator"}}},"key":{"entity":"WorkRole","id":"4E4F1464-5AE4-4D3F-9DD4-29366EECD14C"},"relationships":{"jobs":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}],"sessions":[]}},{"attributes":{"callTime":{"null":{}},"coverage":{"string":{"_0":"covering"}},"day":{"string":{"_0":"2026-10-17"}},"deletedAt":{"null":{}},"endTime":{"date":{"_0":813937333.029758}},"id":{"uuid":{"_0":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"}},"name":{"string":{"_0":""}},"notes":{"string":{"_0":""}},"overridesRoles":{"boolean":{"_0":false}},"overridesSeries":{"boolean":{"_0":false}},"recoveryDiscardedAt":{"null":{}},"scheduleStatus":{"string":{"_0":"confirmed"}},"startTime":{"date":{"_0":813933733.029758}},"timeZoneID":{"string":{"_0":"Europe/London"}}},"key":{"entity":"WorkSession","id":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"},"relationships":{"job":[{"entity":"Job","id":"B87C2C31-C2E0-4A97-8A09-2A7423292BDD"}],"links":[{"entity":"BroadcastLink","id":"0B0ADCA5-7000-4000-8000-000000000011"}],"roles":[],"series":[]}},{"attributes":{"id":{"uuid":{"_0":"0B0ADCA5-7000-4000-8000-000000000011"}},"label":{"string":{"_0":"Feed"}},"notes":{"string":{"_0":""}},"url":{"string":{"_0":"https://example.com/live"}}},"key":{"entity":"BroadcastLink","id":"0B0ADCA5-7000-4000-8000-000000000011"},"relationships":{"session":[{"entity":"WorkSession","id":"0112FAA6-5439-4FD4-AB9C-51751EFACC28"}]}}],"version":2}"#
+}
 
 final class CloudBackupListingTests: XCTestCase {
     func testUnreadableEntriesDoNotHideHealthyBackups() throws {

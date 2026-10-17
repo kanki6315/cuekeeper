@@ -88,6 +88,11 @@ final class BackupWorkflow: ObservableObject {
     }
     func prepare(context: NSManagedObjectContext, control: BackupControl) async throws -> BackupFile {
         let coordinator = context.persistentStoreCoordinator!
+        // Copies delivered by iCloud after a restore merge first. Copies still awaiting
+        // review are saved in the backup as they are, so backing up never waits on a choice.
+        _ = try await BackupWorker.perform(coordinator: coordinator, control: control) { writer in
+            try IdentityReconciliation.reconcile(in: writer)
+        }
         return try await BackupWorker.perform(coordinator: coordinator, control: control) { reader in
             try BackupArchive.capture(in: reader, control: control).writePackage(control: control)
         }
@@ -124,17 +129,24 @@ final class BackupWorkflow: ObservableObject {
         run("Checking backup…", cancellable: false) { control in
             // Read live state again: an import may have started since confirmation.
             if let reason = syncActivity().restoreUnavailableReason { throw RecordError.invalid(reason) }
-            self.archive = nil
             let result = try await BackupWorker.perform(coordinator: context.persistentStoreCoordinator!, control: control) { writer in
                 try snapshot.restore(in: writer, control: control)
             }
             // A successful worker result means the restore was committed. Account
             // invalidation after that save must not suppress its success callback.
+            // Until then the prepared archive (and its temporary files) stays
+            // available, so a failed restore can be retried without another download.
+            if self.archive?.workspace === snapshot.workspace { self.archive = nil }
             context.refreshAllObjects()
             self.notice = "Restore complete. Added \(result.added) records and recovered \(result.recovered) deleted records. Existing edits and payments were kept."
             completion(result)
         }
     }
+    /// A prepared backup kept after a failed restore, ready to review again.
+    var canRetryRestore: Bool { archive != nil && !busy && !reviewing }
+    func reviewAgain() { if archive != nil, !busy { error = nil; reviewing = true } }
+    /// Explicit cancellation: release the archive so its temporary files are removed.
+    func discardArchive() { guard !busy else { return }; archive = nil; reviewing = false }
     var reviewSummary: String {
         guard let archive else { return "" }
         return "\(archive.records.filter { $0.key.entity == "Job" }.count) events and \(archive.attachments.count) receipt images. This adds missing records and recovers deleted records without replacing newer edits or payments. Recovered events can return to Calendar. These changes sync to your other devices."

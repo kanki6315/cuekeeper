@@ -97,3 +97,20 @@ class EventWorkflowTestCase: DaybookUITestCase {
         return app
     }
 }
+
+// Upcoming rows open their event; the event schedule opens the individual session.
+extension XCTestCase {
+    func openUpcomingSession(_ title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let upcomingRow = app.staticTexts[title].firstMatch
+        XCTAssertTrue(upcomingRow.waitForExistence(timeout: 5), file: file, line: line)
+        upcomingRow.tap()
+        XCTAssertTrue(app.buttons["edit-event"].waitForExistence(timeout: 5), file: file, line: line)
+        // Scope to the event pane so iPad cannot tap the Upcoming row again.
+        let forms = app.scrollViews.matching(identifier: "daybook-form")
+        let eventForm = forms.element(boundBy: max(0, forms.count - 1))
+        let sessionRow = eventForm.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertTrue(sessionRow.waitForExistence(timeout: 5), file: file, line: line)
+        sessionRow.tap()
+        XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5), file: file, line: line)
+    }
+}

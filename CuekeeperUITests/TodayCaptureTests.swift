@@ -49,8 +49,7 @@ final class TodayCaptureTests: XCTestCase {
                     XCTAssertTrue(app.staticTexts["Evening review"].firstMatch.waitForExistence(timeout: 3))
                     XCTAssertTrue(app.staticTexts["Studio highlights"].firstMatch.exists)
                     let lower = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); lower.name = "today-iphone-lower-\(theme)"; lower.lifetime = .keepAlways; add(lower)
-                    app.staticTexts["Evening review"].firstMatch.tap()
-                    XCTAssertTrue(app.navigationBars["Evening review"].waitForExistence(timeout: 3))
+                    openUpcomingSession("Evening review", in: app)
                 }
                 app.terminate()
             }

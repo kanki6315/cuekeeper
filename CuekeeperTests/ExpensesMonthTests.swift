@@ -12,7 +12,7 @@ final class ExpensesMonthTests: XCTestCase {
         ExpenseFact(id: UUID(), day: day, merchant: merchant, amount: amount, currency: currency, category: "Travel", state: state,
                     jobID: job, eventTitle: job == nil ? nil : (job == derby ? "City vs United" : "Silverstone weekend"),
                     clientID: client, clientName: client == apex ? "Apex Media" : client == northside ? "Northside Sports" : nil,
-                    eventDeleted: deleted, eventInvoiceable: invoiceable, repeats: repeats, seriesID: series)
+                    eventDeleted: deleted, eventInvoiceable: invoiceable, eventCurrency: currency, repeats: repeats, seriesID: series)
     }
 
     func testMonthSplitsMoneyByStateAndListsDaysNewestFirst() {
@@ -54,7 +54,10 @@ final class ExpensesMonthTests: XCTestCase {
         XCTAssertEqual(apexGroup?.receipts.count, 2)
         XCTAssertEqual(apexGroup?.events, ["City vs United"])
         XCTAssertEqual(apexGroup?.canInvoice, true)
-        XCTAssertEqual(month.rebill.first { $0.clientID == northside }?.canInvoice, false, "An already invoiced event needs no new invoice button")
+        XCTAssertEqual(apexGroup?.invoiceableJobs, [derby])
+        let late = month.rebill.first { $0.clientID == northside }
+        XCTAssertEqual(late?.canInvoice, true, "A receipt on an already invoiced event is billed on its own")
+        XCTAssertEqual(late?.invoiceableJobs, [], "Without billing the event again")
         XCTAssertEqual(month.earlier.count, 2)
         XCTAssertEqual(month.earlier.amounts, ["USD": 8650])
         XCTAssertEqual(month.earlier.latestMonth, "2026-09")
@@ -134,7 +137,7 @@ final class ExpensesMonthTests: XCTestCase {
         value.repeatsMonthly = false
         try Expense.save(value, id: id, revision: expense.revision, business: true, in: context)
         XCTAssertNil(expense.job); XCTAssertTrue(expense.isBusiness)
-        XCTAssertFalse(expense.value.reimbursable); XCTAssertNil(expense.value.repeatsMonthly)
+        XCTAssertFalse(expense.value.reimbursable); XCTAssertFalse(expense.value.repeatsMonthly)
         XCTAssertEqual(expense.photo, Data([1, 2, 3]))
 
         // An event receipt still needs its event and photo.
@@ -142,7 +145,7 @@ final class ExpensesMonthTests: XCTestCase {
         let otherExpense = try XCTUnwrap(context.existingObject(with: other) as? Expense)
         var receipt = value; receipt.repeatsMonthly = true
         try Expense.save(receipt, id: other, revision: otherExpense.revision, in: context)
-        XCTAssertNil(otherExpense.value.repeatsMonthly, "Only business costs repeat")
+        XCTAssertFalse(otherExpense.value.repeatsMonthly, "Only business costs repeat")
         XCTAssertTrue(otherExpense.isRebillable)
     }
 }

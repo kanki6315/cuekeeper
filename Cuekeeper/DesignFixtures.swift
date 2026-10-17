@@ -96,7 +96,7 @@ enum DesignFixtures {
             for (merchant, day, amount, currency, repeats) in [("Claude Pro", "2026-09-01", "20.00", "USD", true), ("Adobe Creative Cloud", "2026-10-04", "59.99", "USD", true),
                                                                ("Dropbox Plus", "2026-10-09", "11.99", "EUR", false)] {
                 var value = ExpenseValue(merchant: merchant, day: day, amount: amount, currency: currency, category: "Software")
-                value.repeatsMonthly = repeats ? true : nil
+                value.repeatsMonthly = repeats
                 _ = try Expense.createBusiness(value, in: context)
             }
         }

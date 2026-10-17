@@ -267,7 +267,7 @@ struct InvoiceDetailView: View {
     @State private var error: String?
     var body: some View {
         DaybookForm(title: invoice.title, subtitle: invoice.client?.name ?? "Client syncing") {
-            if let issue = invoice.issue(in: context) { Section("Needs review") { Text(issue) } }
+            if let issue = invoice.issue(in: context) ?? invoice.duplicateReference(index: InvoiceIndex(in: context)) { Section("Needs review") { Text(issue) } }
             if let value = try? invoice.currentValue() {
                 Section {
                     BookingBadge(status: value.status)
@@ -281,7 +281,10 @@ struct InvoiceDetailView: View {
                             DaybookLink { JobDetailView(job: job) } label: { LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
                         } else { LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
                     }
-                } header: { Text("Billed bookings") } footer: { Text("Payments settle this invoice as a whole. Partial payments are not assigned to individual bookings.") }
+                    ForEach(value.expenseLines) { line in
+                        LabeledContent(line.label.isEmpty ? "Receipt" : line.label, value: Money.format(line.amount, currency: value.currency)).font(.subheadline)
+                    }
+                } header: { Text(value.lines.isEmpty ? "Billed receipts" : "Billed bookings") } footer: { Text("Payments settle this invoice as a whole. Partial payments are not assigned to individual bookings.") }
                 Section("Balance") {
                     LabeledContent("Total") { Text(Money.format((try? value.total()) ?? 0, currency: value.currency)).monospacedDigit().foregroundStyle(.primary) }
                         .padding(.vertical, 4)
@@ -343,6 +346,7 @@ private struct InvoiceSnapshot: View {
     var body: some View {
         Text(value.reference.isEmpty ? "No reference" : value.reference)
         ForEach(value.lines) { line in LabeledContent(line.jobName, value: Money.format(line.amount, currency: value.currency)) }
+        ForEach(value.expenseLines) { line in LabeledContent(line.label.isEmpty ? "Receipt" : line.label, value: Money.format(line.amount, currency: value.currency)) }
         if !value.sentDay.isEmpty { LabeledContent("Sent", value: Day.display(value.sentDay)) }
         if !value.dueDay.isEmpty { LabeledContent("Due", value: Day.display(value.dueDay)) }
         if !value.notes.isEmpty { Text(value.notes) }
@@ -380,7 +384,7 @@ struct PaymentEditorView: View {
                     }.padding(.vertical, 4)
                     DatePicker("Received", selection: $draft.date, displayedComponents: .date)
                     DaybookTextField("Reference or note (optional)", text: $draft.note, axis: .vertical)
-                    if let balance = try? invoice?.balance(), let amount = try? Money.parse(draft.amount, currency: currency), amount >= 0, let remaining = try? Money.minorUnits(Decimal(balance) - Decimal(amount)) {
+                    if let balance = try? invoice?.balance(), let amount = try? Money.parseInput(draft.amount, currency: currency), amount >= 0, let remaining = try? Money.minorUnits(Decimal(balance) - Decimal(amount)) {
                         LabeledContent(remaining < 0 ? "Credit after payment" : "Remaining after payment", value: Money.format(abs(remaining), currency: currency)).font(.subheadline.weight(.semibold)).monospacedDigit()
                     }
                 } header: { Text("Payment") } footer: { Text("Each receipt is kept in history. To correct it later, reverse the receipt and record the corrected payment.") }

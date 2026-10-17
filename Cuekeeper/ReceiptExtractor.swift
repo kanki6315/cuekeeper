@@ -16,10 +16,15 @@ struct ReceiptFields {
         value.merchant = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         if let date = Day.date(from: day), Day.string(from: date) == day { value.day = day }
         if ExpenseValue.currencies.contains(currency.uppercased()) { value.currency = currency.uppercased() }
-        if ExpenseCaptureInput.plausibleAmount(amount, currency: value.currency) { value.amount = amount }
-        if ExpenseCaptureInput.plausibleAmount(tax, currency: value.currency) { value.tax = tax }
+        value.amount = Self.reviewText(amount, currency: value.currency)
+        value.tax = Self.reviewText(tax, currency: value.currency)
         if ExpenseValue.categories.contains(category) { value.category = category }
         return value
+    }
+    /// The model writes period decimals; once the currency is known they are shown in the device's convention.
+    private static func reviewText(_ text: String, currency: String) -> String {
+        guard let amount = try? Money.parse(text, decimals: currency.isEmpty ? Money.maxDecimals : Money.decimals(currency)) else { return "" }
+        return currency.isEmpty ? text.trimmingCharacters(in: .whitespacesAndNewlines) : Money.inputText(amount, currency: currency)
     }
 }
 

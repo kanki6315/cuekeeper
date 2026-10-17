@@ -14,9 +14,9 @@ struct ExpenseValue: Codable, Equatable {
     var reimbursable = false
     var notes = ""
     var capture: ExpenseCaptureInput?
-    var discarded: Bool?
+    var discarded = false
     /// A business cost that recurs monthly. Each month is its own expense; the next one is offered once due.
-    var repeatsMonthly: Bool?
+    var repeatsMonthly = false
     /// Shared by every month of a repeating business cost.
     var seriesID: UUID?
     /// Formatted only when the amount is valid for a supported currency, so a bad value is never shown as zero.
@@ -102,15 +102,23 @@ final class Expense: NSManagedObject, Identifiable {
     /// `business` saves a cost that belongs to no event: it is never reimbursable and needs no photo.
     static func save(_ value: ExpenseValue, id: NSManagedObjectID, revision: String, confirmed: Bool = true, jobID: NSManagedObjectID? = nil,
                      business: Bool = false, in context: NSManagedObjectContext) throws {
-        if confirmed { try value.validate() }
+        let typed = confirmed ? try value.storingAmounts() : (try? value.storingAmounts()) ?? value
+        if confirmed { try typed.validate() }
         let writer = isolatedWriter(context)
         let record = try writer.existingObject(with: id) as! Expense
         guard record.revision == revision else { throw RecordError.invalid("This expense changed on another device. Close and reopen it before saving.") }
-        guard record.value.discarded != true, record.job?.deletedAt == nil else { throw RecordError.invalid("This expense or its event was removed. Reopen the expense list before editing.") }
+        guard !record.value.discarded, record.job?.deletedAt == nil else { throw RecordError.invalid("This expense or its event was removed. Reopen the expense list before editing.") }
+        // An invoice bills a receipt for its event's client, in its currency, as reimbursable. Those facts stay
+        // while it is on an active invoice; a corrected total is allowed and never rewrites a sent invoice.
+        let moves = business || (jobID != nil && jobID != record.job?.objectID)
+        if !record.isDraft, record.job != nil, moves || typed.currency != record.value.currency || (record.value.reimbursable && !typed.reimbursable),
+           let billed = try record.activeInvoices(index: InvoiceIndex(in: writer)).first {
+            let invoice = try? billed.currentValue()
+            throw RecordError.invalid(invoice?.status == "draft"
+                ? "This receipt is on a draft invoice. Remove it from that invoice before changing its event, currency or reimbursable setting."
+                : "This receipt is billed on \(invoice?.reference.isEmpty == false ? invoice!.reference : "an invoice"). Its event, currency and reimbursable setting stay as billed; void that invoice to change them.")
+        }
         if business {
-            if record.job != nil, try !record.activeInvoices(index: InvoiceIndex(in: writer)).isEmpty {
-                throw RecordError.invalid("This receipt is on an invoice. Void that invoice before making it a business cost.")
-            }
             record.job = nil
         } else if let jobID {
             guard let job = try writer.existingObject(with: jobID) as? Job, job.deletedAt == nil else { throw RecordError.invalid("Choose an active event.") }
@@ -120,7 +128,7 @@ final class Expense: NSManagedObject, Identifiable {
             guard record.job != nil else { throw RecordError.invalid("Choose an event before completing this expense.") }
             guard record.photo != nil else { throw RecordError.invalid("Attach a receipt photo before completing this expense.") }
         }
-        var value = business ? value.asBusiness(id: record.id) : value.asEventReceipt
+        var value = business ? typed.asBusiness(id: record.id) : typed.asEventReceipt
         // Capture evidence is immutable even when the reviewed form changes.
         value.capture = record.value.capture; value.discarded = record.value.discarded
         record.valueJSON = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
@@ -149,13 +157,14 @@ struct ExpenseCaptureInput: Codable, Equatable {
     }
     /// Keeps amounts whose currency is still unknown; saving checks them against the chosen currency.
     static func plausibleAmount(_ amount: String, currency: String) -> Bool {
-        (try? Money.parse(amount, decimals: currency.isEmpty ? Money.maxDecimals : Money.decimals(currency))) != nil
+        (try? Money.parseInput(amount, currency: currency, decimals: currency.isEmpty ? Money.maxDecimals : nil)) != nil
     }
     var draft: ExpenseValue {
         var value = ExpenseValue()
         value.merchant = merchant
         if ExpenseValue.currencies.contains(currency) { value.currency = currency }
         if Self.plausibleAmount(amount, currency: value.currency) { value.amount = amount }
+        value = (try? value.storingAmounts()) ?? value
         if let date { value.day = Day.string(from: date) }
         value.capture = self
         return value
@@ -190,11 +199,12 @@ extension Expense {
         expense.isDraft = false; expense.updatedAt = Date(); expense.revision = UUID().uuidString
         try writer.save(); context.refreshAllObjects()
     }
-    var needsCompletion: Bool { isDraft && value.discarded != true && job?.deletedAt == nil }
+    var needsCompletion: Bool { isDraft && !value.discarded && job?.deletedAt == nil }
     /// A finished cost that belongs to no event, such as a software subscription.
-    var isBusiness: Bool { !isDraft && job == nil && value.discarded != true }
+    var isBusiness: Bool { !isDraft && job == nil && !value.discarded }
     /// Saves a business cost entered without a receipt photo, such as the next month of a subscription.
     static func createBusiness(_ value: ExpenseValue, in context: NSManagedObjectContext) throws -> NSManagedObjectID {
+        let value = try value.storingAmounts()
         try value.validate()
         let writer = isolatedWriter(context)
         let expense = Expense(context: writer)
@@ -228,13 +238,30 @@ extension ExpenseValue {
     func asBusiness(id: UUID?) -> ExpenseValue {
         var value = self
         value.reimbursable = false
-        if value.repeatsMonthly == true { value.seriesID = value.seriesID ?? id ?? UUID() } else { value.repeatsMonthly = nil }
+        if value.repeatsMonthly { value.seriesID = value.seriesID ?? id ?? UUID() }
+        return value
+    }
+    /// Typed totals, read in the device's convention, become the stored text every device reads alike.
+    /// An amount that is not yet valid is left for validation to explain.
+    func storingAmounts(locale: Locale = .current) throws -> ExpenseValue {
+        guard Self.currencies.contains(currency) else { return self }
+        var value = self
+        if let amount = try Money.parseInput(amount, currency: currency, locale: locale) { value.amount = Money.text(amount, currency: currency) }
+        if let tax = try Money.parseInput(tax, currency: currency, locale: locale) { value.tax = Money.text(tax, currency: currency) }
+        return value
+    }
+    /// Stored totals shown for editing in the device's convention.
+    func editingAmounts(locale: Locale = .current) -> ExpenseValue {
+        guard Self.currencies.contains(currency) else { return self }
+        var value = self
+        if let amount = try? Money.parse(amount, currency: currency) { value.amount = Money.inputText(amount, currency: currency, locale: locale) }
+        if let tax = try? Money.parse(tax, currency: currency) { value.tax = Money.inputText(tax, currency: currency, locale: locale) }
         return value
     }
     /// Event receipts don't repeat.
     var asEventReceipt: ExpenseValue {
         var value = self
-        value.repeatsMonthly = nil
+        value.repeatsMonthly = false
         return value
     }
     /// Preserve entered/payment values. Conflicting receipt facts require explicit acceptance.

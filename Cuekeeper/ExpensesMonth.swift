@@ -51,6 +51,8 @@ struct ExpenseFact: Equatable, Identifiable {
     var eventDeleted = false
     /// The event is on no active invoice yet, so a new invoice can carry these receipts.
     var eventInvoiceable = false
+    /// The event fee's currency. Receipts in another currency are billed on an invoice of their own.
+    var eventCurrency: String?
     var photoSaved = false
     var repeats = false
     var seriesID: UUID?
@@ -64,7 +66,7 @@ struct ExpenseFact: Equatable, Identifiable {
 extension ExpenseFact {
     init?(expense: Expense, index: InvoiceIndex) {
         let value = expense.value
-        guard let id = expense.id, value.discarded != true else { return nil }
+        guard let id = expense.id, !value.discarded else { return nil }
         let job = expense.job
         self.init(id: id,
                   day: value.day.isEmpty ? Day.string(from: expense.createdAt ?? Date()) : value.day,
@@ -76,22 +78,23 @@ extension ExpenseFact {
                   jobID: job?.id, eventTitle: job?.eventTitle, clientID: job?.client?.id, clientName: job?.client?.name,
                   eventDeleted: job?.deletedAt != nil,
                   eventInvoiceable: job.flatMap { job in job.managedObjectContext.flatMap { try? job.activeInvoices(in: $0, index: index).isEmpty } } ?? false,
+                  eventCurrency: (try? job?.currentFee())?.currency,
                   photoSaved: expense.photo != nil,
-                  repeats: value.repeatsMonthly == true, seriesID: value.seriesID)
+                  repeats: value.repeatsMonthly, seriesID: value.seriesID)
     }
 
     static func state(_ expense: Expense, index: InvoiceIndex) -> ExpenseState {
         if expense.isDraft { return .toFinish }
         if expense.job == nil { return .business }
-        guard expense.value.reimbursable else { return .yourCost }
+        // What an invoice bills comes first: a billed receipt is never "your cost", whatever its flag says now.
         do {
             let invoices = try expense.activeInvoices(index: index)
             guard invoices.count <= 1 else { return .review }
-            guard let invoice = invoices.first else { return .toRebill }
+            guard let invoice = invoices.first else { return expense.value.reimbursable ? .toRebill : .yourCost }
             let value = try invoice.currentValue()
             if value.status == "sent", try invoice.balance() <= 0 { return .paidBack }
             return .onInvoice(reference: value.status == "draft" ? "" : value.reference)
-        } catch { return .review }
+        } catch { return expense.value.reimbursable ? .review : .yourCost }
     }
 }
 
@@ -130,11 +133,12 @@ struct RebillGroup: Equatable, Identifiable {
     let currency: String
     var events: [String] = []
     var receipts: [UUID] = []
-    /// Events of these receipts that no active invoice includes yet.
+    /// Events of these receipts that no active invoice includes yet and whose fee is in this currency.
+    /// The other receipts, such as late ones or those in another currency, are billed without their event.
     var invoiceableJobs: [UUID] = []
     var amount: Int64 = 0
     var id: String { "\(clientID?.uuidString ?? "none")-\(currency)" }
-    var canInvoice: Bool { clientID != nil && !invoiceableJobs.isEmpty }
+    var canInvoice: Bool { clientID != nil && !receipts.isEmpty }
 }
 
 struct EarlierRebill: Equatable {
@@ -181,7 +185,7 @@ struct ExpensesMonth: Equatable {
             if groups[key] == nil { order.append(key) }
             var group = groups[key] ?? RebillGroup(clientID: fact.clientID, name: fact.clientName ?? "No client", currency: fact.currency)
             if let title = fact.eventTitle, !group.events.contains(title) { group.events.append(title) }
-            if let job = fact.jobID, fact.eventInvoiceable, !group.invoiceableJobs.contains(job) { group.invoiceableJobs.append(job) }
+            if let job = fact.jobID, fact.eventInvoiceable, fact.eventCurrency == fact.currency, !group.invoiceableJobs.contains(job) { group.invoiceableJobs.append(job) }
             group.receipts.append(fact.id); group.amount += fact.amount ?? 0
             groups[key] = group
         }

@@ -25,14 +25,22 @@ struct InvoiceCandidates: Equatable {
     let notReady: [InvoiceCandidate]
     /// Events already on another invoice, which this one cannot bill again.
     let alreadyInvoiced: Int
+    /// Receipts in this currency whose event this invoice cannot bill: the event is already invoiced (a late
+    /// receipt) or its fee is in another currency. They are billed alone, so the fee is never billed twice.
+    let receiptsOnly: [InvoiceCandidate]
 
     /// - Parameters:
     ///   - onThisInvoice: events on the saved invoice being edited; they stay selectable whatever their state.
     ///   - billedReceipts: receipts already on that invoice, by event.
     init(events: [EventReadiness], clientID: UUID, currency: String, onThisInvoice: Set<UUID> = [], billedReceipts: [UUID: [EventExpenseFact]] = [:]) {
-        var ready: [InvoiceCandidate] = [], notReady: [InvoiceCandidate] = [], invoiced = 0
-        for event in events where event.facts.clientID == clientID && event.currency == currency {
+        var ready: [InvoiceCandidate] = [], notReady: [InvoiceCandidate] = [], separate: [InvoiceCandidate] = [], invoiced = 0
+        for event in events where event.facts.clientID == clientID {
             let receipts = (billedReceipts[event.id] ?? []) + event.facts.rebillable.filter { $0.currency == currency }
+            let billable = event.currency == currency && (onThisInvoice.contains(event.id) || [.ready, .heldUp, .upcoming].contains(event.state))
+            if !billable, !receipts.isEmpty, !onThisInvoice.contains(event.id) {
+                if case .review = event.state {} else { separate.append(InvoiceCandidate(event: event, receipts: receipts, note: Self.separateNote(event, currency: currency))) }
+            }
+            guard event.currency == currency else { continue }
             if onThisInvoice.contains(event.id) {
                 ready.append(InvoiceCandidate(event: event, receipts: receipts, note: ""))
                 continue
@@ -48,10 +56,20 @@ struct InvoiceCandidates: Equatable {
         let order: (InvoiceCandidate, InvoiceCandidate) -> Bool = { ($0.event.facts.startDay, $0.title) > ($1.event.facts.startDay, $1.title) }
         self.ready = ready.sorted(by: order)
         self.notReady = notReady.sorted(by: order)
+        receiptsOnly = separate.sorted(by: order)
         alreadyInvoiced = invoiced
     }
 
     var all: [InvoiceCandidate] { ready + notReady }
+
+    static func separateNote(_ event: EventReadiness, currency: String) -> String {
+        if let fee = event.currency, fee != currency { return "Fee billed in \(fee)" }
+        switch event.state {
+        case .invoiced(let reference, _, _, _), .paid(let reference): return reference.isEmpty ? "Fee already invoiced" : "Fee on \(reference)"
+        case .draft: return "Fee on a draft invoice"
+        default: return "Fee not billed here"
+        }
+    }
 
     static func note(_ event: EventReadiness) -> String {
         var parts = event.gaps.filter { $0.gate != .work || event.state != .upcoming }.map(\.text)

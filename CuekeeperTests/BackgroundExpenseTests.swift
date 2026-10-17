@@ -52,7 +52,7 @@ final class BackgroundExpenseTests: XCTestCase {
         var edited = expense.value; edited.amount = "25"; edited.capture = nil
         try Expense.save(edited, id: expense.objectID, revision: expense.revision, jobID: jobID, in: context)
         XCTAssertFalse(expense.isDraft); XCTAssertEqual(expense.job?.objectID, jobID)
-        XCTAssertEqual(expense.value.amount, "25"); XCTAssertEqual(expense.value.capture?.amount, "24.50")
+        XCTAssertEqual(expense.value.amount, "25.00", "Stored in the form every device reads alike"); XCTAssertEqual(expense.value.capture?.amount, "24.50")
         XCTAssertFalse(try Expense.captureBackground(payment, in: context).inserted)
     }
     func testDiscardAndBackupDoNotResurrectDuplicateCapture() async throws {

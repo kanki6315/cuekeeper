@@ -308,11 +308,11 @@ extension InvoiceLedger {
         let total = (try? value.total()) ?? 0
         let received = (try? invoice.paid()) ?? 0
         var entry = LedgerEntry(recordID: id, title: value.status == "draft" && value.reference.isEmpty ? "Draft" : value.reference,
-                                clientName: invoice.client?.name ?? "Client syncing", detail: value.lines.map(\.jobName).joined(separator: ", "),
+                                clientName: invoice.client?.name ?? "Client syncing", detail: (value.lines.map(\.jobName) + (value.lines.isEmpty ? value.expenseLines.map(\.label) : [])).joined(separator: ", "),
                                 currency: value.currency, total: total, received: received, state: .draft,
                                 sentDay: value.sentDay, dueDay: value.dueDay, createdDay: created, sent: value.status == "sent",
                                 receipts: (try? invoice.paid()) == nil ? [] : receipts(Array(invoice.payments ?? [])))
-        if let issue = invoice.issue(in: context, index: index) {
+        if let issue = invoice.issue(in: context, index: index) ?? invoice.duplicateReference(index: index) {
             entry.state = .review(issue)
         } else if value.status == "draft" {
             entry.state = .draft

@@ -43,6 +43,17 @@ final class EventVisualTests: RegressionUITestCase {
             if large { coverage.tap(); app.buttons["Not covering"].tap() }
             else { coverage.buttons["Not covering"].tap(); XCTAssertTrue(coverage.buttons["Not covering"].isSelected) }
             captureScreenshot("session-choices-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-\(large ? "large" : "normal")")
+            if !large {
+                // Share the standard-size session fixture with timezone coverage.
+                let forms = app.scrollViews.matching(identifier: "daybook-form")
+                let editor = forms.element(boundBy: forms.count - 1)
+                let zone = editor.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Event timezone")).firstMatch
+                for _ in 0..<5 where !zone.isHittable { editor.swipeUp() }
+                XCTAssertTrue(zone.isHittable)
+                XCTAssertFalse(app.buttons["event-timezone"].exists)
+                XCTAssertFalse(app.descendants(matching: .any)["work-timezone"].exists)
+                captureScreenshot("session-inherited-timezone")
+            }
             app.buttons["Cancel"].tap()
             if app.buttons["Discard Changes"].waitForExistence(timeout: 2) { app.buttons["Discard Changes"].tap() }
             app.terminate()

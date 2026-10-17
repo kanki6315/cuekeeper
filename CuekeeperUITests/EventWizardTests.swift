@@ -26,6 +26,12 @@ final class EventWizardTests: DaybookUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job", "--wizard-foreign-session", "--design-dark"]
         app.launch()
+        // The foreign-date fixture also exercises the inline time controls below.
+        XCTAssertTrue(app.buttons["wizard-continue"].waitForExistence(timeout: 10))
+        let date = app.datePickers["wizard-session-date"]
+        XCTAssertTrue(date.waitForExistence(timeout: 5))
+        XCTAssertTrue(date.debugDescription.contains("Jan 15") || date.debugDescription.contains("January 15"), "Session should display January 15 in Tokyo, not January 14 in New York: \(date.debugDescription)")
+        capture("wizard-foreign-session-date")
         let start = app.buttons["session-time-Start-unset"]
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         for _ in 0..<4 where !start.isHittable { app.swipeUp() }
@@ -45,6 +51,10 @@ final class EventWizardTests: DaybookUITestCase {
         app.buttons["Clear end"].tap()
         XCTAssertTrue(end.exists)
         capture("inline-native-session-times-cleared")
+        app.buttons["wizard-continue"].tap()
+        XCTAssertTrue(app.buttons["work-arrangement"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("work-timezone", in: app).exists)
+        capture("wizard-winter-work-timezone")
     }
 
     func testClientTypeaheadAndNewBookingChoices() {
@@ -110,18 +120,4 @@ final class EventWizardTests: DaybookUITestCase {
         capture("wizard-dark-large-text-review-lower")
     }
 
-    func testForeignSessionDate() {
-        let app = XCUIApplication()
-        let base = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job"]
-        app.launchArguments = base + ["--wizard-foreign-session"]
-        app.launch()
-        XCTAssertTrue(app.buttons["wizard-continue"].waitForExistence(timeout: 10))
-        let date = app.datePickers["wizard-session-date"]
-        XCTAssertTrue(date.waitForExistence(timeout: 5))
-        XCTAssertTrue(date.debugDescription.contains("Jan 15") || date.debugDescription.contains("January 15"), "Session should display January 15 in Tokyo, not January 14 in New York: \(date.debugDescription)")
-        capture("wizard-foreign-session-date")
-        app.buttons["wizard-continue"].tap()
-        XCTAssertFalse(element("work-timezone", in: app).exists)
-        capture("wizard-winter-work-timezone")
-    }
 }

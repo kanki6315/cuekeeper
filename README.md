@@ -279,6 +279,41 @@ layout test on iPhone. All 36 Python tooling tests and five website tests passed
 The schema-test success mock now includes V15's client invoicing field and a
 negative test rejects its absence; the reviewed CloudKit snapshot is unchanged.
 
+### Consolidated UI setup — 16 October 2026
+
+The enabled suite now has 217 unit/integration methods and 63 UI methods (280
+total). `testForeignSessionDate` was absorbed into
+`testInlineNativeSessionTimesAndIndependentClear`: the Tokyo date, independent
+start/end clearing and absent work-timezone assertions remain. The combined test
+also waits for the Role & location page before checking the absent field.
+
+Standard-size session timezone assertions now share the session-choice launch.
+The two original accessibility sizes remain independently covered: session
+choices at accessibility XL and timezone visibility at accessibility XXXL.
+Payments' standard-size dark heading check now shares the ledger workflow;
+its extra screenshot launch remains opt-in with `CUEKEEPER_TEST_SCREENSHOTS=1`.
+Together these changes remove three default app launches without removing the
+behavioral assertions. No additional tests are excluded and no retries are used.
+
+| Four explicit simulator workers | Test wall time | Passed | Failed | Skipped |
+| --- | --- | --- | --- | --- |
+| Freshly prepared devices, initial consolidation | 6m 13s | 277 | 1 | 2 |
+| Warm devices, corrected wizard page synchronization | 5m 27s | 278 | 0 | 2 |
+| Warm devices, balanced using current warm timings | **5m 16s** | **278** | **0** | **2** |
+
+The initial failure was an incorrect new wait for Review; this fixture advances
+from Session times to Role & location. Waiting for its arrangement control fixed
+that check, and both subsequent full runs passed. The final exact time was
+315.50 seconds, versus the previous 327.33 seconds: about 12 seconds faster and
+16 seconds above the five-minute target. Worker completion times ranged from
+303.46 to 315.50 seconds. All 280 enabled methods ran exactly once, with the same
+physical-device and iPad-only skips as before.
+
+These are warmed, test-only timings with coverage enabled. Build, discovery and
+simulator preparation are excluded; preparing the four fresh devices took 67.21
+seconds separately. Results are local observations, not a cold-start guarantee.
+Artifacts for this pass are under `build/benchmarks/consolidated-{first,warm,balanced}-4/`.
+
 `scripts/benchmark_tests.py` partitions whole UI classes across explicitly supplied
 simulators, keeps unit tests together, and rejects missing, duplicate or unexpected
 result methods. It creates one result bundle per worker, `plan.json`, `summary.json`

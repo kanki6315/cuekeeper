@@ -62,22 +62,21 @@ final class EventTimezoneTests: DaybookUITestCase {
         capture("timezone-hybrid")
         app.buttons["Cancel"].tap(); app.buttons["Discard Changes"].tap()
         app.terminate()
-        for large in [false, true] {
-            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-session", "--design-dark"]
-                + (large ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
-            app.launch()
-            XCTAssertTrue(app.buttons["save-session"].waitForExistence(timeout: 10))
-            // LabeledContent exposes a combined label at standard text sizes.
-            let forms = app.scrollViews.matching(identifier: "daybook-form")
-            let editor = forms.element(boundBy: forms.count - 1)
-            let zone = editor.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Event timezone")).firstMatch
-            for _ in 0..<5 where !zone.isHittable { editor.swipeUp() }
-            XCTAssertTrue(zone.isHittable)
-            XCTAssertFalse(app.buttons["event-timezone"].exists)
-            XCTAssertFalse(element("work-timezone", in: app).exists)
-            capture(large ? "session-inherited-timezone-large" : "session-inherited-timezone")
-            app.terminate()
-        }
+        // Standard-size timezone checks share the session-choice launch.
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=edit-session", "--design-dark"]
+            + ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.buttons["save-session"].waitForExistence(timeout: 10))
+        // LabeledContent exposes a combined label at standard text sizes.
+        let forms = app.scrollViews.matching(identifier: "daybook-form")
+        let editor = forms.element(boundBy: forms.count - 1)
+        let zone = editor.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Event timezone")).firstMatch
+        for _ in 0..<5 where !zone.isHittable { editor.swipeUp() }
+        XCTAssertTrue(zone.isHittable)
+        XCTAssertFalse(app.buttons["event-timezone"].exists)
+        XCTAssertFalse(element("work-timezone", in: app).exists)
+        capture("session-inherited-timezone-large")
+        app.terminate()
     }
 }
 

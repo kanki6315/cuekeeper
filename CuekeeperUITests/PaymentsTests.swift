@@ -85,9 +85,12 @@ final class PaymentsTests: RegressionUITestCase {
         XCTAssertTrue(harbour.exists)
         capture("payments-dark-ax-rows")
         app.terminate()
-        let light = launch(dark: true)
-        XCTAssertTrue(light.staticTexts["payments-month"].waitForExistence(timeout: 10))
-        capture("payments-dark")
+        // Standard-size dark mode is covered by the ledger workflow below.
+        if ProcessInfo.processInfo.environment["CUEKEEPER_TEST_SCREENSHOTS"] == "1" {
+            let dark = launch(dark: true)
+            XCTAssertTrue(dark.staticTexts["payments-month"].waitForExistence(timeout: 10))
+            capture("payments-dark")
+        }
     }
 
     func testIPadPortraitAndWideLedger() throws {
@@ -112,7 +115,7 @@ final class PaymentsTests: RegressionUITestCase {
     }
 
     func testLedgerKeepsEveryInvoice() {
-        let app = launch()
+        let app = launch(dark: true)
         let ledger = app.buttons["payments-ledger"]
         XCTAssertTrue(app.staticTexts["payments-month"].waitForExistence(timeout: 10))
         reveal(ledger, in: app)

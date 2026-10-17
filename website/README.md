@@ -27,9 +27,9 @@ limits. Domain registration and email hosting are separate from Pages hosting.
 - `assets/mark.svg`: existing approved mark with its viewBox cropped, not redrawn.
 - `DESIGN.md`: web surface contract; native app design files remain authoritative.
 
-The JSON files are the website's maintained content source. Earlier text drafts in
-`release/app-store/` are historical submission preparation; update website JSON for
-public changes and revise the policy date whenever the policy changes.
+The JSON files are the only maintained source for the support guide and privacy
+policy; App Store Connect links to these pages rather than taking their text. Revise
+the policy date whenever the policy changes.
 
 ## Cloudflare Pages: recommended Git integration
 

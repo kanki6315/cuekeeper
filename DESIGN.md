@@ -206,8 +206,8 @@ expenses prompt now appears only in Payments.
 
 Built from `ClientSummary` (`Cuekeeper/ClientSummary.swift`), derived on each render from the client's
 events, their billing positions and invoices; nothing is stored. Settings → Clients, the event header's
-client chip and the event Details link all open these screens; roles, projects and series keep the
-plain library list.
+client chip and the event Details link all open these screens; projects and series keep the plain
+library list.
 
 - **Roster**: *Coming up* lists clients with work ahead on the agenda's date rail (soonest first,
   *Dates to come* last) with the next event and how many follow. *All clients* lists everyone A–Z
@@ -225,6 +225,26 @@ plain library list.
 - **Editor**: page heading plus Client (name, contact, currency), Invoicing (a four-segment meter,
   then the shared invoicing rows) and Notes. All rows use the invoicing sheet's label column. Required
   gaps highlight amber only when editing an existing client; a new client needs only a name.
+
+### Roles
+
+Built from `RolesAgenda` (`Cuekeeper/RolesAgenda.swift`), derived on each render from roles and events;
+nothing is stored. Settings → Roles is one page with no per-role subpage. An event holds the booking's roles
+plus any a live session sets in their place.
+
+- **Chips**: a horizontal row pinned above the content: *All*, then roles with the most events (cancelled
+  events not counted). Selected is a solid accent capsule with `PrimaryButtonText`; the others are quiet
+  ruled capsules. The selection is remembered per scene.
+- **All**: *Coming up* (soonest first), then past years newest first, with only the latest past year open.
+  Rows reuse the client event row with the client name and accent role tags. A footnote counts events
+  without a role, which only the Events tab lists.
+- **One role**: a summary panel (title2 name, *Since* month, event count and this year's share), a
+  12-month strip of this year's events (solid for months worked, lighter ahead, current month letter in
+  accent) and up to three client chips with counts. The same agenda follows, narrowed to that role; rows
+  say *also …* for other roles held there.
+- **Actions**: + adds a role (the library editor). The panel's circular ⋯ menu holds Rename (same editor),
+  Merge Into (moves every booking and session to the chosen role, then removes this one) and Delete
+  Role; both confirm with the number of events affected. Search filters events by title, client or role.
 
 ### Event capture and editing
 

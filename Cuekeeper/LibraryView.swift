@@ -26,7 +26,11 @@ struct LibraryView: View {
         _records = FetchRequest(fetchRequest: request)
     }
     var body: some View {
-        if kind == .client { ClientRosterView() } else { library }
+        switch kind {
+        case .client: ClientRosterView()
+        case .role: RolesView()
+        default: library
+        }
     }
     private var library: some View {
         DaybookList {

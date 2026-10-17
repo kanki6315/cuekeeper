@@ -1,14 +1,14 @@
 {
   "title": "Privacy policy",
   "description": "How Cuekeeper handles your daybook, receipts, iCloud data and support correspondence.",
-  "updated": "October 15, 2026",
+  "updated": "October 17, 2026",
   "introduction": "Cuekeeper is developed by Arjuna Kankipati. Questions about this policy can be sent to cuekeeper@arjunakankipati.com.",
   "sections": [
     {
       "id": "your-daybook",
       "title": "Your daybook",
       "paragraphs": [
-        "Cuekeeper stores the information you enter on your device: events, clients and contact details, sessions, locations, notes, fees, invoices, payments, expenses and receipt photos. You do not create a separate Cuekeeper account. The app does not include advertising, tracking, or a third-party analytics SDK. Cuekeeper does not send your daybook to a developer-operated server."
+        "Cuekeeper stores the information you enter on your device: events, clients and contact details, client invoicing details (billing name, email, address, payment terms and an optional tax ID), sessions, locations, notes, fees, invoices, payments, event expenses, business costs and receipt photos. You do not create a separate Cuekeeper account. The app does not include advertising, tracking, or a third-party analytics SDK. Cuekeeper does not send your daybook to a developer-operated server."
       ]
     },
     {
@@ -31,7 +31,7 @@
       "title": "Calendar, Maps and weather",
       "paragraphs": [
         "Calendar access is optional. If connected, Cuekeeper reads calendar information needed to find and reconcile its entries and publishes event placeholders and eligible sessions to your selected calendar. Published entries can include event and client names, times, locations and notes. Those entries are subject to that calendar provider's storage and sharing settings.",
-        "Place search and maps use Apple Maps. Search terms and place identifiers are sent to Apple to retrieve results. Weather uses Apple Weather for the selected venue's coordinates. Cuekeeper does not request your device's GPS location for these features. Apple handles these requests under its own privacy terms. Opening an external link takes you to the relevant app or website, whose privacy practices apply."
+        "Place search and maps use Apple Maps. Search terms and place identifiers are sent to Apple to retrieve results, including the place's timezone. This includes the Home location you set in Settings, which is stored on the device as a preference and used for events without a location, and Your location for remote or hybrid work, which is saved with the event. Weather uses Apple Weather for the selected venue's coordinates. Cuekeeper does not request your device's GPS location for these features. Apple handles these requests under its own privacy terms. Opening an external link takes you to the relevant app or website, whose privacy practices apply."
       ]
     },
     {
@@ -52,7 +52,7 @@
       "id": "widgets",
       "title": "Widgets",
       "paragraphs": [
-        "Cuekeeper shares a schedule snapshot with its own widget extension on your device. This includes schedule labels, such as event and client names and session times, but excludes notes and financial details. Widget content may be visible on your Home or Lock Screen according to your system settings. Widgets reflect the most recent snapshot written by the app."
+        "Cuekeeper shares a schedule snapshot with its own widget extension on your device. This includes schedule labels, such as event and client names and session times for today and upcoming days, but excludes notes and financial details. Widget content may be visible on your Home or Lock Screen according to your system settings. Widgets reflect the most recent snapshot written by the app."
       ]
     },
     {

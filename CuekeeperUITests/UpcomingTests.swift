@@ -15,7 +15,7 @@ final class UpcomingTests: RegressionUITestCase {
         XCUIDevice.shared.orientation = .portrait
         let app = launch(["--today-fixtures"])
         let now = app.buttons["upcoming-mode-now"], plan = app.buttons["upcoming-mode-plan"]
-        XCTAssertTrue(app.staticTexts["In flight"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.descendants(matching: .any)["upcoming-on-deck"].waitForExistence(timeout: 15))
         XCTAssertTrue(now.isSelected)
         XCTAssertTrue(app.staticTexts["Run of show"].exists)
         XCTAssertTrue(app.buttons["scan-receipt-header"].exists)

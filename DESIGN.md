@@ -311,7 +311,7 @@ the next 3 days", a link to the next job with its first call, and a link to Plan
 then the item with the earliest day and its action, unlabelled. Expanded, every item lists its event, detail and action,
 with Show less. Items rank by the day they are tied to: an ended event by its last day, everything else by the event's start. Money
 items are fee gaps only; invoicing, owed balances, billing reviews and receipt details are settled on the event page,
-Payments and Expenses. Booking and schedule gaps surface only for events within 30 days; fee gaps always surface. A booked or tentative event that has ended asks to be marked completed. Items cannot be
+Payments and Expenses. Booking and schedule gaps surface only for events within 30 days; fee gaps always surface. A booked or tentative event that has ended asks to be marked completed: once its last day has passed in its own timezone or, on that day, once every session not marked not-covering has ended. "Ended today" and similar read in the user's own clock. Items cannot be
 dismissed; they clear when the data is fixed. Below sit a two-week strip from this Monday (one mark per session: solid
 covering, outlined not covering, dashed amber time to come; past unscheduled days stay blank) whose days scroll Coming
 up to the matching job, and Coming up: jobs within 30 days with their coverage summary and open-item count, then All events.

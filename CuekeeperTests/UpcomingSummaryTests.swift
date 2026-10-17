@@ -105,6 +105,46 @@ final class UpcomingSummaryTests: XCTestCase {
 
     // MARK: To settle
 
+    // MARK: Event over
+
+    private func overDetails(_ jobs: [UpcomingJobFact], at time: Date? = nil) -> [String?] {
+        summary(jobs, at: time).items.filter { $0.item.kind == .eventOver }.map(\.detail)
+    }
+
+    func testEventIsOverOnceItsLastCoveredSessionEnds() {
+        // London 21:00; the user's clock reads 17:00 on the same day.
+        let match = session("Match", day: "2026-10-15", start: "2026-10-15T18:00:00Z", end: "2026-10-15T20:00:00Z")
+        XCTAssertEqual(overDetails([job("City vs United", start: "2026-10-15", sessions: [match])]), ["Ended today · Northside Sports"])
+    }
+
+    func testEventIsNotOverWhileWorkRemains() {
+        let done = session("Warm-up", day: "2026-10-15", start: "2026-10-15T18:00:00Z", end: "2026-10-15T19:00:00Z")
+        let later = session("Late kick-off", day: "2026-10-15", start: "2026-10-15T21:30:00Z", end: "2026-10-15T23:00:00Z")
+        let untimed = session("Highlights", day: "2026-10-15")
+        XCTAssertEqual(overDetails([job("Running late", start: "2026-10-15", sessions: [done, later])]), [])
+        // Without an end for every session, the event waits for its last day to pass.
+        XCTAssertEqual(overDetails([job("Untimed", start: "2026-10-15", sessions: [done, untimed])]), [])
+        XCTAssertEqual(overDetails([job("No sessions", start: "2026-10-15")]), [])
+        // Finished sessions do not end an event that still has days to run.
+        XCTAssertEqual(overDetails([job("Weekend", start: "2026-10-15", end: "2026-10-16", sessions: [done])]), [])
+    }
+
+    func testSessionsNotBeingCoveredDoNotHoldTheEventOpen() {
+        let covered = session("Race", day: "2026-10-15", start: "2026-10-15T18:00:00Z", end: "2026-10-15T20:00:00Z")
+        let skipped = session("Podium", day: "2026-10-15", start: "2026-10-15T22:30:00Z", end: "2026-10-15T23:00:00Z", coverage: "notCovering")
+        XCTAssertEqual(overDetails([job("Race day", start: "2026-10-15", sessions: [covered, skipped])]), ["Ended today · Northside Sports"])
+    }
+
+    func testEndedDayReadsInTheUsersClock() {
+        // 20:30 in New York is already 01:30 tomorrow in London: still "today" for the user.
+        let afterLondonMidnight = date("2026-10-16T00:30:00Z")
+        XCTAssertEqual(overDetails([job("City vs United", start: "2026-10-15")], at: afterLondonMidnight), ["Ended today · Northside Sports"])
+        // Sydney's date runs ahead; work that has finished never reads as ending tomorrow.
+        let sydney = TimeZone(identifier: "Australia/Sydney")!
+        let morning = session("Qualifying", day: "2026-10-16", start: "2026-10-15T19:00:00Z", end: "2026-10-15T21:00:00Z")
+        XCTAssertEqual(overDetails([job("Bathurst", start: "2026-10-16", sessions: [morning], zone: sydney)]), ["Ended today · Northside Sports"])
+    }
+
     func testItemsRankByTheirDayWithPastEventsFirst() {
         let over = job("City vs United", start: "2026-10-13")
         let sprint = session("Sprint", day: "2026-10-17")

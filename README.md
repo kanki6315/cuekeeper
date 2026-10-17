@@ -725,7 +725,14 @@ The new behavior reuses V12; optional captured-payment metadata is stored with t
 expense value, so no further Core Data/CloudKit schema version is required.
 
 Set up the Wallet personal automation on the iPhone using Settings → Integrations
-→ Wallet Automation. The guide explains mapping available Shortcut Input fields,
+→ Wallet Automation. Add Capture Expense Shortcut opens the shared iCloud template:
+https://www.icloud.com/shortcuts/7fcd1ee447d343d59ac8ff14dcaaf10e.
+Users review and add their own copy in Shortcuts, select their cards and enable
+Run Immediately. Opening the link does not mark setup complete. Import and a real
+card tap still need physical-device validation. Set Up Manually shows the completed automation screenshot and a short field-mapping
+checklist if the link or imported trigger is unavailable.
+The guide explains mapping available transaction fields, using Current Date for
+capture time (or leaving the date blank),
 Run Immediately, optional completion reminders, and the separate Scan Receipt
 Action Button use case. Cuekeeper cannot install the personal automation itself.
 Unknown or unparseable transaction values remain available in Captured payment;

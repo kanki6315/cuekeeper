@@ -2,101 +2,110 @@ import SwiftUI
 import UserNotifications
 
 struct ExpenseAutomationSettingsView: View {
-    // Guide progress is user-reported, never evidence that an automation is enabled.
-    @AppStorage("walletAutomationGuideStepV2") private var savedStep = 0
+    private static let shortcutURL = URL(string: "https://www.icloud.com/shortcuts/7fcd1ee447d343d59ac8ff14dcaaf10e")!
+    @Environment(\.openURL) private var openURL
+    @State private var linkUnavailable = false
+
+    var body: some View {
+        DaybookForm {
+            Section {
+                Text("Capture tap-to-pay expenses")
+                    .font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                Button {
+                    openURL(Self.shortcutURL) { opened in
+                        linkUnavailable = !opened
+                    }
+                } label: {
+                    Label("Add Capture Expense Shortcut", systemImage: "arrow.down.circle")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(DaybookPrimaryButton())
+                .accessibilityIdentifier("install-wallet-shortcut")
+            }
+            Section("Finish in Shortcuts") {
+                Text("Choose your cards, select Run Immediately, then save.")
+            }
+            Section {
+                DaybookLink("Set Up Manually") { ExpenseAutomationManualSetupView() }
+                    .accessibilityIdentifier("wallet-manual-setup")
+                DaybookLink("Expenses to complete") { PendingExpensesView() }
+            } footer: {
+                Text("After your next card tap, check Expenses for a draft.")
+            }
+        }
+        .navigationTitle("Wallet Automation").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { ExpenseAutomationHelpView() } label: {
+                    Label("Help & Options", systemImage: "questionmark.circle")
+                }.accessibilityIdentifier("wallet-setup-help")
+            }
+        }
+        .alert("Couldn’t Open Shortcut Link", isPresented: $linkUnavailable) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Try again with an internet connection, or use Set Up Manually to create the automation in Shortcuts.")
+        }
+    }
+}
+
+private struct ExpenseAutomationManualSetupView: View {
     @State private var shortcutsUnavailable = false
     @Environment(\.openURL) private var openURL
 
-    private let steps: [(title: String, instruction: String)] = [
-        ("Open Automation", "On the iPhone you pay with, open Shortcuts and tap Automation. Tap + to start, or edit your existing Wallet automation."),
-        ("Choose your cards", "Choose Transaction, then select the cards you want to capture under When I tap."),
-        ("Run automatically", "Select Run Immediately, then tap Next if shown."),
-        ("Add Capture Expense", "Choose New Blank Automation. Search for Capture Expense and select Cuekeeper’s action. Expand the action to show its fields."),
-        ("Connect the merchant", "Touch and hold Merchant, choose Select Variable, then Shortcut Input. Tap the inserted variable and select its merchant property."),
-        ("Connect the amount", "In Amount, select Shortcut Input, then tap the variable and choose its amount property. Use the numeric amount without a currency symbol."),
-        ("Connect the currency", "In Currency, select Shortcut Input, then choose its currency-code property, such as USD or EUR."),
-        ("Connect the date", "In Transaction date, select Shortcut Input, then choose its transaction-date property."),
-        ("Connect a transaction ID", "If Shortcut Input offers a stable transaction ID, select it for Transaction ID. Never use the card number or merchant name: repeated IDs save only one draft."),
-        ("Save in Shortcuts", "Tap Done or the checkmark in Shortcuts to save your automation.")
-    ]
-    private var step: Int { min(max(savedStep, 0), steps.count) }
-
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                if step < steps.count {
-                    Text(steps[step].title).font(.title.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    WalletSetupIllustration(step: step)
-                    Text(steps[step].instruction).font(.body)
-                    Button {
-                        openURL(URL(string: "shortcuts://")!) { opened in
-                            shortcutsUnavailable = !opened
-                        }
-                    } label: {
-                        Label("Open Shortcuts", systemImage: "arrow.up.forward.app")
-                            .frame(maxWidth: .infinity, minHeight: 28)
-                    }
-                    .buttonStyle(DaybookPrimaryButton())
-                    .accessibilityIdentifier("open-wallet-shortcuts")
-                    if (4...8).contains(step) {
-                        Text("If this property isn’t offered, skip this field.")
-                            .font(.footnote).foregroundStyle(Color("SecondaryText"))
-                    }
-                } else {
-                    Image(systemName: "tray.and.arrow.down")
-                        .font(.largeTitle).foregroundStyle(Color.accentColor)
-                        .accessibilityHidden(true)
-                    Text("Check your first capture").font(.title.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    Text("After your next card tap, look for a draft in Expenses to complete. Add its receipt and choose an event.")
-                    DaybookLink("Expenses to complete") { PendingExpensesView() }
-                    DaybookLink("Completion Reminders") { ExpenseAutomationRemindersView() }
-                    Button("Review Setup Steps") { savedStep = 0 }.frame(minHeight: 44)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Shortcuts → Automation → + → Transaction. Choose your cards and Run Immediately.")
+                // Show only the actions, omitting the status bar, header and empty lower canvas.
+                GeometryReader { geometry in
+                    Image("WalletAutomationExample")
+                        .resizable()
+                        .frame(width: geometry.size.width, height: geometry.size.width * 1280.0 / 589.0)
+                        .offset(y: -geometry.size.width * 160.0 / 589.0)
+                        .frame(height: geometry.size.height, alignment: .top)
+                        .clipped()
                 }
+                    .aspectRatio(589.0 / 600.0, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .frame(maxWidth: 280)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityAddTraits(.isImage)
+                    .accessibilityLabel("Completed automation: When Any Card is tapped, Current Date, then Cuekeeper’s Capture Expense action.")
+                    .accessibilityIdentifier("wallet-setup-example")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Add Current Date, then Capture Expense.")
+                        .font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                    Text("Merchant → transaction’s Merchant")
+                    Text("Amount → transaction’s Amount")
+                    Text("Transaction date → Current Date output")
+                    Text("If you know the currency, enter its three-letter code (e.g. USD). Otherwise, leave it blank. Leave Transaction ID blank, then save.")
+                        .foregroundStyle(Color("SecondaryText"))
+                }
+                .accessibilityIdentifier("wallet-setup-mappings")
             }
+            .font(.subheadline)
             .frame(maxWidth: 480, alignment: .leading)
-            .padding(.horizontal, 24).padding(.vertical, 24)
+            .padding(.horizontal, 24).padding(.vertical, 12)
             .frame(maxWidth: .infinity)
         }
-        .id(step)
         .safeAreaInset(edge: .bottom) {
-            if step < steps.count {
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("Step \(step + 1) of \(steps.count)")
-                            .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                        Spacer()
-                        if (4...8).contains(step) {
-                            Button("Skip Field") { savedStep = step + 1 }
-                                .font(.subheadline).frame(minHeight: 44)
-                                .accessibilityIdentifier("wallet-setup-skip-field")
-                        } else {
-                            ProgressView(value: Double(step + 1), total: Double(steps.count))
-                                .frame(width: 100).accessibilityHidden(true)
-                        }
-                    }
-                    HStack {
-                        if step > 0 {
-                            Button("Back") { savedStep = step - 1 }
-                                .frame(minWidth: 44, minHeight: 44)
-                                .accessibilityIdentifier("wallet-setup-back")
-                        }
-                        Spacer()
-                        Button(step == steps.count - 1 ? "I’ve Saved It" : "Next") {
-                            savedStep = step + 1
-                        }
-                        .buttonStyle(DaybookPrimaryButton())
-                        .accessibilityIdentifier("wallet-setup-next")
-                    }
+            Button {
+                openURL(URL(string: "shortcuts://")!) { opened in
+                    shortcutsUnavailable = !opened
                 }
-                .frame(maxWidth: 480).padding(.horizontal, 24)
-                .padding(.top, 16).padding(.bottom, 12)
-                .frame(maxWidth: .infinity).background(Color("PageBackground"))
+            } label: {
+                Label("Open Shortcuts", systemImage: "arrow.up.forward.app")
+                    .frame(maxWidth: .infinity, minHeight: 28)
             }
+            .buttonStyle(DaybookPrimaryButton())
+            .accessibilityIdentifier("open-wallet-shortcuts")
+            .frame(maxWidth: 480).padding(.horizontal, 24).padding(.vertical, 12)
+            .frame(maxWidth: .infinity).background(Color("PageBackground"))
         }
         .daybookSurface()
-        .navigationTitle("Wallet Automation").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Set Up Manually").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { ExpenseAutomationHelpView() } label: {
@@ -108,106 +117,6 @@ struct ExpenseAutomationSettingsView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Open Shortcuts from your Home Screen, or reinstall Apple’s Shortcuts app from the App Store.")
-        }
-    }
-}
-
-/// Schematic guidance, not a screenshot or an interactive replica of Shortcuts.
-private struct WalletSetupIllustration: View {
-    let step: Int
-    private var heading: String {
-        switch step {
-        case 0: "Automation"
-        case 1: "Transaction"
-        case 2: "When I tap"
-        case 3: "New Blank Automation"
-        case 4...8: "Capture Expense"
-        default: "Your automation"
-        }
-    }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .center) {
-                    Text(heading).font(.headline)
-                    Spacer(minLength: 12)
-                    if step == 0 { focusIcon("plus") }
-                    if step == 9 { focusIcon("checkmark") }
-                }
-                Divider()
-                Group {
-                    switch step {
-                    case 0:
-                        row("New Automation", icon: "plus.circle", highlighted: true)
-                        row("Existing Wallet automation", icon: "creditcard", highlighted: false)
-                    case 1:
-                        Text("When I tap").font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                        row("Your payment card", icon: "creditcard", highlighted: true, trailing: "checkmark.circle.fill")
-                        Text("Select the cards you pay with").font(.subheadline)
-                    case 2:
-                        row("Run After Confirmation", icon: "hand.tap", highlighted: false)
-                        row("Run Immediately", icon: "bolt", highlighted: true, trailing: "checkmark.circle.fill")
-                    case 3:
-                        Label("Capture Expense", systemImage: "magnifyingglass")
-                            .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                        row("Capture Expense", icon: "tray.and.arrow.down", highlighted: true)
-                        Text("Cuekeeper").font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                    case 4...8:
-                        Text(mappingField).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                        row("Shortcut Input", icon: "doc.text", highlighted: false)
-                        Image(systemName: "arrow.down").foregroundStyle(Color("SecondaryText"))
-                        row(mappingProperty, icon: "checkmark.circle", highlighted: true)
-                    default:
-                        row("When I tap my card", icon: "creditcard", highlighted: false)
-                        Image(systemName: "arrow.down").foregroundStyle(Color("SecondaryText"))
-                        row("Capture Expense", icon: "tray.and.arrow.down", highlighted: false)
-                    }
-                }
-            }
-            .padding(20).frame(maxWidth: .infinity, minHeight: 280, alignment: .topLeading)
-            .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 20))
-            .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.16)) }
-            Text("Shortcuts illustration · Labels may vary")
-                .font(.caption).foregroundStyle(Color("SecondaryText"))
-        }
-        .accessibilityHidden(true)
-        .allowsHitTesting(false)
-    }
-    private var mappingField: String {
-        switch step {
-        case 4: "Merchant"
-        case 5: "Amount"
-        case 6: "Currency"
-        case 7: "Transaction date"
-        default: "Transaction ID"
-        }
-    }
-    private var mappingProperty: String {
-        switch step {
-        case 4: "Merchant property"
-        case 5: "Amount property"
-        case 6: "Currency code property"
-        case 7: "Transaction date property"
-        default: "Stable transaction ID"
-        }
-    }
-    private func focusIcon(_ name: String) -> some View {
-        Image(systemName: name).font(.headline)
-            .frame(width: 44, height: 44)
-            .foregroundStyle(Color("PageBackground"))
-            .background(Color.accentColor, in: Circle())
-    }
-    private func row(_ title: String, icon: String, highlighted: Bool, trailing: String? = nil) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-            Text(title).frame(maxWidth: .infinity, alignment: .leading)
-            if let trailing { Image(systemName: trailing) }
-        }
-        .font(.body).padding(14)
-        .foregroundStyle(highlighted ? Color.accentColor : Color("SecondaryText"))
-        .background(highlighted ? Color.accentColor.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 12))
-        .overlay {
-            if highlighted { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.accentColor, lineWidth: 2) }
         }
     }
 }
@@ -231,6 +140,11 @@ private struct ExpenseAutomationHelpView: View {
                     .foregroundStyle(Color("SecondaryText"))
             }
             Section {
+                DisclosureGroup("Installing the shared shortcut") {
+                    Text("Open the install link on the iPhone you pay with, review the shortcut and add your copy. Merchant, amount and the current date are already connected.")
+                    Text("Choose your cards under When I tap, select Run Immediately and save. If the trigger isn’t included after import, use Set Up Manually on the Wallet Automation screen.")
+                    Text("Cuekeeper can’t verify that the shortcut was installed or enabled. Check Expenses after your next card tap.")
+                }
                 DisclosureGroup("No draft after a purchase?") {
                     Text("In Shortcuts → Automation, check that your Transaction automation is enabled, uses the card you paid with, and runs immediately.")
                     Text("Check that it contains Cuekeeper’s Capture Expense action. If Shortcuts reports a field error, clear the optional fields and try again. Your phone may need to be unlocked to access saved data.")
@@ -265,7 +179,7 @@ private struct ExpenseAutomationPaymentDetailsView: View {
                 Text("Repeat for Amount using the amount property. Use a number without a currency symbol. For Currency, select a currency-code property such as USD or EUR, if available.")
             }
             Section("Date and transaction ID") {
-                Text("For Transaction date, choose the matching date property if available.")
+                Text("For Transaction date, add a Date action set to Current Date before Capture Expense and select its Date output. This records the capture time. Leave the field blank if you don’t want to use the capture time.")
                 Text("Only fill Transaction ID if the input offers a stable transaction identifier. Don’t use the card number or merchant name: repeated IDs save only one draft.")
             }
         }.navigationTitle("Payment Details").navigationBarTitleDisplayMode(.inline)

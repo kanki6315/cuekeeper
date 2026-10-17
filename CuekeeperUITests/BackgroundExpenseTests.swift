@@ -73,52 +73,24 @@ final class BackgroundExpenseUITests: RegressionUITestCase {
         XCTAssertTrue(enable.exists)
         shot("wallet-automation-reminders")
     }
-    func testWalletGuideProgressAndResume() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=expense-automation"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Open Automation"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.staticTexts["Choose your cards"].exists)
-        shot("wallet-guide-step-1")
-        app.buttons["wallet-setup-next"].tap()
-        XCTAssertTrue(app.staticTexts["Choose your cards"].exists)
-        shot("wallet-guide-step-2")
-        app.buttons["wallet-setup-back"].tap()
-        XCTAssertTrue(app.staticTexts["Open Automation"].exists)
-        app.buttons["wallet-setup-next"].tap()
-        app.terminate()
-        app.launchArguments = ["--ui-testing", "--design-fixtures", "--design-screen=expense-automation"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Choose your cards"].waitForExistence(timeout: 15))
-        app.buttons["wallet-setup-next"].tap()
-        XCTAssertTrue(app.staticTexts["Run automatically"].exists)
-        shot("wallet-guide-step-3")
-        app.buttons["wallet-setup-next"].tap()
-        XCTAssertTrue(app.staticTexts["Add Capture Expense"].exists)
-        shot("wallet-guide-step-4")
-        app.buttons["wallet-setup-next"].tap()
-        for (index, title) in ["Connect the merchant", "Connect the amount", "Connect the currency", "Connect the date", "Connect a transaction ID"].enumerated() {
-            XCTAssertTrue(app.staticTexts[title].exists)
-            XCTAssertTrue(app.buttons["open-wallet-shortcuts"].exists)
-            shot("wallet-payment-field-\(index)")
-            if index == 4 {
-                let skip = app.buttons["wallet-setup-skip-field"]
-                if !skip.isHittable { app.scrollViews.firstMatch.swipeUp() }
-                skip.tap()
-            } else {
-                app.buttons["wallet-setup-next"].tap()
-            }
-        }
-        XCTAssertTrue(app.staticTexts["Save in Shortcuts"].exists)
-        shot("wallet-guide-save")
-        app.buttons["wallet-setup-next"].tap()
-        XCTAssertTrue(app.staticTexts["Check your first capture"].exists)
-        shot("wallet-guide-finished")
-        app.buttons["Review Setup Steps"].tap()
-        XCTAssertTrue(app.staticTexts["Open Automation"].exists)
+    func testWalletScreenshotGuide() {
+        let app = launch("expense-automation")
+        XCTAssertTrue(app.buttons["install-wallet-shortcut"].waitForExistence(timeout: 15))
+        let manualSetup = app.buttons["wallet-manual-setup"]
+        for _ in 0..<6 where !manualSetup.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        manualSetup.tap()
+        XCTAssertTrue(app.navigationBars["Set Up Manually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.images["wallet-setup-example"].exists)
+        XCTAssertTrue(app.buttons["open-wallet-shortcuts"].isHittable)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "If you know the currency")).firstMatch.isHittable)
+        shot("wallet-manual-screenshot-guide")
+        let mapping = app.staticTexts["Transaction date → Current Date output"]
+        for _ in 0..<6 where !mapping.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        XCTAssertTrue(mapping.isHittable)
+        XCTAssertTrue(app.buttons["open-wallet-shortcuts"].isHittable)
+        shot("wallet-manual-mappings")
         app.buttons["Help & Options"].tap()
-        XCTAssertTrue(app.buttons["Include Payment Details"].exists)
-        shot("wallet-guide-help")
+        XCTAssertTrue(app.buttons["Include Payment Details"].waitForExistence(timeout: 5))
     }
 
     func testRemoveDraftHasConfirmation() {

@@ -70,9 +70,10 @@ struct PaymentsView: View {
                 }.containerValue(\.daybookUnframed, true)
                 ForEach(summary.groups) { group in
                     Section {
-                        ClientGroupHeader(group: group, clientObject: client(group.clientID)) { detailsClient = Presented($0) }
+                        ClientGroupHeader(group: group, clientObject: client(group.clientID), onDetails: { detailsClient = Presented($0) }) { currency in
+                            if let clientID = group.clientID { invoicing = readyInvoice(clientID: clientID, currency: currency, group: group) }
+                        }
                         ForEach(group.events) { event in eventRow(event, showsClient: false) }
-                        readyActions(group)
                     }
                 }
             }
@@ -111,23 +112,6 @@ struct PaymentsView: View {
                 DaybookLink { JobDetailView(job: job) } label: { EventReadinessRow(event: event, showsClient: showsClient) }
                     .accessibilityIdentifier("readiness-\(event.facts.title)")
             }
-        }
-    }
-
-    @ViewBuilder private func readyActions(_ group: ClientMonthGroup) -> some View {
-        let totals = group.readyTotals
-        if let clientID = group.clientID, !totals.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(totals, id: \.currency) { total in
-                    let count = group.ready.filter { $0.currency == total.currency }.count
-                    Button { invoicing = readyInvoice(clientID: clientID, currency: total.currency, group: group) } label: {
-                        Text("Invoice \(count) ready · \(Money.format(total.amount, currency: total.currency))")
-                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .buttonStyle(DaybookPrimaryButton())
-                    .accessibilityIdentifier("invoice-ready-\(group.name)")
-                }
-            }.padding(.vertical, 2)
         }
     }
 

@@ -18,7 +18,7 @@ struct FeeEditingFields: View {
     var body: some View {
         Group {
                 Section { FeeFields(draft: $draft) } header: { Text("Overall fee") } footer: {
-                    Text("Leave the amount blank if it’s unknown. Enter 0 for explicitly unpaid work. Changing the breakdown never changes this amount automatically.")
+                    Text("Leave the amount blank until it’s agreed; a blank fee is never counted as zero. Enter 0 for unpaid work. Changing the breakdown never changes this amount automatically.")
                 }
                 Section {
                     ForEach($draft.lines) { $line in

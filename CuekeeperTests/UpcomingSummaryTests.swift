@@ -115,8 +115,26 @@ final class UpcomingSummaryTests: XCTestCase {
         XCTAssertEqual(result.items.map(\.item.kind), [.eventOver, .sessionTime, .tentativeBooking, .feeUnknown])
         XCTAssertEqual(result.items.first?.item.title, "City vs United is over")
         XCTAssertEqual(result.items.first?.item.action, .markCompleted)
-        XCTAssertEqual(result.categorySummary, "2 bookings · 1 schedule · 1 money")
+        XCTAssertEqual(result.categorySummary, "1 event to complete · 1 session time to add · 2 more")
+        XCTAssertEqual(result.items.map(\.title), ["City vs United", "Silverstone weekend", "Studio highlights", "National finals"])
+        XCTAssertEqual(result.items.map(\.detail), ["Ended 2 days ago · Northside Sports", "Sprint · in 2 days", "Starts in 5 days", "Booked · in 15 days"])
+        XCTAssertEqual(result.items.map(\.day), ["2026-10-13", "2026-10-17", "2026-10-20", "2026-10-30"])
+        XCTAssertEqual(result.settleGroups.map(\.heading), ["Events to complete", "Session times to add", "Bookings on hold", "Fees to agree"])
         XCTAssertEqual(result.openCount(for: weekend.id), 1)
+    }
+
+    func testUnknownFeesGroupAndFlagTheOneHoldingUpAnInvoice() {
+        let unknown = EventFeeFact.value(FeeValue(currency: "EUR"))
+        let worked = job("IRSC: R3", status: "completed", start: "2026-10-14", fee: unknown)
+        let today = job("Veterans Race", start: "2026-10-15", fee: unknown)
+        let tomorrow = job("R1 Finals", start: "2026-10-16", fee: unknown)
+        let result = summary([tomorrow, today, worked])
+        XCTAssertEqual(result.settleGroups.count, 1)
+        XCTAssertEqual(result.settleGroups.first?.phrase, "3 fees to agree")
+        XCTAssertEqual(result.categorySummary, "3 fees to agree · 1 holding up an invoice")
+        XCTAssertEqual(result.items.map(\.detail), ["Worked · blocks invoicing", "Booked · today", "Booked · tomorrow"])
+        XCTAssertEqual(result.items.map(\.blocksInvoicing), [true, false, false])
+        XCTAssertEqual(result.items.first?.standaloneDetail, "No fee yet · Worked · blocks invoicing")
     }
 
     func testInvoicingAndReceiptsAreLeftToOtherPages() {

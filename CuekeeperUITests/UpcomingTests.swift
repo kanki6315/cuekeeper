@@ -33,7 +33,7 @@ final class UpcomingTests: RegressionUITestCase {
         shot("plan-collapsed")
         toggle.tap()
         XCTAssertTrue(app.staticTexts["Show less"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Fee not agreed"].firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Fees to agree"].firstMatch.exists)
         shot("plan-expanded")
         XCTAssertTrue(app.otherElements["fortnight-strip"].exists || app.staticTexts["Next two weeks"].exists)
         XCTAssertTrue(app.staticTexts["Coming up"].exists)

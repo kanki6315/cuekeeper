@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>To Settle Mockup</title>
+<style>
+  :root {
+    --page: #171E19;
+    --surface: #27392E;
+    --surface-raised: #2F4436;
+    --rule: rgba(165, 178, 168, 0.18);
+    --ink: #F3F1EA;
+    --secondary: #A5B2A8;
+    --accent: #99E4AF;
+    --accent-ink: #073E27;
+    --amber: #FCBF4D;
+    --amber-wash: rgba(230, 160, 26, 0.18);
+    --note: #E9E4D6;
+    --strike: #E58C7A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #101511;
+    color: var(--ink);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 1240px; margin: 0 auto; padding: 40px 16px 80px; }
+  h1 { font-size: 28px; font-weight: 700; margin: 0 0 6px; text-wrap: balance; }
+  .lede { color: var(--secondary); max-width: 68ch; margin: 0 0 40px; }
+  h2 { font-size: 19px; font-weight: 600; margin: 56px 0 18px; text-wrap: balance; }
+  h2 small { color: var(--secondary); font-weight: 400; font-size: 15px; margin-left: 8px; }
+
+  .row-of-phones { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .col { flex: 1 1 340px; max-width: 390px; }
+  .col-label { font-size: 13px; font-weight: 600; color: var(--secondary); margin: 0 0 10px; }
+  .col-label b { color: var(--accent); font-weight: 600; }
+  .col-label.before b { color: var(--strike); }
+
+  /* phone canvas */
+  .phone {
+    background: var(--page);
+    border-radius: 28px;
+    padding: 20px 16px 24px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .seg { display: flex; background: #1F2A22; border-radius: 10px; padding: 3px; margin-bottom: 18px; }
+  .seg span { flex: 1; text-align: center; font-size: 14px; padding: 6px 0; color: var(--accent); border-radius: 8px; }
+  .seg span.on { background: #2E4234; outline: 1px solid rgba(153,228,175,0.35); }
+  .seg i { font-style: normal; font-size: 11px; font-weight: 700; color: var(--amber); background: var(--amber-wash); border-radius: 99px; padding: 1px 6px; margin-left: 6px; }
+
+  .panel { background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); }
+  .head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; min-height: 56px; }
+  .head .grow { flex: 1; min-width: 0; }
+  .title { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .count { font-size: 12px; font-weight: 700; color: var(--amber); background: var(--amber-wash); border-radius: 99px; padding: 2px 7px; font-variant-numeric: tabular-nums; }
+  .sub { color: var(--secondary); font-size: 15px; margin-top: 2px; }
+  .sub em { font-style: normal; color: var(--amber); }
+  .chev { color: var(--secondary); font-size: 13px; }
+  .less { color: var(--accent); font-size: 15px; }
+  .rule { height: 1px; background: var(--rule); margin-left: 16px; }
+  .rule.inset { margin-left: 54px; }
+
+  .item { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; }
+  .item .grow { flex: 1; min-width: 0; }
+  .item .t { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .d { font-size: 13px; color: var(--secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .d .warn { color: var(--amber); }
+  .icon { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--amber-wash); color: var(--amber); font-size: 13px; }
+  .link { color: var(--accent); font-weight: 600; font-size: 15px; padding: 0 6px; white-space: nowrap; }
+  .btn { background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 14px; border-radius: 99px; padding: 6px 13px; white-space: nowrap; }
+
+  .group { padding: 10px 16px 4px; display: flex; align-items: center; gap: 8px; color: var(--secondary); font-size: 13px; font-weight: 600; }
+  .group .icon { width: 22px; height: 22px; font-size: 11px; }
+  .date { width: 28px; flex: none; text-align: center; line-height: 1.05; }
+  .date b { display: block; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .date span { font-size: 11px; color: var(--secondary); }
+  .date.past b { color: var(--amber); }
+  .today { color: var(--accent); }
+
+  .ghost { opacity: 0.35; margin-top: 18px; }
+  .ghost .bar { height: 14px; border-radius: 4px; background: var(--surface); margin-bottom: 10px; }
+
+  /* callouts */
+  .notes { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 10px; }
+  .notes li { display: flex; gap: 10px; font-size: 14px; color: var(--note); }
+  .notes li::before { content: attr(data-n); flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+  .notes.bad li::before { background: var(--strike); color: #2a0f0a; }
+  .pin { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 700; margin-left: 6px; vertical-align: 1px; }
+  .pin.bad { background: var(--strike); color: #2a0f0a; }
+
+  /* copy table */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--secondary); font-weight: 600; font-size: 13px; }
+  td.old { color: var(--strike); }
+  td.new { color: var(--accent); }
+  td.why { color: var(--secondary); }
+  .table-wrap { overflow-x: auto; background: #18201B; border-radius: 12px; padding: 4px 4px; }
+
+  .alt { display: flex; flex-wrap: wrap; gap: 28px; }
+  .alt > div { flex: 1 1 340px; max-width: 390px; }
+  .alt p { color: var(--secondary); font-size: 14px; margin: 12px 0 0; max-width: 60ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>To settle: proposed improvements</h1>
+  <p class="lede">The panel works, but it tells you <em>what kind</em> of problem exists and not <em>where</em> or <em>why it matters</em>. These changes lead with the event, say what the missing fee blocks or when it's needed, and stop repeating "Fee not agreed" four times. Data matches your screenshot (today is Sat 17 Oct).</p>
+
+  <!-- ============ COLLAPSED ============ -->
+  <h2>Collapsed <small>what you see on every visit</small></h2>
+  <div class="row-of-phones">
+    <div class="col">
+      <p class="col-label before"><b>Now</b></p>
+      <div class="phone">
+        <div class="seg"><span>Now</span><span class="on">Plan<i>4</i></span></div>
+        <div class="panel">
+          <div class="head">
+            <div class="grow">
+              <div class="title">To settle <span class="count">4</span></div>
+              <div class="sub">4 money<span class="pin bad">1</span></div>
+            </div>
+            <span class="chev">⌄</span>
+          </div>
+          <div class="rule"></div>
+          <div class="item">
+            <div class="grow"><div class="t">Fee not agreed<span class="pin bad">2</span></div></div>
+            <span class="link">Add fee</span>
+          </div>
+        </div>
+        <div class="ghost"><div class="bar" style="width:55%"></div><div class="bar"></div></div>
+      </div>
+      <ul class="notes bad">
+        <li data-n="1">"4 money" is a category name, not a sentence. It doesn't say what you need to do.</li>
+        <li data-n="2">No event is named. You have to expand the panel to find out which fee is missing.</li>
+      </ul>
+    </div>
+
+    <div class="col">
+      <p class="col-label"><b>Proposed</b></p>
+      <div class="phone">
+        <div class="seg"><span>Now</span><span class="on">Plan<i>4</i></span></div>
+        <div class="panel">
+          <div class="head">
+            <div class="grow">
+              <div class="title">To settle <span class="count">4</span></div>
+              <div class="sub">4 fees to agree · <em>1 holding up an invoice</em><span class="pin">1</span></div>
+            </div>
+            <span class="chev">⌄</span>
+          </div>
+          <div class="rule"></div>
+          <div class="item">
+            <div class="date past"><b>14</b><span>Wed</span></div>
+            <div class="grow">
+              <div class="t">IRSC: R3<span class="pin">2</span></div>
+              <div class="d"><span class="warn">No fee yet</span> · worked, can't invoice</div>
+            </div>
+            <span class="btn">Add fee</span><span class="pin">3</span>
+          </div>
+        </div>
+        <div class="ghost"><div class="bar" style="width:55%"></div><div class="bar"></div></div>
+      </div>
+      <ul class="notes">
+        <li data-n="1">The summary says what to do ("fees to agree") and calls out the one with a real consequence.</li>
+        <li data-n="2">The preview row leads with the event and a date rail matching Coming up below, plus one line on why it matters. The most urgent item is shown first: work that's done and can't be invoiced outranks future bookings.</li>
+        <li data-n="3">The single preview item gets the filled button, so the collapsed panel has one clear next step.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ EXPANDED ============ -->
+  <h2>Expanded <small>after tapping the panel</small></h2>
+  <div class="row-of-phones">
+    <div class="col">
+      <p class="col-label before"><b>Now</b></p>
+      <div class="phone">
+        <div class="panel">
+          <div class="head">
+            <div class="grow"><div class="title">To settle <span class="count">4</span></div></div>
+            <span class="less">Show less ⌃</span>
+          </div>
+          <div class="rule"></div>
+          <div class="item"><div class="icon">$</div><div class="grow"><div class="t">Fee not agreed<span class="pin bad">1</span></div><div class="d">IRSC: R3 · Saved as unknown, not zero<span class="pin bad">2</span></div></div><span class="link">Add fee</span></div>
+          <div class="rule inset"></div>
+          <div class="item"><div class="icon">$</div><div class="grow"><div class="t">Fee not agreed</div><div class="d">Veterans Race of Remebrance · Saved as unknown, not zero</div></div><span class="link">Add fee</span></div>
+          <div class="rule inset"></div>
+          <div class="item"><div class="icon">$</div><div class="grow"><div class="t">Fee not agreed</div><div class="d">R1 Finals · Saved as unknown, not zero</div></div><span class="link">Add fee</span></div>
+          <div class="rule inset"></div>
+          <div class="item"><div class="icon">$</div><div class="grow"><div class="t">Fee not agreed</div><div class="d">IRSC: R4 · Saved as unknown, not zero</div></div><span class="link">Add fee</span></div>
+        </div>
+      </div>
+      <ul class="notes bad">
+        <li data-n="1">The same title and icon four times. The part that differs, the event, is in small grey text.</li>
+        <li data-n="2">"Saved as unknown, not zero" describes how the data is stored. It's reassurance for the fee editor, not a reason to act. It also takes up half of every row.</li>
+      </ul>
+    </div>
+
+    <div class="col">
+      <p class="col-label"><b>Proposed</b></p>
+      <div class="phone">
+        <div class="panel">
+          <div class="head">
+            <div class="grow"><div class="title">To settle <span class="count">4</span></div></div>
+            <span class="less">Show less ⌃</span>
+          </div>
+          <div class="rule"></div>
+          <div class="group"><div class="icon">$</div>Fees to agree<span class="pin">1</span></div>
+          <div class="item">
+            <div class="date past"><b>14</b><span>Wed</span></div>
+            <div class="grow"><div class="t">IRSC: R3</div><div class="d"><span class="warn">Worked · blocks invoicing</span><span class="pin">2</span></div></div>
+            <span class="link">Add fee</span>
+          </div>
+          <div class="rule inset"></div>
+          <div class="item">
+            <div class="date"><b class="today">17</b><span>Sat</span></div>
+            <div class="grow"><div class="t">Veterans Race of Remebrance</div><div class="d">Booked · <span class="today">today</span><span class="pin">3</span></div></div><span class="pin">4</span>
+            <span class="link">Add fee</span>
+          </div>
+          <div class="rule inset"></div>
+          <div class="item">
+            <div class="date"><b>18</b><span>Sun</span></div>
+            <div class="grow"><div class="t">R1 Finals</div><div class="d">Booked · tomorrow</div></div>
+            <span class="link">Add fee</span>
+          </div>
+          <div class="rule inset"></div>
+          <div class="item">
+            <div class="date"><b>22</b><span>Thu</span></div>
+            <div class="grow"><div class="t">IRSC: R4</div><div class="d">Booked · in 5 days</div></div>
+            <span class="link">Add fee</span>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li data-n="1">Items of the same kind sit under one group label, so "fee" is said once. Other kinds (booking on hold, schedule to set, invoice not sent) get their own groups.</li>
+        <li data-n="2">The event is the title. The detail line says what happens next: a finished job explains what's blocked, in amber.</li>
+        <li data-n="3">For upcoming bookings, the detail is just how soon. A date rail on every row makes the urgency easy to scan.</li>
+        <li data-n="4">Every row stays two lines, the same height as today. Long event names truncate instead of wrapping to a third line, so the list keeps an even rhythm.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ COPY ============ -->
+  <h2>Copy changes <small>in EventDetailSummary.openItems and UpcomingSummary.categorySummary</small></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Where</th><th>Now</th><th>Proposed</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Collapsed summary</td><td class="old">4 money</td><td class="new">4 fees to agree · 1 holding up an invoice</td><td class="why">Each category gets a verb phrase: "2 bookings to confirm", "1 schedule to set", "3 payments to chase".</td></tr>
+        <tr><td>Fee unknown, job done</td><td class="old">Saved as unknown, not zero</td><td class="new">Worked · blocks invoicing</td><td class="why">Names the consequence.</td></tr>
+        <tr><td>Fee unknown, booked</td><td class="old">Saved as unknown, not zero</td><td class="new">Booked · today / tomorrow / in 5 days</td><td class="why">The useful context is how close the work is.</td></tr>
+        <tr><td>Fee editor (new home)</td><td class="old">—</td><td class="new">Leave blank if you don't know yet. It won't count as $0.</td><td class="why">Show the "unknown isn't zero" reassurance where you enter the fee.</td></tr>
+        <tr><td>VoiceOver row</td><td class="old">Fee not agreed, IRSC: R3, Saved as unknown…</td><td class="new">IRSC: R3, Wednesday 14 October. No fee yet; can't invoice. Add fee, button.</td><td class="why">Event first, matching the visual order.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+</body>
+</html>

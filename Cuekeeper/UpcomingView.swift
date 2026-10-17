@@ -359,7 +359,7 @@ struct UpcomingView: View {
     private func planContent(_ summary: UpcomingSummary, proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 28) {
             if !summary.items.isEmpty {
-                SettlePanel(items: summary.items, summaryText: summary.categorySummary, expanded: $settleExpanded, perform: perform)
+                SettlePanel(items: summary.items, groups: summary.settleGroups, summaryText: summary.categorySummary, expanded: $settleExpanded, perform: perform)
             }
             VStack(alignment: .leading, spacing: 10) {
                 EventSectionTitle(title: "Next two weeks") {
@@ -500,10 +500,12 @@ private enum UpcomingSheet: Identifiable {
 
 struct SettlePanel: View {
     let items: [UpcomingItem]
+    let groups: [SettleGroup]
     let summaryText: String
     @Binding var expanded: Bool
     let perform: (UpcomingItem) -> Void
-    @ScaledMetric(relativeTo: .subheadline) private var iconSize = 28
+    @ScaledMetric(relativeTo: .footnote) private var iconSize = 22
+    @ScaledMetric(relativeTo: .headline) private var railWidth = 30
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -541,12 +543,16 @@ struct SettlePanel: View {
             .accessibilityIdentifier("settle-toggle")
             EventPanelDivider()
             if expanded {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    if index > 0 { EventPanelDivider(leading: 16 + iconSize + 10) }
-                    row(item, showsDetail: true)
+                ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+                    if index > 0 { EventPanelDivider() }
+                    groupHeading(group)
+                    ForEach(Array(group.items.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { EventPanelDivider(leading: 16 + railWidth + 10) }
+                        row(item, standalone: false)
+                    }
                 }
             } else if let first = items.first {
-                row(first, showsDetail: false)
+                row(first, standalone: true)
             }
         }
         .padding(.bottom, 4)
@@ -555,24 +561,42 @@ struct SettlePanel: View {
         .accessibilityIdentifier("settle-panel")
     }
 
-    @ViewBuilder private func row(_ entry: UpcomingItem, showsDetail: Bool) -> some View {
+    private func groupHeading(_ group: SettleGroup) -> some View {
+        let attention = group.items.contains { $0.item.needsAttention || $0.blocksInvoicing }
+        return HStack(spacing: 8) {
+            Image(systemName: group.items.first?.item.symbol ?? "circle")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(attention ? Color("AmberText") : Color.accentColor)
+                .frame(width: iconSize, height: iconSize)
+                .background(attention ? Color.orange.opacity(0.18) : Color.accentColor.opacity(0.1), in: Circle())
+                .accessibilityHidden(true)
+            Text(group.heading).font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                .accessibilityAddTraits(.isHeader)
+        }
+        .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 2)
+    }
+
+    /// Two lines: the event, then what's missing. A row shown without its heading also names the problem.
+    @ViewBuilder private func row(_ entry: UpcomingItem, standalone: Bool) -> some View {
         let item = entry.item
-        let tint = item.needsAttention ? Color("AmberText") : Color.accentColor
+        let detail = standalone ? entry.standaloneDetail : (entry.detail ?? "")
+        let lines = typeSize.isAccessibilitySize ? nil : 1
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
         layout {
             HStack(spacing: 10) {
-                if showsDetail {
-                    Image(systemName: item.symbol).font(.footnote.weight(.semibold)).foregroundStyle(tint)
-                        .frame(width: iconSize, height: iconSize)
-                        .background((item.needsAttention ? Color.orange.opacity(0.18) : Color.accentColor.opacity(0.1)), in: Circle())
-                        .accessibilityHidden(true)
-                }
+                dateRail(entry)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title).font(.subheadline.weight(.semibold))
-                    if showsDetail, let context = entry.context { Text(context).font(.footnote).foregroundStyle(Color("SecondaryText")) }
+                    Text(entry.title).font(.subheadline.weight(.semibold)).lineLimit(lines)
+                    if !detail.isEmpty {
+                        Text(detail).font(.footnote)
+                            .foregroundStyle(entry.blocksInvoicing ? Color("AmberText") : Color("SecondaryText"))
+                            .lineLimit(lines)
+                    }
                 }.frame(maxWidth: .infinity, alignment: .leading)
-            }.accessibilityElement(children: .combine)
-            if item.isPrimary {
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText(entry, detail: detail))
+            if standalone || item.isPrimary {
                 Button(item.actionTitle) { perform(entry) }.buttonStyle(DaybookPrimaryButton()).controlSize(.small)
                     .accessibilityIdentifier("settle-item-\(item.kind.rawValue)")
             } else {
@@ -581,6 +605,36 @@ struct SettlePanel: View {
             }
         }
         .padding(.leading, 16).padding(.trailing, 10).padding(.vertical, 4)
+    }
+
+    /// Day number over weekday, matching the Coming up rows.
+    private func dateRail(_ entry: UpcomingItem) -> some View {
+        let date = entry.day.isEmpty ? nil : Day.date(from: entry.day, timeZone: entry.zone)
+        let today = DaySchedule.dayKey(Date(), zone: entry.zone)
+        let tint: Color = entry.day == today ? .accentColor : (entry.blocksInvoicing ? Color("AmberText") : .primary)
+        return VStack(spacing: 0) {
+            Text(date.map { formatted($0, .dateTime.day(), zone: entry.zone) } ?? "–")
+                .font(.headline).monospacedDigit().foregroundStyle(date == nil ? Color("SecondaryText") : tint)
+            Text(date.map { formatted($0, .dateTime.weekday(.abbreviated), zone: entry.zone) } ?? "TBC")
+                .font(.caption2).foregroundStyle(Color("SecondaryText"))
+        }
+        .frame(width: railWidth)
+        .accessibilityHidden(true)
+    }
+
+    private func formatted(_ date: Date, _ style: Date.FormatStyle, zone: TimeZone) -> String {
+        var style = style
+        style.timeZone = zone
+        return date.formatted(style)
+    }
+
+    private func accessibilityText(_ entry: UpcomingItem, detail: String) -> String {
+        var parts = [entry.title]
+        if let date = entry.day.isEmpty ? nil : Day.date(from: entry.day, timeZone: entry.zone) {
+            parts.append(formatted(date, .dateTime.weekday(.wide).day().month(.wide), zone: entry.zone))
+        }
+        parts.append(entry.standaloneDetail == detail ? detail : entry.issue + ", " + detail)
+        return parts.filter { !$0.isEmpty }.joined(separator: ". ")
     }
 }
 

@@ -12,7 +12,7 @@ struct PreferenceFields: View {
 
     var body: some View {
         DaybookSections {
-        Section("Defaults") {
+        Section("User settings") {
             Menu {
                 Picker("Default currency", selection: $currency) {
                     ForEach(CurrencyPreferences.supported, id: \.self) { Text($0).tag($0) }
@@ -35,14 +35,27 @@ struct PreferenceFields: View {
                         homeTimeZone = TimeZone.current.identifier
                     }
                 }
+            appearanceRow
         }
-        Section("Appearance") {
-            if typeSize.isAccessibilitySize {
-                appearancePicker.pickerStyle(.menu).frame(minHeight: 44)
-            } else {
-                appearancePicker.pickerStyle(.segmented)
+        }
+    }
+
+    // The segments sit beside the label when they fit, and below it when they don't.
+    @ViewBuilder private var appearanceRow: some View {
+        if typeSize.isAccessibilitySize {
+            appearancePicker.pickerStyle(.menu).frame(minHeight: 44)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    Text("Appearance")
+                    Spacer(minLength: 8)
+                    appearancePicker.pickerStyle(.segmented).labelsHidden().fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Appearance")
+                    appearancePicker.pickerStyle(.segmented).labelsHidden()
+                }
             }
-        }
         }
     }
     // A shared label keeps menu and navigation controls on the same row geometry.

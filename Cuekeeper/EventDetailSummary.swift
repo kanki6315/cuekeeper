@@ -108,6 +108,10 @@ struct OpenItem: Equatable, Identifiable {
     let detail: String?
     let tab: EventTab
     let action: Action
+    /// The session an item is about, for rows that name the event instead.
+    var subject: String? = nil
+    /// The day the item is tied to when it differs from the event's own dates.
+    var day: String? = nil
     var id: String {
         switch action {
         case .editSession(let id), .openInvoice(let id), .reviewExpense(let id): return "\(kind.rawValue)-\(id.uuidString)"
@@ -219,7 +223,8 @@ struct EventDetailSummary: Equatable {
         case .value(let value):
             fee = value
             if value.amount == nil && (status == "booked" || status == "completed") {
-                items.append(OpenItem(kind: .feeUnknown, title: "Fee not agreed", detail: "Saved as unknown, not zero", tab: .money, action: .openFee))
+                let detail = status == "completed" ? "Needed before invoicing" : "Add it once it’s agreed"
+                items.append(OpenItem(kind: .feeUnknown, title: "Fee not agreed", detail: detail, tab: .money, action: .openFee))
             }
         }
 
@@ -277,13 +282,16 @@ struct EventDetailSummary: Equatable {
         let day = session.day.isEmpty ? "Date to come" : shortDay(session.day, zone: zone)
         if session.start == nil {
             let detail = session.coverage == "undecided" ? day + " · coverage undecided" : day
-            return OpenItem(kind: .sessionTime, title: "\(session.title) has no time", detail: detail, tab: .schedule, action: .editSession(session.id))
+            return OpenItem(kind: .sessionTime, title: "\(session.title) has no time", detail: detail, tab: .schedule, action: .editSession(session.id),
+                            subject: session.title, day: session.day)
         }
         if !session.confirmed {
-            return OpenItem(kind: .sessionConfirmation, title: "\(session.title) time not confirmed", detail: day, tab: .schedule, action: .editSession(session.id))
+            return OpenItem(kind: .sessionConfirmation, title: "\(session.title) time not confirmed", detail: day, tab: .schedule, action: .editSession(session.id),
+                            subject: session.title, day: session.day)
         }
         if session.coverage == "undecided" {
-            return OpenItem(kind: .sessionCoverage, title: "\(session.title) coverage undecided", detail: day, tab: .schedule, action: .editSession(session.id))
+            return OpenItem(kind: .sessionCoverage, title: "\(session.title) coverage undecided", detail: day, tab: .schedule, action: .editSession(session.id),
+                            subject: session.title, day: session.day)
         }
         return nil
     }

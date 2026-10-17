@@ -29,6 +29,13 @@ struct UpcomingItem: Equatable, Identifiable {
     let eventTitle: String?
     /// Items sort by the day they are tied to; past days come first.
     let rankDay: String
+    /// The day the row's date rail shows, read in `zone`; empty when the event has no date yet.
+    var day = ""
+    var zone: TimeZone = .current
+    /// What the row says under the event name when its group already names the problem, e.g. "Booked · tomorrow".
+    var detail: String?
+    /// The finished event can't be invoiced until this is settled.
+    var blocksInvoicing = false
     var category: Category {
         switch item.kind {
         case .tentativeBooking, .eventOver, .clientMissing: return .booking
@@ -37,11 +44,60 @@ struct UpcomingItem: Equatable, Identifiable {
         }
     }
     var id: String { "\(jobID?.uuidString ?? "receipt")-\(item.id)" }
-    /// The event and the item's own detail, for rows that list items from many events.
-    var context: String? {
-        let parts = (item.kind == .eventOver ? [] : [eventTitle]) + [item.detail]
-        let text = parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
-        return text.isEmpty ? nil : text
+    /// Rows lead with the event; the group or `issue` says what is missing.
+    var title: String { eventTitle ?? item.title }
+    /// The problem in a few words, for a row shown without its group heading.
+    var issue: String {
+        switch item.kind {
+        case .feeUnknown: "No fee yet"
+        case .feeConflict: "Two fee versions"
+        case .tentativeBooking: "On hold"
+        case .eventOver: "Not completed"
+        case .clientMissing: "No client"
+        case .sessionTime: "No time"
+        case .sessionConfirmation: "Time not confirmed"
+        case .sessionCoverage: "Coverage undecided"
+        default: item.title
+        }
+    }
+    /// The detail for a row shown alone, which has to carry the problem as well.
+    var standaloneDetail: String {
+        [issue, detail].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
+/// Items of one kind, listed under one heading so the problem is named once.
+struct SettleGroup: Equatable, Identifiable {
+    let kind: OpenItem.Kind
+    let items: [UpcomingItem]
+    var id: String { kind.rawValue }
+    var heading: String {
+        switch kind {
+        case .feeUnknown: "Fees to agree"
+        case .feeConflict: "Fees to review"
+        case .tentativeBooking: "Bookings on hold"
+        case .eventOver: "Events to complete"
+        case .clientMissing: "Clients to add"
+        case .sessionTime: "Session times to add"
+        case .sessionConfirmation: "Times to confirm"
+        case .sessionCoverage: "Coverage to decide"
+        default: items.first?.item.title ?? ""
+        }
+    }
+    /// "4 fees to agree"
+    var phrase: String {
+        let n = items.count
+        switch kind {
+        case .feeUnknown: return counted(n, "fee", "fees") + " to agree"
+        case .feeConflict: return counted(n, "fee", "fees") + " to review"
+        case .tentativeBooking: return counted(n, "booking", "bookings") + " on hold"
+        case .eventOver: return counted(n, "event", "events") + " to complete"
+        case .clientMissing: return counted(n, "client", "clients") + " to add"
+        case .sessionTime: return counted(n, "session time", "session times") + " to add"
+        case .sessionConfirmation: return counted(n, "time", "times") + " to confirm"
+        case .sessionCoverage: return counted(n, "coverage choice", "coverage choices")
+        default: return counted(n, "item", "items")
+        }
     }
 }
 
@@ -143,14 +199,25 @@ struct UpcomingSummary: Equatable {
         comingUp = Self.comingUp(active, items: items, now: now)
     }
 
-    /// "2 bookings · 1 schedule · 2 money"
+    /// Items grouped by kind, in the order their most urgent item appears.
+    var settleGroups: [SettleGroup] {
+        var order: [OpenItem.Kind] = []
+        var byKind: [OpenItem.Kind: [UpcomingItem]] = [:]
+        for item in items {
+            if byKind[item.item.kind] == nil { order.append(item.item.kind) }
+            byKind[item.item.kind, default: []].append(item)
+        }
+        return order.map { SettleGroup(kind: $0, items: byKind[$0] ?? []) }
+    }
+
+    /// "4 fees to agree · 1 holding up an invoice"
     var categorySummary: String {
-        let bookings = items.filter { $0.category == .booking }.count
-        let schedule = items.filter { $0.category == .schedule }.count
-        let money = items.filter { $0.category == .money }.count
-        return [bookings > 0 ? counted(bookings, "booking", "bookings") : nil,
-                schedule > 0 ? "\(schedule) schedule" : nil,
-                money > 0 ? "\(money) money" : nil].compactMap { $0 }.joined(separator: " · ")
+        let groups = settleGroups
+        var parts = groups.prefix(2).map(\.phrase)
+        let blocking = items.filter(\.blocksInvoicing).count
+        if blocking > 0 { parts.append("\(blocking) holding up an invoice") }
+        if groups.count > 2 { parts.append("\(groups.count - 2) more") }
+        return parts.joined(separator: " · ")
     }
 
     func openCount(for jobID: UUID) -> Int { items.filter { $0.jobID == jobID }.count }
@@ -239,18 +306,58 @@ struct UpcomingSummary: Equatable {
             let near = facts.startDay.isEmpty || facts.startDay <= horizon
             let detail = EventDetailSummary(facts: facts, now: now)
             for item in detail.openItems where !handledElsewhere.contains(item.kind) {
-                let wrapped = UpcomingItem(item: item, jobID: job.id, eventTitle: job.title, rankDay: rankDay(item, job: job))
+                var wrapped = UpcomingItem(item: item, jobID: job.id, eventTitle: job.title, rankDay: rankDay(item, job: job))
                 if wrapped.category != .money && !near && !past { continue }
+                wrapped.day = item.day.flatMap { $0.isEmpty ? nil : $0 } ?? facts.startDay
+                wrapped.zone = facts.eventZone
+                wrapped.blocksInvoicing = item.kind == .feeUnknown && status == "completed"
+                wrapped.detail = planDetail(item, status: status, day: wrapped.day, today: today, zone: facts.eventZone)
                 result.append(wrapped)
             }
             if past && (status == "tentative" || status == "booked") {
                 let day = shortDay(job.lastDay, zone: facts.eventZone)
                 let detailText = [day, job.client].compactMap { $0 }.joined(separator: " · ")
                 let item = OpenItem(kind: .eventOver, title: "\(job.title) is over", detail: detailText, tab: .schedule, action: .markCompleted)
-                result.append(UpcomingItem(item: item, jobID: job.id, eventTitle: job.title, rankDay: job.lastDay))
+                var wrapped = UpcomingItem(item: item, jobID: job.id, eventTitle: job.title, rankDay: job.lastDay)
+                wrapped.day = job.lastDay
+                wrapped.zone = facts.eventZone
+                wrapped.detail = ["Ended " + (relativeDay(job.lastDay, today: today, zone: facts.eventZone) ?? day), job.client]
+                    .compactMap { $0 }.joined(separator: " · ")
+                result.append(wrapped)
             }
         }
         return result.sorted { ($0.rankDay, $0.item.title, $0.id) < ($1.rankDay, $1.item.title, $1.id) }
+    }
+
+    /// The row's detail under its group heading: why the item matters now, or how soon it's needed.
+    private static func planDetail(_ item: OpenItem, status: String, day: String, today: String, zone: TimeZone) -> String? {
+        let when = relativeDay(day, today: today, zone: zone)
+        switch item.kind {
+        case .feeUnknown:
+            if status == "completed" { return "Worked · blocks invoicing" }
+            return [status == "tentative" ? "On hold" : "Booked", when].compactMap { $0 }.joined(separator: " · ")
+        case .tentativeBooking:
+            return when.map { "Starts " + $0 } ?? item.detail
+        case .sessionTime, .sessionConfirmation, .sessionCoverage:
+            return [item.subject, when ?? "date to come"].compactMap { $0 }.joined(separator: " · ")
+        default:
+            return item.detail
+        }
+    }
+
+    /// "today", "tomorrow", "in 5 days", "3 days ago"; nil without a date.
+    static func relativeDay(_ key: String, today: String, zone: TimeZone) -> String? {
+        guard let target = Day.date(from: key, timeZone: zone), let start = Day.date(from: today, timeZone: zone) else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let days = calendar.dateComponents([.day], from: start, to: target).day ?? 0
+        switch days {
+        case 0: return "today"
+        case 1: return "tomorrow"
+        case -1: return "yesterday"
+        case 2...: return "in \(days) days"
+        default: return "\(-days) days ago"
+        }
     }
 
     /// The day an item is tied to: the event's end once it is over, everything else by the start.

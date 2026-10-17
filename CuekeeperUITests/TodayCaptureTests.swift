@@ -9,7 +9,7 @@ final class TodayCaptureTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
         app.swipeUp()
-        XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Silverstone weekend")).firstMatch.exists)
         Thread.sleep(forTimeInterval: 0.6)
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.name = "today-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-large-text"; shot.lifetime = .keepAlways; add(shot)
@@ -39,7 +39,7 @@ final class TodayCaptureTests: XCTestCase {
                 XCTAssertTrue(app.staticTexts[route == "root" ? "Run of show" : "Small widget · one event"].firstMatch.waitForExistence(timeout: 15))
                 if route == "root" {
                     XCTAssertTrue(app.staticTexts["Qualifying"].firstMatch.exists)
-                    XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)
+                    XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Silverstone weekend")).firstMatch.exists)
                 }
                 Thread.sleep(forTimeInterval: 0.6)
                 let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

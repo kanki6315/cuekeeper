@@ -8,6 +8,9 @@ struct UpcomingView: View {
 
     @Environment(\.managedObjectContext) private var context
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+    @ScaledMetric(relativeTo: .subheadline) private var pillTitleWidth = 170
     @EnvironmentObject private var persistence: PersistenceController
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)], predicate: NSPredicate(format: "deletedAt == nil")) private var jobs: FetchedResults<Job>
     // Related records change without publishing through the job; observing them keeps the summary current.
@@ -166,17 +169,7 @@ struct UpcomingView: View {
                 if summary.inFlight.count == 1, let only = summary.inFlight.first {
                     singleJob(only)
                 } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        EventSectionTitle(title: "In flight") {
-                            Text(counted(summary.inFlight.count, "job", "jobs")).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                        }
-                        VStack(spacing: 0) {
-                            ForEach(Array(summary.inFlight.enumerated()), id: \.element.id) { index, fact in
-                                if index > 0 { EventPanelDivider() }
-                                inFlightRow(fact)
-                            }
-                        }.eventPanel()
-                    }
+                    onDeck(summary)
                     EventSectionTitle("Run of show")
                 }
                 VStack(alignment: .leading, spacing: 16) {
@@ -290,27 +283,70 @@ struct UpcomingView: View {
         }
     }
 
-    private func inFlightRow(_ fact: UpcomingJobFact) -> some View {
-        HStack(spacing: 6) {
-            jobButton(fact.id) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(fact.title).font(.body.weight(.semibold))
-                    Text(([fact.client ?? "Client to add"] + (fact.work.isEmpty ? [] : [fact.work])).joined(separator: " · "))
-                        .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                }
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
+    /// Several jobs in flight read as one row of pills; the next call's job leads and is outlined.
+    private func onDeck(_ summary: UpcomingSummary) -> some View {
+        let heroID = summary.nextCall?.jobID
+        let ordered = summary.inFlight.filter { $0.id == heroID } + summary.inFlight.filter { $0.id != heroID }
+        let pills = ForEach(ordered) { onDeckPill($0, isHero: $0.id == heroID) }
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("On deck").font(.headline)
+                Text("\(summary.inFlight.count)").font(.subheadline).foregroundStyle(Color("SecondaryText"))
             }
-            if let job = job(fact.id), hasNotes(job) {
-                Button { sheet = .notes(job) } label: {
-                    Image(systemName: "note.text").frame(width: 44, height: 44)
-                        .background(Color.accentColor.opacity(0.1), in: Circle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("On deck, \(counted(summary.inFlight.count, "job", "jobs"))")
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("upcoming-on-deck")
+            if dynamicTypeSize.isAccessibilitySize {
+                ChipFlow(spacing: 8) { pills }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) { pills }
                 }
-                .buttonStyle(.plain).foregroundStyle(Color.accentColor)
+                .scrollClipDisabled()
+            }
+        }
+    }
+
+    private func onDeckPill(_ fact: UpcomingJobFact, isHero: Bool) -> some View {
+        let tentative = fact.facts.bookingStatus == "tentative"
+        let role = fact.work.components(separatedBy: " · ").first { !$0.isEmpty && $0 != fact.arrangement.title }
+        let notesJob = job(fact.id).flatMap { hasNotes($0) ? $0 : nil }
+        // Accessibility sizes wrap long titles, so the capsule relaxes into a rounded rectangle.
+        let large = dynamicTypeSize.isAccessibilitySize
+        let shape = RoundedRectangle(cornerRadius: large ? 16 : 22, style: .continuous)
+        let stroke = isHero ? Color.accentColor : tentative ? Color("AmberText").opacity(0.45)
+            : Color.primary.opacity(contrast == .increased ? 0.45 : 0.16)
+        return HStack(spacing: 0) {
+            jobButton(fact.id) {
+                HStack(spacing: 5) {
+                    if large {
+                        Text(fact.title).fontWeight(.semibold).fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        CappedWidth(maximum: pillTitleWidth) { Text(fact.title).fontWeight(.semibold).lineLimit(1) }
+                    }
+                    if tentative {
+                        Text("tentative").foregroundStyle(Color("AmberText"))
+                    } else if let role, !large {
+                        Text(role).foregroundStyle(Color("SecondaryText")).lineLimit(1)
+                    }
+                }
+                .padding(.leading, 14).padding(.trailing, notesJob == nil ? 14 : 4).padding(.vertical, large ? 8 : 0)
+                .frame(minHeight: 44).contentShape(shape)
+            }
+            .accessibilityHint("Opens the event")
+            if let notesJob {
+                Button { sheet = .notes(notesJob) } label: {
+                    Image(systemName: "note.text").foregroundStyle(Color.accentColor)
+                        .frame(width: 36, height: 44).padding(.trailing, 4).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Notes for \(fact.title)")
             }
         }
-        .padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 6)
+        .font(.subheadline)
+        .background(tentative ? Color.orange.opacity(0.14) : Color("SurfaceBackground"), in: shape)
+        .overlay { shape.strokeBorder(stroke, lineWidth: isHero ? 1 : 0.5) }
     }
 
     @ViewBuilder private func sessionRow(_ fact: EventSessionFact, in day: UpcomingDay, multiple: Bool) -> some View {
@@ -682,5 +718,18 @@ private struct UpcomingNotesSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationBackground(Color("PageBackground"))
+    }
+}
+
+/// Lets a single line take its natural width up to a cap, truncating beyond it, even where the parent proposes no width.
+private struct CappedWidth: Layout {
+    var maximum: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let width = min(child.sizeThatFits(.unspecified).width, maximum, proposal.width ?? .infinity)
+        return child.sizeThatFits(ProposedViewSize(width: width, height: proposal.height))
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
     }
 }

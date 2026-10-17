@@ -156,11 +156,58 @@ final class BackupWorkflow: ObservableObject {
 struct BackupProgressView: View {
     @ObservedObject var workflow: BackupWorkflow
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let fraction = workflow.fraction { ProgressView(workflow.stage, value: fraction) }
-            else { ProgressView(workflow.stage) }
-            if workflow.canCancel { Button("Cancel", role: .cancel) { workflow.cancel() }.frame(minHeight: 44) }
-        }.accessibilityIdentifier("backup-progress")
+        // One leading-aligned row; the stock labelled spinner centers itself over its label.
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                if workflow.fraction == nil { ProgressView() }
+                Text(workflow.stage).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                if workflow.canCancel { Button("Cancel", role: .cancel) { workflow.cancel() }.frame(minHeight: 44) }
+            }
+            .frame(minHeight: 44)
+            if let fraction = workflow.fraction { ProgressView(value: fraction) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("backup-progress")
+    }
+}
+
+/// The outcome of a finished backup action, floating above the content. It clears itself
+/// after long enough to read (longer messages stay longer); tap to dismiss sooner.
+struct BackupNoticeToast: View {
+    @Binding var notice: String?
+
+    var body: some View {
+        ZStack {
+            if let notice {
+                Button { self.notice = nil } label: {
+                    Text(notice).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .frame(maxWidth: 540, minHeight: 48)
+                        .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 16))
+                        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.primary.opacity(0.16), lineWidth: 1) }
+                        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("backup-notice")
+                .accessibilityHint("Dismisses this message")
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: notice)
+        .task(id: notice) {
+            guard let notice else { return }
+            AccessibilityNotification.Announcement(notice).post()
+            // About 180 words a minute, never under four seconds; doubled while VoiceOver reads it.
+            let words = Double(notice.split(separator: " ").count)
+            let seconds = max(4, words / 3) * (UIAccessibility.isVoiceOverRunning ? 2 : 1)
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            self.notice = nil
+        }
     }
 }
 

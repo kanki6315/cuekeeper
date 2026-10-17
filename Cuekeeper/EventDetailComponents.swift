@@ -122,19 +122,21 @@ extension OpenItem {
         case .editEvent: return "Add client"
         case .openFee: return kind == .feeConflict ? "Review" : "Add fee"
         case .addToInvoice: return "Invoice"
+        case .editClientInvoicing: return "Add details"
         case .openInvoice: return kind == .balanceOwed ? "Record payment" : "Open"
         case .reviewBilling, .reviewExpense: return "Review"
         }
     }
     /// The step that moves the event forward gets the prominent button.
     var isPrimary: Bool { kind == .tentativeBooking || kind == .balanceOwed || kind == .readyToInvoice || kind == .eventOver }
-    var needsAttention: Bool { [.tentativeBooking, .feeConflict, .billingReview, .expenseDraft].contains(kind) }
+    var needsAttention: Bool { [.tentativeBooking, .feeConflict, .clientDetails, .billingReview, .expenseDraft].contains(kind) }
     var symbol: String {
         switch kind {
         case .tentativeBooking: return "calendar.badge.clock"
         case .sessionTime, .sessionConfirmation: return "clock"
         case .sessionCoverage: return "questionmark.circle"
         case .clientMissing: return "person.crop.circle.badge.plus"
+        case .clientDetails: return "person.text.rectangle"
         case .feeConflict, .feeUnknown, .readyToInvoice, .balanceOwed: return "banknote"
         case .invoiceDraft, .billingReview: return "doc.text"
         case .expenseDraft: return "receipt"

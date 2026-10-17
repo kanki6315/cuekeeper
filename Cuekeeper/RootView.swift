@@ -108,6 +108,7 @@ struct RootView: View {
         #if DEBUG
         .onAppear {
             if DesignFixtures.enabled && DesignFixtures.route == "expenses-overview" { selectedTab = .expenses }
+            if DesignFixtures.enabled && DesignFixtures.route == "payments-root" { selectedTab = .payments }
         }
         #endif
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CuekeeperOpenToday"))) { _ in

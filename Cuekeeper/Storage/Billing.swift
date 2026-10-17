@@ -8,6 +8,58 @@ struct BilledLine: Codable, Equatable, Identifiable {
     var id: UUID { jobID }
 }
 
+/// A reimbursable receipt billed on an invoice. Kept apart from event lines so builds
+/// that predate rebilling still decode the invoice; they ignore these lines.
+struct BilledExpense: Codable, Equatable, Identifiable {
+    var expenseID: UUID
+    var label: String
+    var amount: Int64
+    var id: UUID { expenseID }
+}
+
+/// What a client needs on file before their work can be invoiced.
+struct ClientInvoicing: Codable, Equatable {
+    var billingName = ""
+    var email = ""
+    var address = ""
+    var termsDays: Int?
+    var taxID = ""
+    /// Missing required details, in the order a person would fill them in.
+    var missing: [String] {
+        var gaps: [String] = []
+        if billingName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { gaps.append("billing name") }
+        if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { gaps.append("billing email") }
+        if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { gaps.append("address") }
+        if termsDays == nil { gaps.append("payment terms") }
+        return gaps
+    }
+    var isComplete: Bool { missing.isEmpty }
+    func validate() throws {
+        if let termsDays, !(0...365).contains(termsDays) { throw RecordError.invalid("Payment terms must be between 0 and 365 days.") }
+        let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !email.isEmpty && (!email.contains("@") || email.contains(" ")) { throw RecordError.invalid("Enter a valid billing email.") }
+    }
+    /// The due day for an invoice sent on `sentDay`, when terms are known.
+    func dueDay(sent sentDay: String) -> String? {
+        guard let termsDays, let sent = Day.date(from: sentDay), let due = Calendar.current.date(byAdding: .day, value: termsDays, to: sent) else { return nil }
+        return Day.string(from: due)
+    }
+}
+
+extension Client {
+    var invoicing: ClientInvoicing {
+        guard !invoicingJSON.isEmpty, let value = try? JSONDecoder().decode(ClientInvoicing.self, from: Data(invoicingJSON.utf8)) else { return ClientInvoicing() }
+        return value
+    }
+    static func saveInvoicing(_ value: ClientInvoicing, client id: NSManagedObjectID, in context: NSManagedObjectContext) throws {
+        try value.validate()
+        let writer = isolatedWriter(context)
+        let client = try writer.existingObject(with: id) as! Client
+        client.invoicingJSON = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        try writer.save(); context.refreshAllObjects()
+    }
+}
+
 struct InvoiceValue: Codable, Equatable {
     var clientID: UUID
     var currency = "USD"
@@ -17,11 +69,18 @@ struct InvoiceValue: Codable, Equatable {
     var dueDay = ""
     var notes = ""
     var lines: [BilledLine] = []
-    func total() throws -> Int64 { try Money.minorUnits(lines.reduce(Decimal(0)) { $0 + Decimal($1.amount) }) }
+    var expenseLines: [BilledExpense]? = nil
+    var billedExpenses: [BilledExpense] { expenseLines ?? [] }
+    func total() throws -> Int64 {
+        try Money.minorUnits(lines.reduce(Decimal(0)) { $0 + Decimal($1.amount) } + billedExpenses.reduce(Decimal(0)) { $0 + Decimal($1.amount) })
+    }
     func validate() throws {
         guard CurrencyPreferences.supported.contains(currency), ["draft", "sent", "void"].contains(status) else { throw RecordError.invalid("Choose a valid invoice currency and status.") }
         guard !lines.isEmpty, Set(lines.map(\.jobID)).count == lines.count, lines.allSatisfy({ $0.amount >= 0 && $0.amount <= Money.limit }) else {
             throw RecordError.invalid("Include at least one job, once each, with a nonnegative billed amount.")
+        }
+        guard Set(billedExpenses.map(\.expenseID)).count == billedExpenses.count, billedExpenses.allSatisfy({ $0.amount >= 0 && $0.amount <= Money.limit }) else {
+            throw RecordError.invalid("Include each receipt once, with a nonnegative amount.")
         }
         if status == "sent" && (reference.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || Day.date(from: sentDay) == nil) {
             throw RecordError.invalid("Add an invoice reference and sent date before marking it sent.")
@@ -29,7 +88,7 @@ struct InvoiceValue: Codable, Equatable {
         if !dueDay.isEmpty && (Day.date(from: dueDay) == nil || (!sentDay.isEmpty && dueDay < sentDay)) { throw RecordError.invalid("The due date must be on or after the sent date.") }
         _ = try total()
     }
-    func sameBilledTerms(as other: InvoiceValue) -> Bool { clientID == other.clientID && currency == other.currency && lines == other.lines }
+    func sameBilledTerms(as other: InvoiceValue) -> Bool { clientID == other.clientID && currency == other.currency && lines == other.lines && billedExpenses == other.billedExpenses }
 }
 
 @objc(Invoice)
@@ -74,6 +133,11 @@ final class Invoice: NSManagedObject {
                 guard let job = try context.fetch(request).first else { return "An included job is still syncing." }
                 if try job.activeInvoices(in: context, index: index).count > 1 { return "A job appears on multiple active invoices. Void the duplicate invoice to resolve this." }
                 if try job.directPaid() > 0 { return "An included job also has direct payments. Review and reverse the receipt if it belongs on this invoice." }
+            }
+            for line in value.billedExpenses {
+                let request = NSFetchRequest<Expense>(entityName: "Expense"); request.predicate = NSPredicate(format: "id == %@", line.expenseID as CVarArg)
+                guard let expense = try context.fetch(request).first else { return "An included receipt is still syncing." }
+                if try expense.activeInvoices(index: index).count > 1 { return "A receipt appears on multiple active invoices. Void the duplicate invoice to resolve this." }
             }
             return nil
         } catch { return error.localizedDescription }
@@ -142,7 +206,9 @@ enum PaymentLedger {
 /// cannot leave eligibility cached across financial writes.
 struct InvoiceIndex {
     private var active: [UUID: [Invoice]] = [:]
+    private var activeExpenses: [UUID: [Invoice]] = [:]
     private var blockedJobs: [UUID: Set<NSManagedObjectID>] = [:]
+    private var blockedExpenses: [UUID: Set<NSManagedObjectID>] = [:]
     private var blockedClients: [UUID: Set<NSManagedObjectID>] = [:]
     private var unknown: Set<NSManagedObjectID> = []
     private var fetchError: Error?
@@ -154,13 +220,17 @@ struct InvoiceIndex {
             for invoice in try context.fetch(request) {
                 do {
                     let heads = try invoice.heads()
-                    let jobs = Set(heads.compactMap(\.value).filter { $0.status != "void" }.flatMap { $0.lines.map(\.jobID) })
-                    for job in jobs { active[job, default: []].append(invoice) }
+                    let live = heads.compactMap(\.value).filter { $0.status != "void" }
+                    for job in Set(live.flatMap { $0.lines.map(\.jobID) }) { active[job, default: []].append(invoice) }
+                    for expense in Set(live.flatMap { $0.billedExpenses.map(\.expenseID) }) { activeExpenses[expense, default: []].append(invoice) }
                 } catch {
                     let records = Array(invoice.revisions ?? [])
                     let values = records.compactMap(\.value)
                     for job in Set(values.flatMap { $0.lines.map(\.jobID) }) {
                         blockedJobs[job, default: []].insert(invoice.objectID)
+                    }
+                    for expense in Set(values.flatMap { $0.billedExpenses.map(\.expenseID) }) {
+                        blockedExpenses[expense, default: []].insert(invoice.objectID)
                     }
                     // Missing/unreadable history may contain additional jobs. Limit
                     // that uncertainty to known clients, including historical ones.
@@ -189,6 +259,24 @@ struct InvoiceIndex {
         guard blocked.isEmpty else { throw RecordError.invalid("An invoice that may include this job needs review. Wait for sync or resolve its history before billing this job.") }
         return (active[id] ?? []).filter { $0.objectID != excluded }
     }
+
+    func invoices(for expense: Expense, excluding excluded: NSManagedObjectID? = nil) throws -> [Invoice] {
+        if let fetchError { throw fetchError }
+        guard let id = expense.id else { return [] }
+        var blocked = unknown.union(blockedExpenses[id] ?? [])
+        if let client = expense.job?.client?.id { blocked.formUnion(blockedClients[client] ?? []) }
+        if let excluded { blocked.remove(excluded) }
+        guard blocked.isEmpty else { throw RecordError.invalid("An invoice that may include this receipt needs review. Wait for sync or resolve its history before billing it.") }
+        return (activeExpenses[id] ?? []).filter { $0.objectID != excluded }
+    }
+}
+
+extension Expense {
+    func activeInvoices(excluding excluded: NSManagedObjectID? = nil, index: InvoiceIndex) throws -> [Invoice] {
+        try index.invoices(for: self, excluding: excluded)
+    }
+    /// A finished reimbursable receipt that can be billed to its event's client.
+    var isRebillable: Bool { !isDraft && value.reimbursable && value.discarded != true && job?.deletedAt == nil }
 }
 
 extension Job {
@@ -251,6 +339,16 @@ struct InvoiceDraft: Equatable {
                 }
                 guard try job.activeInvoices(in: writer, excluding: invoice.objectID, index: index).isEmpty else { throw RecordError.invalid("A selected job is already on another active invoice. Review or void that invoice before billing it again.") }
             }
+        }
+        for line in value.billedExpenses where value.status != "void" {
+            let request = NSFetchRequest<Expense>(entityName: "Expense"); request.predicate = NSPredicate(format: "id == %@", line.expenseID as CVarArg)
+            guard let expense = try writer.fetch(request).first else { throw RecordError.invalid("An included receipt is still syncing.") }
+            if !previouslySent {
+                guard expense.isRebillable else { throw RecordError.invalid("Only finished, reimbursable receipts can be billed.") }
+                guard expense.job?.client?.id == value.clientID else { throw RecordError.invalid("Every receipt must belong to an event for the selected client.") }
+                guard expense.value.currency == value.currency else { throw RecordError.invalid("Receipts on an invoice must use the invoice currency.") }
+            }
+            guard try expense.activeInvoices(excluding: invoice.objectID, index: index).isEmpty else { throw RecordError.invalid("A selected receipt is already on another active invoice.") }
         }
         if invoice.id == nil { invoice.id = UUID(); invoice.createdAt = Date() }
         invoice.client = client

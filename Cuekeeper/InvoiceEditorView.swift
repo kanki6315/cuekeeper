@@ -7,6 +7,7 @@ struct InvoiceEditorView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Client.name, ascending: true)]) private var clients: FetchedResults<Client>
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)]) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Expense.createdAt, ascending: true)]) private var expenses: FetchedResults<Expense>
     let invoice: Invoice?
     let locked: Bool
     @State private var draft: InvoiceDraft
@@ -30,7 +31,32 @@ struct InvoiceEditorView: View {
         _clientID = State(initialValue: (draft?.value.clientID ?? job?.client?.id)?.uuidString ?? "")
         _amounts = State(initialValue: amounts); _initialAmounts = State(initialValue: amounts)
     }
+    /// Starts an invoice from a ready client group: its events, plus the receipts offered for rebilling.
+    init(ready: ReadyInvoice) {
+        var draft = InvoiceDraft(clientID: ready.clientID, currency: ready.currency)
+        draft.value.lines = ready.jobs.compactMap { job in
+            guard let id = job.id else { return nil }
+            return BilledLine(jobID: id, jobName: job.displayName, amount: (try? job.currentFee().amount).flatMap { $0 } ?? 0)
+        }
+        let receipts = ready.expenses.compactMap { Self.billed($0) }
+        draft.value.expenseLines = receipts.isEmpty ? nil : receipts
+        self.init(invoice: nil, draft: draft)
+    }
+    static func billed(_ expense: Expense) -> BilledExpense? {
+        let value = expense.value
+        guard let id = expense.id, let amount = try? Money.parse(value.amount, currency: value.currency) else { return nil }
+        let day = Day.date(from: value.day)?.formatted(.dateTime.day().month(.abbreviated)) ?? value.day
+        return BilledExpense(expenseID: id, label: [value.merchant, day].filter { !$0.isEmpty }.joined(separator: " · "), amount: amount)
+    }
     private var changed: Bool { draft != initial || amounts != initialAmounts || clientID != (invoice == nil && initial.value.lines.isEmpty ? "" : initial.value.clientID.uuidString) }
+    private var receiptCandidates: [Expense] {
+        expenses.filter { expense in
+            (expense.isRebillable || draft.value.billedExpenses.contains { $0.expenseID == expense.id }) && expense.job?.client?.id?.uuidString == clientID && expense.value.currency == draft.value.currency
+        }
+    }
+    private func receiptEligible(_ expense: Expense, index: InvoiceIndex) -> Bool {
+        (try? expense.activeInvoices(excluding: invoice?.objectID, index: index).isEmpty) ?? false
+    }
     private var candidates: [Job] { jobs.filter { job in (job.deletedAt == nil || draft.value.lines.contains { $0.jobID == job.id }) && job.client?.id?.uuidString == clientID && (try? job.currentFee().currency) == draft.value.currency } }
     var body: some View {
         // Revision arrivals must refresh eligibility even when job rows do not change.
@@ -75,6 +101,28 @@ struct InvoiceEditorView: View {
                     if draft.value.lines.isEmpty { Text("Select bookings for this client and currency.").foregroundStyle(Color("SecondaryText")) }
                     if let value = try? preparedValue(), let total = try? value.total() { LabeledContent("Total", value: Money.format(total, currency: value.currency)) }
                 } header: { Text("Included bookings") } footer: { Text(locked ? "Billed amounts and bookings are preserved on sent invoices, independently of later fee changes." : "Each booking can belong to one active invoice. Unknown fees need an explicit billed amount, including 0 for unpaid work.") }
+                if !receiptCandidates.isEmpty || !draft.value.billedExpenses.isEmpty {
+                    Section("Reimbursable receipts") {
+                        if locked {
+                            ForEach(draft.value.billedExpenses) { line in LabeledContent(line.label, value: Money.format(line.amount, currency: draft.value.currency)) }
+                        } else {
+                            ForEach(receiptCandidates, id: \.objectID) { expense in
+                                if let line = Self.billed(expense) {
+                                    let selected = draft.value.billedExpenses.contains { $0.expenseID == line.expenseID }
+                                    Toggle(isOn: Binding(get: { selected }, set: { on in
+                                        var lines = draft.value.billedExpenses.filter { $0.expenseID != line.expenseID }
+                                        if on { lines.append(line) }
+                                        draft.value.expenseLines = lines.isEmpty ? nil : lines
+                                    })) {
+                                        LabeledContent(line.label, value: Money.format(line.amount, currency: draft.value.currency))
+                                    }
+                                    .disabled(!selected && !receiptEligible(expense, index: index))
+                                    .accessibilityIdentifier("invoice-receipt-\(expense.value.merchant)")
+                                }
+                            }
+                        }
+                    }
+                }
                 Section {
                     DaybookPicker("Status", selection: $draft.value.status, identifier: "invoice-status") {
                         if !locked { Text("Draft").tag("draft") }
@@ -110,11 +158,18 @@ struct InvoiceEditorView: View {
             }
             .onChange(of: clientID) { _, value in
                 if let id = UUID(uuidString: value) { draft.value.clientID = id }
-                draft.value.lines = []; amounts = [:]
+                draft.value.lines = []; draft.value.expenseLines = nil; amounts = [:]
                 if let client = clients.first(where: { $0.id?.uuidString == value }) { draft.value.currency = client.defaultCurrency }
             }
-            .onChange(of: draft.value.currency) { _, _ in if !locked { draft.value.lines = []; amounts = [:] } }
-            .onChange(of: draft.value.status) { _, status in if status == "sent" && draft.value.sentDay.isEmpty { draft.value.sentDay = Day.string(from: Date()) } }
+            .onChange(of: draft.value.currency) { _, _ in if !locked { draft.value.lines = []; draft.value.expenseLines = nil; amounts = [:] } }
+            .onChange(of: draft.value.status) { _, status in
+                guard status == "sent" else { return }
+                if draft.value.sentDay.isEmpty { draft.value.sentDay = Day.string(from: Date()) }
+                // Terms on file set the due date; an explicit due date is kept.
+                if draft.value.dueDay.isEmpty, let due = clients.first(where: { $0.id?.uuidString == clientID })?.invoicing.dueDay(sent: draft.value.sentDay) {
+                    draft.value.dueDay = due
+                }
+            }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
             .preservesDraftOnTodayLink()
         }

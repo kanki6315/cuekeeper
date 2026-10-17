@@ -188,10 +188,13 @@ and the separate Python suites are excluded from this table.
 | Split long UI classes | 4 | 7m 48s | 252 | 0 | 1 |
 | Class splits and nonblocking notification cleanup | 4 | 7m 33s | 253 | 0 | 1 |
 
-The final suite has 194 unit/integration tests and the same 60 UI tests. All
+The final measured suite had 194 unit/integration tests and the same 60 UI tests. All
 previous test methods remain; the additional regression checks that an
 unresponsive notification service cannot block the UI thread during cleanup.
-The only skip requires physical-device Data Protection support; Calendar
+These measurements precede the subsequent Payments redesign merged from main,
+which replaces the old Payments test with five new workflows and adds unit tests.
+Rebenchmark the combined suite before treating these counts or times as current.
+The only skip in the measured suite requires physical-device Data Protection support; Calendar
 integration ran. The earlier 32 tooling tests and five website tests passed in
 2.7 seconds combined. The final incremental test-bundle rebuild took 7.9 seconds;
 this is not a cold-build estimate.

@@ -1,241 +1,275 @@
 import CoreData
 import SwiftUI
 
+/// Payments as a month close: every event in the month with its four invoicing gates,
+/// grouped by client, then money still open from earlier months.
 struct PaymentsView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.managedObjectContext) private var context
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Invoice.createdAt, ascending: false)]) private var invoices: FetchedResults<Invoice>
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)]) private var jobs: FetchedResults<Job>
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \PaymentRecord.receivedAt, ascending: false)]) private var payments: FetchedResults<PaymentRecord>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: true)]) private var jobs: FetchedResults<Job>
+    @FetchRequest(sortDescriptors: []) private var payments: FetchedResults<PaymentRecord>
     @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
+    @FetchRequest(sortDescriptors: []) private var expenses: FetchedResults<Expense>
+    @FetchRequest(sortDescriptors: []) private var clients: FetchedResults<Client>
     @AppStorage("displayCurrencies") private var displayCurrencies = CurrencyPreferences.defaultDisplay
-    private var currencies: [String] { CurrencyPreferences.displayed(displayCurrencies) }
-    @ScaledMetric(relativeTo: .subheadline) private var totalsLabelWidth = 96
+    @State private var month = PaymentsView.currentMonth
+    @State private var width: CGFloat = 0
     @State private var adding = false
+    @State private var invoicing: ReadyInvoice?
+    @State private var readiness: Presented<Job>?
+    @State private var detailsClient: Presented<Client>?
+
+    static var currentMonth: String { String(Day.string(from: Date()).prefix(7)) }
+    private var wide: Bool { width >= 900 && !typeSize.isAccessibilitySize }
+
     var body: some View {
-        // Revision arrivals must refresh eligibility even when job rows do not change.
-        _ = invoiceRevisions.count
-        let index = InvoiceIndex(in: context)
-        let ready = readyJobs(index: index)
-        return DaybookForm(topPadding: 12) {
+        // Revision, receipt, expense and client arrivals must refresh readiness even when job rows do not change.
+        _ = invoiceRevisions.count + payments.count + expenses.count + clients.count
+        let summary = PaymentsMonth.load(month: month, jobs: Array(jobs), invoices: Array(invoices), context: context,
+                                         displayed: CurrencyPreferences.displayed(displayCurrencies))
+        return Group {
+            if wide { wideBody(summary) } else { compactBody(summary) }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
+        .sheet(isPresented: $adding) { InvoiceEditorView() }
+        .sheet(item: $invoicing) { InvoiceEditorView(ready: $0) }
+        .sheet(item: $readiness) { ReadinessSheet(job: $0.object) }
+        .sheet(item: $detailsClient) { ClientInvoicingEditor(client: $0.object) }
+    }
+
+    // MARK: Compact
+
+    private func compactBody(_ summary: PaymentsMonth) -> some View {
+        DaybookForm(topPadding: 12) {
+            Section { header }.containerValue(\.daybookUnframed, true).containerValue(\.daybookFlushTop, true)
+            Section { PendingExpensesPrompt() }
+            Section { MonthStepper(month: $month, eventCount: summary.events.count) }.containerValue(\.daybookUnframed, true)
+            if !summary.currencies.isEmpty {
+                Section { MonthMoneyPanel(currencies: summary.currencies) }
+            }
+            if summary.groups.isEmpty {
+                Section { Text("No events in \(MonthStepper.title(month)).").foregroundStyle(Color("SecondaryText")) }
+            } else {
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("By client").font(.title3.bold()).accessibilityAddTraits(.isHeader)
+                        StepBarKey()
+                    }
+                }.containerValue(\.daybookUnframed, true)
+                ForEach(summary.groups) { group in
+                    Section {
+                        ClientGroupHeader(group: group, clientObject: client(group.clientID)) { detailsClient = Presented($0) }
+                        ForEach(group.events) { event in eventRow(event, showsClient: false) }
+                        readyActions(group)
+                    }
+                }
+            }
+            if !summary.earlier.isEmpty {
+                Section {
+                    ForEach(summary.earlier) { item in earlierRow(item) }
+                } header: { Text("Still open from earlier") }
+            }
             Section {
-                DaybookTabHeader {
+                DaybookLink { PaymentsLedgerView() } label: { Label("All invoices and payments", systemImage: "list.bullet.rectangle") }
+                    .accessibilityIdentifier("payments-ledger")
+            }
+        }
+    }
+
+    private var header: some View {
+        DaybookTabHeader {
+            Button { adding = true } label: { Label("Invoice", systemImage: "plus") }
+                .buttonStyle(DaybookPrimaryButton())
+                .accessibilityLabel("Add Invoice")
+                .accessibilityIdentifier("add-invoice-overview")
+        }
+    }
+
+    @ViewBuilder private func eventRow(_ event: EventReadiness, showsClient: Bool) -> some View {
+        if let job = job(event.id) {
+            if event.showsGates && event.state != .ready {
+                Button { readiness = Presented(job) } label: { EventReadinessRow(event: event, showsClient: showsClient) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("readiness-\(event.facts.title)")
+            } else {
+                DaybookLink { JobDetailView(job: job) } label: { EventReadinessRow(event: event, showsClient: showsClient) }
+                    .accessibilityIdentifier("readiness-\(event.facts.title)")
+            }
+        }
+    }
+
+    @ViewBuilder private func readyActions(_ group: ClientMonthGroup) -> some View {
+        let totals = group.readyTotals
+        if let clientID = group.clientID, !totals.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(totals, id: \.currency) { total in
+                    let count = group.ready.filter { $0.currency == total.currency }.count
+                    Button { invoicing = readyInvoice(clientID: clientID, currency: total.currency, group: group) } label: {
+                        Text("Invoice \(count) ready · \(Money.format(total.amount, currency: total.currency))")
+                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .buttonStyle(DaybookPrimaryButton())
+                    .accessibilityIdentifier("invoice-ready-\(group.name)")
+                }
+            }.padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder private func earlierRow(_ item: EarlierItem) -> some View {
+        switch item {
+        case let .invoice(id, reference, clientName, balance, currency, dueDay, draft, paid, total):
+            if let invoice = invoices.first(where: { $0.id == id }) {
+                DaybookLink { InvoiceDetailView(invoice: invoice) } label: {
+                    OpenInvoiceRow(reference: reference, clientName: clientName, balance: balance, currency: currency, dueDay: dueDay, draft: draft, paid: paid, total: total)
+                }
+            }
+        case .event(let event):
+            eventRow(event, showsClient: true)
+        }
+    }
+
+    // MARK: Wide
+
+    private func wideBody(_ summary: PaymentsMonth) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 16) {
+                    MonthStepper(month: $month, eventCount: summary.events.count, inline: true)
+                    Spacer(minLength: 0)
+                    PendingExpensesPrompt().fixedSize()
                     Button { adding = true } label: { Label("Invoice", systemImage: "plus") }
                         .buttonStyle(DaybookPrimaryButton())
                         .accessibilityLabel("Add Invoice")
                         .accessibilityIdentifier("add-invoice-overview")
                 }
-            }.containerValue(\.daybookUnframed, true)
-                .containerValue(\.daybookFlushTop, true)
-            Section { PendingExpensesPrompt(alwaysVisible: true) }
-            Section {
-                if typeSize.isAccessibilitySize {
+                HStack(alignment: .top, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if summary.groups.isEmpty {
+                            Text("No events in \(MonthStepper.title(month)).").foregroundStyle(Color("SecondaryText"))
+                        } else {
+                            MonthLedgerTable(groups: summary.groups, job: job, client: client,
+                                             onReadiness: { readiness = Presented($0) }, onDetails: { detailsClient = Presented($0) },
+                                             onInvoice: { group, currency in if let id = group.clientID { invoicing = readyInvoice(clientID: id, currency: currency, group: group) } })
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                     VStack(alignment: .leading, spacing: 20) {
-                        ForEach(0..<3) { kind in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(["Expected", "Invoiced", "Received"][kind]).font(.headline)
-                                ForEach(currencies, id: \.self) { code in
-                                    Text("\(code) · \(total(code, kind: kind, index: index))").monospacedDigit()
+                        if !summary.currencies.isEmpty { WidePanel { MonthMoneyPanel(currencies: summary.currencies) } }
+                        if !summary.earlier.isEmpty {
+                            VStack(alignment: .leading, spacing: 9) {
+                                Text("Still open from earlier").font(.headline).accessibilityAddTraits(.isHeader)
+                                WidePanel(padded: false) {
+                                    ForEach(Array(summary.earlier.enumerated()), id: \.element.id) { index, item in
+                                        if index > 0 { Divider().padding(.leading, 16) }
+                                        earlierRow(item).padding(.horizontal, 16).padding(.vertical, 12)
+                                    }
+                                }
+                            }
+                        }
+                        WidePanel {
+                            DaybookLink { PaymentsLedgerView() } label: { Label("All invoices and payments", systemImage: "list.bullet.rectangle") }
+                                .accessibilityIdentifier("payments-ledger")
+                        }
+                    }
+                    .frame(width: 340)
+                }
+            }
+            .frame(maxWidth: 1240)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+        }
+        .daybookSurface()
+    }
+
+    // MARK: Lookups
+
+    private func job(_ id: UUID) -> Job? { jobs.first { $0.id == id } }
+    private func client(_ id: UUID?) -> Client? { id.flatMap { id in clients.first { $0.id == id } } }
+    private func readyInvoice(clientID: UUID, currency: String, group: ClientMonthGroup) -> ReadyInvoice {
+        let ready = group.ready.filter { $0.currency == currency }
+        let jobs = ready.compactMap { job($0.id) }
+        let expenseIDs = Set(ready.flatMap { $0.facts.rebillable.filter { $0.currency == currency }.map(\.id) })
+        return ReadyInvoice(clientID: clientID, currency: currency, jobs: jobs, expenses: expenses.filter { $0.id.map(expenseIDs.contains) ?? false })
+    }
+}
+
+/// Events and receipts chosen to start an invoice from a ready client group.
+struct ReadyInvoice: Identifiable {
+    let id = UUID()
+    let clientID: UUID
+    let currency: String
+    let jobs: [Job]
+    let expenses: [Expense]
+}
+
+/// Every invoice and payment, by status. Reached from the month close.
+struct PaymentsLedgerView: View {
+    @Environment(\.managedObjectContext) private var context
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Invoice.createdAt, ascending: false)]) private var invoices: FetchedResults<Invoice>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)]) private var jobs: FetchedResults<Job>
+    @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
+    var body: some View {
+        _ = invoiceRevisions.count
+        let index = InvoiceIndex(in: context)
+        let flagged = invoices.filter { $0.issue(in: context, index: index) != nil }
+        let unknownFees = jobs.filter { $0.deletedAt == nil && (try? $0.currentFee()) == nil }
+        return DaybookForm(title: "Invoices & payments") {
+            if !flagged.isEmpty || !unknownFees.isEmpty {
+                Section {
+                    ForEach(flagged, id: \.objectID) { invoice in
+                        DaybookLink { InvoiceDetailView(invoice: invoice) } label: {
+                            VStack(alignment: .leading, spacing: 6) { Text(invoice.title); Text(invoice.issue(in: context, index: index) ?? "Needs review").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                        }
+                    }
+                    ForEach(unknownFees, id: \.objectID) { job in
+                        DaybookLink("\(job.displayName) · Fee needs review") { FeeDetailView(job: job) }
+                    }
+                } header: { Text("Needs review") }
+            }
+            invoiceSection("Draft invoices") { value, _ in value.status == "draft" }
+            invoiceSection("Awaiting payment") { $0.status == "sent" && $1 > 0 }
+            invoiceSection("Paid invoices") { $0.status == "sent" && $1 <= 0 }
+            if jobs.contains(where: { !($0.payments ?? []).isEmpty }) {
+                Section("Direct payments") {
+                    ForEach(jobs.filter { !($0.payments ?? []).isEmpty }, id: \.objectID) { job in
+                        if job.deletedAt == nil {
+                            DaybookLink { JobDetailView(job: job) } label: {
+                                VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context, index: index)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                            }
+                        } else {
+                            DisclosureGroup(job.displayName + " (deleted)") {
+                                ForEach(Array(job.payments ?? []).sorted { ($0.receivedAt ?? .distantPast) > ($1.receivedAt ?? .distantPast) }, id: \.objectID) { payment in
+                                    DaybookLink { ReceiptDetailView(payment: payment) } label: { Text(Money.format(payment.amount, currency: payment.currency)) }
                                 }
                             }
                         }
                     }
-                } else {
-                    ViewThatFits(in: .horizontal) {
-                        totalsTable(index: index)
-                        ScrollView(.horizontal) {
-                            totalsTable(index: index).fixedSize(horizontal: true, vertical: true)
-                        }
-                    }
                 }
             }
-            if invoices.contains(where: { $0.issue(in: context, index: index) != nil }) || jobs.contains(where: { $0.deletedAt == nil && (try? $0.currentFee()) == nil }) {
-            Section {
-                ForEach(invoices.filter { $0.issue(in: context, index: index) != nil }, id: \.objectID) { invoice in
-                    DaybookLink { InvoiceDetailView(invoice: invoice) } label: {
-                        VStack(alignment: .leading, spacing: 6) { Text(invoice.title); Text(invoice.issue(in: context, index: index) ?? "Needs review").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                    }
-                }
-                ForEach(jobs.filter { $0.deletedAt == nil && (try? $0.currentFee()) == nil }, id: \.objectID) { job in
-                    DaybookLink("\(job.displayName) · Fee needs review") { FeeDetailView(job: job) }
-                }
-            } header: { Text("Needs review") }
-            }
-            if !ready.isEmpty {
-            Section("Ready to invoice") {
-                ForEach(readyClientGroups(jobs: ready), id: \.client.objectID) { group in
-                    ReadyClientRow(client: group.client, jobs: group.jobs)
-                }
-            }
-            }
-            invoiceSection("Draft invoices", status: "draft")
-            if invoices.contains(where: { (try? $0.currentValue().status) == "sent" && ((try? $0.balance()) ?? 0) > 0 }) {
-            Section("Awaiting payment") {
-                ForEach(invoices.filter { (try? $0.currentValue().status) == "sent" && ((try? $0.balance()) ?? 0) > 0 }, id: \.objectID) { invoice in
-                    DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
-                }
-            }
-            }
-            if invoices.contains(where: { (try? $0.currentValue().status) == "sent" && ((try? $0.balance()) ?? 1) <= 0 }) {
-            Section("Paid invoices") {
-                ForEach(invoices.filter { (try? $0.currentValue().status) == "sent" && ((try? $0.balance()) ?? 1) <= 0 }, id: \.objectID) { invoice in
-                    DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
-                }
-            }
-            }
-            if jobs.contains(where: { !($0.payments ?? []).isEmpty }) {
-            Section("Direct payments") {
-                ForEach(jobs.filter { !($0.payments ?? []).isEmpty }, id: \.objectID) { job in
-                    if job.deletedAt == nil {
-                        DaybookLink { JobDetailView(job: job) } label: {
-                            VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context, index: index)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                        }
-                    } else {
-                        DisclosureGroup(job.displayName + " (deleted)") {
-                            ForEach(Array(job.payments ?? []).sorted { ($0.receivedAt ?? .distantPast) > ($1.receivedAt ?? .distantPast) }, id: \.objectID) { payment in
-                                DaybookLink { ReceiptDetailView(payment: payment) } label: { Text(Money.format(payment.amount, currency: payment.currency)) }
-                            }
-                        }
-                    }
-                }
-            }
-            }
-            invoiceSection("Voided invoices", status: "void")
+            invoiceSection("Voided invoices") { value, _ in value.status == "void" }
             if jobs.isEmpty && invoices.isEmpty {
-                Section { Text("Add events and fees to start tracking invoices and payments. You can leave fees unknown until they’re agreed.").foregroundStyle(Color("SecondaryText")) }
+                Section { Text("No invoices or payments yet.").foregroundStyle(Color("SecondaryText")) }
             }
         }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
-        .sheet(isPresented: $adding) { InvoiceEditorView() }
+        .navigationTitle("Invoices & payments").navigationBarTitleDisplayMode(.inline)
     }
-    private func totalsTable(index: InvoiceIndex) -> some View {
-        Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 16) {
-            GridRow { Text(""); ForEach(currencies, id: \.self) { Text($0) } }.font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
-            ForEach(0..<3) { kind in
-                if kind > 0 { Divider().gridCellColumns(currencies.count + 1) }
-                GridRow {
-                    Text(["Expected", "Invoiced", "Received"][kind])
-                        .font(.subheadline)
-                        .frame(width: sizeClass == .compact ? totalsLabelWidth : nil, alignment: .leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    ForEach(currencies, id: \.self) { code in
-                        Text(total(code, kind: kind, index: index)).fixedSize(horizontal: true, vertical: false).monospacedDigit().fontWeight(kind == 1 ? .semibold : .regular)
-                    }
-                }.font(.subheadline)
-            }
-        }.fixedSize(horizontal: false, vertical: true)
-    }
-
-    private func readyJobs(index: InvoiceIndex) -> [Job] {
-        jobs.filter { $0.deletedAt == nil && $0.bookingStatus != "cancelled" && $0.client != nil && (try? $0.activeInvoices(in: context, index: index).isEmpty) == true && (try? $0.directPaid()) == 0 && (try? $0.currentFee().amount) != nil }
-    }
-    private func readyClientGroups(jobs: [Job]) -> [(client: Client, jobs: [Job])] {
-        Dictionary(grouping: jobs, by: { $0.client! }).map { (client: $0.key, jobs: $0.value) }
-            .sorted {
-                let order = $0.client.name.localizedStandardCompare($1.client.name)
-                return order == .orderedSame
-                    ? $0.client.objectID.uriRepresentation().absoluteString < $1.client.objectID.uriRepresentation().absoluteString
-                    : order == .orderedAscending
-            }
-    }
-    @ViewBuilder private func invoiceSection(_ title: String, status: String) -> some View {
-        if invoices.contains(where: { (try? $0.currentValue().status) == status }) {
-        Section(title) {
-            ForEach(invoices.filter { (try? $0.currentValue().status) == status }, id: \.objectID) { invoice in
-                DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
-            }
+    @ViewBuilder private func invoiceSection(_ title: String, matching: @escaping (InvoiceValue, Int64) -> Bool) -> some View {
+        let matches = invoices.filter { invoice in
+            guard let value = try? invoice.currentValue() else { return false }
+            return matching(value, (try? invoice.balance()) ?? 1)
         }
-    }
-    }
-    private func total(_ currency: String, kind: Int, index: InvoiceIndex) -> String {
-        // Observe receipts directly as well as their parent relationships.
-        _ = payments.count
-        do {
-            var sum = Decimal(0)
-            if kind == 0 {
-                for job in jobs where job.deletedAt == nil && job.bookingStatus != "cancelled" {
-                    guard let fee = try? job.currentFee(), fee.currency == currency, let amount = fee.amount else { continue }
-                    sum += Decimal(amount)
-                }
-            } else if kind == 1 {
-                for invoice in invoices where invoice.issue(in: context, index: index) == nil {
-                    let value = try invoice.currentValue()
-                    if value.currency == currency && value.status == "sent" { sum += Decimal(max(0, try invoice.balance())) }
-                }
-            } else {
-                var groups: [String: [PaymentRecord]] = [:]
-                for record in payments {
-                    let key: String
-                    if let id = record.invoice?.id, record.job == nil { key = "invoice/\(id)" }
-                    else if let id = record.job?.id, record.invoice == nil { key = "job/\(id)" }
-                    else { throw RecordError.invalid("A receipt is still syncing.") }
-                    groups[key, default: []].append(record)
-                }
-                for records in groups.values {
-                    let net = try PaymentLedger.net(records)
-                    if records.first?.currency == currency { sum += Decimal(net) }
+        if !matches.isEmpty {
+            Section(title) {
+                ForEach(matches, id: \.objectID) { invoice in
+                    DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
                 }
             }
-            return Money.format(try Money.minorUnits(sum), currency: currency)
-        } catch { return "Needs review" }
-    }
-}
-
-private struct ReadyClientRow: View {
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @ObservedObject var client: Client
-    let jobs: [Job]
-    @State private var expanded = false
-
-    private var totals: [(currency: String, amount: String)] {
-        let fees = jobs.compactMap { try? $0.currentFee() }
-        return Dictionary(grouping: fees, by: \.currency).sorted { $0.key < $1.key }.map { currency, fees in
-            let sum = fees.reduce(Decimal(0)) { $0 + Decimal($1.amount ?? 0) }
-            let amount = (try? Money.minorUnits(sum)).map { Money.format($0, currency: currency) } ?? "Needs review"
-            return (currency, amount)
-        }
-    }
-
-    var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            VStack(spacing: 0) {
-                ForEach(jobs, id: \.objectID) { job in
-                    Divider().padding(.vertical, 10)
-                    DaybookLink { JobDetailView(job: job) } label: {
-                        let layout = typeSize.isAccessibilitySize
-                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                            : AnyLayout(HStackLayout(spacing: 12))
-                        layout {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(job.displayName).font(.headline)
-                                Text(dateRange(job)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                            }
-                            if !typeSize.isAccessibilitySize { Spacer() }
-                            Text(job.feeSummary).font(.subheadline).monospacedDigit()
-                        }.frame(minHeight: 44)
-                    }
-                }
-            }
-        } label: {
-            let layout = typeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                : AnyLayout(HStackLayout(spacing: 12))
-            layout {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(client.name).font(.headline)
-                    Text("\(jobs.count) \(jobs.count == 1 ? "event" : "events")")
-                        .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                }
-                if !typeSize.isAccessibilitySize { Spacer() }
-                VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 4) {
-                    ForEach(totals, id: \.currency) { total in
-                        Text("\(total.currency) · \(total.amount)").font(.subheadline.weight(.semibold)).monospacedDigit()
-                    }
-                }
-            }.foregroundStyle(Color.primary).frame(minHeight: 44)
         }
     }
 }

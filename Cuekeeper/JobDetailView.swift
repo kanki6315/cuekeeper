@@ -37,6 +37,7 @@ struct JobDetailView: View {
     @State private var batch = false
     @State private var addingSession = false
     @State private var addingInvoice = false
+    @State private var editingInvoicing = false
     @State private var addingPayment = false
     @State private var showingFee = false
     @State private var editingSession: WorkSession?
@@ -136,6 +137,7 @@ struct JobDetailView: View {
         .sheet(isPresented: $batch) { SessionBatchEditorView(anchor: job) }
         .sheet(isPresented: $addingSession) { SessionEditorView(job: job) }
         .sheet(isPresented: $addingInvoice) { InvoiceEditorView(job: job) }
+        .sheet(isPresented: $editingInvoicing) { if let client = job.client { ClientInvoicingEditor(client: client) } }
         .sheet(isPresented: $addingPayment) { PaymentEditorView(job: job) }
         .sheet(isPresented: Binding(get: { editingSession != nil }, set: { if !$0 { editingSession = nil } })) {
             if let editingSession { SessionEditorView(job: job, session: editingSession) }
@@ -287,6 +289,7 @@ struct JobDetailView: View {
         case .editEvent: editing = true
         case .openFee: showingFee = true
         case .addToInvoice: addingInvoice = true
+        case .editClientInvoicing: editingInvoicing = true
         case .openInvoice(let id): openedInvoice = invoices.first { $0.id == id }
         case .reviewBilling(let id):
             if let invoice = id.flatMap({ id in invoices.first { $0.id == id } }) { openedInvoice = invoice } else { storedTab = EventTab.money.rawValue }

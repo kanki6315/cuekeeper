@@ -313,3 +313,19 @@ An explicit source transaction ID prevents repeated local delivery from creating
 another draft. Without an ID, captures remain separate to avoid dropping legitimate
 purchases. Removing a draft is confirmed and preserves its identity. V12 is reused;
 version is 0.1.10. This work does not deploy Production or upload TestFlight.
+
+## Payments month close — October 16, 2026
+
+Payments is now a month close. Each event shows four invoicing gates (work, fee,
+reimbursable receipts, client invoicing details) as a step bar with the gap named,
+grouped by client, with the month's money split by state per currency and money still
+open from earlier months. Ready groups start an invoice with their events and can rebill
+finished reimbursable receipts as separate invoice lines; each receipt can be on one
+active invoice. Any draft receipt holds up invoicing until it is finished. The full invoice and
+payment ledger remains one tap away. Expenses remain their own tab.
+
+V15 adds optional client invoicing details (billing name, email, address, terms, tax ID).
+Older builds ignore them and show a lower total for invoices with receipt lines until
+updated. Backups without the field still restore. The V15 Development schema still needs
+initialising and exporting, and Production deployment remains a release prerequisite.
+Brief: `design/payments/implementation-brief.md`; evidence: `design/payments/verification/`.

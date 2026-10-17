@@ -68,6 +68,13 @@ struct LibraryDetailView: View {
                 Section("Client") {
                     if !client.contact.isEmpty { DaybookMetadata(symbol: "envelope", text: client.contact).textSelection(.enabled) }
                     DaybookMetadata(symbol: CurrencyPreferences.symbol(client.defaultCurrency), text: "Default currency · \(client.defaultCurrency)")
+                    let invoicing = client.invoicing
+                    if invoicing.isComplete {
+                        DaybookMetadata(symbol: "doc.text", text: "Invoicing details complete · \(invoicing.termsDays ?? 0) days")
+                    } else {
+                        DaybookMetadata(symbol: "doc.text", text: ListFormatter.localizedString(byJoining: invoicing.missing).capitalizedFirst + " missing")
+                            .foregroundStyle(Color("AmberText"))
+                    }
                     if !client.notes.isEmpty { Text(client.notes).textSelection(.enabled) }
                 }
             }
@@ -136,6 +143,9 @@ struct LibraryEditor: View {
                         DaybookTextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...10)
                     }
                 } footer: { Text("Renaming updates the name shown on related bookings.") }
+                if kind == .client {
+                    Section("Invoicing details") { ClientInvoicingFields(draft: $draft.invoicing) }
+                }
             }
             .navigationTitle("\(record == nil ? "Add" : "Edit") \(kind.singular)")
             .navigationBarTitleDisplayMode(.inline)

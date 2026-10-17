@@ -20,16 +20,6 @@ struct UpcomingJobFact: Equatable, Identifiable {
     var lastDay: String { facts.endDay.isEmpty ? facts.startDay : facts.endDay }
 }
 
-/// A captured expense that has not been attached to an event yet.
-struct UpcomingReceiptFact: Equatable, Identifiable {
-    let id: UUID
-    let merchant: String
-    let amount: Int64?
-    let currency: String
-    /// Purchase day when known, otherwise the capture day.
-    let day: String
-}
-
 // MARK: - Derived state
 
 struct UpcomingItem: Equatable, Identifiable {
@@ -127,7 +117,7 @@ struct UpcomingSummary: Equatable {
             && lhs.nextWork == rhs.nextWork && lhs.items == rhs.items && lhs.fortnight == rhs.fortnight && lhs.comingUp == rhs.comingUp
     }
 
-    init(jobs: [UpcomingJobFact], receipts: [UpcomingReceiptFact], now: Date, zone: TimeZone = .current) {
+    init(jobs: [UpcomingJobFact], now: Date, zone: TimeZone = .current) {
         let active = jobs.filter { $0.facts.bookingStatus == "tentative" || $0.facts.bookingStatus == "booked" }
         let flying = active.filter { Self.isInFlight($0, now: now) }
             .sorted { ($0.facts.startDay, $0.title, $0.id.uuidString) < ($1.facts.startDay, $1.title, $1.id.uuidString) }
@@ -147,7 +137,7 @@ struct UpcomingSummary: Equatable {
         afterThis = later.first
         nextWork = flying.isEmpty ? later.first.map { Self.nextWork($0, now: now, zone: zone) } : nil
 
-        let items = Self.items(jobs, receipts: receipts, now: now)
+        let items = Self.items(jobs, now: now)
         self.items = items
         fortnight = Self.fortnight(jobs, now: now, zone: zone)
         comingUp = Self.comingUp(active, items: items, now: now)
@@ -237,7 +227,10 @@ struct UpcomingSummary: Equatable {
 
     // MARK: Plan
 
-    private static func items(_ jobs: [UpcomingJobFact], receipts: [UpcomingReceiptFact], now: Date) -> [UpcomingItem] {
+    /// Invoicing and receipt details are settled on the event page, Payments and Expenses; Plan leaves them out.
+    private static let handledElsewhere: Set<OpenItem.Kind> = [.readyToInvoice, .clientDetails, .invoiceDraft, .balanceOwed, .billingReview, .expenseDraft]
+
+    private static func items(_ jobs: [UpcomingJobFact], now: Date) -> [UpcomingItem] {
         var result: [UpcomingItem] = []
         for job in jobs {
             let facts = job.facts
@@ -247,7 +240,7 @@ struct UpcomingSummary: Equatable {
             let past = !job.lastDay.isEmpty && job.lastDay < today
             let near = facts.startDay.isEmpty || facts.startDay <= horizon
             let detail = EventDetailSummary(facts: facts, now: now)
-            for item in detail.openItems {
+            for item in detail.openItems where !handledElsewhere.contains(item.kind) {
                 let wrapped = UpcomingItem(item: item, jobID: job.id, eventTitle: job.title, rankDay: rankDay(item, job: job))
                 if wrapped.category != .money && !near && !past { continue }
                 result.append(wrapped)
@@ -259,25 +252,12 @@ struct UpcomingSummary: Equatable {
                 result.append(UpcomingItem(item: item, jobID: job.id, eventTitle: job.title, rankDay: job.lastDay))
             }
         }
-        for receipt in receipts {
-            let merchant = receipt.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
-            let amount = receipt.amount.map { Money.format($0, currency: receipt.currency) }
-            let detail = [merchant.isEmpty ? nil : merchant, amount, "no event yet"].compactMap { $0 }.joined(separator: " · ")
-            let item = OpenItem(kind: .expenseDraft, title: "Receipt to finish", detail: detail, tab: .money, action: .reviewExpense(receipt.id))
-            result.append(UpcomingItem(item: item, jobID: nil, eventTitle: nil, rankDay: receipt.day))
-        }
         return result.sorted { ($0.rankDay, $0.item.title, $0.id) < ($1.rankDay, $1.item.title, $1.id) }
     }
 
-    /// The day an item is tied to: the event's end once it is over, invoices by their due day, everything else by the start.
+    /// The day an item is tied to: the event's end once it is over, everything else by the start.
     private static func rankDay(_ item: OpenItem, job: UpcomingJobFact) -> String {
-        switch item.kind {
-        case .eventOver, .clientDetails, .readyToInvoice, .invoiceDraft, .billingReview, .expenseDraft: return job.lastDay
-        case .balanceOwed:
-            if case let .sent(_, _, _, _, _, due, _) = job.facts.billing, !due.isEmpty { return due }
-            return job.lastDay
-        default: return job.facts.startDay
-        }
+        item.kind == .eventOver ? job.lastDay : job.facts.startDay
     }
 
     private static func fortnight(_ jobs: [UpcomingJobFact], now: Date, zone: TimeZone) -> [StripDay] {
@@ -366,16 +346,6 @@ extension UpcomingSummary {
             let work = (job.roleNames + (arrangement == .unspecified ? [] : [arrangement.title])).joined(separator: " · ")
             return UpcomingJobFact(id: id, title: job.eventTitle, client: job.client?.name, work: work, arrangement: arrangement,
                                    facts: EventDetailFacts(job: job, context: context, index: index))
-        }
-    }
-
-    static func receipts(_ expenses: [Expense]) -> [UpcomingReceiptFact] {
-        expenses.filter { $0.job == nil && $0.needsCompletion }.compactMap { expense in
-            guard let id = expense.id else { return nil }
-            let value = expense.value
-            let day = value.day.isEmpty ? Day.string(from: expense.createdAt ?? Date()) : value.day
-            return UpcomingReceiptFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount, currency: value.currency)).flatMap { $0 },
-                                       currency: value.currency, day: day)
         }
     }
 }

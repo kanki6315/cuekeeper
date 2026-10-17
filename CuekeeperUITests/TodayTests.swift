@@ -27,7 +27,9 @@ final class TodayNavigationTests: RegressionUITestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["Qualifying"].firstMatch.exists)
-        XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)
+        // The event title stands alone in On deck, but a live session replaces On deck with its hero panel;
+        // every session row still names its event, whatever the time of day.
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Silverstone weekend")).firstMatch.exists)
         // Scrolling to later sessions is checked on iPhone only, as in TodayCaptureTests.
         guard !tablet else { return }
         app.swipeUp()

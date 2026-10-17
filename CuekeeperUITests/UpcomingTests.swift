@@ -54,11 +54,15 @@ final class UpcomingTests: RegressionUITestCase {
         let app = launch(["--design-screen=root", "--upcoming-past-fixture"])
         let plan = app.buttons["upcoming-mode-plan"]
         XCTAssertTrue(plan.waitForExistence(timeout: 15)); plan.tap()
+        // Base fixture events in other timezones can also be over by evening, so follow this fixture's
+        // own event; it ended two days ago, so it leads the events to complete.
+        let event = app.staticTexts["Cup replay"].firstMatch
         let complete = app.buttons["settle-item-eventOver"].firstMatch
         XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        XCTAssertTrue(event.exists)
         shot("plan-event-over")
         complete.tap()
-        XCTAssertTrue(complete.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(event.waitForNonExistence(timeout: 5))
     }
 
     func testLargeTextKeepsBothModesReachable() {

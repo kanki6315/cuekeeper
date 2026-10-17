@@ -4,29 +4,40 @@ import PhotosUI
 import SwiftUI
 import VisionKit
 
-/// Expenses as a month: money by state per currency, what to finish and rebill, then every expense by day.
+/// The Expenses tab's two modes: a queue of unfinished work, and the history of finished expenses.
+enum ExpensesMode: String, CaseIterable, Hashable {
+    case inbox = "Inbox", ledger = "Ledger"
+}
+
+/// Expenses as an inbox to empty and a ledger to filter. The inbox has no period, so an old draft is never
+/// hidden behind a month; the ledger lists only finished expenses for a period, state, type and client.
 struct ExpensesView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.managedObjectContext) private var context
+    @Binding var mode: ExpensesMode
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Expense.createdAt, ascending: false)]) private var expenses: FetchedResults<Expense>
     // Observe events, clients and invoices too: renames, deletions and billing change what rows show.
     @FetchRequest(sortDescriptors: []) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: []) private var clients: FetchedResults<Client>
     @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
     @FetchRequest(sortDescriptors: []) private var payments: FetchedResults<PaymentRecord>
-    @State private var month = PaymentsView.currentMonth
-    @State private var filter = ExpenseFilter.all
-    @SceneStorage("expenses.finishExpanded") private var finishExpanded = false
+    @State private var filter = ExpenseLedgerFilter(period: .current())
+    @State private var selecting = false
+    @State private var selection: Set<UUID> = []
+    @State private var removing = false
+    @State private var showAllStale = false
+    @State private var error: String?
     @State private var sheet: ExpenseSheet?
     @State private var choosingEvent = false
     @State private var pendingCapture: ExpenseSheet?
     @State private var invoicing: ReadyInvoice?
+    /// Stale drafts shown before "Show all", so years of Wallet captures never make an endless page.
+    private let stalePreview = 5
 
     var body: some View {
         _ = jobs.count + clients.count + invoiceRevisions.count + payments.count
-        let summary = ExpensesMonth.load(month: month, expenses: Array(expenses), context: context)
-        let days = summary.days(filter)
+        let ledger = ExpensesLedger.load(filter: filter, expenses: Array(expenses), context: context)
         return DaybookForm(topPadding: 12) {
             Section {
                 DaybookTabHeader {
@@ -36,50 +47,24 @@ struct ExpensesView: View {
                 }
             }.containerValue(\.daybookUnframed, true).containerValue(\.daybookFlushTop, true)
             Section {
-                MonthStepper(month: $month, eventCount: summary.count, noun: (one: "expense", many: "expenses"))
+                DaybookSegments(title: "Expenses view", selection: $mode, options: ExpensesMode.allCases,
+                                identifier: "expenses-mode", label: \.rawValue,
+                                badge: { $0 == .inbox ? ledger.inbox.count : 0 })
             }.containerValue(\.daybookUnframed, true)
-            if !summary.currencies.isEmpty {
-                Section { ExpenseMoneyPanel(currencies: summary.currencies) }
-            }
-            if !summary.finish.isEmpty {
-                Section {
-                    finishHeader(summary.finish.count)
-                    ForEach(Array((finishExpanded ? summary.finish : Array(summary.finish.prefix(1))).enumerated()), id: \.element.id) { index, item in
-                        finishRow(item, primary: index == 0)
-                    }
-                }
-            }
-            if !summary.rebill.isEmpty {
-                Section {
-                    ForEach(summary.rebill) { rebillRow($0) }
-                } header: { Text("To rebill") }
-            }
-            Section {
-                DaybookSegments(title: "Show expenses", selection: $filter, options: ExpenseFilter.allCases,
-                                identifier: "expense-filter", label: \.rawValue)
-            } header: { Text("Expenses") }
-                .containerValue(\.daybookUnframed, true)
-            if days.isEmpty {
-                Section {
-                    ContentUnavailableView(filter == .all ? "No expenses in \(MonthStepper.title(month))" : "No \(filter.rawValue.lowercased()) expenses",
-                                           systemImage: "receipt",
-                                           description: Text(filter == .all ? "Scan a receipt or add a business cost." : "Choose All to see every expense."))
-                }
-            } else {
-                Section {
-                    ForEach(days) { dayRow($0) }
-                }
-            }
-            if summary.earlier.count > 0 {
-                Section {
-                    Button { month = summary.earlier.latestMonth } label: { earlierRow(summary.earlier) }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("expenses-earlier-rebill")
-                }
-            }
+            if mode == .inbox { inboxSections(ledger.inbox) } else { ledgerSections(ledger) }
         }
         .navigationTitle("").navigationBarTitleDisplayMode(.inline)
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if selecting && mode == .inbox { selectionBar }
+        }
+        .onChange(of: mode) { _, _ in endSelecting() }
+        .confirmationDialog(selection.count == 1 ? "Remove this draft?" : "Remove \(selection.count) drafts?",
+                            isPresented: $removing, titleVisibility: .visible) {
+            Button(selection.count == 1 ? "Remove Draft" : "Remove \(selection.count) Drafts", role: .destructive) { removeSelected() }
+            Button("Keep Drafts", role: .cancel) {}
+        } message: { Text("They leave your inbox. A repeated Wallet transaction with the same transaction ID won’t recreate them.") }
+        .saveErrorAlert($error)
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case .edit(let expense): ExpenseEditorView(expense: expense)
@@ -101,46 +86,128 @@ struct ExpensesView: View {
         }
     }
 
-    // MARK: To finish
+    // MARK: Inbox
 
-    private func finishHeader(_ count: Int) -> some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.2)) { finishExpanded.toggle() }
-        } label: {
-            HStack(spacing: 8) {
-                Text("To finish").font(.headline)
-                AmberCount(count: count)
-                Spacer(minLength: 8)
-                Image(systemName: finishExpanded ? "chevron.up" : "chevron.down")
-                    .font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
-                    .accessibilityHidden(true)
+    @ViewBuilder private func inboxSections(_ inbox: ExpenseInbox) -> some View {
+        if inbox.count == 0 {
+            Section {
+                ContentUnavailableView("All caught up", systemImage: "checkmark.circle",
+                                       description: Text("Wallet captures and receipts you haven’t finished wait here until they have an event and details."))
+                    .accessibilityIdentifier("expenses-inbox-empty")
             }
-            .frame(minHeight: 32).contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("To finish, \(count)")
-        .accessibilityValue(finishExpanded ? "Expanded" : "Collapsed")
-        .accessibilityIdentifier("expenses-finish-toggle")
-    }
-
-    private func finishRow(_ item: FinishItem, primary: Bool) -> some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
-        return layout {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title).font(.subheadline.weight(.semibold))
-                Text(item.detail).font(.footnote).foregroundStyle(Color("SecondaryText"))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            Group {
-                if primary {
-                    Button(item.actionTitle) { perform(item) }.buttonStyle(DaybookPrimaryButton()).controlSize(.small)
-                } else {
-                    Button(item.actionTitle) { perform(item) }.font(.subheadline.weight(.semibold)).frame(minWidth: 44, minHeight: 44)
+        } else {
+            Section { inboxSummary(inbox) }.containerValue(\.daybookUnframed, true)
+            ForEach(inbox.sections) { section in
+                let stale = section.group == .stale
+                let items = stale && !showAllStale ? Array(section.items.prefix(stalePreview)) : section.items
+                Section {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        inboxRow(item, primary: !selecting && section.id == inbox.sections.first?.id && index == 0)
+                    }
+                    if stale && !showAllStale && section.items.count > stalePreview {
+                        Button("Show All \(section.items.count)") { withAnimation(.easeOut(duration: 0.2)) { showAllStale = true } }
+                            .fontWeight(.semibold).frame(minHeight: 44)
+                            .accessibilityIdentifier("expenses-inbox-show-stale")
+                    }
+                } header: {
+                    HStack(spacing: 8) {
+                        Text(section.group.title)
+                        AmberCount(count: section.items.count)
+                    }
+                } footer: {
+                    if stale { Text("Probably personal purchases. Select the ones you don’t need and remove them.") }
+                    else if section.group == .blocking { Text("An event can’t be invoiced while it has a receipt to finish.") }
                 }
             }
-            .accessibilityIdentifier("expenses-finish-\(item.actionTitle.lowercased())")
         }
+        Section {
+            DaybookLink { ExpenseAutomationSettingsView() } label: { Label("Wallet automation", systemImage: "creditcard") }
+        }
+    }
+
+    private func inboxSummary(_ inbox: ExpenseInbox) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(([inbox.count == 1 ? "1 to finish" : "\(inbox.count) to finish"]
+                  + inbox.amounts.keys.sorted().map { Money.format(inbox.amounts[$0]!, currency: $0) }).joined(separator: " · "))
+                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if inbox.drafts > 0 {
+                Button(selecting ? "Done" : "Select") { selecting ? endSelecting() : (selecting = true) }
+                    .fontWeight(.semibold).frame(minWidth: 44, minHeight: 44)
+                    .accessibilityIdentifier("expenses-inbox-select")
+            }
+        }
+    }
+
+    @ViewBuilder private func inboxRow(_ item: FinishItem, primary: Bool) -> some View {
+        if selecting, let id = item.draftID {
+            let selected = selection.contains(id)
+            Button {
+                if selected { selection.remove(id) } else { selection.insert(id) }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3).foregroundStyle(selected ? Color.accentColor : Color("SecondaryText"))
+                        .accessibilityHidden(true)
+                    itemText(item)
+                }
+                .frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(selected ? [.isSelected] : [])
+            .accessibilityIdentifier("expenses-inbox-pick")
+        } else {
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
+            layout {
+                itemText(item)
+                Group {
+                    if primary {
+                        Button(item.actionTitle) { perform(item) }.buttonStyle(DaybookPrimaryButton()).controlSize(.small)
+                    } else {
+                        Button(item.actionTitle) { perform(item) }.font(.subheadline.weight(.semibold)).frame(minWidth: 44, minHeight: 44)
+                    }
+                }
+                .disabled(selecting)
+                .accessibilityIdentifier("expenses-finish-\(item.actionTitle.lowercased())")
+            }
+        }
+    }
+
+    private func itemText(_ item: FinishItem) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(item.title).font(.subheadline.weight(.semibold))
+            Text(item.detail).font(.footnote).foregroundStyle(Color("SecondaryText"))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var selectionBar: some View {
+        HStack(spacing: 12) {
+            Text(selection.isEmpty ? "Select drafts" : "\(selection.count) selected")
+                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Remove", systemImage: "trash", role: .destructive) { removing = true }
+                .fontWeight(.semibold).frame(minHeight: 44)
+                .disabled(selection.isEmpty)
+                .accessibilityIdentifier("expenses-inbox-remove")
+        }
+        .padding(.horizontal, 20).padding(.vertical, 6)
+        .background(.bar)
+    }
+
+    private func endSelecting() { selecting = false; selection = [] }
+
+    private func removeSelected() {
+        var failed = 0
+        for expense in expenses where expense.id.map(selection.contains) == true {
+            do {
+                try Expense.discardDraft(id: expense.objectID, revision: expense.revision, in: context)
+                if let id = expense.id { ExpenseNotifications.shared.clear(id: id) }
+            } catch { failed += 1 }
+        }
+        endSelecting()
+        if failed > 0 { error = failed == 1 ? "One draft changed on another device and wasn’t removed. Check it and try again." : "\(failed) drafts changed on another device and weren’t removed. Check them and try again." }
     }
 
     private func perform(_ item: FinishItem) {
@@ -153,6 +220,166 @@ struct ExpensesView: View {
             value.day = day; value.repeatDay = repeatDay; value.capture = nil; value.notes = ""
             sheet = .business(value)
         }
+    }
+
+    // MARK: Ledger
+
+    @ViewBuilder private func ledgerSections(_ ledger: ExpensesLedger) -> some View {
+        Section { filterBar(ledger) }.containerValue(\.daybookUnframed, true)
+        Section { periodStepper(count: ledger.count) }.containerValue(\.daybookUnframed, true)
+        if ledger.draftsInPeriod > 0 {
+            Section {
+                Button { mode = .inbox } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "tray").foregroundStyle(Color("AmberText")).accessibilityHidden(true)
+                        Text(draftsNote(ledger.draftsInPeriod))
+                            .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("expenses-ledger-drafts")
+            }
+        }
+        if !ledger.currencies.isEmpty {
+            Section { ExpenseMoneyPanel(currencies: ledger.currencies) }
+        }
+        if !ledger.rebill.isEmpty {
+            Section {
+                ForEach(ledger.rebill) { rebillRow($0) }
+            } header: { Text("To rebill") }
+        }
+        if ledger.months.isEmpty {
+            Section {
+                ContentUnavailableView(filter.isNarrowed ? "No matching expenses" : "No expenses in \(filter.period.title)",
+                                       systemImage: "receipt",
+                                       description: Text(filter.isNarrowed ? "Clear the filters to see every expense in this period." : "Scan a receipt or add a business cost."))
+                if filter.isNarrowed {
+                    Button("Clear Filters") { clearFilters() }.fontWeight(.semibold).frame(maxWidth: .infinity, minHeight: 44)
+                }
+            }
+        } else {
+            ForEach(ledger.months) { month in
+                Section {
+                    ForEach(month.days) { dayRow($0) }
+                } header: {
+                    if filter.period.kind != .month { Text(MonthStepper.title(month.month)) }
+                }
+            }
+        }
+        if ledger.earlier.count > 0 {
+            Section {
+                Button {
+                    filter.period.kind = .all; filter.state = .toRebill
+                } label: { earlierRow(ledger.earlier) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("expenses-earlier-rebill")
+            }
+        }
+    }
+
+    private func filterBar(_ ledger: ExpensesLedger) -> some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                // Leading, so it stays in view however far the chips scroll.
+                if filter.isNarrowed {
+                    Button { withAnimation(.easeOut(duration: 0.2)) { clearFilters() } } label: {
+                        Image(systemName: "xmark").font(.footnote.weight(.bold))
+                            .frame(width: 34, height: 34)
+                            .background(Color.primary.opacity(0.06), in: Circle())
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    }
+                    .foregroundStyle(Color.primary)
+                    .accessibilityLabel("Clear filters")
+                    .accessibilityIdentifier("ledger-clear")
+                }
+                chip(filter.period.kind.rawValue, active: filter.period.kind != .month, identifier: "ledger-period") {
+                    Picker("Period", selection: $filter.period.kind) {
+                        ForEach(LedgerPeriod.Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                }
+                chip(filter.state.rawValue, active: filter.state != .any, identifier: "ledger-state") {
+                    Picker("State", selection: $filter.state) {
+                        ForEach(LedgerState.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                }
+                chip(filter.type == .all ? "All types" : filter.type.rawValue, active: filter.type != .all, identifier: "ledger-type") {
+                    Picker("Type", selection: $filter.type) {
+                        ForEach(ExpenseFilter.allCases, id: \.self) { Text($0 == .all ? "All types" : $0.rawValue).tag($0) }
+                    }
+                }
+                if !ledger.clients.isEmpty || filter.clientID != nil {
+                    chip(ledger.clients.first { $0.id == filter.clientID }?.name ?? "All clients", active: filter.clientID != nil, identifier: "ledger-client") {
+                        Picker("Client", selection: $filter.clientID) {
+                            Text("All clients").tag(UUID?.none)
+                            ForEach(ledger.clients) { Text($0.name).tag(UUID?.some($0.id)) }
+                        }
+                    }
+                }
+            }
+            // Chips scroll edge to edge but start aligned with the page's 20-point margin.
+            .padding(.horizontal, 20)
+        }
+        .padding(.horizontal, -20)
+        .scrollIndicators(.hidden)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Filters")
+    }
+
+    private func chip<Options: View>(_ title: String, active: Bool, identifier: String, @ViewBuilder options: () -> Options) -> some View {
+        Menu { options() } label: {
+            HStack(spacing: 4) {
+                Text(title).lineLimit(1)
+                Image(systemName: "chevron.down").font(.caption2.weight(.bold)).accessibilityHidden(true)
+            }
+            .font(.subheadline.weight(active ? .semibold : .regular))
+            .foregroundStyle(active ? Color.accentColor : Color.primary)
+            .padding(.horizontal, 12).frame(minHeight: 34)
+            .background(active ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.06), in: Capsule())
+            .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func draftsNote(_ count: Int) -> String {
+        let drafts = count == 1 ? "1 draft" : "\(count) drafts"
+        if filter.period.kind == .all { return "\(drafts) \(count == 1 ? "is" : "are") waiting in your inbox" }
+        return "\(drafts) from this \(filter.period.kind.rawValue.lowercased()) \(count == 1 ? "is" : "are") in your inbox"
+    }
+
+    private func clearFilters() { filter.state = .any; filter.type = .all; filter.clientID = nil }
+
+    private func periodStepper(count: Int) -> some View {
+        let period = filter.period
+        let current = LedgerPeriod.current(period.kind)
+        return HStack(spacing: 4) {
+            if period.kind != .all {
+                Button { filter.period = period.shifted(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
+                    .accessibilityLabel("Previous \(period.kind.rawValue.lowercased())").accessibilityIdentifier("period-previous")
+            }
+            Spacer(minLength: 0)
+            VStack(spacing: 2) {
+                Text(period.title).font(.title3.bold()).accessibilityIdentifier("expenses-period")
+                HStack(spacing: 6) {
+                    Text(count == 1 ? "1 expense" : "\(count) expenses").foregroundStyle(Color("SecondaryText"))
+                    if period.kind != .all && period.months?.first != current.months?.first {
+                        Text("·").foregroundStyle(Color("SecondaryText"))
+                        Button("This \(period.kind.rawValue.lowercased())") { filter.period = current }.fontWeight(.semibold)
+                            .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
+                            .accessibilityIdentifier("period-current")
+                    }
+                }
+                .font(.footnote)
+            }
+            Spacer(minLength: 0)
+            if period.kind != .all {
+                Button { filter.period = period.shifted(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
+                    .accessibilityLabel("Next \(period.kind.rawValue.lowercased())").accessibilityIdentifier("period-next")
+            }
+        }
+        .font(.body.weight(.semibold))
+        .frame(minHeight: 44)
     }
 
     // MARK: To rebill
@@ -407,6 +634,7 @@ struct ExpenseEditorView: View {
     @State private var error: String?
     @State private var failedDraftSave = false
     @State private var discard = false
+    @State private var removingDraft = false
     @State private var retry = false
     @State private var replacing = false
     @State private var choosingPhoto = false
@@ -535,6 +763,15 @@ struct ExpenseEditorView: View {
                     }
                     .disabled(busy)
                 }
+                if isDraft && recordID != nil {
+                    Section {
+                        Button("Remove Draft", role: .destructive) { removingDraft = true }
+                            .disabled(savingPhoto)
+                            .accessibilityIdentifier("remove-expense-draft")
+                    } footer: {
+                        Text("For personal purchases and duplicates. A repeated Wallet transaction with the same transaction ID won’t recreate it.")
+                    }
+                }
             }
             .navigationTitle(business ? "Business cost" : isDraft ? "Receipt" : "Expense").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -622,6 +859,10 @@ struct ExpenseEditorView: View {
                     Button("OK", role: .cancel) { error = nil }
                 }
             } message: { Text(error ?? "Please try again.") }
+            .alert("Remove this expense draft?", isPresented: $removingDraft) {
+                Button("Remove Draft", role: .destructive) { removeDraft() }
+                Button("Keep Draft", role: .cancel) {}
+            } message: { Text("It leaves your Expenses inbox and any event it was assigned to.") }
             .confirmationDialog("Read the receipt again?", isPresented: $retry, titleVisibility: .visible) {
                 Button("Read Receipt Again") { extract() }
                 Button("Keep Editing", role: .cancel) {}
@@ -712,6 +953,16 @@ struct ExpenseEditorView: View {
             }
             busy = false
         }
+    }
+    private func removeDraft() {
+        guard let recordID else { return }
+        task?.cancel(); busy = false
+        do {
+            let id = (try? context.existingObject(with: recordID) as? Expense)?.id
+            try Expense.discardDraft(id: recordID, revision: revision, in: context)
+            if let id { ExpenseNotifications.shared.clear(id: id) }
+            dismiss()
+        } catch { self.error = error.localizedDescription }
     }
     private func close() {
         task?.cancel(); busy = false

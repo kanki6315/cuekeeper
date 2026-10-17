@@ -68,7 +68,7 @@ enum DesignFixtures {
             past.fee?.amount = "300"; past.fee?.agreement = "agreed"
             _ = try past.save(in: context)
         }
-        if ["expense", "pending-expenses", "expense-notification", "pending-root", "expenses-overview"].contains(route) {
+        if ["expense", "pending-expenses", "expense-notification", "pending-root", "expenses-overview", "expenses-inbox"].contains(route) {
             let format = UIGraphicsImageRendererFormat(); format.scale = 1
             let image = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 700), format: format).image { renderer in
                 UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 600, height: 700))
@@ -86,7 +86,7 @@ enum DesignFixtures {
                 _ = try Expense.captureBackground(ExpenseCaptureInput(merchant: "Hotel", amount: "120", currency: "EUR", transactionID: "fixture-hotel"), in: context)
             }
         }
-        if route == "expenses-overview" {
+        if route == "expenses-overview" || route == "expenses-inbox" {
             let image = UIGraphicsImageRenderer(size: CGSize(width: 300, height: 400)).image { renderer in
                 UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 300, height: 400))
                 ("SYNTHETIC RECEIPT" as NSString).draw(at: CGPoint(x: 20, y: 30), withAttributes: [.foregroundColor: UIColor.black])
@@ -102,6 +102,16 @@ enum DesignFixtures {
                 var value = ExpenseValue(merchant: merchant, day: day, amount: amount, currency: currency, category: "Software")
                 value.repeatsMonthly = repeats
                 _ = try Expense.createBusiness(value, in: context)
+            }
+            if route == "expenses-inbox" {
+                // A receipt holding up an event's invoice, and months of unassigned Wallet captures.
+                _ = try Expense.capture(image.jpegData(compressionQuality: 0.9)!, jobID: created[2].objectID, in: context)
+                for (index, (merchant, amount)) in [("Harris Teeter #0218", "42.17"), ("Starbucks", "6.85"), ("Target", "31.40"), ("CVS Pharmacy", "12.09"),
+                                                    ("Trader Joe’s", "54.22"), ("Chipotle", "14.75"), ("Shell", "61.02")].enumerated() {
+                    _ = try Expense.captureBackground(ExpenseCaptureInput(merchant: merchant, amount: amount, currency: "USD",
+                                                                          date: Date().addingTimeInterval(-Double(40 + index * 9) * 86400),
+                                                                          transactionID: "fixture-stale-\(index)"), in: context)
+                }
             }
         }
         if let client = created[0].client {
@@ -292,16 +302,17 @@ struct DesignFixtureScreen: View {
         return filter
     }()
     @State private var editorPresented = true
+    @State private var expensesMode = ExpensesMode.inbox
     var body: some View {
         if ["widgets", "accessories"].contains(DesignFixtures.route) { WidgetFixtureGallery() }
-        else if ["root", "pending-root", "expenses-overview", "payments-root"].contains(DesignFixtures.route) { RootView() }
+        else if ["root", "pending-root", "expenses-overview", "expenses-inbox", "payments-root"].contains(DesignFixtures.route) { RootView() }
         else if let job = jobs.first, let invoice = invoices.first {
             NavigationStack {
                 switch DesignFixtures.route {
                 case "expense": JobDetailView(job: job).sheet(isPresented: $editorPresented) {
                     if let expense = job.expenses?.first { ExpenseEditorView(job: job, expense: expense) }
                 }
-                case "pending-expenses": PendingExpensesView()
+                case "pending-expenses": ExpensesView(mode: $expensesMode)
                 case "expense-automation": ExpenseAutomationSettingsView()
                 case "expense-notification": Text("Opening expense…").task {
                     let request = NSFetchRequest<Expense>(entityName: "Expense")

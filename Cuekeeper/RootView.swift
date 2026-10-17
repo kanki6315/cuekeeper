@@ -52,12 +52,22 @@ private struct PreserveDraftNavigation: ViewModifier {
             .onDisappear { navigation?.endEditing(id) }
     }
 }
+private struct OpenExpensesInboxKey: EnvironmentKey {
+    static let defaultValue: (() -> Void)? = nil
+}
+extension EnvironmentValues {
+    /// Switches to the Expenses tab's inbox, from Payments or Settings.
+    var openExpensesInbox: (() -> Void)? {
+        get { self[OpenExpensesInboxKey.self] }
+        set { self[OpenExpensesInboxKey.self] = newValue }
+    }
+}
 extension View {
     func preservesDraftOnTodayLink() -> some View { modifier(PreserveDraftNavigation()) }
 }
 
 enum ScheduleDestination: Hashable {
-    case event(NSManagedObjectID), booking(NSManagedObjectID), session(NSManagedObjectID), pendingExpenses
+    case event(NSManagedObjectID), booking(NSManagedObjectID), session(NSManagedObjectID)
     case fee(NSManagedObjectID), invoice(NSManagedObjectID)
 }
 
@@ -66,6 +76,7 @@ struct RootView: View {
     @EnvironmentObject private var persistence: PersistenceController
     @StateObject private var todayNavigation = TodayNavigation()
     @State private var selectedTab: AppSection = .upcoming
+    @SceneStorage("expenses.mode") private var expensesMode = ExpensesMode.inbox
     @State private var paths: [AppSection: NavigationPath] = [:]
     #if DEBUG
     @State private var openedWorkflowFixture = false
@@ -83,7 +94,6 @@ struct RootView: View {
                         content(section)
                             .navigationDestination(for: ScheduleDestination.self) { destination in
                                 switch destination {
-                                case .pendingExpenses: PendingExpensesView()
                                 case .event(let id):
                                     if let job = try? context.existingObject(with: id) as? Job { EventDetailView(anchor: job) }
                                 case .booking(let id):
@@ -108,9 +118,15 @@ struct RootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .environment(\.todayNavigation, todayNavigation)
+        .environment(\.openExpensesInbox) {
+            expensesMode = .inbox
+            paths[.expenses] = NavigationPath()
+            selectedTab = .expenses
+        }
         #if DEBUG
         .onAppear {
-            if DesignFixtures.enabled && DesignFixtures.route == "expenses-overview" { selectedTab = .expenses }
+            if DesignFixtures.enabled && DesignFixtures.route == "expenses-overview" { expensesMode = .ledger; selectedTab = .expenses }
+            if DesignFixtures.enabled && DesignFixtures.route == "expenses-inbox" { expensesMode = .inbox; selectedTab = .expenses }
             if DesignFixtures.enabled && DesignFixtures.route == "payments-root" { selectedTab = .payments }
             // Workflow prerequisites use the real Events navigation stack, including
             // its tab switching and back navigation, without replaying list setup.
@@ -144,7 +160,7 @@ struct RootView: View {
         case .upcoming: UpcomingView(path: path(for: .upcoming), onShowAllEvents: { selectedTab = .jobs })
         case .jobs: JobsView(path: path(for: .jobs))
         case .payments: PaymentsView()
-        case .expenses: ExpensesView()
+        case .expenses: ExpensesView(mode: $expensesMode)
         case .settings: SettingsView()
         }
     }

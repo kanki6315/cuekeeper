@@ -254,7 +254,7 @@ extension ExpenseValue {
             value.seriesID = value.seriesID ?? id ?? UUID()
             // Keep the anchor while this month's date is the anchor's clamped day. A date the user
             // moved elsewhere becomes the anchor for the months after it.
-            if let day = Day.components(value.day)?.day, value.repeatDay.map({ ExpensesMonth.clamped($0, in: value.day) != day }) ?? true {
+            if let day = Day.components(value.day)?.day, value.repeatDay.map({ ExpensesLedger.clamped($0, in: value.day) != day }) ?? true {
                 value.repeatDay = day
             }
         } else {

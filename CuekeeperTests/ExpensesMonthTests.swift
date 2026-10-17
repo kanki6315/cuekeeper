@@ -15,7 +15,13 @@ final class ExpensesMonthTests: XCTestCase {
                     eventDeleted: deleted, eventInvoiceable: invoiceable, eventCurrency: currency, repeats: repeats, seriesID: series)
     }
 
-    func testMonthSplitsMoneyByStateAndListsDaysNewestFirst() {
+    private func ledger(_ facts: [ExpenseFact], _ kind: LedgerPeriod.Kind = .month, anchor: String = "2026-10",
+                        state: LedgerState = .any, type: ExpenseFilter = .all, client: UUID? = nil) -> ExpensesLedger {
+        ExpensesLedger(filter: ExpenseLedgerFilter(period: LedgerPeriod(kind: kind, anchor: anchor), state: state, type: type, clientID: client),
+                       facts: facts, today: "2026-10-16")
+    }
+
+    func testLedgerSplitsFinishedMoneyByStateAndLeavesDraftsToTheInbox() {
         let facts = [
             fact("2026-10-13", "Q-Park", 1800, state: .toRebill, job: derby, client: apex, invoiceable: true),
             fact("2026-10-12", "Hotel Arena", 14200, state: .toRebill, job: derby, client: apex, invoiceable: true),
@@ -27,18 +33,70 @@ final class ExpensesMonthTests: XCTestCase {
             fact("2026-10-14", "Old receipt", 900, state: .yourCost, job: derby, client: apex, deleted: true),
             fact("2026-09-20", "September", 500, state: .yourCost, job: derby, client: apex),
         ]
-        let month = ExpensesMonth(month: "2026-10", facts: facts, today: "2026-10-16")
-        XCTAssertEqual(month.count, 8)
+        let month = ledger(facts)
+        XCTAssertEqual(month.count, 7)
+        XCTAssertEqual(month.draftsInPeriod, 1)
+        XCTAssertEqual(month.inbox.count, 1)
         XCTAssertEqual(month.currencies.map(\.currency), ["EUR", "USD"])
         XCTAssertEqual(month.currencies[0].amounts, [.toRebill: 16000, .onInvoice: 11800, .paidBack: 8400, .yourCost: 1199])
-        XCTAssertEqual(month.currencies[1].amounts, [.yourCost: 1480, .toFinish: 6410])
-        XCTAssertEqual(month.days(.all).map(\.day), ["2026-10-16", "2026-10-15", "2026-10-14", "2026-10-13", "2026-10-12", "2026-10-09", "2026-10-02"])
-        XCTAssertEqual(month.days(.all).last?.expenses.count, 2)
-        XCTAssertEqual(month.days(.business).flatMap(\.expenses).map(\.merchant), ["Dropbox"])
-        XCTAssertFalse(month.days(.events).flatMap(\.expenses).contains { $0.merchant == "Dropbox" || $0.merchant == "Shell" })
+        XCTAssertEqual(month.currencies[1].amounts, [.yourCost: 1480])
+        XCTAssertEqual(month.months.map(\.month), ["2026-10"])
+        XCTAssertEqual(month.months[0].days.map(\.day), ["2026-10-16", "2026-10-14", "2026-10-13", "2026-10-12", "2026-10-09", "2026-10-02"])
+        XCTAssertEqual(month.months[0].days.last?.expenses.count, 2)
+        XCTAssertEqual(ledger(facts, type: .business).expenses.map(\.merchant), ["Dropbox"])
+        XCTAssertFalse(ledger(facts, type: .events).expenses.contains { $0.merchant == "Dropbox" })
+        XCTAssertEqual(ledger(facts, state: .paidBack).expenses.map(\.merchant), ["Ibis"])
+        XCTAssertEqual(ledger(facts, state: .yourCost).expenses.map(\.merchant), ["Pret", "Old receipt", "Dropbox"], "Business costs are your cost")
+        XCTAssertEqual(Set(ledger(facts, client: northside).expenses.map(\.merchant)), ["Pret", "Eurostar", "Ibis"])
+        XCTAssertEqual(ledger(facts).clients.map(\.name), ["Apex Media", "Northside Sports"])
+        XCTAssertEqual(ledger(facts, .all).months.map(\.month), ["2026-10", "2026-09"])
     }
 
-    func testRebillGroupsByClientAndCurrencyAndCountsEarlierMonths() {
+    func testPeriodsSpanQuartersAndYearsAndStepByTheirOwnSize() {
+        let october = LedgerPeriod(kind: .month, anchor: "2026-10")
+        XCTAssertEqual(october.title, "October 2026")
+        XCTAssertEqual(october.shifted(-10).anchor, "2025-12")
+        XCTAssertEqual(october.shifted(3).anchor, "2027-01")
+        let quarter = LedgerPeriod(kind: .quarter, anchor: "2026-08")
+        XCTAssertEqual(quarter.title, "Q3 2026")
+        XCTAssertTrue(quarter.contains("2026-07-01")); XCTAssertTrue(quarter.contains("2026-09-30"))
+        XCTAssertFalse(quarter.contains("2026-10-01")); XCTAssertFalse(quarter.contains("2026-06-30"))
+        XCTAssertEqual(quarter.shifted(1).title, "Q4 2026")
+        XCTAssertEqual(quarter.shifted(-3).title, "Q4 2025")
+        let year = LedgerPeriod(kind: .year, anchor: "2026-10")
+        XCTAssertEqual(year.title, "2026")
+        XCTAssertTrue(year.contains("2026-01-01")); XCTAssertFalse(year.contains("2027-01-01"))
+        XCTAssertEqual(year.shifted(-1).title, "2025")
+        let all = LedgerPeriod(kind: .all, anchor: "2026-10")
+        XCTAssertTrue(all.contains("1999-01-01")); XCTAssertNil(all.months)
+        XCTAssertEqual(all.shifted(1), all)
+        XCTAssertEqual(LedgerPeriod.current(.quarter, today: "2026-10-17").title, "Q4 2026")
+    }
+
+    func testInboxGroupsBlockingRecentDueAndStaleDraftsWithoutAPeriod() {
+        let series = UUID()
+        let facts = [
+            fact("2026-10-15", "Shell", 6410, "USD", state: .toFinish),
+            fact("2026-09-20", "Starbucks", 685, "USD", state: .toFinish),
+            fact("2026-09-10", "Target", 3140, "USD", state: .toFinish),
+            fact("2026-03-02", "Harris Teeter", 4217, "USD", state: .toFinish),
+            fact("2026-10-09", "", nil, state: .toFinish, job: weekend, client: northside),
+            fact("2026-10-08", "Gone", 100, state: .toFinish, job: derby, client: apex, deleted: true),
+            fact("2026-09-14", "Midjourney", 3000, "USD", state: .business, repeats: true, series: series),
+        ]
+        // The inbox is the same whatever period the Ledger shows.
+        let inbox = ledger(facts, .month, anchor: "2025-01").inbox
+        XCTAssertEqual(inbox, ledger(facts, .all).inbox)
+        XCTAssertEqual(inbox.count, 6)
+        XCTAssertEqual(inbox.drafts, 5)
+        XCTAssertEqual(inbox.sections.map(\.group), [.blocking, .recent, .due, .stale])
+        XCTAssertEqual(inbox.sections[1].items.map(\.rankDay), ["2026-09-20", "2026-10-15"], "Within 30 days, oldest first")
+        XCTAssertEqual(inbox.sections[3].items.map(\.rankDay), ["2026-03-02", "2026-09-10"])
+        XCTAssertEqual(inbox.amounts, ["USD": 6410 + 685 + 3140 + 4217], "Repeats and drafts without an amount aren't totalled")
+        XCTAssertEqual(ledger(facts, .month, anchor: "2026-09").draftsInPeriod, 2)
+    }
+
+    func testRebillGroupsByClientAndCurrencyAndCountsEarlierPeriods() {
         let facts = [
             fact("2026-10-12", "Hotel Arena", 14200, state: .toRebill, job: derby, client: apex, invoiceable: true),
             fact("2026-10-13", "Q-Park", 1800, state: .toRebill, job: derby, client: apex, invoiceable: true),
@@ -47,7 +105,7 @@ final class ExpensesMonthTests: XCTestCase {
             fact("2026-08-02", "Autogrill", 2250, "USD", state: .toRebill, job: weekend, client: northside),
             fact("2026-09-19", "Paid", 1000, "USD", state: .paidBack, job: weekend, client: northside),
         ]
-        let month = ExpensesMonth(month: "2026-10", facts: facts, today: "2026-10-16")
+        let month = ledger(facts)
         XCTAssertEqual(month.rebill.count, 2)
         let apexGroup = month.rebill.first { $0.clientID == apex }
         XCTAssertEqual(apexGroup?.amount, 16000)
@@ -60,7 +118,11 @@ final class ExpensesMonthTests: XCTestCase {
         XCTAssertEqual(late?.invoiceableJobs, [], "Without billing the event again")
         XCTAssertEqual(month.earlier.count, 2)
         XCTAssertEqual(month.earlier.amounts, ["USD": 8650])
-        XCTAssertEqual(month.earlier.latestMonth, "2026-09")
+        XCTAssertEqual(ledger(facts, client: apex).earlier.count, 0, "Earlier receipts follow the client filter")
+        XCTAssertEqual(ledger(facts, .quarter, anchor: "2026-09").earlier.count, 0, "Q3 already holds them")
+        XCTAssertEqual(ledger(facts, .all).earlier.count, 0)
+        XCTAssertTrue(ledger(facts, state: .paidBack).rebill.isEmpty)
+        XCTAssertEqual(ledger(facts, .all, state: .toRebill).rebill.flatMap(\.receipts).count, 5)
     }
 
     func testFinishListsDraftsAndDueRepeatsOldestFirst() {
@@ -75,7 +137,7 @@ final class ExpensesMonthTests: XCTestCase {
             fact("2026-09-04", "Adobe", 5999, "USD", state: .business, repeats: true, series: stopped),
             fact("2026-09-20", "Adobe", 5999, "USD", state: .business, repeats: false, series: stopped),
         ]
-        let items = ExpensesMonth.finishItems(facts, today: "2026-10-16")
+        let items = ExpensesLedger.finishItems(facts, today: "2026-10-16")
         XCTAssertEqual(items.map(\.rankDay), ["2026-10-09", "2026-10-14", "2026-10-15"])
         XCTAssertEqual(items.map(\.actionTitle), ["Finish", "Add", "Finish"])
         XCTAssertEqual(items[0].title, "Expense to complete")
@@ -95,10 +157,10 @@ final class ExpensesMonthTests: XCTestCase {
             (31, "2026-11-30", ["2026-12-31", "2027-01-31", "2027-02-28"]),
         ] {
             var day = start
-            for next in expected { day = ExpensesMonth.nextMonth(day, repeatDay: anchor) ?? ""; XCTAssertEqual(day, next, "anchor \(anchor)") }
+            for next in expected { day = ExpensesLedger.nextMonth(day, repeatDay: anchor) ?? ""; XCTAssertEqual(day, next, "anchor \(anchor)") }
         }
-        XCTAssertEqual(ExpensesMonth.nextMonth("2026-10-14"), "2026-11-14")
-        XCTAssertNil(ExpensesMonth.nextMonth("2026-02-30"))
+        XCTAssertEqual(ExpensesLedger.nextMonth("2026-10-14"), "2026-11-14")
+        XCTAssertNil(ExpensesLedger.nextMonth("2026-02-30"))
 
         // Saving keeps the anchor on a clamped month, takes a moved date as the new anchor, and drops it when stopped.
         var value = ExpenseValue(); value.repeatsMonthly = true; value.day = "2026-02-28"; value.repeatDay = 31
@@ -109,7 +171,7 @@ final class ExpensesMonthTests: XCTestCase {
 
         // Costs saved before anchors existed: Jan 31 → Feb 28 resumes on Mar 31; a mid-month day stays put.
         let clamped = UUID(), plain = UUID()
-        let items = ExpensesMonth.finishItems([
+        let items = ExpensesLedger.finishItems([
             fact("2026-01-31", "Hosting", 900, "USD", state: .business, repeats: true, series: clamped),
             fact("2026-02-28", "Hosting", 900, "USD", state: .business, repeats: true, series: clamped),
             fact("2026-03-14", "Fonts", 500, "USD", state: .business, repeats: true, series: plain),

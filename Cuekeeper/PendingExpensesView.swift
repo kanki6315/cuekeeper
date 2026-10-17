@@ -1,87 +1,36 @@
 import CoreData
 import SwiftUI
 
+/// Points Payments at the Expenses inbox while drafts wait there. Finishing happens in the inbox.
 struct PendingExpensesPrompt: View {
-    @Environment(\.todayNavigation) private var todayNavigation
-    var alwaysVisible = false
+    @Environment(\.openExpensesInbox) private var openInbox
     @FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "isDraft == YES AND (job == nil OR job.deletedAt == nil)")) private var expenses: FetchedResults<Expense>
     private var count: Int { expenses.filter(\.needsCompletion).count }
     var body: some View {
-        if count > 0 || alwaysVisible {
+        if count > 0 {
             Group {
-                if todayNavigation != nil {
-                    NavigationLink(value: ScheduleDestination.pendingExpenses) {
+                if let openInbox {
+                    Button(action: openInbox) {
                         HStack(spacing: 10) {
                             promptLabel.foregroundStyle(Color.primary).frame(maxWidth: .infinity, alignment: .leading)
                             Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
                         }.contentShape(Rectangle())
-                    }
+                    }.buttonStyle(.plain)
                 } else {
-                    DaybookLink { PendingExpensesView() } label: { promptLabel }
+                    promptLabel
                 }
             }.accessibilityIdentifier("pending-expenses")
         }
     }
     private var promptLabel: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "tray")
+            Image(systemName: "tray").foregroundStyle(Color("AmberText"))
             VStack(alignment: .leading, spacing: 4) {
-                Text("Expenses to complete").font(.headline)
-                Text(count == 0 ? "All caught up" : "\(count) \(count == 1 ? "expense needs" : "expenses need") your review").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text("Expenses to finish").font(.headline)
+                Text("\(count) waiting in your Expenses inbox").font(.subheadline).foregroundStyle(Color("SecondaryText"))
             }
             Spacer()
         }.frame(minHeight: 44)
-    }
-}
-
-struct PendingExpensesView: View {
-    @Environment(\.managedObjectContext) private var context
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Expense.createdAt, ascending: false)], predicate: NSPredicate(format: "isDraft == YES AND (job == nil OR job.deletedAt == nil)")) private var records: FetchedResults<Expense>
-    @State private var selected: Expense?
-    @State private var removing: Expense?
-    @State private var error: String?
-    var body: some View {
-        DaybookForm {
-            if records.filter(\.needsCompletion).isEmpty {
-                Section { ContentUnavailableView("All caught up", systemImage: "checkmark.circle", description: Text("Expenses captured from Shortcuts appear here until you add a receipt and choose an event.")) }
-            } else {
-                Section {
-                    Text("Add a receipt, choose an event and review each expense. Remove personal purchases or duplicates you don’t want to keep.").foregroundStyle(Color("SecondaryText"))
-                }.containerValue(\.daybookUnframed, true)
-                Section("Needs review") {
-                    ForEach(records.filter(\.needsCompletion), id: \.objectID) { expense in
-                        Button { selected = expense } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(expense.value.merchant.isEmpty ? "Expense to complete" : expense.value.merchant).font(.headline)
-                                if let amount = ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) {
-                                    Text(amount).monospacedDigit()
-                                }
-                                Text(expense.job?.eventTitle ?? "Event to choose").font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                                Text(expense.photo == nil ? "Receipt to add" : "Receipt attached").font(.caption).foregroundStyle(Color("SecondaryText"))
-                            }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        }.accessibilityIdentifier("pending-expense-row")
-                        Button("Remove Draft", role: .destructive) { removing = expense }.accessibilityIdentifier("remove-expense-draft")
-                    }
-                }
-            }
-            ExpenseRemindersSection(header: "Reminders")
-            Section { DaybookLink("Wallet automation setup") { ExpenseAutomationSettingsView() } }
-        }
-        .navigationTitle("Expenses to complete").navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $selected) { ExpenseEditorView(expense: $0) }
-        .alert("Remove this expense draft?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
-            Button("Remove Draft", role: .destructive) {
-                guard let removing else { return }
-                do {
-                    let id = removing.id
-                    try Expense.discardDraft(id: removing.objectID, revision: removing.revision, in: context)
-                    if let id { ExpenseNotifications.shared.clear(id: id) }
-                    self.removing = nil
-                } catch { self.error = error.localizedDescription }
-            }
-            Button("Keep Draft", role: .cancel) { removing = nil }
-        } message: { Text("It will leave the completion list. A repeated transaction with the same transaction ID won’t recreate it.") }
-        .saveErrorAlert($error)
     }
 }
 

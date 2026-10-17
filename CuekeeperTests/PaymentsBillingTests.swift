@@ -181,7 +181,7 @@ final class PaymentsBillingTests: XCTestCase {
         let dollars = try receipt(for: job, amount: "10.00", currency: "USD", reimbursable: true, in: context)
 
         // Expenses offers an invoice for each currency without the already-billed event, totalled in its own currency.
-        let month = ExpensesMonth.load(month: "2026-10", expenses: [late, dollars], context: context, today: "2026-10-16")
+        let month = ExpensesLedger.load(filter: ExpenseLedgerFilter(period: LedgerPeriod(kind: .month, anchor: "2026-10")), expenses: [late, dollars], context: context, today: "2026-10-16")
         XCTAssertEqual(month.rebill.map(\.currency).sorted(), ["EUR", "USD"])
         XCTAssertTrue(month.rebill.allSatisfy { $0.canInvoice && $0.invoiceableJobs.isEmpty })
         XCTAssertEqual(month.rebill.first { $0.currency == "USD" }?.amount, 1_000)

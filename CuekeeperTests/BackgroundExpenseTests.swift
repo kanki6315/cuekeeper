@@ -121,6 +121,34 @@ final class BackgroundExpenseTests: XCTestCase {
         XCTAssertTrue(fake.removed.contains(request.identifier)); XCTAssertFalse(fake.removed.contains("unrelated-reminder"))
         await service.disable(); XCTAssertFalse(defaults.bool(forKey: ExpenseNotifications.preference))
     }
+
+    func testGrantingPermissionInSettingsClearsStaleDenialButKeepsDeliveryFailures() async throws {
+        let suite = "expense-notifications-\(UUID())"; let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let fake = FakeExpenseNotifications()
+        let service = ExpenseNotifications(delivery: fake, defaults: defaults)
+        fake.allowed = false; fake.status = .denied
+        await service.enable()
+        XCTAssertEqual(service.status, .denied); XCTAssertNotNil(service.lastError)
+        // Still denied: the explanation stays.
+        await service.refresh(); XCTAssertNotNil(service.lastError)
+        // Permission granted in Settings, then the app becomes active again.
+        fake.status = .authorized
+        await service.refresh()
+        XCTAssertEqual(service.status, .authorized); XCTAssertNil(service.lastError)
+
+        // A delivery failure is independent of authorization and survives a refresh.
+        fake.allowed = true; await service.enable()
+        fake.fail = true; await service.notify(id: UUID())
+        let deliveryError = try XCTUnwrap(service.lastError)
+        await service.refresh(); XCTAssertEqual(service.lastError, deliveryError)
+        await service.enable(); XCTAssertEqual(service.lastError, deliveryError, "Granting permission does not explain away a failed delivery")
+        fake.fail = false; await service.notify(id: UUID()); XCTAssertNil(service.lastError)
+
+        // A permission-request failure also clears once the status allows reminders.
+        fake.status = .provisional
+        await service.refresh(); XCTAssertNil(service.lastError)
+    }
 }
 
 @MainActor

@@ -386,6 +386,10 @@ struct ExpenseEditorView: View {
     @State private var initial: ExpenseValue
     @State private var isDraft: Bool
     @State private var photo: Data?
+    /// Bumped whenever `photo` changes, so its preview is decoded once per photo instead of on every edit.
+    @State private var photoVersion = 0
+    @State private var preview: UIImage?
+    @State private var previewFailed = false
     @State private var scanning = false
     @State private var cameraAccess = AVCaptureDevice.authorizationStatus(for: .video)
     @State private var cameraBlocked = false
@@ -441,10 +445,16 @@ struct ExpenseEditorView: View {
                 }.containerValue(\.daybookUnframed, true)
                 }
                 Section {
-                    if let photo, let image = UIImage(data: photo) {
-                        Button { enlarged = true } label: {
-                            Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 220)
-                        }.accessibilityLabel("View full receipt photo")
+                    if photo != nil {
+                        if let preview {
+                            Button { enlarged = true } label: {
+                                Image(uiImage: preview).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 220)
+                            }.accessibilityLabel("View full receipt photo")
+                        } else if previewFailed {
+                            Text("This receipt photo can’t be shown. Replace it or enter the details below.").foregroundStyle(Color("SecondaryText"))
+                        } else {
+                            ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                        }
                         if busy {
                             ProgressView(processingLocation.progressMessage)
                             Button("Enter details myself") { task?.cancel(); busy = false; message = "Check the receipt and enter its details below." }.disabled(savingPhoto)
@@ -541,7 +551,7 @@ struct ExpenseEditorView: View {
                 ReceiptScanner { result in
                     scanning = false
                     switch result {
-                    case .success(let image): if let image { capture(image) }
+                    case .success(let image): if let image { capture { try ReceiptImage.storedJPEG(from: image) } }
                     case .failure(let error): self.error = error.localizedDescription
                     }
                 }.ignoresSafeArea()
@@ -549,7 +559,7 @@ struct ExpenseEditorView: View {
             .sheet(isPresented: $enlarged) {
                 NavigationStack {
                     ScrollView([.horizontal, .vertical]) {
-                        if let photo, let image = UIImage(data: photo) { Image(uiImage: image).accessibilityLabel("Receipt photo") }
+                        if let photo { ReceiptPhotoViewer(photo: photo) }
                     }.navigationTitle("Receipt").navigationBarTitleDisplayMode(.inline)
                         .toolbar { Button("Done") { enlarged = false } }
                 }
@@ -564,8 +574,9 @@ struct ExpenseEditorView: View {
                 guard let item else { return }
                 task = Task {
                     do {
-                        guard let data = try await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { throw RecordError.invalid("This photo could not be opened. Choose another image.") }
-                        try Task.checkCancellation(); capture(image)
+                        // Only the encoded bytes are loaded here; ImageIO decodes them at the stored size.
+                        guard let data = try await item.loadTransferable(type: Data.self) else { throw RecordError.invalid(ReceiptImage.unreadableMessage) }
+                        try Task.checkCancellation(); capture { try ReceiptImage.storedJPEG(from: data) }
                     } catch is CancellationError {} catch { self.error = error.localizedDescription }
                     picker = nil
                 }
@@ -581,6 +592,12 @@ struct ExpenseEditorView: View {
                 // Only open the scanner automatically when the camera can actually be used; otherwise the
                 // receipt section explains why and offers Settings instead of presenting a blank scanner.
                 if recordID == nil && photo == nil && !prefilled && VNDocumentCameraViewController.isSupported && !cameraUnavailable { await openCamera() }
+            }
+            .task(id: photoVersion) {
+                guard let photo else { preview = nil; previewFailed = false; return }
+                let image = await Task.detached(priority: .userInitiated) { ReceiptImage.preview(photo) }.value
+                guard !Task.isCancelled else { return }
+                preview = image; previewFailed = image == nil
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { cameraAccess = AVCaptureDevice.authorizationStatus(for: .video) }
@@ -648,20 +665,14 @@ struct ExpenseEditorView: View {
         cameraAccess = AVCaptureDevice.authorizationStatus(for: .video)
         if cameraAccess == .authorized { scanning = true } else if !prompted { cameraBlocked = true }
     }
-    private func capture(_ image: UIImage) {
+    /// `encode` produces the stored JPEG off the main thread; a photo that can't be decoded leaves the current one in place.
+    private func capture(_ encode: @escaping @Sendable () throws -> Data) {
         guard !busy else { return }
         busy = true; savingPhoto = true
         task = Task {
             defer { savingPhoto = false }
             do {
-                let data = try await Task.detached(priority: .userInitiated) {
-                    let scale = min(1, 2400 / max(image.size.width, image.size.height))
-                    let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-                    let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
-                    let normalized = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
-                    guard let data = normalized.jpegData(compressionQuality: 0.88) else { throw RecordError.invalid("The receipt photo could not be saved. Please try again.") }
-                    return data
-                }.value
+                let data = try await Task.detached(priority: .userInitiated) { try encode() }.value
                 try Task.checkCancellation()
                 let id: NSManagedObjectID
                 if let recordID {
@@ -672,7 +683,7 @@ struct ExpenseEditorView: View {
                     id = try await Expense.capturePhoto(data, jobID: business ? nil : selectedJobID, in: context)
                 }
                 let record = try context.existingObject(with: id) as! Expense
-                recordID = id; revision = record.revision; photo = data
+                recordID = id; revision = record.revision; photo = data; photoVersion += 1
                 if !Task.isCancelled { extract() } else { busy = false }
             } catch { busy = false; self.error = error.localizedDescription }
         }
@@ -718,6 +729,25 @@ struct ExpenseEditorView: View {
         } catch {
             failedDraftSave = isDraft
             self.error = error.localizedDescription
+        }
+    }
+}
+
+/// The full stored photo, decoded off the main thread only while the viewer is open.
+private struct ReceiptPhotoViewer: View {
+    let photo: Data
+    @State private var image: UIImage?
+    @State private var failed = false
+    var body: some View {
+        Group {
+            if let image { Image(uiImage: image).accessibilityLabel("Receipt photo") }
+            else if failed { Text("This receipt photo can’t be shown.").foregroundStyle(Color("SecondaryText")).padding() }
+            else { ProgressView().padding() }
+        }
+        .task {
+            let photo = photo
+            let decoded = await Task.detached(priority: .userInitiated) { ReceiptImage.preview(photo, maxPixels: ReceiptImage.storedPixels) }.value
+            image = decoded; failed = decoded == nil
         }
     }
 }

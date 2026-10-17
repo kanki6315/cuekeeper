@@ -402,16 +402,22 @@ struct ClientDetailView: View {
 }
 
 /// One of the client's events: rail, title, dates and its booking or money badge.
-private struct ClientEventRow: View {
+/// The Roles page adds the roles held on it, as tags or as the other roles beside the selected one.
+struct ClientEventRow: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     let row: EventsListRow
+    var tags: [String] = []
+    var also: [String] = []
+    var showsClient = false
     private var detail: String {
         var parts: [String] = []
+        if showsClient { parts.append(row.facts.client ?? "Client to add") }
         if row.multiDay, let start = Day.date(from: row.facts.startDay), let end = Day.date(from: row.facts.endDay) {
             parts.append(start.formatted(.dateTime.weekday(.abbreviated)) + "–" + end.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
         }
         let count = row.facts.sessions.count
         parts.append(count == 0 ? "Schedule to come" : counted(count, "session", "sessions"))
+        if !also.isEmpty { parts.append("also " + also.joined(separator: ", ")) }
         return parts.joined(separator: " · ")
     }
     private var title: some View {
@@ -432,6 +438,9 @@ private struct ClientEventRow: View {
                     }
                 }
                 Text(detail).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                if !tags.isEmpty {
+                    ChipFlow(spacing: 4) { ForEach(tags, id: \.self) { RoleTag(name: $0) } }.padding(.top, 2)
+                }
             }
             .multilineTextAlignment(.leading)
         }

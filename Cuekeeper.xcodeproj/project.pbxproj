@@ -40,9 +40,11 @@
 		3F6B9BDFB7A906E3B4F8D755 /* RecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658D5107A3868AF488F32DDE /* RecoveryTests.swift */; };
 		40CC77A126552FDDBE397EC0 /* EventDetailSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EADBC2E574A8868BC2101485 /* EventDetailSummaryTests.swift */; };
 		41B304D19B61465775986906 /* DesignFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AEB83E7804374638D4D0136 /* DesignFixtures.swift */; };
+		422AFF5F7AD258C400BD98C5 /* RolesAgenda.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9565307FAFF7EDCAD098C26 /* RolesAgenda.swift */; };
 		471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42AD7432BF268805135A824 /* CalendarSettingsView.swift */; };
 		4931AA30BA71C6966D2D1CDB /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
 		4B17D742F2471D53225B37E4 /* WorkEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95E08FF1047E3666557F964 /* WorkEvent.swift */; };
+		4B3307E8253CC294995271A9 /* RolesAgendaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12CEAC239649995B4026FFAA /* RolesAgendaTests.swift */; };
 		4BCFFEEE1485FDB3040451E1 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC535FB730F3A6A7FE4A398 /* SessionView.swift */; };
 		4C2102C48143B4143C5735E7 /* InvoicePlanningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E2C1963461227A58D165E3 /* InvoicePlanningTests.swift */; };
 		4EA1FBAF120B261072530418 /* Fees.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BA01886803FB21C0F4DAD4 /* Fees.swift */; };
@@ -117,6 +119,7 @@
 		CDBC80DF658894D0F3959A0F /* EventEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 903F333B340E02F26BC552E8 /* EventEditorTests.swift */; };
 		CDD104A2685229F0B24BB272 /* ExpensesMonth.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D6CE2B9DF5C4DECD3683C6 /* ExpensesMonth.swift */; };
 		D02E228CBF65DF5AFF129172 /* EventCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CABBC13C32EC0722F5E2994 /* EventCaptureTests.swift */; };
+		D120BCF270CF9B335EDA5183 /* RolesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55AA6EE15618E1FB09D1A416 /* RolesView.swift */; };
 		D2F5F7D4DAFBD2CB1B51CFC4 /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */; };
 		D3C9527CEA68B7181C4AD974 /* Expenses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3763FF11F6A434226B2DBD /* Expenses.swift */; };
 		D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC25F847FFB2944BBBC0D0D /* FeeView.swift */; };
@@ -192,6 +195,7 @@
 		0F671FB10FB025AD3E29BEF0 /* BackupWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupWorkspace.swift; sourceTree = "<group>"; };
 		0F879EB8F593E50CF7664861 /* UpcomingSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpcomingSummary.swift; sourceTree = "<group>"; };
 		1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		12CEAC239649995B4026FFAA /* RolesAgendaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RolesAgendaTests.swift; sourceTree = "<group>"; };
 		134663AFB643D201DF4E98CF /* SchemaHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SchemaHelper.entitlements; sourceTree = "<group>"; };
 		14FCB06138FD31273B69B67C /* CuekeeperV8.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV8.xcdatamodel; sourceTree = "<group>"; };
 		160E9E8134EE73B9CA11DEEB /* EventsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventsListView.swift; sourceTree = "<group>"; };
@@ -231,6 +235,7 @@
 		5266CDEBB4213D6B97531E4A /* InvoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicesView.swift; sourceTree = "<group>"; };
 		5281AB6F1525268F5E58336E /* CuekeeperWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CuekeeperWidgets.entitlements; sourceTree = "<group>"; };
 		54BB016BE1437AC97CC962A7 /* CuekeeperV12.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV12.xcdatamodel; sourceTree = "<group>"; };
+		55AA6EE15618E1FB09D1A416 /* RolesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RolesView.swift; sourceTree = "<group>"; };
 		575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceEditorView.swift; sourceTree = "<group>"; };
 		5A1A3615096553A427E9202D /* FirstLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchTests.swift; sourceTree = "<group>"; };
 		5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseAutomationSettingsView.swift; sourceTree = "<group>"; };
@@ -278,6 +283,7 @@
 		A8242BC562D7713F5EAFAAE4 /* ExpenseNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseNotifications.swift; sourceTree = "<group>"; };
 		A92B309550AE08411BE070DF /* BackupFilePickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupFilePickerTests.swift; sourceTree = "<group>"; };
 		A9459F7EEB801C95C854C005 /* BackupPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupPackage.swift; sourceTree = "<group>"; };
+		A9565307FAFF7EDCAD098C26 /* RolesAgenda.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RolesAgenda.swift; sourceTree = "<group>"; };
 		AC9EB79EE979555FDF748422 /* Cuekeeper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cuekeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF513485C51BD69B238E3E80 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B009FB01546D5BCCB524B2C4 /* PaymentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsView.swift; sourceTree = "<group>"; };
@@ -459,6 +465,7 @@
 				722C715CA9E1B3CE3A9E15E7 /* PaymentsReadinessTests.swift */,
 				CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */,
 				2BE8FC36A37D1122F844EE96 /* RecoveryBackupTests.swift */,
+				12CEAC239649995B4026FFAA /* RolesAgendaTests.swift */,
 				1D404E63E0CA7BA010061FA4 /* UpcomingSummaryTests.swift */,
 			);
 			path = CuekeeperTests;
@@ -513,6 +520,8 @@
 				D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */,
 				D305E1038A9ABA4A3975A914 /* ReceiptExtractor.swift */,
 				66BCF474DBEC80465600AB43 /* RecoveryView.swift */,
+				A9565307FAFF7EDCAD098C26 /* RolesAgenda.swift */,
+				55AA6EE15618E1FB09D1A416 /* RolesView.swift */,
 				0AC022135F654D55A6A7311E /* RootView.swift */,
 				44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */,
 				994C44392560A52DE055B755 /* SessionBatchEditorView.swift */,
@@ -785,6 +794,7 @@
 				D5E3E230AEEEE579AC0D64B5 /* PaymentsReadinessTests.swift in Sources */,
 				29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */,
 				6A4FFD670D492A7563E2FA9E /* RecoveryBackupTests.swift in Sources */,
+				4B3307E8253CC294995271A9 /* RolesAgendaTests.swift in Sources */,
 				3BA78FB33141569F77DBA9A3 /* UpcomingSummaryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -882,6 +892,8 @@
 				9C6E74F9DB600B9E0315F2B6 /* ReceiptExtractor.swift in Sources */,
 				B11DC4F05904A85461B231A9 /* Recovery.swift in Sources */,
 				789BFF476A91BB6DA4110CE0 /* RecoveryView.swift in Sources */,
+				422AFF5F7AD258C400BD98C5 /* RolesAgenda.swift in Sources */,
+				D120BCF270CF9B335EDA5183 /* RolesView.swift in Sources */,
 				B8DE16DDDAF45EF9204E4201 /* RootView.swift in Sources */,
 				6502B73414003C2DB2976046 /* ScanReceiptIntent.swift in Sources */,
 				1ED3D411CEF476412227AA25 /* SchedulePublisher.swift in Sources */,

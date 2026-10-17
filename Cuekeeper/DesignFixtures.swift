@@ -42,7 +42,10 @@ enum DesignFixtures {
             draft.clientName = index < 3 ? "Northside Sports" : "IMSA"
             draft.projectName = index < 3 ? "Autumn broadcasts" : "IMSA 2026"
             draft.seriesName = index < 3 ? "National League" : "SportsCar Championship"
-            draft.roleNames = ["Commentator"]
+            // The Roles screen needs events held in more than one role.
+            draft.roleNames = ["roles", "role"].contains(route)
+                ? [["Commentator"], ["Presenter"], ["Commentator", "Pit reporter"], ["Commentator"], ["Pit reporter"], ["Commentator"]][index]
+                : ["Commentator"]
             draft.bookingStatus = index == 1 || index == 3 ? .tentative : .booked
             draft.workArrangement = index == 0 || index == 1 ? .remote : .onSite
             draft.timeZoneID = "Europe/London"
@@ -335,6 +338,7 @@ struct DesignFixtureScreen: View {
                 case "project": if let project = job.project { LibraryDetailView(record: project, kind: .project) }
                 case "series": if let series = job.series { LibraryDetailView(record: series, kind: .series) }
                 case "clients": LibraryView(kind: .client)
+                case "roles", "role": LibraryView(kind: .role)
                 case "settings": SettingsView()
                 case "calendar": CalendarSettingsView()
                 case "filters", "filters-dates": RootView().sheet(isPresented: $editorPresented) { JobFiltersView(filter: $filter) }

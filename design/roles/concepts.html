@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roles Page Concepts</title>
+<style>
+:root{
+  --forest:#073E27; --mint:#A7DCB4; --ivory:#FAF8F2; --surface:#FFFFFF; --ink:#171E19;
+  --muted:#626860; --amber:#88570C; --amber-fill:rgba(255,149,0,.16); --rule:rgba(23,30,25,.16);
+  --forest-fill:rgba(7,62,39,.07); --blue:#1F5FAE; --board:#E9E6DD;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--board);color:var(--ink);font:15px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;padding:48px 16px 80px}
+.board{max-width:1320px;margin:0 auto}
+.board>header{max-width:68ch;margin-bottom:40px}
+.board>header h1{font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.board>header p{color:#3f4540;margin-top:8px;text-wrap:pretty}
+.concept{margin-bottom:72px}
+.concept h2{font-size:24px;font-weight:700;letter-spacing:-.015em;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.concept h2 span{font-size:15px;font-weight:500;color:#3f4540;letter-spacing:0}
+.concept>.lede{max-width:72ch;margin:8px 0 24px;color:#3f4540;text-wrap:pretty}
+.row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+figure{display:flex;flex-direction:column;gap:12px;width:360px;max-width:100%}
+figcaption{font-size:13px;color:#3f4540;max-width:360px}
+figcaption b{color:var(--ink);display:block;font-size:14px;margin-bottom:2px}
+.tradeoffs{max-width:72ch;margin-top:28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 28px;font-size:14px;color:#3f4540}
+.tradeoffs h4{font-size:14px;color:var(--ink);margin-bottom:4px}
+.tradeoffs ul{padding-left:18px}
+.tradeoffs li+li{margin-top:3px}
+
+/* phone shell */
+.phone{width:360px;max-width:100%;height:760px;background:var(--ivory);border-radius:44px;box-shadow:0 0 0 9px #1b1f1c,0 18px 40px rgba(0,0,0,.18);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.status{height:44px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:6px 28px 0;font-weight:600;font-size:14px}
+.status i{font-style:normal;letter-spacing:2px;font-size:11px}
+.nav{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:relative}
+.nav .t{position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:16px;pointer-events:none}
+.glassbtn{height:36px;min-width:36px;padding:0 12px;border-radius:18px;background:rgba(255,255,255,.75);box-shadow:0 0 0 .5px var(--rule),0 2px 6px rgba(0,0,0,.06);display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:15px;color:var(--forest);font-weight:500;position:relative;z-index:1}
+.glassbtn.round{padding:0;width:36px}
+.scroll{flex:1;overflow:hidden;padding:0 18px 24px}
+.tabbar{position:absolute;left:12px;right:12px;bottom:14px;height:58px;border-radius:29px;background:rgba(255,255,255,.82);box-shadow:0 0 0 .5px var(--rule),0 6px 18px rgba(0,0,0,.08);display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--ink);z-index:2}
+.tabbar span{display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar span::before{content:"";width:20px;height:18px;border-radius:5px;background:currentColor;opacity:.85}
+.tabbar .on{color:var(--forest);font-weight:600}
+.fade{position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(rgba(250,248,242,0),var(--ivory) 70%);pointer-events:none;z-index:1}
+
+/* shared Daybook pieces */
+.sub{color:var(--muted);font-size:14px}
+.sechead{font-size:16px;font-weight:600;margin:18px 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+.sechead small{font-size:13px;font-weight:500;color:var(--muted)}
+.panel{background:var(--surface);border-radius:12px;box-shadow:0 0 0 .5px var(--rule)}
+.r{padding:11px 14px;display:flex;gap:12px;align-items:center;position:relative}
+.panel .r+.r::before,.panel .r+.grp::before,.panel .grp+.r::before{content:"";position:absolute;top:0;left:14px;right:0;border-top:.5px solid var(--rule)}
+.grow{flex:1;min-width:0}
+.name{font-weight:600;font-size:16px}
+.meta{color:var(--muted);font-size:13px;margin-top:1px}
+.num{font-variant-numeric:tabular-nums}
+.chev{color:#B0B4AE;font-size:18px;line-height:1}
+.badge{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.b-amber{background:var(--amber-fill);color:var(--amber)}
+.b-forest{background:var(--forest-fill);color:var(--forest)}
+.b-blue{background:rgba(31,95,174,.1);color:var(--blue)}
+.b-quiet{background:rgba(23,30,25,.06);color:var(--muted)}
+.search{height:36px;border-radius:10px;background:rgba(118,118,128,.12);display:flex;align-items:center;gap:6px;padding:0 10px;color:var(--muted);font-size:15px}
+.search::before{content:"⌕";font-size:17px}
+.rail{width:40px;flex:none;text-align:center;color:var(--forest);line-height:1.05}
+.rail .w{font-size:11px;font-weight:600;text-transform:uppercase}
+.rail .d{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.rail .m{font-size:11px}
+.rail.quiet{color:var(--muted)}
+.title{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title.quiet{color:var(--muted)}
+.foot{font-size:13px;color:var(--muted);margin:6px 2px 0;text-wrap:pretty}
+.callout{font-size:11px;font-weight:600;color:#fff;background:#1b1f1c;border-radius:6px;padding:3px 7px;position:absolute;z-index:3;white-space:nowrap}
+
+/* ===== Concept A: inline roster ===== */
+.rolehead{padding:12px 14px;display:flex;gap:12px;align-items:center;position:relative}
+.grp+.grp::before{content:"";position:absolute;top:0;left:14px;right:0;border-top:.5px solid var(--rule)}
+.grp{position:relative}
+.count{min-width:28px;height:24px;padding:0 8px;border-radius:12px;background:rgba(23,30,25,.06);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;display:grid;place-items:center;color:var(--ink)}
+.disc{width:22px;text-align:center;color:var(--forest);font-size:13px;transition:transform .2s cubic-bezier(.22,1,.36,1)}
+.grp.open .disc{transform:rotate(90deg)}
+.grp.open{background:linear-gradient(var(--forest-fill),var(--forest-fill)) top/100% 52px no-repeat}
+.nested{padding:0 0 6px}
+.nested .lbl{font-size:12px;font-weight:600;color:var(--muted);padding:8px 14px 2px 48px}
+.ev{display:flex;gap:10px;align-items:center;padding:7px 14px 7px 12px;position:relative}
+.ev .rail{width:36px}
+.ev .rail .d{font-size:19px}
+.ev .meta{font-size:12px}
+.more{display:flex;justify-content:space-between;align-items:center;padding:8px 14px 6px 58px;font-size:14px;color:var(--forest);font-weight:500}
+.more small{color:var(--muted);font-weight:400;font-size:13px}
+.renaming{display:flex;align-items:center;gap:8px;flex:1}
+.renaming .field{flex:1;height:34px;border-radius:9px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--forest);display:flex;align-items:center;padding:0 10px;font-size:16px;font-weight:600}
+.renaming .field::after{content:"";width:1.5px;height:18px;background:var(--forest);margin-left:1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.tinybtn{font-size:14px;font-weight:600;color:var(--forest)}
+.swipe{display:flex;position:relative;overflow:hidden}
+.swipe .body{flex:1;transform:translateX(-148px);background:#fff;display:flex;gap:12px;align-items:center;padding:12px 14px;min-width:100%}
+.swipe .acts{position:absolute;right:0;top:0;bottom:0;display:flex}
+.swipe .acts span{width:74px;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:600}
+.keyboard{position:absolute;left:0;right:0;bottom:0;height:250px;background:#D4D6DA;z-index:4;padding:8px 4px;display:grid;grid-template-rows:repeat(4,1fr);gap:10px}
+.keyboard div{display:flex;gap:6px;justify-content:center}
+.keyboard i{flex:0 0 30px;height:42px;border-radius:6px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.keyboard i.w{flex:0 0 180px}
+.keyboard i.k{flex:0 0 44px;background:#ADB2BA}
+
+/* ===== Concept B: role filter over one agenda ===== */
+.chiprow{display:flex;gap:6px;overflow:hidden;margin:10px -18px 0;padding:2px 18px;mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.chip{flex:none;height:34px;padding:0 12px;border-radius:17px;display:inline-flex;align-items:center;gap:6px;font-size:14px;background:rgba(7,62,39,.04);box-shadow:inset 0 0 0 .5px var(--rule);white-space:nowrap}
+.chip b{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.chip.on{background:var(--forest);color:#fff;box-shadow:none;font-weight:600}
+.chip.on b{color:rgba(255,255,255,.75)}
+.summary{margin-top:12px;padding:12px 14px}
+.summary .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.summary h3{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.strip{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:12px;align-items:end;height:34px}
+.strip i{display:block;background:var(--forest);border-radius:2px;opacity:.85}
+.strip i.z{background:rgba(23,30,25,.1);height:3px!important;opacity:1}
+.strip i.fut{background:var(--mint);opacity:1}
+.strip i.now{outline:1.5px solid var(--forest);outline-offset:1px}
+.months{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;font-size:10px;color:var(--muted);text-align:center;margin-top:4px}
+.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.facts span{font-size:13px;color:var(--ink);background:rgba(23,30,25,.05);border-radius:8px;padding:4px 8px}
+.mhead{font-size:13px;font-weight:600;color:var(--muted);margin:16px 2px 6px;display:flex;justify-content:space-between}
+.today{display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:12px;font-weight:600;color:var(--forest)}
+.today::after{content:"";flex:1;border-top:1.5px solid var(--forest)}
+.tags{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;background:rgba(23,30,25,.06);color:var(--muted)}
+.tag.hl{background:var(--forest-fill);color:var(--forest)}
+.menu{position:absolute;right:18px;top:226px;width:220px;background:rgba(250,250,248,.97);border-radius:14px;box-shadow:0 0 0 .5px var(--rule),0 12px 32px rgba(0,0,0,.18);z-index:5;overflow:hidden;font-size:15px}
+.menu div{padding:11px 14px;display:flex;justify-content:space-between;position:relative}
+.menu div+div::before{content:"";position:absolute;top:0;left:0;right:0;border-top:.5px solid var(--rule)}
+.menu .red{color:#B3261E}
+.menu small{color:var(--muted);font-size:13px}
+.scrim{position:absolute;inset:0;background:rgba(23,30,25,.12);z-index:4}
+
+@media (prefers-reduced-motion:no-preference){.phone{transition:transform .2s cubic-bezier(.22,1,.36,1)}.phone:hover{transform:translateY(-2px)}}
+@media (prefers-reduced-motion:reduce){.renaming .field::after{animation:none}.disc{transition:none}}
+</style>
+</head>
+<body>
+<div class="board">
+<header>
+  <h1>Roles: two single-page directions</h1>
+  <p>Settings → Roles today is a plain A–Z list. To see a role's events you open a second page, which also holds Edit. Both directions below put the events on the Roles page itself and keep renaming, adding and deleting there too. Shown on iPhone, light appearance, fictional data, today is Sat 17 Oct 2026. Both use the shipped Daybook pieces: date rails, booking badges, ruled panels and capsule glass actions.</p>
+</header>
+
+<!-- ======================= CONCEPT A ======================= -->
+<section class="concept">
+  <h2>A · Inline roster <span>Roles stay the list. Each one opens in place.</span></h2>
+  <p class="lede">This is the smallest change from today. Each role row gets a count and its next date, and a tap opens its events beneath it instead of pushing a page. The open role shows <em>Coming up</em> plus the two most recent past events. <em>Show all 14</em> extends the same group in place, a year at a time. Several roles can be open at once. Rename works in the row, and swipe offers Rename and Delete, so the old detail page and its Edit sheet are no longer needed.</p>
+  <div class="row">
+
+  <!-- A1 -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn round">‹</span><span class="t">Roles</span><span class="glassbtn round">+</span></div>
+    <div class="scroll">
+      <div class="search">Search roles and events</div>
+      <div class="panel" style="margin-top:12px">
+
+        <div class="grp open">
+          <div class="rolehead">
+            <span class="disc">▶</span>
+            <div class="grow"><div class="name">Commentator</div><div class="meta">Next Sat 24 Oct · Brands Hatch</div></div>
+            <span class="count">14</span>
+          </div>
+          <div class="nested">
+            <div class="lbl">Coming up</div>
+            <div class="ev"><div class="rail"><div class="w">Sat</div><div class="d">24</div><div class="m">Oct</div></div>
+              <div class="grow"><div class="title">Brands Hatch Finale</div><div class="meta">Northline TV · 2 days</div></div><span class="badge b-forest">Booked</span></div>
+            <div class="ev"><div class="rail"><div class="w">Sat</div><div class="d">7</div><div class="m">Nov</div></div>
+              <div class="grow"><div class="title">Portimão Endurance</div><div class="meta">Gridcast · 3 days</div></div><span class="badge b-amber">Tentative</span></div>
+            <div class="lbl">Earlier</div>
+            <div class="ev"><div class="rail quiet"><div class="w">Sat</div><div class="d">3</div><div class="m">Oct</div></div>
+              <div class="grow"><div class="title quiet">Donington Park</div><div class="meta">Northline TV</div></div><span class="badge b-blue">Invoiced</span></div>
+            <div class="ev"><div class="rail quiet"><div class="w">Sat</div><div class="d">12</div><div class="m">Sep</div></div>
+              <div class="grow"><div class="title quiet">Snetterton Sprint</div><div class="meta">Apex Media</div></div><span class="badge b-quiet">Paid</span></div>
+            <div class="more">Show all 14 <small>back to 2024</small></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="rolehead"><span class="disc">▶</span>
+            <div class="grow"><div class="name">Pit reporter</div><div class="meta">Next Sat 7 Nov · Portimão</div></div><span class="count">6</span></div>
+        </div>
+        <div class="grp">
+          <div class="rolehead"><span class="disc">▶</span>
+            <div class="grow"><div class="name">Presenter</div><div class="meta">Last worked Aug 2026</div></div><span class="count">4</span></div>
+        </div>
+        <div class="grp">
+          <div class="rolehead"><span class="disc">▶</span>
+            <div class="grow"><div class="name">Co-commentator</div><div class="meta">Last worked May 2026</div></div><span class="count">3</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="fade"></div>
+    <div class="tabbar"><span>Upcoming</span><span>Events</span><span>Payments</span><span>Expenses</span><span class="on">Settings</span></div>
+  </div>
+  <figcaption><b>Opened in place</b>The role with the soonest work opens on arrival, and the rest stay closed. Event rows reuse the Events tab's date rail and badges and push the event page as usual. A role that appears on only some of an event's sessions still lists that event once.</figcaption>
+  </figure>
+
+  <!-- A2 -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn round">‹</span><span class="t">Roles</span><span class="glassbtn round">+</span></div>
+    <div class="scroll">
+      <div class="search">Search roles and events</div>
+      <div class="panel" style="margin-top:12px">
+        <div class="grp">
+          <div class="rolehead"><span class="disc">▶</span>
+            <div class="grow"><div class="name">Commentator</div><div class="meta">Next Sat 24 Oct · Brands Hatch</div></div><span class="count">14</span></div>
+        </div>
+        <div class="grp">
+          <div class="rolehead" style="background:var(--forest-fill)"><span class="disc">▶</span>
+            <div class="renaming"><div class="field">Pit lane reporter</div><span class="tinybtn">Done</span></div></div>
+        </div>
+        <div class="grp">
+          <div class="rolehead"><span class="disc">▶</span>
+            <div class="grow"><div class="name">Presenter</div><div class="meta">Last worked Aug 2026</div></div><span class="count">4</span></div>
+        </div>
+        <div class="grp">
+          <div class="swipe">
+            <div class="body"><span class="disc">▶</span><div class="grow"><div class="name">Floor manager</div><div class="meta">Not used on any event</div></div><span class="count">0</span></div>
+            <div class="acts"><span style="background:#5E6A62">Rename</span><span style="background:#B3261E">Delete</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="foot">Renaming updates the name shown on every booking that uses it.</p>
+      <span class="callout" style="left:150px;top:150px">Tap the name, or swipe → Rename</span>
+      <span class="callout" style="left:40px;top:318px">Unused roles say so before you delete</span>
+    </div>
+    <div class="keyboard">
+      <div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div><i class="k"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="k"></i></div>
+      <div><i class="k"></i><i class="w"></i><i class="k"></i></div>
+    </div>
+  </div>
+  <figcaption><b>Manage without leaving</b>Rename happens in the row, with the existing footer copy below. Swipe gives Rename and Delete, and Delete asks to confirm when the role is in use. + adds a new row in rename state at the top, so the Add sheet goes away too.</figcaption>
+  </figure>
+
+  </div>
+  <div class="tradeoffs">
+    <div><h4>Good at</h4><ul><li>"What have I done as X?" One tap, no navigation.</li><li>Close to today's code: LibraryView keeps its list, and LibraryDetailView's query moves into the row.</li><li>Works for projects and series later with no changes.</li></ul></div>
+    <div><h4>Watch for</h4><ul><li>A long open role pushes the others off screen. That's why it shows four events plus <em>Show all</em>.</li><li>Comparing two roles over time means opening both.</li></ul></div>
+  </div>
+</section>
+
+<!-- ======================= CONCEPT B ======================= -->
+<section class="concept">
+  <h2>B · Role lens <span>One agenda of your work, filtered by role.</span></h2>
+  <p class="lede">This flips the page to lead with events. A row of role chips sits above a single date-led agenda. <em>All</em> shows every event that has a role, tagged with the roles you held. Picking a chip narrows the agenda to that role and shows a summary: how often you did it this year as a 12-month strip, the clients involved, and what's next. Managing a role happens in the summary's ⋯ menu, which also offers Merge for duplicates like "Pit reporter" and "Pit lane reporter".</p>
+  <div class="row">
+
+  <!-- B1 -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn round">‹</span><span class="t">Roles</span><span class="glassbtn round">+</span></div>
+    <div class="scroll">
+      <div class="search">Search events</div>
+      <div class="chiprow">
+        <span class="chip on">All <b>21</b></span>
+        <span class="chip">Commentator <b>14</b></span>
+        <span class="chip">Pit reporter <b>6</b></span>
+        <span class="chip">Presenter <b>4</b></span>
+      </div>
+
+      <div class="mhead"><span>October 2026</span></div>
+      <div class="panel">
+        <div class="r"><div class="rail"><div class="w">Sat</div><div class="d">24</div><div class="m">Oct</div></div>
+          <div class="grow"><div class="title">Brands Hatch Finale</div><div class="meta">Northline TV</div><div class="tags"><span class="tag hl">Commentator</span></div></div><span class="badge b-forest">Booked</span></div>
+      </div>
+      <div class="today">Today</div>
+      <div class="panel">
+        <div class="r"><div class="rail quiet"><div class="w">Sat</div><div class="d">3</div><div class="m">Oct</div></div>
+          <div class="grow"><div class="title quiet">Donington Park</div><div class="meta">Northline TV</div><div class="tags"><span class="tag hl">Commentator</span><span class="tag hl">Pit reporter</span></div></div><span class="badge b-blue">Invoiced</span></div>
+      </div>
+      <div class="mhead"><span>September 2026</span></div>
+      <div class="panel">
+        <div class="r"><div class="rail quiet"><div class="w">Sat</div><div class="d">26</div><div class="m">Sep</div></div>
+          <div class="grow"><div class="title quiet">Oulton Park Cup</div><div class="meta">Apex Media</div><div class="tags"><span class="tag hl">Presenter</span></div></div><span class="badge b-amber">Ready to invoice</span></div>
+        <div class="r"><div class="rail quiet"><div class="w">Sat</div><div class="d">12</div><div class="m">Sep</div></div>
+          <div class="grow"><div class="title quiet">Snetterton Sprint</div><div class="meta">Apex Media</div><div class="tags"><span class="tag hl">Commentator</span></div></div><span class="badge b-quiet">Paid</span></div>
+      </div>
+      <p class="foot" style="margin-top:10px">Events with no role yet are left out here. They stay on the Events tab.</p>
+    </div>
+    <div class="fade"></div>
+    <div class="tabbar"><span>Upcoming</span><span>Events</span><span>Payments</span><span>Expenses</span><span class="on">Settings</span></div>
+  </div>
+  <figcaption><b>All roles, one timeline</b>Upcoming work sits above the forest Today rule and past work below it, the same order as the Events tab. Tags show every role you held, so Donington lists both of its roles. The badge follows the Events rule: booking status before the work, money state after it.</figcaption>
+  </figure>
+
+  <!-- B2 -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn round">‹</span><span class="t">Roles</span><span class="glassbtn round">+</span></div>
+    <div class="scroll">
+      <div class="search">Search events</div>
+      <div class="chiprow">
+        <span class="chip">All <b>21</b></span>
+        <span class="chip on">Commentator <b>14</b></span>
+        <span class="chip">Pit reporter <b>6</b></span>
+        <span class="chip">Presenter <b>4</b></span>
+      </div>
+
+      <div class="panel summary">
+        <div class="top">
+          <div><h3>Commentator</h3><div class="sub">Since Mar 2024 · 9 events in 2026</div></div>
+          <span class="glassbtn round">⋯</span>
+        </div>
+        <div class="strip">
+          <i style="height:3px" class="z"></i><i style="height:3px" class="z"></i><i style="height:12px"></i><i style="height:12px"></i><i style="height:24px"></i><i style="height:12px"></i><i style="height:24px"></i><i style="height:3px" class="z"></i><i style="height:24px"></i><i style="height:12px" class="now"></i><i style="height:12px" class="fut"></i><i style="height:3px" class="z"></i>
+        </div>
+        <div class="months"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span></div>
+        <div class="facts"><span>Northline TV 8</span><span>Apex Media 4</span><span>Gridcast 2</span></div>
+      </div>
+
+      <div class="mhead"><span>Coming up</span><span>2</span></div>
+      <div class="panel">
+        <div class="r"><div class="rail"><div class="w">Sat</div><div class="d">24</div><div class="m">Oct</div></div>
+          <div class="grow"><div class="title">Brands Hatch Finale</div><div class="meta">Northline TV · 2 days</div></div><span class="badge b-forest">Booked</span></div>
+        <div class="r"><div class="rail"><div class="w">Sat</div><div class="d">7</div><div class="m">Nov</div></div>
+          <div class="grow"><div class="title">Portimão Endurance</div><div class="meta">Gridcast · 3 days</div></div><span class="badge b-amber">Tentative</span></div>
+      </div>
+      <div class="mhead"><span>2026</span><span>7 earlier</span></div>
+      <div class="panel">
+        <div class="r"><div class="rail quiet"><div class="w">Sat</div><div class="d">3</div><div class="m">Oct</div></div>
+          <div class="grow"><div class="title quiet">Donington Park</div><div class="meta">Northline TV · also Pit reporter</div></div><span class="badge b-blue">Invoiced</span></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+    <div class="menu">
+      <div>Rename</div>
+      <div>Merge into… <small>Pit reporter</small></div>
+      <div class="red">Delete <small>used on 14</small></div>
+    </div>
+    <div class="fade"></div>
+  </div>
+  <figcaption><b>One role in focus</b>Picking a chip shows the summary panel above that role's events, grouped Coming up and then by year, newest first. The strip counts events per month: forest for past months, mint for booked months ahead. ⋯ holds Rename, Merge and Delete. Merge reassigns sessions, so it confirms first.</figcaption>
+  </figure>
+
+  </div>
+  <div class="tradeoffs">
+    <div><h4>Good at</h4><ul><li>Comparing roles: switch chips and the agenda stays in place.</li><li>Shows what the role looks like over the year, not only a list of events.</li><li>Handles events with several roles honestly, using tags.</li></ul></div>
+    <div><h4>Watch for</h4><ul><li>Past ~6 roles the chips need horizontal scrolling. Search would also match role names.</li><li>The All view repeats a lot of the Events tab. It could default to the most-used role.</li><li>More new code: a summary model like ClientSummary.</li></ul></div>
+  </div>
+</section>
+</div>
+</body>
+</html>

@@ -70,15 +70,21 @@ struct MonthStepper: View {
             VStack(alignment: inline ? .leading : .center, spacing: 2) {
                 Text(Self.title(month)).font(inline ? .title2.bold() : .title3.bold())
                     .accessibilityIdentifier("payments-month")
-                Text(eventCount == 1 ? "1 event" : "\(eventCount) events").font(.footnote).foregroundStyle(Color("SecondaryText"))
+                HStack(spacing: 6) {
+                    Text(eventCount == 1 ? "1 event" : "\(eventCount) events").foregroundStyle(Color("SecondaryText"))
+                    if month != PaymentsView.currentMonth {
+                        Text("·").foregroundStyle(Color("SecondaryText"))
+                        // Tap area grows to 44pt without pushing the stepper taller.
+                        Button("This month") { month = PaymentsView.currentMonth }.fontWeight(.semibold)
+                            .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
+                            .accessibilityIdentifier("month-current")
+                    }
+                }
+                .font(.footnote)
             }
             if !inline { Spacer(minLength: 0) }
             Button { shift(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
                 .accessibilityLabel("Next month").accessibilityIdentifier("month-next")
-            if month != PaymentsView.currentMonth {
-                Button("This month") { month = PaymentsView.currentMonth }.font(.subheadline.weight(.semibold))
-                    .frame(minHeight: 44).accessibilityIdentifier("month-current")
-            }
         }
         .font(.body.weight(.semibold))
     }

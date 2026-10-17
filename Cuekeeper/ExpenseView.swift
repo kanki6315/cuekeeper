@@ -351,17 +351,22 @@ struct EventExpensesSection: View {
         Section("Expenses") {
             ForEach(expenses.filter { !$0.value.discarded }, id: \.objectID) { expense in
                 Button { if let onOpen { onOpen(expense) } else { selected = expense } } label: {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(expense.isDraft ? "Review receipt" : expense.value.merchant).font(.headline)
-                        if expense.isDraft { Text(expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm").font(.subheadline) }
-                        else {
-                            Text("\(ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) ?? "Total to check") · \(Day.display(expense.value.day))").font(.subheadline)
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(expense.isDraft ? "Review receipt" : expense.value.merchant)
+                            Text(expense.isDraft ? (expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm") : Day.display(expense.value.day))
+                                .font(.subheadline).foregroundStyle(expense.isDraft ? Color("AmberText") : Color("SecondaryText"))
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                        if !expense.isDraft {
+                            Text(ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) ?? "Total to check").monospacedDigit()
                         }
-                    }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                }.accessibilityIdentifier("expense-row")
+                    }
+                    .foregroundStyle(Color.primary)
+                    .frame(minHeight: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityIdentifier("expense-row")
             }
-            Button("Scan Receipt", systemImage: "doc.viewfinder") { if let onOpen { onOpen(nil) } else { adding = true } }
-                .buttonStyle(DaybookSecondaryButton()).accessibilityIdentifier("scan-receipt")
+            DaybookActionRow("Scan Receipt", systemImage: "doc.viewfinder") { if let onOpen { onOpen(nil) } else { adding = true } }
+                .accessibilityIdentifier("scan-receipt")
         }
         .sheet(isPresented: $adding) { ExpenseEditorView(job: job) }
         .sheet(item: $selected) { ExpenseEditorView(job: job, expense: $0) }

@@ -394,6 +394,31 @@ extension DaybookLink where Label == Text {
     }
 }
 
+/// An icon-led action that sits as a row inside a ruled panel, so actions belong to their group instead of floating beside it.
+struct DaybookActionRow: View {
+    @ScaledMetric(relativeTo: .body) private var iconSize = 30
+    let title: String
+    let symbol: String
+    let action: () -> Void
+    init(_ title: String, systemImage symbol: String, action: @escaping () -> Void) {
+        self.title = title; self.symbol = symbol; self.action = action
+    }
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).font(.subheadline.weight(.semibold))
+                    .frame(width: iconSize, height: iconSize)
+                    .background(Color.accentColor.opacity(0.13), in: Circle())
+                    .accessibilityHidden(true)
+                Text(title).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .foregroundStyle(Color.accentColor)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 extension ContainerValues {
     @Entry var daybookUnframed = false
     @Entry var daybookFlushTop = false

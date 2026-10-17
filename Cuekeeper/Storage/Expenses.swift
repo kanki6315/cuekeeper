@@ -3,7 +3,7 @@ import Foundation
 import CryptoKit
 
 struct ExpenseValue: Codable, Equatable {
-    static let categories = ["Travel", "Accommodation", "Meals", "Parking", "Equipment", "Other"]
+    static let categories = ["Travel", "Accommodation", "Meals", "Parking", "Equipment", "Software", "Other"]
     static let currencies = CurrencyPreferences.supported
     var merchant = ""
     var day = ""
@@ -15,6 +15,10 @@ struct ExpenseValue: Codable, Equatable {
     var notes = ""
     var capture: ExpenseCaptureInput?
     var discarded: Bool?
+    /// A business cost that recurs monthly. Each month is its own expense; the next one is offered once due.
+    var repeatsMonthly: Bool?
+    /// Shared by every month of a repeating business cost.
+    var seriesID: UUID?
     /// Formatted only when the amount is valid for a supported currency, so a bad value is never shown as zero.
     static func displayAmount(_ amount: String, currency: String) -> String? {
         guard currencies.contains(currency), let value = try? Money.parse(amount, currency: currency) else { return nil }
@@ -52,7 +56,8 @@ final class Expense: NSManagedObject, Identifiable {
         context.refreshAllObjects()
     }
     /// Only values and permanent object IDs cross queues. Refresh UI objects after commit.
-    @MainActor static func capturePhoto(_ photo: Data, jobID: NSManagedObjectID, in context: NSManagedObjectContext) async throws -> NSManagedObjectID {
+    /// A nil event starts a business-cost receipt that belongs to no event.
+    @MainActor static func capturePhoto(_ photo: Data, jobID: NSManagedObjectID?, in context: NSManagedObjectContext) async throws -> NSManagedObjectID {
         let writer = photoWriter(context)
         let id = try await writer.perform { try insertPhoto(photo, jobID: jobID, writer: writer) }
         context.refreshAllObjects()
@@ -70,9 +75,13 @@ final class Expense: NSManagedObject, Identifiable {
         writer.mergePolicy = NSErrorMergePolicy
         return writer
     }
-    private static func insertPhoto(_ photo: Data, jobID: NSManagedObjectID, writer: NSManagedObjectContext) throws -> NSManagedObjectID {
+    private static func insertPhoto(_ photo: Data, jobID: NSManagedObjectID?, writer: NSManagedObjectContext) throws -> NSManagedObjectID {
         guard !photo.isEmpty, photo.count <= 12 * 1024 * 1024 else { throw RecordError.invalid("Choose a receipt image smaller than 12 MB.") }
-        guard let job = try writer.existingObject(with: jobID) as? Job, job.deletedAt == nil else { throw RecordError.invalid("This event was deleted. Restore it before adding expenses.") }
+        var job: Job?
+        if let jobID {
+            guard let event = try writer.existingObject(with: jobID) as? Job, event.deletedAt == nil else { throw RecordError.invalid("This event was deleted. Restore it before adding expenses.") }
+            job = event
+        }
         let record = Expense(context: writer)
         record.id = UUID(); record.createdAt = Date(); record.updatedAt = Date(); record.revision = UUID().uuidString
         record.photo = photo; record.job = job; record.isDraft = true
@@ -90,21 +99,28 @@ final class Expense: NSManagedObject, Identifiable {
         record.updatedAt = Date(); record.revision = UUID().uuidString
         try writer.save()
     }
-    static func save(_ value: ExpenseValue, id: NSManagedObjectID, revision: String, confirmed: Bool = true, jobID: NSManagedObjectID? = nil, in context: NSManagedObjectContext) throws {
+    /// `business` saves a cost that belongs to no event: it is never reimbursable and needs no photo.
+    static func save(_ value: ExpenseValue, id: NSManagedObjectID, revision: String, confirmed: Bool = true, jobID: NSManagedObjectID? = nil,
+                     business: Bool = false, in context: NSManagedObjectContext) throws {
         if confirmed { try value.validate() }
         let writer = isolatedWriter(context)
         let record = try writer.existingObject(with: id) as! Expense
         guard record.revision == revision else { throw RecordError.invalid("This expense changed on another device. Close and reopen it before saving.") }
         guard record.value.discarded != true, record.job?.deletedAt == nil else { throw RecordError.invalid("This expense or its event was removed. Reopen the expense list before editing.") }
-        if let jobID {
+        if business {
+            if record.job != nil, try !record.activeInvoices(index: InvoiceIndex(in: writer)).isEmpty {
+                throw RecordError.invalid("This receipt is on an invoice. Void that invoice before making it a business cost.")
+            }
+            record.job = nil
+        } else if let jobID {
             guard let job = try writer.existingObject(with: jobID) as? Job, job.deletedAt == nil else { throw RecordError.invalid("Choose an active event.") }
             record.job = job
         }
-        if confirmed {
+        if confirmed && !business {
             guard record.job != nil else { throw RecordError.invalid("Choose an event before completing this expense.") }
             guard record.photo != nil else { throw RecordError.invalid("Attach a receipt photo before completing this expense.") }
         }
-        var value = value
+        var value = business ? value.asBusiness(id: record.id) : value.asEventReceipt
         // Capture evidence is immutable even when the reviewed form changes.
         value.capture = record.value.capture; value.discarded = record.value.discarded
         record.valueJSON = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
@@ -175,6 +191,19 @@ extension Expense {
         try writer.save(); context.refreshAllObjects()
     }
     var needsCompletion: Bool { isDraft && value.discarded != true && job?.deletedAt == nil }
+    /// A finished cost that belongs to no event, such as a software subscription.
+    var isBusiness: Bool { !isDraft && job == nil && value.discarded != true }
+    /// Saves a business cost entered without a receipt photo, such as the next month of a subscription.
+    static func createBusiness(_ value: ExpenseValue, in context: NSManagedObjectContext) throws -> NSManagedObjectID {
+        try value.validate()
+        let writer = isolatedWriter(context)
+        let expense = Expense(context: writer)
+        let id = UUID(); expense.id = id; expense.createdAt = Date(); expense.updatedAt = Date()
+        expense.revision = UUID().uuidString; expense.isDraft = false
+        expense.valueJSON = String(decoding: try JSONEncoder().encode(value.asBusiness(id: id)), as: UTF8.self)
+        try writer.save(); context.refreshAllObjects()
+        return expense.objectID
+    }
 }
 
 enum ReceiptField: String, CaseIterable, Identifiable {
@@ -195,6 +224,19 @@ enum ReceiptField: String, CaseIterable, Identifiable {
 }
 
 extension ExpenseValue {
+    /// Business costs are never rebilled; a repeating one joins (or starts) its series.
+    func asBusiness(id: UUID?) -> ExpenseValue {
+        var value = self
+        value.reimbursable = false
+        if value.repeatsMonthly == true { value.seriesID = value.seriesID ?? id ?? UUID() } else { value.repeatsMonthly = nil }
+        return value
+    }
+    /// Event receipts don't repeat.
+    var asEventReceipt: ExpenseValue {
+        var value = self
+        value.repeatsMonthly = nil
+        return value
+    }
     /// Preserve entered/payment values. Conflicting receipt facts require explicit acceptance.
     mutating func fillBlanks(from receipt: ExpenseValue) -> [ReceiptField] {
         var conflicts: [ReceiptField] = []

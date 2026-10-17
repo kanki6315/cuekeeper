@@ -196,12 +196,12 @@ struct StepBarKey: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var railWidth = 47
     @ScaledMetric(relativeTo: .caption) private var column = 56
-    private let sample: [ReadinessGate: GateState] = [.work: .done, .fee: .done, .receipts: .missing, .client: .notYet]
+    private let sample: [ReadinessGate: GateState] = [.fee: .done, .client: .missing, .work: .notYet, .receipts: .done]
     var body: some View {
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 6) {
                 StepBar(gates: sample)
-                Text("Left to right: work, fee, receipts, client. Green is done, orange is missing, grey is not yet.")
+                Text("Left to right: fee, client, work, receipts. Green is done, orange is missing, grey is not yet.")
                     .font(.footnote).foregroundStyle(Color("SecondaryText"))
             }
         } else { columns }
@@ -229,7 +229,7 @@ struct StepBarKey: View {
         }
         .padding(.leading, alignsWithRows ? railWidth + 12 : 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Each event's bar shows work, fee, receipts and client, in that order: done, missing, or not yet.")
+        .accessibilityLabel("Each event's bar shows fee, client, work and receipts, in that order: done, missing, or not yet.")
     }
 }
 

@@ -69,7 +69,7 @@ extension BackupArchive {
         let receipts: Int
     }
     var attachments: [Attachment] {
-        records.flatMap { $0.attributes.values.compactMap { if case .attachment(let a) = $0 { return a }; return nil } }
+        (records + conflicts).flatMap { $0.attributes.values.compactMap { if case .attachment(let a) = $0 { return a }; return nil } }
     }
     func verifyAttachments(control: BackupControl) throws {
         let files = attachments
@@ -150,6 +150,7 @@ extension BackupArchive {
         guard BackupFiles.digest(recordsData) == manifest.recordsSHA256 else { throw RecordError.invalid("Backup records are damaged. Nothing was restored.") }
         var archive = try JSONDecoder().decode(Self.self, from: recordsData)
         archive.workspace = workspace
+        try archive.migrate(model: model)
         try archive.validate(model: model)
         let attachments = archive.attachments
         guard manifest.receipts == attachments.count,

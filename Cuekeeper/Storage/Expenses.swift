@@ -297,3 +297,25 @@ extension ExpenseValue {
         return conflicts
     }
 }
+
+extension ExpenseValue {
+    /// Receipts saved by earlier versions lack newer keys (`discarded`, `repeatsMonthly`
+    /// and the rest); they keep their details instead of reading as a blank receipt.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        merchant = try c.decodeIfPresent(String.self, forKey: .merchant) ?? ""
+        day = try c.decodeIfPresent(String.self, forKey: .day) ?? ""
+        amount = try c.decodeIfPresent(String.self, forKey: .amount) ?? ""
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? ""
+        tax = try c.decodeIfPresent(String.self, forKey: .tax) ?? ""
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? "Other"
+        reimbursable = try c.decodeIfPresent(Bool.self, forKey: .reimbursable) ?? false
+        notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        capture = try c.decodeIfPresent(ExpenseCaptureInput.self, forKey: .capture)
+        discarded = try c.decodeIfPresent(Bool.self, forKey: .discarded) ?? false
+        repeatsMonthly = try c.decodeIfPresent(Bool.self, forKey: .repeatsMonthly) ?? false
+        seriesID = try c.decodeIfPresent(UUID.self, forKey: .seriesID)
+        repeatDay = try c.decodeIfPresent(Int.self, forKey: .repeatDay)
+        business = try c.decodeIfPresent(Bool.self, forKey: .business)
+    }
+}

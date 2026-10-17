@@ -30,6 +30,10 @@ enum DesignFixtures {
             try seedPayments(context)
             return
         }
+        if ProcessInfo.processInfo.arguments.contains("--identity-conflict-fixtures") {
+            try seedIdentityConflicts(context)
+            return
+        }
         let start = Calendar.current.startOfDay(for: Date())
         var created: [Job] = []
         for (index, name) in ["City vs United", "Studio highlights", "National finals", "Daytona", "Sebring AEC", "Season opener"].enumerated() {
@@ -143,6 +147,41 @@ enum DesignFixtures {
             try race.save(in: context, jobID: id)
         }
 
+    }
+    /// One event and one payment that each exist as two differing copies of one UUID,
+    /// as after a backup restored before iCloud finished delivering, for record review.
+    static func seedIdentityConflicts(_ context: NSManagedObjectContext) throws {
+        let day = Calendar.current.startOfDay(for: Date())
+        var draft = JobDraft(name: "Silverstone 6 Hours", startDate: day, endDate: day.addingTimeInterval(86400))
+        draft.clientName = "Velocity TV"; draft.fee?.amount = "1000"; draft.timeZoneID = "Europe/London"
+        let job = try XCTUnwrapFixture(context.existingObject(with: try draft.save(in: context)) as? Job)
+        job.notes = "Pit lane reporter, arrive 07:00"; job.bookingStatus = "booked"; try context.save()
+        var session = SessionDraft(day: job.startDay, timeZoneID: "Europe/London")
+        session.startTime = day.addingTimeInterval(9 * 3600); session.endTime = day.addingTimeInterval(15 * 3600)
+        try session.save(in: context, jobID: job.objectID)
+        var invoice = InvoiceDraft(clientID: job.client!.id!, currency: "USD")
+        invoice.value.reference = "INV-0142"; invoice.value.status = "sent"; invoice.value.sentDay = Day.string(from: day)
+        invoice.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 100000)]
+        let invoiceID = try invoice.save(in: context)
+        var payment = PaymentDraft(amount: "250"); payment.note = "Bank transfer"
+        try payment.save(in: context, invoiceID: invoiceID)
+        func copy(_ object: NSManagedObject) -> NSManagedObject {
+            let copy = NSEntityDescription.insertNewObject(forEntityName: object.entity.name!, into: context)
+            for name in object.entity.attributesByName.keys { copy.setValue(object.value(forKey: name), forKey: name) }
+            for (name, relationship) in object.entity.relationshipsByName where !relationship.isToMany {
+                copy.setValue(object.value(forKey: name), forKey: name)
+            }
+            return copy
+        }
+        let other = copy(job)
+        other.setValue("Silverstone 6H", forKey: "name"); other.setValue("tentative", forKey: "bookingStatus"); other.setValue("", forKey: "notes")
+        let receipt = try XCTUnwrapFixture(context.fetch(NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")).first)
+        copy(receipt).setValue(Int64(20500), forKey: "amount")
+        try context.save()
+    }
+    private static func XCTUnwrapFixture<T>(_ value: T?) throws -> T {
+        guard let value else { throw RecordError.invalid("Fixture record missing.") }
+        return value
     }
     /// A month in progress: ready, held-up, upcoming, invoiced and paid work across four clients,
     /// plus invoices still open from the previous month. Dates are relative to today.
@@ -273,6 +312,7 @@ struct DesignFixtureScreen: View {
                 case "receipt-shortcut": ReceiptEventPicker()
                 case "recently-deleted": RecentlyDeletedView()
                 case "backups": BackupView(cloud: FixtureBackups.shared, preview: true)
+                case "identity-review": IdentityReviewView()
                 case "event": EventDetailView(anchor: job)
                 case "edit-event": EventDetailView(anchor: job).sheet(isPresented: $editorPresented) { EventEditorView(anchor: job) }
                 case "job": JobDetailView(job: job)

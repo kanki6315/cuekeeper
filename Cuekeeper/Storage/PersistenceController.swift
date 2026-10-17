@@ -2,6 +2,7 @@ import CloudKit
 import Combine
 import Network
 import CoreData
+import UIKit
 
 @MainActor
 final class PersistenceController: ObservableObject {
@@ -26,6 +27,10 @@ final class PersistenceController: ObservableObject {
         }
     }
     @Published private(set) var lastTransfer: Date?
+    /// Records that share an identity but differ, kept for review (see `IdentityReconciliation`).
+    @Published private(set) var identityIssue: String?
+    private var reconcileTask: Task<Void, Never>?
+    private var reconcileObservers: [NSObjectProtocol] = []
     private var eventObserver: NSObjectProtocol?
     private var accountObserver: NSObjectProtocol?
     private let defaults: UserDefaults
@@ -55,6 +60,19 @@ final class PersistenceController: ObservableObject {
         // revisions and explicit conflict resolution above this merge policy.
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         container.viewContext.name = "Cuekeeper view context"
+        CloudRecordNames.register(container)
+        if cloudEnabled {
+            // Also reconcile when records change remotely or the app returns, not only
+            // after an import event, so a pass a concurrent edit aborted runs again soon.
+            reconcileObservers = [
+                NotificationCenter.default.addObserver(forName: .NSPersistentStoreRemoteChange, object: container.persistentStoreCoordinator, queue: .main) { [weak self] _ in
+                    Task { @MainActor [weak self] in self?.scheduleReconcile(after: 2) }
+                },
+                NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+                    Task { @MainActor [weak self] in self?.scheduleReconcile(after: 0) }
+                },
+            ]
+        }
         syncActivity.enabled = cloudEnabled
         if cloudEnabled {
             accountObserver = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { [weak self] _ in
@@ -140,6 +158,7 @@ final class PersistenceController: ObservableObject {
                         self.persistImportCompletion()
                     }
                     self.isLoaded = self.loadError == nil
+                    if self.isLoaded { self.scheduleReconcile(after: 0) }
                     if let loadError = self.loadError {
                         self.storeReadiness.complete(.failure(RecordError.invalid("Couldn’t open your daybook: \(loadError)")))
                     } else {
@@ -197,7 +216,50 @@ final class PersistenceController: ObservableObject {
 
     func recordSyncEvent(id: UUID, kind: SyncActivity.Kind, ended: Bool, succeeded: Bool, error: String?) {
         syncActivity.record(id: id, kind: kind, ended: ended, succeeded: succeeded, error: error)
-        if kind == .receiving && ended && succeeded { persistImportCompletion() }
+        if kind == .receiving && ended && succeeded {
+            persistImportCompletion()
+            scheduleReconcile(after: 0)
+        }
+    }
+
+    /// Coalesce triggers into one pass; a pass aborted by a concurrent edit retries
+    /// with backoff instead of waiting for the next iCloud download.
+    func scheduleReconcile(after delay: TimeInterval, attempt: Int = 0) {
+        reconcileTask?.cancel()
+        reconcileTask = Task { [weak self] in
+            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+            guard !Task.isCancelled, let self else { return }
+            if await !self.reconcileIdentities(), attempt < 4 {
+                self.scheduleReconcile(after: 2 * pow(2, Double(attempt)), attempt: attempt + 1)
+            }
+        }
+    }
+
+    /// Recompute the review prompt after a person resolves a conflict.
+    func refreshIdentityIssue() {
+        let entities = ((try? IdentityReconciliation.conflicts(in: container.viewContext)) ?? []).map(\.entity)
+        identityIssue = IdentityReconciliation.Report(conflicts: Array(Set(entities)).sorted()).message
+    }
+
+    /// Merge copies of the same record that arrived after a restore. Runs after
+    /// launch, completed imports, remote changes and returning to the foreground;
+    /// differing copies are reported. Returns false when the pass must be retried.
+    @discardableResult
+    func reconcileIdentities() async -> Bool {
+        // Duplicate identities come from CloudKit delivery; local-only stores never reconcile in the background.
+        guard isLoaded, cloudEnabled else { return true }
+        do {
+            let report = try await BackupWorker.perform(coordinator: container.persistentStoreCoordinator, control: BackupControl()) { writer in
+                try IdentityReconciliation.reconcile(in: writer)
+            }
+            // While iCloud is still receiving, related records may be mid-delivery:
+            // clear a resolved warning at once, but raise a new one only once it settles.
+            if report.message == nil || !syncActivity.isReceiving { identityIssue = report.message }
+            return true
+        } catch {
+            // A concurrent edit aborts this pass (error merge policy).
+            return false
+        }
     }
 
     // The Core Data store UUID survives launches, but changes when the store is replaced.
@@ -217,6 +279,7 @@ final class PersistenceController: ObservableObject {
         networkMonitor.cancel()
         if let accountObserver { NotificationCenter.default.removeObserver(accountObserver) }
         if let eventObserver { NotificationCenter.default.removeObserver(eventObserver) }
+        for observer in reconcileObservers { NotificationCenter.default.removeObserver(observer) }
     }
 
     func refreshAccountStatus() async {
@@ -277,6 +340,13 @@ struct SyncActivity: Equatable {
         }
         return nil
     }
+    /// Restoring before iCloud's first download is allowed (offline, account
+    /// problems, or no account yet). Copies that arrive later are reconciled.
+    var restoreCaution: String? {
+        guard enabled, restoreUnavailableReason == nil, awaitingInitialImport else { return nil }
+        return "iCloud hasn’t finished downloading to this device. When it does, restored records are matched with their iCloud copies; iCloud’s newer edits are kept, and any financial records that differ are kept for review."
+    }
+    var isReceiving: Bool { active.values.contains(.receiving) }
     var needsAttention: Bool { accountIssue != nil || !failures.isEmpty }
     var isBusy: Bool { enabled && !offline && !needsAttention && (checkingAccount || !active.isEmpty) }
     var message: String? {

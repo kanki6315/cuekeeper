@@ -325,7 +325,9 @@ final class PaymentsBillingTests: XCTestCase {
             if record.key.entity == "Client" { record.attributes["invoicingJSON"] = nil }
             return record
         }
+        archive.model = nil // Archives written before model 15 carry no model field.
         let target = try await self.context()
+        try archive.migrate(model: target.persistentStoreCoordinator!.managedObjectModel)
         XCTAssertGreaterThan(try archive.restore(in: target).added, 0)
         let restored = try XCTUnwrap(target.fetch(NSFetchRequest<Client>(entityName: "Client")).first)
         XCTAssertEqual(restored.invoicingJSON, "")

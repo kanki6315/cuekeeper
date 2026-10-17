@@ -121,7 +121,7 @@ struct UpcomingView: View {
             Button {
                 sheet = .chooseCaptureEvent(summary.inFlight.compactMap { job($0.id) })
             } label: {
-                Image(systemName: "doc.viewfinder").foregroundStyle(Color.accentColor)
+                Image(systemName: "receipt").foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.large)
             .accessibilityLabel("Scan Receipt")

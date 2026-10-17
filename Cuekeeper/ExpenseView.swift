@@ -30,7 +30,7 @@ struct ExpensesView: View {
         return DaybookForm(topPadding: 12) {
             Section {
                 DaybookTabHeader {
-                    Button("Scan Receipt", systemImage: "doc.viewfinder") { choosingEvent = true }
+                    Button("Scan Receipt", systemImage: "receipt") { choosingEvent = true }
                         .buttonStyle(DaybookPrimaryButton())
                         .accessibilityIdentifier("scan-receipt-overview")
                 }
@@ -365,7 +365,7 @@ struct EventExpensesSection: View {
                     .frame(minHeight: 44).contentShape(Rectangle())
                 }.buttonStyle(.plain).accessibilityIdentifier("expense-row")
             }
-            DaybookActionRow("Scan Receipt", systemImage: "doc.viewfinder") { if let onOpen { onOpen(nil) } else { adding = true } }
+            DaybookActionRow("Scan Receipt", systemImage: "receipt") { if let onOpen { onOpen(nil) } else { adding = true } }
                 .accessibilityIdentifier("scan-receipt")
         }
         .sheet(isPresented: $adding) { ExpenseEditorView(job: job) }

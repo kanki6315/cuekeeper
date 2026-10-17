@@ -51,6 +51,10 @@ struct BackupView: View {
         }
         .refreshable { await reload() }
         .accessibilityIdentifier("daybook-form")
+        // After the form identifier, which would otherwise replace the toast's own.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            BackupNoticeToast(notice: $workflow.notice).padding(.horizontal, 20).padding(.bottom, 12)
+        }
         .daybookSurface()
         .navigationTitle("Backups").navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -126,10 +130,6 @@ struct BackupView: View {
                         Text("No backups yet").font(.title3.weight(.semibold))
                         Text("Keep a copy of your daybook in iCloud.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
                     }
-                    if persistence.syncActivity.message != nil {
-                        Label("Changes from other devices may still be arriving.", systemImage: "arrow.triangle.2.circlepath")
-                            .font(.subheadline).foregroundStyle(Color("AmberText")).padding(.top, 4)
-                    }
                     if let reason = persistence.syncActivity.restoreUnavailableReason {
                         Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
                     }
@@ -149,10 +149,7 @@ struct BackupView: View {
                     .buttonStyle(DaybookPrimaryButton())
                     .disabled(workflow.busy || !cloudAvailable)
                     .accessibilityIdentifier("backup-now")
-                if workflow.busy { BackupProgressView(workflow: workflow).padding(.top, 12) }
-                if let notice = workflow.notice {
-                    Text(notice).font(.subheadline).padding(.top, 12).accessibilityIdentifier("backup-notice")
-                }
+                if workflow.busy { BackupProgressView(workflow: workflow).padding(.top, 8) }
                 if workflow.canRetryRestore {
                     HStack {
                         Button("Review Restore Again") { workflow.reviewAgain() }
@@ -260,8 +257,7 @@ struct BackupView: View {
             workflow.stage = "Uploading to iCloud…"; workflow.fraction = nil; workflow.canCancel = false
             try await cloud.save(file: file.url, date: file.date, events: file.events)
             try control.check()
-            // The status panel and list already show the new backup; confirm it for VoiceOver only.
-            AccessibilityNotification.Announcement("Backup saved to iCloud.").post()
+            workflow.notice = "Backup saved to iCloud."
             let result = try await cloud.list(); try control.check(); entries = result; loaded = true
         }
     }

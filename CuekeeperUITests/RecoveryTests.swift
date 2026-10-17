@@ -37,7 +37,7 @@ final class RecoveryTests: RegressionUITestCase {
         XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 5))
         app.buttons["Restore Backup"].tap()
         let complete = NSPredicate(format: "label CONTAINS %@", "Restore complete")
-        expectation(for: complete, evaluatedWith: app.staticTexts["backup-notice"])
+        expectation(for: complete, evaluatedWith: app.buttons["backup-notice"])
         waitForExpectations(timeout: 5)
         capture("backup-after-restore")
         let more = app.buttons["backup-more"].firstMatch
@@ -122,7 +122,7 @@ final class RecoveryTests: RegressionUITestCase {
         let export = button(app, "backup-export", "Export to Files")
         XCTAssertTrue(export.waitForExistence(timeout: 5))
         export.tap()
-        XCTAssertTrue(app.staticTexts["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 15))
         revealFiles(app)
         let importer = button(app, "backup-import", "Import a Backup")
         XCTAssertTrue(importer.waitForExistence(timeout: 5))
@@ -131,7 +131,7 @@ final class RecoveryTests: RegressionUITestCase {
         capture("backup-file-confirmation")
         app.buttons["Restore Backup"].tap()
         let complete = NSPredicate(format: "label CONTAINS %@", "Restore complete")
-        expectation(for: complete, evaluatedWith: app.staticTexts["backup-notice"])
+        expectation(for: complete, evaluatedWith: app.buttons["backup-notice"])
         waitForExpectations(timeout: 15)
         app.terminate()
         app.launchArguments += ["--design-dark", "-UIPreferredContentSizeCategoryName", UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue]

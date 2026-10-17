@@ -414,8 +414,10 @@ Context menus and named accessibility actions provide alternatives to swiping.
 
 Status first, with an inline navigation title and no page heading. A panel leads
 with the last backup's relative date and its event count and size, followed by
-Back Up Now, progress and notices. An amber line appears only while sync changes
-may still be arriving. Saved iCloud backups follow under "In iCloud" with an
+Back Up Now and a single leading-aligned progress row (spinner, stage, Cancel).
+Outcomes (saved, deleted, exported, restored, cancelled) appear as a toast above
+the tab bar that clears itself after a reading-length pause or on tap. The
+sync-may-be-arriving caution lives in the restore confirmation, not the panel. Saved iCloud backups follow under "In iCloud" with an
 "n of 50" count. Each row has a capsule Restore action and a "…" menu holding
 Delete Backup; a context menu offers both. Pull to refresh reloads the list. At
 regular width and non-accessibility text sizes, the status and a Files panel

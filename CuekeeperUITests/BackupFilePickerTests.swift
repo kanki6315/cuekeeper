@@ -18,7 +18,7 @@ final class BackupFilePickerTests: RegressionUITestCase {
         XCTAssertTrue(save.waitForExistence(timeout: 15))
         capture("backup-export-picker")
         save.tap()
-        XCTAssertTrue(app.staticTexts["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Backup exported. Keep the file in a safe place."].waitForExistence(timeout: 10))
         revealFiles(app)
         let importer = button(app, "backup-import", "Import a Backup")
         XCTAssertTrue(importer.waitForExistence(timeout: 5))
@@ -38,7 +38,7 @@ final class BackupFilePickerTests: RegressionUITestCase {
         capture("backup-file-confirmation")
         app.buttons["Restore Backup"].tap()
         let complete = NSPredicate(format: "label CONTAINS %@", "Restore complete")
-        expectation(for: complete, evaluatedWith: app.staticTexts["backup-notice"])
+        expectation(for: complete, evaluatedWith: app.buttons["backup-notice"])
         waitForExpectations(timeout: 10)
     }
 

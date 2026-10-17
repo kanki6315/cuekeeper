@@ -2,7 +2,8 @@ import CoreData
 import SwiftUI
 
 /// Payments as a month close: every event in the month with its four invoicing gates,
-/// grouped by client, then money still open from earlier months.
+/// grouped by client, then money still open from earlier months. Invoices switches to
+/// every invoice and direct payment across all months.
 struct PaymentsView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -14,7 +15,10 @@ struct PaymentsView: View {
     @FetchRequest(sortDescriptors: []) private var expenses: FetchedResults<Expense>
     @FetchRequest(sortDescriptors: []) private var clients: FetchedResults<Client>
     @AppStorage("displayCurrencies") private var displayCurrencies = CurrencyPreferences.defaultDisplay
+    @State private var mode = PaymentsMode.month
     @State private var month = PaymentsView.currentMonth
+    @State private var filter = LedgerFilter()
+    @State private var selectedEntry: String?
     @State private var width: CGFloat = 0
     @State private var adding = false
     @State private var invoicing: ReadyInvoice?
@@ -27,10 +31,15 @@ struct PaymentsView: View {
     var body: some View {
         // Revision, receipt, expense and client arrivals must refresh readiness even when job rows do not change.
         _ = invoiceRevisions.count + payments.count + expenses.count + clients.count
-        let summary = PaymentsMonth.load(month: month, jobs: Array(jobs), invoices: Array(invoices), context: context,
-                                         displayed: CurrencyPreferences.displayed(displayCurrencies))
+        let displayed = CurrencyPreferences.displayed(displayCurrencies)
         return Group {
-            if wide { wideBody(summary) } else { compactBody(summary) }
+            if mode == .invoices {
+                let ledger = InvoiceLedger.load(invoices: Array(invoices), jobs: Array(jobs), context: context, displayed: displayed)
+                if wide { wideInvoices(ledger) } else { invoicesList(ledger) { VStack(spacing: 16) { header; PaymentsModePicker(mode: $mode) }.padding(.bottom, 4) } }
+            } else {
+                let summary = PaymentsMonth.load(month: month, jobs: Array(jobs), invoices: Array(invoices), context: context, displayed: displayed)
+                if wide { wideBody(summary) } else { compactBody(summary) }
+            }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .navigationTitle("")
@@ -46,7 +55,7 @@ struct PaymentsView: View {
 
     private func compactBody(_ summary: PaymentsMonth) -> some View {
         DaybookForm(topPadding: 12) {
-            Section { header }.containerValue(\.daybookUnframed, true).containerValue(\.daybookFlushTop, true)
+            Section { header; PaymentsModePicker(mode: $mode) }.containerValue(\.daybookUnframed, true).containerValue(\.daybookFlushTop, true)
             Section { PendingExpensesPrompt() }
             Section { MonthStepper(month: $month, eventCount: summary.events.count) }.containerValue(\.daybookUnframed, true)
             if !summary.currencies.isEmpty {
@@ -81,10 +90,6 @@ struct PaymentsView: View {
                 Section {
                     ForEach(summary.earlier) { item in earlierRow(item) }
                 } header: { Text("Still open from earlier") }
-            }
-            Section {
-                DaybookLink { PaymentsLedgerView() } label: { Label("All invoices and payments", systemImage: "list.bullet.rectangle") }
-                    .accessibilityIdentifier("payments-ledger")
             }
         }
     }
@@ -133,6 +138,7 @@ struct PaymentsView: View {
     private func wideBody(_ summary: PaymentsMonth) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                PaymentsModePicker(mode: $mode).frame(maxWidth: 280)
                 HStack(spacing: 16) {
                     MonthStepper(month: $month, eventCount: summary.events.count, inline: true)
                     Spacer(minLength: 0)
@@ -166,10 +172,6 @@ struct PaymentsView: View {
                                 }
                             }
                         }
-                        WidePanel {
-                            DaybookLink { PaymentsLedgerView() } label: { Label("All invoices and payments", systemImage: "list.bullet.rectangle") }
-                                .accessibilityIdentifier("payments-ledger")
-                        }
                     }
                     .frame(width: 340)
                 }
@@ -182,9 +184,46 @@ struct PaymentsView: View {
         .daybookSurface()
     }
 
+    // MARK: Invoices
+
+    private func invoicesList<Header: View>(_ ledger: InvoiceLedger, selection: Binding<String?>? = nil, @ViewBuilder header: () -> Header) -> some View {
+        InvoicesList(ledger: ledger, filter: $filter, selection: selection, invoice: invoice, job: job, onGoToMonth: { mode = .month }, header: header)
+    }
+
+    /// The list beside the selected invoice; with nothing chosen yet, the first row shows.
+    private func wideInvoices(_ ledger: InvoiceLedger) -> some View {
+        let shown = selectedEntry.flatMap { id in ledger.entries.first { $0.id == id } }
+            ?? ledger.sections(filter).first?.entries.first
+        return HStack(spacing: 0) {
+            invoicesList(ledger, selection: Binding(get: { shown?.id }, set: { selectedEntry = $0 })) {
+                HStack(spacing: 16) {
+                    PaymentsModePicker(mode: $mode).frame(maxWidth: 280)
+                    Spacer(minLength: 0)
+                    Button { adding = true } label: { Label("Invoice", systemImage: "plus") }
+                        .buttonStyle(DaybookPrimaryButton())
+                        .accessibilityLabel("Add Invoice")
+                        .accessibilityIdentifier("add-invoice-overview")
+                }
+                .padding(.vertical, 8)
+            }
+            .frame(width: 420)
+            Divider()
+            Group {
+                if let shown {
+                    LedgerDestination(entry: shown, invoice: invoice, job: job).id(shown.id)
+                } else {
+                    ContentUnavailableView("No invoice selected", systemImage: "doc.text", description: Text("Choose an invoice to see its balance, billed events and payments."))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color("PageBackground"))
+        }
+    }
+
     // MARK: Lookups
 
     private func job(_ id: UUID) -> Job? { jobs.first { $0.id == id } }
+    private func invoice(_ id: UUID) -> Invoice? { invoices.first { $0.id == id } }
     private func client(_ id: UUID?) -> Client? { id.flatMap { id in clients.first { $0.id == id } } }
     private func readyInvoice(clientID: UUID, currency: String, group: ClientMonthGroup) -> ReadyInvoice {
         let ready = group.ready.filter { $0.currency == currency }
@@ -201,72 +240,6 @@ struct ReadyInvoice: Identifiable {
     let currency: String
     let jobs: [Job]
     let expenses: [Expense]
-}
-
-/// Every invoice and payment, by status. Reached from the month close.
-struct PaymentsLedgerView: View {
-    @Environment(\.managedObjectContext) private var context
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Invoice.createdAt, ascending: false)]) private var invoices: FetchedResults<Invoice>
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Job.startDay, ascending: false)]) private var jobs: FetchedResults<Job>
-    @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
-    var body: some View {
-        _ = invoiceRevisions.count
-        let index = InvoiceIndex(in: context)
-        let flagged = invoices.filter { $0.issue(in: context, index: index) != nil }
-        let unknownFees = jobs.filter { $0.deletedAt == nil && (try? $0.currentFee()) == nil }
-        return DaybookForm(title: "Invoices & payments") {
-            if !flagged.isEmpty || !unknownFees.isEmpty {
-                Section {
-                    ForEach(flagged, id: \.objectID) { invoice in
-                        DaybookLink { InvoiceDetailView(invoice: invoice) } label: {
-                            VStack(alignment: .leading, spacing: 6) { Text(invoice.title); Text(invoice.issue(in: context, index: index) ?? "Needs review").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                        }
-                    }
-                    ForEach(unknownFees, id: \.objectID) { job in
-                        DaybookLink("\(job.displayName) · Fee needs review") { FeeDetailView(job: job) }
-                    }
-                } header: { Text("Needs review") }
-            }
-            invoiceSection("Draft invoices") { value, _ in value.status == "draft" }
-            invoiceSection("Awaiting payment") { $0.status == "sent" && $1 > 0 }
-            invoiceSection("Paid invoices") { $0.status == "sent" && $1 <= 0 }
-            if jobs.contains(where: { !($0.payments ?? []).isEmpty }) {
-                Section("Direct payments") {
-                    ForEach(jobs.filter { !($0.payments ?? []).isEmpty }, id: \.objectID) { job in
-                        if job.deletedAt == nil {
-                            DaybookLink { JobDetailView(job: job) } label: {
-                                VStack(alignment: .leading, spacing: 4) { Text(job.displayName); Text(job.billingSummary(in: context, index: index)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                            }
-                        } else {
-                            DisclosureGroup(job.displayName + " (deleted)") {
-                                ForEach(Array(job.payments ?? []).sorted { ($0.receivedAt ?? .distantPast) > ($1.receivedAt ?? .distantPast) }, id: \.objectID) { payment in
-                                    DaybookLink { ReceiptDetailView(payment: payment) } label: { Text(Money.format(payment.amount, currency: payment.currency)) }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            invoiceSection("Voided invoices") { value, _ in value.status == "void" }
-            if jobs.isEmpty && invoices.isEmpty {
-                Section { Text("No invoices or payments yet.").foregroundStyle(Color("SecondaryText")) }
-            }
-        }
-        .navigationTitle("Invoices & payments").navigationBarTitleDisplayMode(.inline)
-    }
-    @ViewBuilder private func invoiceSection(_ title: String, matching: @escaping (InvoiceValue, Int64) -> Bool) -> some View {
-        let matches = invoices.filter { invoice in
-            guard let value = try? invoice.currentValue() else { return false }
-            return matching(value, (try? invoice.balance()) ?? 1)
-        }
-        if !matches.isEmpty {
-            Section(title) {
-                ForEach(matches, id: \.objectID) { invoice in
-                    DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
-                }
-            }
-        }
-    }
 }
 
 struct InvoiceRow: View {

@@ -45,6 +45,7 @@
 		51444908CCE08FC785E329D6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DCC5C17265C5E63723173397 /* PrivacyInfo.xcprivacy */; };
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
 		56FD0CB1E2686A2BD6BA0266 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */; };
+		59FBCBB8E3FEC770411B94D6 /* InvoiceLedgerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18C6953AC2311B5A53EB8E2 /* InvoiceLedgerTests.swift */; };
 		5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */; };
 		5A572CBD38F92272C8BC8657 /* FeeAndInvoiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAE78E9489C239158E347DB7 /* FeeAndInvoiceTests.swift */; };
 		5A71B3F0331257FECB2ADD7D /* PaymentsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B406C18DE001292BB7EC4D5 /* PaymentsComponents.swift */; };
@@ -67,6 +68,7 @@
 		7C3981B233655BCC6ADF3626 /* JobDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6813AB65D56DEB9B484FB834 /* JobDetailView.swift */; };
 		8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */; };
 		8DC18CBE3C781DED3F4B888C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
+		8EC3822D1BA47EBD2F378F6C /* InvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5266CDEBB4213D6B97531E4A /* InvoicesView.swift */; };
 		8FCB4E47836A4382380C6D83 /* FirstLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */; };
 		92339E8B9B9F67BE1793652E /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4201CFBC74D97C4425E97FD /* BackupView.swift */; };
 		976472552A08D5CD31A7FFD9 /* CuekeeperMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */; };
@@ -118,6 +120,7 @@
 		DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 		DCF5239950C0B0CFD22B1449 /* FirstLaunchBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */; };
+		DD533608C5B5F55476EE684E /* InvoiceLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C2FC0E960A24DE3BA76EE1 /* InvoiceLedger.swift */; };
 		DE6839B173599AEF04121980 /* ExpenseAutomationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */; };
 		DE9A2949C4C78D6CD04EBCEA /* PaymentsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC3E7DF08A543BC402EDE65 /* PaymentsTests.swift */; };
 		E39B5D066CD54FD2D66CBB20 /* BackupPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9459F7EEB801C95C854C005 /* BackupPackage.swift */; };
@@ -196,6 +199,7 @@
 		245FC6F2C879064EADDB40CC /* ExpensesMonthUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpensesMonthUITests.swift; sourceTree = "<group>"; };
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
 		25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackLocationView.swift; sourceTree = "<group>"; };
+		25C2FC0E960A24DE3BA76EE1 /* InvoiceLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceLedger.swift; sourceTree = "<group>"; };
 		2B406C18DE001292BB7EC4D5 /* PaymentsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsComponents.swift; sourceTree = "<group>"; };
 		2BE8FC36A37D1122F844EE96 /* RecoveryBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryBackupTests.swift; sourceTree = "<group>"; };
 		2CC25F847FFB2944BBBC0D0D /* FeeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeView.swift; sourceTree = "<group>"; };
@@ -216,6 +220,7 @@
 		49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV6.xcdatamodel; sourceTree = "<group>"; };
 		4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPublisher.swift; sourceTree = "<group>"; };
 		4B4865D2C31DB0707417581E /* PaymentsBillingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsBillingTests.swift; sourceTree = "<group>"; };
+		5266CDEBB4213D6B97531E4A /* InvoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicesView.swift; sourceTree = "<group>"; };
 		5281AB6F1525268F5E58336E /* CuekeeperWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CuekeeperWidgets.entitlements; sourceTree = "<group>"; };
 		54BB016BE1437AC97CC962A7 /* CuekeeperV12.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV12.xcdatamodel; sourceTree = "<group>"; };
 		575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceEditorView.swift; sourceTree = "<group>"; };
@@ -273,6 +278,7 @@
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
 		BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV7.xcdatamodel; sourceTree = "<group>"; };
 		C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperMark.swift; sourceTree = "<group>"; };
+		C18C6953AC2311B5A53EB8E2 /* InvoiceLedgerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceLedgerTests.swift; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C42AD7432BF268805135A824 /* CalendarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSettingsView.swift; sourceTree = "<group>"; };
 		C4ECFB76E1416305BD27E80B /* CuekeeperV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV3.xcdatamodel; sourceTree = "<group>"; };
@@ -433,6 +439,7 @@
 				EF559422C0BEE4D17587EC25 /* ExpensesMonthTests.swift */,
 				F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */,
 				5A1A3615096553A427E9202D /* FirstLaunchTests.swift */,
+				C18C6953AC2311B5A53EB8E2 /* InvoiceLedgerTests.swift */,
 				4B4865D2C31DB0707417581E /* PaymentsBillingTests.swift */,
 				722C715CA9E1B3CE3A9E15E7 /* PaymentsReadinessTests.swift */,
 				CA2D0EF3ACEBEBDD95166936 /* PersistenceTests.swift */,
@@ -475,6 +482,8 @@
 				762E08735536CF82AAD4C49D /* FirstLaunchView.swift */,
 				C31D03E096ABF3A6E23F885D /* Info.plist */,
 				575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */,
+				25C2FC0E960A24DE3BA76EE1 /* InvoiceLedger.swift */,
+				5266CDEBB4213D6B97531E4A /* InvoicesView.swift */,
 				6813AB65D56DEB9B484FB834 /* JobDetailView.swift */,
 				D682B024A3E281F66B73080A /* JobEditorView.swift */,
 				91C80D913C2F1C3287CFD3DF /* LibraryView.swift */,
@@ -750,6 +759,7 @@
 				6F10F9A23FA535E443F05AAB /* ExpenseTests.swift in Sources */,
 				054F12566E7AC62975AE4599 /* ExpensesMonthTests.swift in Sources */,
 				A933C1120214E017ABB6DABE /* FirstLaunchTests.swift in Sources */,
+				59FBCBB8E3FEC770411B94D6 /* InvoiceLedgerTests.swift in Sources */,
 				F890E6E6A939B440633D6A47 /* PaymentsBillingTests.swift in Sources */,
 				D5E3E230AEEEE579AC0D64B5 /* PaymentsReadinessTests.swift in Sources */,
 				29E9720123A268E5A7C0FC42 /* PersistenceTests.swift in Sources */,
@@ -832,6 +842,8 @@
 				DCF5239950C0B0CFD22B1449 /* FirstLaunchBackupView.swift in Sources */,
 				F32D8B7636FD757FB78A8368 /* FirstLaunchView.swift in Sources */,
 				B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */,
+				DD533608C5B5F55476EE684E /* InvoiceLedger.swift in Sources */,
+				8EC3822D1BA47EBD2F378F6C /* InvoicesView.swift in Sources */,
 				AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */,
 				7C3981B233655BCC6ADF3626 /* JobDetailView.swift in Sources */,
 				9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */,

@@ -21,8 +21,8 @@ final class SiriEventTests: DaybookUITestCase {
         let save = app.buttons["save-event"]
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: save)], timeout: 5), .completed)
         save.tap()
-        // The event header joins dates and place on one line.
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "edit-event-dates", "Studio")).firstMatch.waitForExistence(timeout: 5))
+        // The event header shows the place as its own chip.
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "event-location", "Studio")).firstMatch.waitForExistence(timeout: 5))
         app.buttons["siri-event-done"].tap()
         XCTAssertFalse(app.buttons["siri-event-done"].exists)
         XCTAssertTrue(app.staticTexts["IMSA esports"].firstMatch.exists)

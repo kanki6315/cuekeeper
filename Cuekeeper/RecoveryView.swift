@@ -1,5 +1,6 @@
 import CoreData
 import SwiftUI
+import UIKit
 
 struct RecentlyDeletedView: View {
     @Environment(\.managedObjectContext) private var context
@@ -27,7 +28,6 @@ struct RecentlyDeletedView: View {
                 }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                if let notice { Section { Text(notice).accessibilityIdentifier("recovery-notice") } }
                 if recoverableJobs.isEmpty && recoverableSessions.isEmpty {
                     Section { ContentUnavailableView("Nothing to recover", systemImage: "trash", description: Text("Events and sessions deleted within the last 30 days appear here.")) }
                 }
@@ -47,6 +47,23 @@ struct RecentlyDeletedView: View {
                 }
             }
             .contentMargins(.top, 0, for: .scrollContent)
+        }
+        .overlay(alignment: .bottom) {
+            if let notice {
+                Text(notice)
+                    .font(.subheadline).padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.horizontal, 16).padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false).accessibilityIdentifier("recovery-notice")
+            }
+        }
+        .animation(.default, value: notice)
+        .task(id: notice) {
+            guard let notice else { return }
+            UIAccessibility.post(notification: .announcement, argument: notice)
+            do { try await Task.sleep(for: .seconds(4)) } catch { return }
+            self.notice = nil
         }
         .navigationTitle("Recently Deleted").navigationBarTitleDisplayMode(.inline)
         .toolbar {

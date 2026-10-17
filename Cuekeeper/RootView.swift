@@ -164,6 +164,27 @@ private struct JobsView: View {
     @State private var query = ""
     @State private var filter = JobFilter()
     @State private var scope = "All"
+    @State private var showEarlier = false
+    @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
+    @FetchRequest(sortDescriptors: []) private var feeRevisions: FetchedResults<FeeRevision>
+    @FetchRequest(sortDescriptors: []) private var payments: FetchedResults<PaymentRecord>
+    @FetchRequest(sortDescriptors: []) private var expenses: FetchedResults<Expense>
+    private var today: String { Day.string(from: Date()) }
+    /// Older events stay out of All and Completed unless searched for, filtered by date or asked for.
+    private var list: EventsList {
+        let _ = invoiceRevisions.count + feeRevisions.count + payments.count + expenses.count
+        let index = InvoiceIndex(in: context)
+        let today = today
+        let windowed = (scope == "All" || scope == "Completed")
+            && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !filter.usesDates
+        // Hidden events only need counting, so skip reading their billing.
+        let cutoff = windowed && !showEarlier ? EventsCalendar.day(today, adding: -EventsList.windowDays) : nil
+        let facts = representatives.map { job in
+            EventsListFacts(job: job, today: today, context: context, index: index,
+                            readsPayment: cutoff.map { job.eventEndDay.isEmpty || job.eventEndDay >= $0 } ?? true)
+        }
+        return EventsList(events: facts, today: today, windowed: windowed, showEarlier: showEarlier)
+    }
     private var representatives: [Job] {
         let _ = events.count + sessions.count
         let matching = jobs.filter { job in
@@ -179,6 +200,7 @@ private struct JobsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                let list = list
                 if selectedJob == nil {
                     // Matches DaybookForm's 29pt gap below the tab header (5pt row padding + 24pt section spacing).
                     DaybookTabHeader { if !jobs.isEmpty { addButton } }.padding(.bottom, 11)
@@ -217,14 +239,31 @@ private struct JobsView: View {
                     ContentUnavailableView("No events to show", systemImage: "calendar", description: Text("Start with dates and a client. Add the schedule when it arrives."))
                     if filter.isActive { Button("Clear Filters") { filter = JobFilter() } }
                 }
-                LazyVStack(spacing: 0) {
-                    ForEach(representatives, id: \.eventKey) { job in
-                        if let selectedJob {
-                            Button { selectedJob.wrappedValue = job } label: { row(job) }.buttonStyle(.plain)
-                        } else {
-                            NavigationLink(value: ScheduleDestination.event(job.objectID)) { row(job) }.buttonStyle(.plain)
+                if !representatives.isEmpty {
+                    if list.rows.isEmpty {
+                        Text("No events in the last two weeks.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    }
+                    if list.hiddenEarlier > 0 { earlierButton(list) }
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(list.months) { month in
+                            EventSectionTitle(title: month.title(currentYear: String(today.prefix(4)))) {
+                                if let collect = month.collectText {
+                                    Text(collect).font(.footnote).foregroundStyle(Color("SecondaryText")).monospacedDigit()
+                                }
+                            }
+                            .padding(.top, month.id == list.months.first?.id ? 4 : 22)
+                            ForEach(month.rows) { row in
+                                if row.id == list.todayBefore { EventsTodayMarker() }
+                                if let id = row.facts.objectID, let job = try? context.existingObject(with: id) as? Job {
+                                    if let selectedJob {
+                                        Button { selectedJob.wrappedValue = job } label: { EventsListRowView(row: row) }.buttonStyle(.plain)
+                                    } else {
+                                        NavigationLink(value: ScheduleDestination.event(id)) { EventsListRowView(row: row) }.buttonStyle(.plain)
+                                    }
+                                }
+                                Divider()
+                            }
                         }
-                        Divider()
                     }
                 }
             }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 20).frame(maxWidth: 850).frame(maxWidth: .infinity)
@@ -237,26 +276,21 @@ private struct JobsView: View {
                 }
             } }
             .sheet(isPresented: $showingFilters) { JobFiltersView(filter: $filter) }
-            .onAppear { if selectedJob?.wrappedValue == nil { selectedJob?.wrappedValue = representatives.first } }
+            .onAppear {
+                guard let selectedJob, selectedJob.wrappedValue == nil else { return }
+                let rows = list.rows
+                let row = rows.first { $0.id == list.todayBefore } ?? rows.first { !$0.finished } ?? rows.first
+                selectedJob.wrappedValue = row?.facts.objectID.flatMap { try? context.existingObject(with: $0) as? Job }
+            }
     }
     private var addButton: some View { Button("Add Event", systemImage: "plus") { showingAdd = true }.buttonStyle(DaybookPrimaryButton()).accessibilityIdentifier("add-job") }
-    private func row(_ job: Job) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            DaybookDateRail(day: job.eventStartDay)
-            VStack(alignment: .leading, spacing: 8) {
-                Text(job.eventTitle).font(.headline)
-                Text(job.eventDateDescription).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                ForEach(job.eventBookings, id: \.objectID) { booking in
-                    HStack { Text(booking.client?.name ?? "Client to add").font(.subheadline); Spacer(); BookingBadge(status: booking.bookingStatus) }
-                }
-                if let next = job.eventSessions.first(where: { $0.scheduleStatus == "confirmed" && ($0.endTime ?? .distantPast) >= Date() && $0.job?.bookingStatus != "cancelled" }) {
-                    DaybookMetadata(symbol: "clock", text: next.compactSchedule)
-                    if let call = next.callTime { DaybookMetadata(symbol: "video", text: "Call \(next.shortTime(call))") }
-                }
-                Text(job.eventSessions.isEmpty ? "Schedule to come" : counted(job.eventSessions.count, "session", "sessions")).font(.caption).foregroundStyle(Color("SecondaryText"))
-            }
-            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-        }.padding(.vertical, 20).contentShape(Rectangle())
+    private func earlierButton(_ list: EventsList) -> some View {
+        Button(showEarlier ? "Hide events before \(Day.display(list.cutoff))"
+                           : "Show " + counted(list.hiddenEarlier, "earlier event", "earlier events")) {
+            withAnimation(.easeOut(duration: 0.2)) { showEarlier.toggle() }
+        }
+        .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+        .accessibilityIdentifier("events-show-earlier")
     }
 }
 

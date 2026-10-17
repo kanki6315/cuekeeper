@@ -158,6 +158,12 @@ DaybookTextField uses a plain native TextField with its prompt explicitly colore
 
 BookingBadge displays the status as text as well as color, wrapping when required. DaybookMetadata pairs an SF Symbol with readable text. Compact session schedules include the date and time in the session timezone, show an end date when crossing midnight and retain a timezone abbreviation. Unknown dates or times retain honest pending copy.
 
+### Events list
+
+Events groups rows under month headings, with a footnote of what that month's finished events still owe per currency. All and Completed show events that ended within the last two weeks; a Show earlier events control above the list reveals the rest, and searching or a date filter lifts the window. Active and Cancelled are not windowed. A forest Today rule marks where past events end.
+
+Each row starts with the date rail beside the title and client. Multi-day events extend the rail: a fine line runs beside the day lines and the end day sits level with the last day, so a multi-day row always carries three day lines and a single-day row one, ending in the month as on Upcoming. Each day line shows the weekday, that day's sessions and its first start time. Events longer than three days fold later days into the third line; days without dated sessions read Schedule to come. Before the work the badge shows the booking status; afterwards it shows the money state (Ready to invoice, Invoiced, Overdue, To settle, Paid). Finished rows quiet the rail and title to the secondary color.
+
 ### Date rail and brand lockup
 
 DaybookDateRail stacks abbreviated weekday, day number and month in accent color. BrandLockup combines the actual cue-card path with Cuekeeper text; the redundant shape is hidden from accessibility and the lockup is combined as one element.
@@ -283,7 +289,7 @@ Otherwise all four done is *Ready to invoice*, work done with a gap is *Held up*
 come is upcoming. Receipts settle invoices as a whole; no per-event paid amount is derived.
 
 Compact layout: tab header with Add Invoice; the Wallet expenses prompt when drafts are pending;
-month stepper (chevrons, *This month* when away); a panel with one bar per currency split into
+month stepper (chevrons, *This month* beside the event count when away); a panel with one bar per currency split into
 Paid, Invoiced, Ready to invoice, Held up and Still to happen (accent at full, 62% and 32%,
 orange, faint ink), with totals, unknown-fee counts and a legend; *By client* with the step-bar
 key (gate labels with arrows into a sample bar, then Done / Missing / Not yet). Client panels show

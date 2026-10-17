@@ -63,7 +63,7 @@ struct JobDetailView: View {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: typeSize.isAccessibilitySize ? [] : [.sectionHeaders]) {
                 Section {
                     VStack(alignment: .leading, spacing: 20) {
-                        EventHeader(job: job, onStatus: updateBookingStatus, onEditDates: { editing = true })
+                        EventHeader(job: job, onStatus: updateBookingStatus, onEdit: { editing = true })
                         OpenItemsPanel(items: summary.openItems, perform: perform)
                     }.padding(.bottom, 16)
                 }
@@ -239,7 +239,8 @@ struct JobDetailView: View {
                 }
                 LabeledContent("Role", value: job.roleNames.isEmpty ? "None" : job.roleNames.joined(separator: ", "))
                 LabeledContent("Working", value: workDescription)
-                LabeledContent("Event timezone", value: zoneLabel(TimeZone.effective(job.eventTimeZoneID).identifier, date: eventDate))
+                let zoneID = TimeZone.effective(job.eventTimeZoneID).identifier
+                TimeZoneValueLabel(title: "Event timezone", value: zoneLabel(zoneID, date: eventDate), compactValue: zoneName(zoneID))
                 if !job.eventLocation.isEmpty { LabeledContent("Location", value: job.eventLocation) }
             }
             if !job.eventTrackPlaceID.isEmpty {
@@ -260,7 +261,7 @@ struct JobDetailView: View {
             Section {
                 Button("Duplicate Event", systemImage: "plus.square.on.square") { duplicating = true }
                     .accessibilityIdentifier("duplicate-job")
-            } footer: { Text("Create a new event with this client and fee. Existing sessions and payment history stay here.") }
+            }
             Section {
                 Button("Delete Event", systemImage: "trash", role: .destructive) { confirmingDeletion = true }
                     .accessibilityIdentifier("delete-job")

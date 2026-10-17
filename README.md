@@ -21,7 +21,7 @@ entitlements. Regenerate and commit generated files when changing it.
 - Bundle: `com.arjunakankipati.cuekeeper`
 - Team: `TDBAHN96B3`
 - CloudKit container: `iCloud.com.arjunakankipati.cuekeeper`
-- Version: `0.2.0`
+- Version: `0.2.1`
 - Signing: automatic, using the Apple Account in Xcode
 - Debug uses CloudKit Development; Release uses Production
 

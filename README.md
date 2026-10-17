@@ -381,7 +381,17 @@ for example `285.23.10`. To release twice in a minute, supply a greater valid
 no remote push is performed. Archives, dSYMs, logs and exported IPAs live under
 `build/release/`. Keep release archives for crash symbolication.
 
-Set `TEST_DESTINATION` in `.release.env` for a different iOS 27 simulator.
+The release script reuses or creates its named simulator (default: iPhone 18 Pro),
+boots it and waits for startup, then passes its UUID to Xcode. It selects the
+newest installed compatible iOS runtime, respecting the deployment target and
+an explicit `OS=` version. The simulator is retained for subsequent runs; Xcode
+manages parallel worker clones. Missing runtimes produce an actionable error;
+the script does not download runtimes automatically.
+
+Set `TEST_DESTINATION` in `.release.env` for another named simulator or an explicit
+UUID. Named devices are prepared automatically; explicit UUIDs and other
+platform destinations are passed through unchanged. `--skip-tests` skips device
+preparation too.
 `RELEASE_ENV_FILE=/dev/null ./release.sh ...` bypasses local account overrides.
 API-key mode additionally requires an Apple Distribution certificate/private key
 in the keychain. Its profile helper verifies the team, bundle, CloudKit container,

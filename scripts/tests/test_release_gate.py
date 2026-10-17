@@ -18,6 +18,10 @@ class ReleaseGateTests(unittest.TestCase):
         shutil.copy(ROOT / "project.yml", self.root)
         (self.root / "scripts").mkdir()
         (self.root / "scripts/cloudkit_schema.py").write_text('import sys\nsys.exit(42)\n')
+        (self.root / "scripts/prepare_test_simulator.py").write_text(
+            'import os, sys\n'
+            'print("platform=iOS Simulator,id=prepared-device")\n'
+            'sys.exit(int(os.environ.get("PREPARE_EXIT_CODE", "0")))\n')
         bin_dir = self.root / "bin"
         bin_dir.mkdir()
         commands = {
@@ -88,6 +92,17 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(options['provisioningProfiles'], {
             app['--bundle-id']: app['--name'], widget['--bundle-id']: widget['--name']})
 
+    def test_simulator_preparation_failure_blocks_tests_and_archive(self):
+        (self.root / "scripts/tests").mkdir()
+        (self.root / "scripts/tests/test_placeholder.py").write_text(
+            'import unittest\nclass Placeholder(unittest.TestCase):\n    def test_pass(self): pass\n')
+        result = subprocess.run(
+            ['bash', str(self.root / 'release.sh'), '--no-upload', '--skip-cloudkit-check'],
+            cwd=self.root, env={**self.env, 'PREPARE_EXIT_CODE': '7'},
+            capture_output=True, text=True)
+        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+        self.assertFalse((self.root / 'build-called').exists())
+
     def test_simulator_failure_still_blocks_archive_without_diagnostic_collection(self):
         (self.root / "scripts/tests").mkdir()
         (self.root / "scripts/tests/test_placeholder.py").write_text(
@@ -110,6 +125,7 @@ class ReleaseGateTests(unittest.TestCase):
                 calls = marker.read_text().splitlines()
                 self.assertTrue(calls[0].startswith('test '))
                 self.assertIn('-collect-test-diagnostics never', calls[0])
+                self.assertIn('-destination platform=iOS Simulator,id=prepared-device', calls[0])
                 self.assertEqual(len(calls), 3 if exit_code == 0 else 1)
 
 

@@ -257,6 +257,9 @@ enum ReadinessText {
             return Text(owed).foregroundStyle(secondary) + Text(dueDay.isEmpty ? "" : " · due " + shortDay(dueDay)).foregroundStyle(secondary)
         case .draft: return Text("On draft invoice · not sent").foregroundStyle(secondary)
         case .directPaid: return Text("Paid directly").foregroundStyle(Color.accentColor).fontWeight(.semibold)
+        case let .directPartial(received, remaining, currency):
+            let rest = remaining.map { "\(Money.format($0, currency: currency)) to collect" } ?? "fee to agree"
+            return Text("\(Money.format(received, currency: currency)) received directly · \(rest)").foregroundStyle(amber).fontWeight(.semibold)
         case .noFee: return Text("No fee").foregroundStyle(secondary)
         case .review(let message): return Text(message).foregroundStyle(amber).fontWeight(.semibold)
         case .cancelled: return Text("Cancelled").foregroundStyle(secondary)
@@ -367,7 +370,7 @@ struct OpenInvoiceRow: View {
             Group {
                 if draft { Text("Draft · not sent").foregroundStyle(Color("SecondaryText")) }
                 else if !dueDay.isEmpty && dueDay < today {
-                    let days = Calendar.current.dateComponents([.day], from: Day.date(from: dueDay) ?? Date(), to: Day.date(from: today) ?? Date()).day ?? 0
+                    let days = Day.days(from: dueDay, to: today) ?? 0
                     Text(days == 1 ? "1 day late" : "\(days) days late").fontWeight(.semibold).foregroundStyle(Color("BookingCancelled"))
                 } else if dueDay == today { Text("Due today").fontWeight(.semibold).foregroundStyle(Color("AmberText")) }
                 else if !dueDay.isEmpty { Text("Due \(shortDay(dueDay))").foregroundStyle(Color("SecondaryText")) }
@@ -672,7 +675,7 @@ struct ReadinessSheet: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("gate-\(gate.rawValue)")
         if gate == .receipts && state == .missing {
-            ForEach(expenses.filter { $0.job == job && $0.isDraft && $0.value.discarded != true }, id: \.objectID) { expense in
+            ForEach(expenses.filter { $0.job == job && $0.isDraft && !$0.value.discarded }, id: \.objectID) { expense in
                 Button { reviewing = expense } label: {
                     HStack {
                         Text(expense.value.merchant.isEmpty ? "Receipt" : expense.value.merchant)

@@ -65,10 +65,10 @@ final class CalendarTests: XCTestCase {
     }
 
     func testDeviceIdentitySurvivesReinstallButNotRestoreToAnotherDevice() throws {
-        final class Keychain { var id: String?; var locked = false }
+        final class Keychain { var id: String?; var locked = false; var rejectsWrites = false }
         func identity(_ keychain: Keychain) -> CalendarDeviceIdentity {
             CalendarDeviceIdentity(read: { keychain.locked ? .unavailable : keychain.id.map { .found($0) } ?? .missing },
-                                   write: { keychain.id = $0; return true })
+                                   write: { guard !keychain.rejectsWrites else { return false }; keychain.id = $0; return true })
         }
         func freshDefaults() throws -> UserDefaults {
             let suite = "calendar-identity-\(UUID())"
@@ -76,23 +76,74 @@ final class CalendarTests: XCTestCase {
             addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
             return defaults
         }
+        func resolve(_ defaults: UserDefaults, _ keychain: Keychain, vendor: String? = "phone") -> String {
+            CalendarDeviceIdentity.resolve(defaults: defaults, keychain: identity(keychain), vendor: vendor)
+        }
+        func restore(_ defaults: UserDefaults) throws -> UserDefaults {
+            let restored = try freshDefaults()
+            for (key, value) in defaults.dictionaryRepresentation() where key.hasPrefix("calendar.") { restored.set(value, forKey: key) }
+            return restored
+        }
         // Upgrade: the pre-Keychain ID is kept so the current owner keeps its claim.
         let phone = Keychain(), defaults = try freshDefaults()
         defaults.set("legacy", forKey: CalendarDeviceIdentity.legacyKey)
-        XCTAssertEqual(CalendarDeviceIdentity.resolve(defaults: defaults, keychain: identity(phone)), "legacy")
+        XCTAssertEqual(resolve(defaults, phone), "legacy")
         XCTAssertEqual(phone.id, "legacy")
-        // Reinstall wipes defaults but not the Keychain item.
-        XCTAssertEqual(CalendarDeviceIdentity.resolve(defaults: try freshDefaults(), keychain: identity(phone)), "legacy")
+        // Reinstall wipes defaults (and may change the vendor ID) but not the Keychain item.
+        XCTAssertEqual(resolve(try freshDefaults(), phone, vendor: "reinstalled"), "legacy")
         // A locked Keychain falls back to the cached copy rather than a new identity.
         phone.locked = true
-        XCTAssertEqual(CalendarDeviceIdentity.resolve(defaults: defaults, keychain: identity(phone)), "legacy")
+        XCTAssertEqual(resolve(defaults, phone), "legacy")
         // Restoring these defaults onto another phone must not copy the identity.
-        let restored = try freshDefaults()
-        for (key, value) in defaults.dictionaryRepresentation() where key.hasPrefix("calendar.") { restored.set(value, forKey: key) }
         let newPhone = Keychain()
-        let newID = CalendarDeviceIdentity.resolve(defaults: restored, keychain: identity(newPhone))
+        let newID = resolve(try restore(defaults), newPhone, vendor: "new-phone")
         XCTAssertNotEqual(newID, "legacy")
         XCTAssertEqual(newPhone.id, newID)
+
+        // Missing item and failed writes: repeated launches keep one persisted fallback,
+        // which becomes durable once the Keychain accepts it.
+        let flaky = Keychain(); flaky.rejectsWrites = true
+        let flakyDefaults = try freshDefaults()
+        let fallback = resolve(flakyDefaults, flaky)
+        XCTAssertNil(flaky.id)
+        XCTAssertEqual(resolve(flakyDefaults, flaky), fallback)
+        flaky.locked = true
+        XCTAssertEqual(resolve(flakyDefaults, flaky), fallback)
+        // That fallback must not follow a restore onto another device, locked or not.
+        let other = Keychain(); other.rejectsWrites = true
+        XCTAssertNotEqual(resolve(try restore(flakyDefaults), other, vendor: "other-phone"), fallback)
+        other.locked = true
+        XCTAssertNotEqual(resolve(try restore(flakyDefaults), other, vendor: "other-phone"), fallback)
+        flaky.locked = false; flaky.rejectsWrites = false
+        XCTAssertEqual(resolve(flakyDefaults, flaky), fallback)
+        XCTAssertEqual(flaky.id, fallback)
+        XCTAssertEqual(resolve(try freshDefaults(), flaky), fallback, "Durable after the write succeeds, so reinstalls keep it")
+
+        // Locked with no cached copy: the new ID is persisted, not regenerated per launch.
+        let locked = Keychain(); locked.locked = true
+        let lockedDefaults = try freshDefaults()
+        let first = resolve(lockedDefaults, locked)
+        XCTAssertEqual(resolve(lockedDefaults, locked), first)
+        locked.locked = false
+        XCTAssertEqual(resolve(lockedDefaults, locked), first)
+        XCTAssertEqual(locked.id, first)
+    }
+
+    func testCalendarCleanupAndSelectionStates() {
+        func message(fullAccess: Bool, _ calendar: (String, Bool)?) -> String? {
+            do { try CalendarCleanup.check(fullAccess: fullAccess, calendar: calendar); return nil }
+            catch { return error.localizedDescription }
+        }
+        XCTAssertNil(message(fullAccess: true, ("Work", true)), "Writable")
+        XCTAssertNil(message(fullAccess: true, nil), "Missing: nothing left to remove")
+        XCTAssertEqual(message(fullAccess: true, ("Holidays", false)), "“Holidays” is read-only, so Cuekeeper’s entries there can’t be removed.")
+        XCTAssertNotNil(message(fullAccess: false, nil), "Permission denied hides the calendar; don't treat it as missing")
+        let blocked = CalendarSwitchBlocked(reason: "Read-only.").localizedDescription
+        XCTAssertTrue(blocked.contains("Switch and Leave Old Entries") && !blocked.contains("removed"), blocked)
+
+        XCTAssertEqual(CalendarController.validSelection("b", connected: "a", available: ["a", "b"]), "b")
+        XCTAssertEqual(CalendarController.validSelection("gone", connected: "a", available: ["a"]), "a")
+        XCTAssertEqual(CalendarController.validSelection("gone", connected: "also-gone", available: ["c"]), "")
     }
 
     func testPlaceSelectionAppliesOnlyTheLatestChoice() {
@@ -144,6 +195,49 @@ final class CalendarTests: XCTestCase {
         job.bookingStatus = "cancelled"
         XCTAssertTrue(CalendarPlan(jobs: [job]).desired.isEmpty)
         XCTAssertEqual(CalendarPlan(jobs: [job]).knownKeys.count, 2)
+    }
+
+    func testSkippedMidnightCivilDatesParseAndKeepTheirPlaceholders() throws {
+        // Santiago and Cairo skip 00:00 on these days; the day itself starts at 01:00.
+        for (zoneID, day, next) in [("America/Santiago", "2026-09-06", "2026-09-07"), ("Africa/Cairo", "2026-04-24", "2026-04-25")] {
+            let zone = try XCTUnwrap(TimeZone(identifier: zoneID))
+            var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
+            let start = try XCTUnwrap(Day.date(from: day, timeZone: zone), zoneID)
+            XCTAssertEqual(calendar.component(.hour, from: start), 1)
+            XCTAssertEqual(Day.string(from: start, timeZone: zone), day)
+            XCTAssertEqual(Day.days(from: day, to: next), 1)
+            XCTAssertTrue(EventWeatherRequest(placeID: "place", bookingStatus: "booked", arrangement: "onSite", startDay: day, endDay: day)
+                .eligible(now: start, timeZone: zone))
+
+            var session = SessionDraft(day: day, timeZoneID: zoneID)
+            session.startTime = start.addingTimeInterval(9 * 3600)
+            session.moveSchedule(to: try XCTUnwrap(Day.date(from: next, timeZone: zone)), zone: zone)
+            XCTAssertEqual(session.day, next)
+            XCTAssertEqual(session.startTime.map { Day.string(from: $0, timeZone: zone) }, next, "The times move with the day")
+
+            let container = NSPersistentContainer(name: "Cuekeeper", managedObjectModel: try XCTUnwrap(NSManagedObjectModel(contentsOf: try XCTUnwrap(Bundle.main.url(forResource: "Cuekeeper", withExtension: "momd")))))
+            let description = NSPersistentStoreDescription(); description.type = NSInMemoryStoreType
+            container.persistentStoreDescriptions = [description]
+            container.loadPersistentStores { _, error in XCTAssertNil(error) }
+            let job = Job(entity: NSEntityDescription.entity(forEntityName: "Job", in: container.viewContext)!, insertInto: container.viewContext)
+            job.id = UUID(); job.name = "Skipped midnight"; job.startDay = day; job.endDay = day; job.timeZoneID = zoneID
+            let placeholder = try XCTUnwrap(CalendarPlan(jobs: [job]).desired["job/\(job.id!.uuidString)"], "Kept, so reconciliation won't delete it")
+            XCTAssertEqual(placeholder.start, start)
+            XCTAssertEqual(placeholder.end, Day.date(from: next, timeZone: zone))
+            XCTAssertEqual(placeholder.end.timeIntervalSince(placeholder.start), 23 * 3600)
+        }
+        // Ordinary DST days, leap days and travel keep their day; impossible dates are still rejected.
+        for zoneID in ["America/New_York", "Europe/London", "Australia/Sydney", "America/Santiago"] {
+            let zone = try XCTUnwrap(TimeZone(identifier: zoneID))
+            for day in ["2026-03-08", "2026-11-01", "2026-04-05", "2028-02-29", "2026-09-06"] {
+                XCTAssertEqual(Day.date(from: day, timeZone: zone).map { Day.string(from: $0, timeZone: zone) }, day, "\(zoneID) \(day)")
+            }
+        }
+        for invalid in ["2026-02-29", "2027-02-30", "2026-13-01", "2026-04-31", "2026-00-10", "2026-9-6", "2026-09-06T00", "", "２０２６-09-06"] {
+            XCTAssertNil(Day.date(from: invalid), invalid)
+            XCTAssertNil(Day.components(invalid), invalid)
+        }
+        XCTAssertNil(Day.date(from: "2011-12-30", timeZone: TimeZone(identifier: "Pacific/Apia")!), "Samoa skipped the whole day")
     }
 
     func testAllDayEventUsesFloatingCivilDatesAndRepairsTimedEvents() throws {
@@ -419,5 +513,90 @@ final class CalendarTests: XCTestCase {
         XCTAssertNil(defaults.dictionary(forKey: "calendar.eventIDs"))
         let owner = await publisher.owner
         XCTAssertNil(owner)
+    }
+
+    func testTakeoverFindsOldPublicationsAndSwitchCanLeaveEntries() async throws {
+        let eventStore = EKEventStore()
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
+            throw XCTSkip("Grant Calendar access to the test app with simctl privacy before running the EventKit integration test.")
+        }
+        let source = try XCTUnwrap(eventStore.sources.first { $0.sourceType == .local })
+        func makeCalendar(_ title: String) throws -> EKCalendar {
+            let calendar = EKCalendar(for: .event, eventStore: eventStore)
+            calendar.title = "\(title) \(UUID())"; calendar.source = source
+            try eventStore.saveCalendar(calendar, commit: true)
+            return calendar
+        }
+        let old = try makeCalendar("Cuekeeper takeover test")
+        defer { try? eventStore.removeCalendar(old, commit: true) }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let persistence = PersistenceController(storeURL: directory.appendingPathComponent("test.sqlite"), cloudEnabled: false)
+        for _ in 0..<100 where !persistence.isLoaded { try await Task.sleep(for: .milliseconds(50)) }
+        let context = persistence.container.viewContext
+        let longAgo = Date(timeIntervalSince1970: try XCTUnwrap(Calendar.current.date(byAdding: .year, value: -3, to: Date())).timeIntervalSince1970.rounded())
+        let jobID = try JobDraft(name: "Moved job", startDate: longAgo, endDate: longAgo).save(in: context)
+        let job = try XCTUnwrap(context.existingObject(with: jobID) as? Job)
+        func defaults() throws -> UserDefaults {
+            let suite = "calendar-takeover-\(UUID())"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
+            return defaults
+        }
+        func entries(_ calendar: EKCalendar) -> [EKEvent] {
+            // A separate store sees committed changes without invalidating the test's objects.
+            let reader = EKEventStore()
+            let fresh = reader.calendar(withIdentifier: calendar.calendarIdentifier).map { [$0] } ?? []
+            return reader.events(matching: reader.predicateForEvents(withStart: Date().addingTimeInterval(-86400 * 1300), end: Date().addingTimeInterval(86400 * 100), calendars: fresh))
+        }
+        let publisher = TestCalendarPublisher()
+        let first = CalendarController(defaults: try defaults(), store: eventStore, publisher: publisher, deviceID: "first")
+        first.start(context: context, enabled: true)
+        await first.connect(old.calendarIdentifier)
+        XCTAssertEqual(entries(old).map { Calendar.current.isDate($0.startDate, inSameDayAs: longAgo) }, [true], first.status)
+        // An unrelated entry at the old date, e.g. a colleague's, must stay untouched.
+        let colleague = EKEvent(eventStore: eventStore)
+        colleague.calendar = old; colleague.title = "Colleague"
+        colleague.startDate = longAgo; colleague.endDate = longAgo.addingTimeInterval(3600)
+        colleague.url = URL(string: "cuekeeper://calendar/job/\(UUID())")
+        try eventStore.save(colleague, span: .thisEvent)
+        // The first device goes away before publishing the job's new date.
+        first.disconnectKeepingEntries()
+        var draft = JobDraft(job: job); draft.startDate = Date(); draft.endDate = Date()
+        try draft.save(in: context, editing: jobID)
+
+        let second = CalendarController(defaults: try defaults(), store: eventStore, publisher: publisher, deviceID: "second")
+        second.start(context: context, enabled: true)
+        await second.takeOver(old.calendarIdentifier)
+        XCTAssertTrue(second.connected, second.status)
+        let managed = entries(old).filter { $0.title != "Colleague" }
+        XCTAssertEqual(managed.count, 1, "The old publication is adopted rather than duplicated")
+        XCTAssertTrue(managed.allSatisfy { Calendar.current.isDateInToday($0.startDate) }, second.status)
+        XCTAssertEqual(entries(old).filter { $0.title == "Colleague" }.map(\.startDate), [longAgo])
+
+        // Calendar choices refresh while Settings stays open.
+        let next = try makeCalendar("Cuekeeper switch-keep test")
+        defer { try? eventStore.removeCalendar(next, commit: true) }
+        for _ in 0..<100 where !second.calendars.contains(where: { $0.calendarIdentifier == next.calendarIdentifier }) {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertTrue(second.calendars.contains { $0.calendarIdentifier == next.calendarIdentifier }, "Added calendar appears")
+        // Switching and leaving entries keeps the old calendar's entry and says so.
+        await second.connect(next.calendarIdentifier, leavingOldEntries: true)
+        XCTAssertEqual(second.selectedID, next.calendarIdentifier, second.status)
+        XCTAssertEqual(entries(old).count, 2)
+        XCTAssertEqual(entries(next).count, 1)
+        XCTAssertTrue(second.status.contains("left in place"), second.status)
+        XCTAssertNil(second.blockedSwitch)
+        await second.disconnect()
+        XCTAssertFalse(second.connected, second.status)
+        XCTAssertTrue(entries(next).isEmpty)
+        XCTAssertEqual(entries(old).count, 2, "Disconnect removes only the current calendar's entries")
+        try eventStore.removeCalendar(try XCTUnwrap(eventStore.calendar(withIdentifier: next.calendarIdentifier)), commit: true)
+        for _ in 0..<100 where second.calendars.contains(where: { $0.calendarIdentifier == next.calendarIdentifier }) {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertFalse(second.calendars.contains { $0.calendarIdentifier == next.calendarIdentifier }, "Removed calendar disappears")
     }
 }

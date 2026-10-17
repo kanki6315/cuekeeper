@@ -92,8 +92,24 @@ final class PaymentsReadinessTests: XCTestCase {
         XCTAssertEqual(owed.amount, 130_000)
         XCTAssertFalse(owed.showsGates)
         XCTAssertEqual(readiness(facts(billing: .sent(invoiceID: invoice, reference: "INV-0401", currency: "EUR", total: 39_000, balance: 0, dueDay: "", otherEvents: 0))).state, .paid(reference: "INV-0401"))
-        XCTAssertEqual(readiness(facts(billing: .directPayments(paid: 25_000, currency: "USD"))).state, .directPaid)
+        XCTAssertEqual(readiness(facts(billing: .directPayments(paid: 65_000, currency: "EUR"))).state, .directPaid)
         XCTAssertEqual(readiness(facts(billing: .review(message: "Twice", invoiceID: nil))).state, .review("Twice"))
+    }
+
+    func testDirectPaymentsSplitMoneyReceivedFromTheFeeStillToCollect() {
+        let partial = readiness(facts(billing: .directPayments(paid: 10_000, currency: "EUR")))
+        XCTAssertEqual(partial.state, .directPartial(received: 10_000, remaining: 55_000, currency: "EUR"))
+        let excess = readiness(facts(billing: .directPayments(paid: 70_000, currency: "EUR")))
+        XCTAssertEqual(excess.state, .directPaid)
+        XCTAssertEqual(excess.parts, [MoneyPart(bucket: .paid, amount: 70_000)], "Paid shows money actually received")
+        let unknown = readiness(facts(fee: .value(FeeValue(amount: nil, currency: "EUR")), billing: .directPayments(paid: 10_000, currency: "EUR")))
+        XCTAssertEqual(unknown.state, .directPartial(received: 10_000, remaining: nil, currency: "EUR"))
+
+        let month = PaymentsMonth(month: "2026-10", events: [partial, excess, unknown], clients: [:], openInvoices: [], displayed: ["EUR"])
+        XCTAssertEqual(month.currencies.first?.amounts, [.paid: 90_000, .heldUp: 55_000])
+        XCTAssertEqual(month.currencies.first?.unknownFees, 1)
+        let next = PaymentsMonth(month: "2026-11", events: [partial, excess], clients: [:], openInvoices: [], displayed: ["EUR"])
+        XCTAssertEqual(next.earlier.map(\.id), ["event-\(partial.id)"], "The rest of the fee stays in outstanding work")
     }
 
     func testBilledAmountOverridesFee() {
@@ -167,22 +183,18 @@ final class PaymentsReadinessTests: XCTestCase {
         XCTAssertEqual(try InvoicingDraft(ClientInvoicing()).with(terms: " 14 ").value().termsDays, 14)
     }
 
-    func testExpenseLinesCountTowardTotalAndStayOptionalInJSON() throws {
+    func testExpenseLinesCountTowardTotalAndBilledTerms() throws {
         var value = InvoiceValue(clientID: client, currency: "EUR")
         value.lines = [BilledLine(jobID: UUID(), jobName: "Cup", amount: 65_000)]
-        let plain = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
-        XCTAssertFalse(plain.contains("expenseLines"))
+        let plain = value
         let receipt = BilledExpense(expenseID: UUID(), label: "Parking · 13 Oct", amount: 2580)
         value.expenseLines = [receipt]
         XCTAssertEqual(try value.total(), 67_580)
         XCTAssertNoThrow(try value.validate())
         value.expenseLines = [receipt, receipt]
         XCTAssertThrowsError(try value.validate())
-        // An older build's value without expense lines decodes and compares as different billed terms.
-        let decoded = try JSONDecoder().decode(InvoiceValue.self, from: Data(plain.utf8))
-        XCTAssertNil(decoded.expenseLines)
         value.expenseLines = [receipt]
-        XCTAssertFalse(value.sameBilledTerms(as: decoded))
+        XCTAssertFalse(value.sameBilledTerms(as: plain), "Receipts are part of what an invoice bills")
     }
 }
 

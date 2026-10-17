@@ -93,9 +93,8 @@ struct SiriEventEntity {
         self.id = id; calendar = .daybook; title = event.title
         let zone = TimeZone.effective(event.timeZoneID)
         startDate = Day.date(from: event.startDay, timeZone: zone) ?? Date()
-        var civil = Calendar(identifier: .gregorian); civil.timeZone = zone
-        let last = Day.date(from: event.endDay, timeZone: zone) ?? startDate
-        endDate = civil.date(byAdding: .day, value: 1, to: last) ?? last
+        // The exclusive end is the start of the next civil day, which may not be midnight.
+        endDate = Day.adding(days: 1, to: event.endDay).flatMap { Day.date(from: $0, timeZone: zone) } ?? startDate
         isAllDay = true; note = event.notes.isEmpty ? nil : AttributedString(event.notes)
         location = event.location.isEmpty ? nil : .text(event.location)
         alarms = []; organizers = []; attendees = []

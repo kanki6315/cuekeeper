@@ -55,6 +55,15 @@ struct CalendarSettingsView: View {
                     Button(calendar.connected ? "Use This Calendar" : "Connect This Device") { Task { await calendar.connect(selected) } }
                         .disabled(selected.isEmpty || calendar.busy)
                 }
+                if calendar.blockedSwitch == selected && !selected.isEmpty {
+                    Section {
+                        Button("Switch and Leave Old Entries") { Task { await calendar.connect(selected, leavingOldEntries: true) } }
+                            .disabled(calendar.busy)
+                            .accessibilityIdentifier("calendar-switch-keep")
+                    } footer: {
+                        Text("Cuekeeper couldn’t remove its entries from the previous calendar. Switching anyway leaves them there, and they are no longer updated.")
+                    }
+                }
                 if let owner = calendar.otherOwner {
                     Section {
                         Button("Use This Device Instead") { takeOver = true }
@@ -75,6 +84,10 @@ struct CalendarSettingsView: View {
         }
         .navigationTitle("Calendar").navigationBarTitleDisplayMode(.inline)
         .task { calendar.refreshCalendars(); selected = calendar.selectedID }
+        // EventKit changes refresh the list while this view stays open.
+        .onReceive(calendar.$calendars) { calendars in
+            selected = CalendarController.validSelection(selected, connected: calendar.selectedID, available: calendars.map(\.calendarIdentifier))
+        }
         .confirmationDialog("Remove Cuekeeper’s entries from this calendar and disconnect?", isPresented: $disconnect, titleVisibility: .visible) {
             Button("Disconnect & Remove Entries", role: .destructive) { Task { await calendar.disconnect() } }
         }

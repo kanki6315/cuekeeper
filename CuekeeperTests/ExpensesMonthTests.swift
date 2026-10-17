@@ -12,7 +12,7 @@ final class ExpensesMonthTests: XCTestCase {
         ExpenseFact(id: UUID(), day: day, merchant: merchant, amount: amount, currency: currency, category: "Travel", state: state,
                     jobID: job, eventTitle: job == nil ? nil : (job == derby ? "City vs United" : "Silverstone weekend"),
                     clientID: client, clientName: client == apex ? "Apex Media" : client == northside ? "Northside Sports" : nil,
-                    eventDeleted: deleted, eventInvoiceable: invoiceable, repeats: repeats, seriesID: series)
+                    eventDeleted: deleted, eventInvoiceable: invoiceable, eventCurrency: currency, repeats: repeats, seriesID: series)
     }
 
     func testMonthSplitsMoneyByStateAndListsDaysNewestFirst() {
@@ -54,7 +54,10 @@ final class ExpensesMonthTests: XCTestCase {
         XCTAssertEqual(apexGroup?.receipts.count, 2)
         XCTAssertEqual(apexGroup?.events, ["City vs United"])
         XCTAssertEqual(apexGroup?.canInvoice, true)
-        XCTAssertEqual(month.rebill.first { $0.clientID == northside }?.canInvoice, false, "An already invoiced event needs no new invoice button")
+        XCTAssertEqual(apexGroup?.invoiceableJobs, [derby])
+        let late = month.rebill.first { $0.clientID == northside }
+        XCTAssertEqual(late?.canInvoice, true, "A receipt on an already invoiced event is billed on its own")
+        XCTAssertEqual(late?.invoiceableJobs, [], "Without billing the event again")
         XCTAssertEqual(month.earlier.count, 2)
         XCTAssertEqual(month.earlier.amounts, ["USD": 8650])
         XCTAssertEqual(month.earlier.latestMonth, "2026-09")
@@ -77,15 +80,43 @@ final class ExpensesMonthTests: XCTestCase {
         XCTAssertEqual(items.map(\.actionTitle), ["Finish", "Add", "Finish"])
         XCTAssertEqual(items[0].title, "Expense to complete")
         XCTAssertEqual(items[1].title, "Midjourney · $30.00")
-        guard case let .repeatDue(_, day) = items[1].kind else { return XCTFail("Expected the due repeat") }
+        guard case let .repeatDue(_, day, _) = items[1].kind else { return XCTFail("Expected the due repeat") }
         XCTAssertEqual(day, "2026-10-14")
         XCTAssertTrue(items[2].detail.hasSuffix("No event yet"))
     }
 
-    func testNextMonthKeepsTheDayAndClampsShortMonths() {
+    func testMonthlyRepeatsKeepTheirAnchorThroughShortMonths() {
+        // Each step follows from the previous clamped month, as the Finish list does.
+        for (anchor, start, expected) in [
+            (31, "2026-01-31", ["2026-02-28", "2026-03-31", "2026-04-30", "2026-05-31"]),
+            (30, "2028-01-30", ["2028-02-29", "2028-03-30", "2028-04-30"]),
+            (29, "2027-01-29", ["2027-02-28", "2027-03-29"]),
+            (28, "2026-01-28", ["2026-02-28", "2026-03-28"]),
+            (31, "2026-11-30", ["2026-12-31", "2027-01-31", "2027-02-28"]),
+        ] {
+            var day = start
+            for next in expected { day = ExpensesMonth.nextMonth(day, repeatDay: anchor) ?? ""; XCTAssertEqual(day, next, "anchor \(anchor)") }
+        }
         XCTAssertEqual(ExpensesMonth.nextMonth("2026-10-14"), "2026-11-14")
-        XCTAssertEqual(ExpensesMonth.nextMonth("2026-01-31"), "2026-02-28")
-        XCTAssertEqual(ExpensesMonth.nextMonth("2026-12-05"), "2027-01-05")
+        XCTAssertNil(ExpensesMonth.nextMonth("2026-02-30"))
+
+        // Saving keeps the anchor on a clamped month, takes a moved date as the new anchor, and drops it when stopped.
+        var value = ExpenseValue(); value.repeatsMonthly = true; value.day = "2026-02-28"; value.repeatDay = 31
+        XCTAssertEqual(value.asBusiness(id: nil).repeatDay, 31)
+        value.day = "2026-02-20"; XCTAssertEqual(value.asBusiness(id: nil).repeatDay, 20)
+        value.repeatDay = nil; value.day = "2026-01-31"; XCTAssertEqual(value.asBusiness(id: nil).repeatDay, 31)
+        value.repeatsMonthly = false; XCTAssertNil(value.asBusiness(id: nil).repeatDay)
+
+        // Costs saved before anchors existed: Jan 31 → Feb 28 resumes on Mar 31; a mid-month day stays put.
+        let clamped = UUID(), plain = UUID()
+        let items = ExpensesMonth.finishItems([
+            fact("2026-01-31", "Hosting", 900, "USD", state: .business, repeats: true, series: clamped),
+            fact("2026-02-28", "Hosting", 900, "USD", state: .business, repeats: true, series: clamped),
+            fact("2026-03-14", "Fonts", 500, "USD", state: .business, repeats: true, series: plain),
+        ], today: "2026-04-30")
+        XCTAssertEqual(items.map(\.rankDay), ["2026-03-31", "2026-04-14"])
+        guard case let .repeatDue(_, _, anchor) = items[0].kind else { return XCTFail("Expected the due repeat") }
+        XCTAssertEqual(anchor, 31)
     }
 
     // MARK: Stored business costs
@@ -125,6 +156,56 @@ final class ExpensesMonthTests: XCTestCase {
         XCTAssertEqual((try context.existingObject(with: nextID) as? Expense)?.value.seriesID, expense.id)
     }
 
+    func testBusinessDraftsReopenAsBusinessAndKeepRepeatSettings() async throws {
+        let context = try await context()
+        // A receipt photographed as a business cost is a business draft from the start.
+        let id = try await Expense.capturePhoto(Data([1, 2, 3]), jobID: nil, in: context)
+        let expense = try XCTUnwrap(context.existingObject(with: id) as? Expense)
+        XCTAssertTrue(expense.isDraft); XCTAssertTrue(expense.isBusiness)
+        var value = ExpenseValue(merchant: "Claude Pro", day: "2026-10-31", amount: "20.00", currency: "USD", category: "Software", reimbursable: true)
+        value.repeatsMonthly = true
+        try Expense.save(value, id: id, revision: expense.revision, confirmed: false, business: true, in: context)
+        XCTAssertTrue(expense.isDraft); XCTAssertNil(expense.job); XCTAssertEqual(expense.photo, Data([1, 2, 3]))
+        XCTAssertTrue(expense.isBusiness, "A business draft reopens with Business selected")
+        XCTAssertEqual(expense.value.business, true); XCTAssertTrue(expense.value.repeatsMonthly)
+        XCTAssertEqual(expense.value.repeatDay, 31); XCTAssertEqual(expense.value.seriesID, expense.id)
+        XCTAssertFalse(expense.value.reimbursable)
+        XCTAssertEqual(ExpenseFact(expense: expense, index: InvoiceIndex(in: context))?.state, .toFinish)
+        // Keeping the draft again leaves purpose and repeat settings as they were.
+        try Expense.save(expense.value.editingAmounts(), id: id, revision: expense.revision, confirmed: false, business: true, in: context)
+        XCTAssertTrue(expense.isBusiness); XCTAssertTrue(expense.value.repeatsMonthly); XCTAssertEqual(expense.value.repeatDay, 31)
+        // Completing it needs no event.
+        try Expense.save(expense.value.editingAmounts(), id: id, revision: expense.revision, business: true, in: context)
+        XCTAssertFalse(expense.isDraft); XCTAssertTrue(expense.isBusiness)
+        XCTAssertEqual(ExpenseFact(expense: expense, index: InvoiceIndex(in: context))?.state, .business)
+        XCTAssertTrue(expense.value.repeatsMonthly)
+
+        // An event draft stays an event receipt.
+        let jobID = try JobDraft(name: "Weekend").save(in: context)
+        let eventID = try Expense.capture(Data([4]), jobID: jobID, in: context)
+        let event = try XCTUnwrap(context.existingObject(with: eventID) as? Expense)
+        XCTAssertFalse(event.isBusiness)
+        try Expense.save(ExpenseValue(merchant: "Garage"), id: eventID, revision: event.revision, confirmed: false, jobID: jobID, in: context)
+        XCTAssertTrue(event.isDraft); XCTAssertEqual(event.job?.objectID, jobID); XCTAssertFalse(event.isBusiness); XCTAssertNil(event.value.business)
+    }
+
+    func testUnassignedWalletDraftIsNotABusinessCostUntilChosen() async throws {
+        let context = try await context()
+        let capture = try Expense.captureBackground(ExpenseCaptureInput(merchant: "Shop", amount: "12.00", currency: "USD"), in: context)
+        let expense = try XCTUnwrap(context.existingObject(with: capture.objectID) as? Expense)
+        XCTAssertTrue(expense.isDraft); XCTAssertNil(expense.job); XCTAssertFalse(expense.isBusiness)
+        // Kept as a draft with "An event" selected but no event chosen: still unassigned.
+        try Expense.save(expense.value, id: capture.objectID, revision: expense.revision, confirmed: false, in: context)
+        XCTAssertFalse(expense.isBusiness); XCTAssertNil(expense.value.business); XCTAssertNotNil(expense.value.capture)
+        // Chosen as Business and kept as a draft.
+        var value = expense.value; value.repeatsMonthly = true
+        try Expense.save(value, id: capture.objectID, revision: expense.revision, confirmed: false, business: true, in: context)
+        XCTAssertTrue(expense.isBusiness); XCTAssertTrue(expense.value.repeatsMonthly); XCTAssertNotNil(expense.value.capture)
+        // Switched back without an event: unassigned again, and event receipts don't repeat.
+        try Expense.save(expense.value, id: capture.objectID, revision: expense.revision, confirmed: false, in: context)
+        XCTAssertFalse(expense.isBusiness); XCTAssertNil(expense.value.business); XCTAssertFalse(expense.value.repeatsMonthly)
+    }
+
     func testEventReceiptCanBecomeABusinessCost() async throws {
         let context = try await context()
         let jobID = try JobDraft(name: "Weekend").save(in: context)
@@ -134,7 +215,7 @@ final class ExpensesMonthTests: XCTestCase {
         value.repeatsMonthly = false
         try Expense.save(value, id: id, revision: expense.revision, business: true, in: context)
         XCTAssertNil(expense.job); XCTAssertTrue(expense.isBusiness)
-        XCTAssertFalse(expense.value.reimbursable); XCTAssertNil(expense.value.repeatsMonthly)
+        XCTAssertFalse(expense.value.reimbursable); XCTAssertFalse(expense.value.repeatsMonthly)
         XCTAssertEqual(expense.photo, Data([1, 2, 3]))
 
         // An event receipt still needs its event and photo.
@@ -142,7 +223,7 @@ final class ExpensesMonthTests: XCTestCase {
         let otherExpense = try XCTUnwrap(context.existingObject(with: other) as? Expense)
         var receipt = value; receipt.repeatsMonthly = true
         try Expense.save(receipt, id: other, revision: otherExpense.revision, in: context)
-        XCTAssertNil(otherExpense.value.repeatsMonthly, "Only business costs repeat")
+        XCTAssertFalse(otherExpense.value.repeatsMonthly, "Only business costs repeat")
         XCTAssertTrue(otherExpense.isRebillable)
     }
 }

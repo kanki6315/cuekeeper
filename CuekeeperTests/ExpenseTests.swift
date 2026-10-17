@@ -1,5 +1,6 @@
 import CoreData
 import FoundationModels
+import ImageIO
 import XCTest
 import UIKit
 @testable import Cuekeeper
@@ -252,6 +253,128 @@ final class ExpenseTests: XCTestCase {
         }
         do { _ = try await task.value; XCTFail("Expected cancellation") }
         catch { XCTAssertTrue(error is CancellationError) }
+    }
+
+    func testReceiptOnDeviceFailuresUseFriendlyMessagesWithoutCloud() async {
+        let failures: [(Error, String)] = [
+            (LanguageModelError.guardrailViolation(.init(debugDescription: "raw guardrail")), "Enter the details below"),
+            (LanguageModelError.rateLimited(.init(resetDate: nil, debugDescription: "raw rate")), "Try again in a moment"),
+            (LanguageModelError.unsupportedLanguageOrLocale(.init(languageCode: "xx", debugDescription: "raw locale")), "language isn’t supported"),
+            (LanguageModelError.timeout(.init(debugDescription: "raw timeout")), "Try again in a moment"),
+            (SystemLanguageModel.Error.assetsUnavailable(.init(debugDescription: "raw assets")), "not ready"),
+            (NSError(domain: "FoundationModels.raw", code: 7), "Enter the details below")
+        ]
+        for (failure, expected) in failures {
+            do {
+                _ = try await ReceiptExtractor.extract(text: "Receipt", onDevice: { _ in throw failure }, inCloud: { _ in
+                    XCTFail("Only context overflow should trigger PCC")
+                    return self.valid
+                }, progress: { _ in })
+                XCTFail("Expected error")
+            } catch {
+                XCTAssertTrue(error is RecordError)
+                XCTAssertTrue(error.localizedDescription.contains(expected), error.localizedDescription)
+                XCTAssertFalse(error.localizedDescription.contains("raw"), error.localizedDescription)
+                XCTAssertFalse(error.localizedDescription.contains("FoundationModels"), error.localizedDescription)
+            }
+        }
+    }
+
+    func testReceiptCancellationDuringOnDeviceFailureStaysCancellation() async {
+        let task = Task {
+            try await ReceiptExtractor.extract(text: "Receipt", onDevice: { _ in
+                withUnsafeCurrentTask { $0?.cancel() }
+                throw LanguageModelError.guardrailViolation(.init(debugDescription: "raw"))
+            }, inCloud: { _ in self.valid }, progress: { _ in })
+        }
+        do { _ = try await task.value; XCTFail("Expected cancellation") }
+        catch { XCTAssertTrue(error is CancellationError) }
+    }
+
+    func testReceiptDeviceAvailabilityMessagesKeepManualEntry() {
+        XCTAssertNoThrow(try ReceiptExtractor.validateDeviceAvailability(.available))
+        let cases: [(SystemLanguageModel.Availability.UnavailableReason, String)] = [
+            (.appleIntelligenceNotEnabled, "Enable Apple Intelligence"),
+            (.deviceNotEligible, "Apple Intelligence-compatible device"),
+            (.modelNotReady, "not ready")
+        ]
+        for (reason, expected) in cases {
+            XCTAssertThrowsError(try ReceiptExtractor.validateDeviceAvailability(.unavailable(reason))) { error in
+                XCTAssertTrue(error.localizedDescription.contains(expected), error.localizedDescription)
+                XCTAssertTrue(error.localizedDescription.contains("enter"), error.localizedDescription)
+            }
+        }
+    }
+
+    func testReceiptCategoriesMatchSupportedExpenseCategories() throws {
+        func fields(_ category: String) -> ReceiptFields {
+            ReceiptFields(merchant: "", day: "", amount: "", currency: "", tax: "", category: category)
+        }
+        for category in ExpenseValue.categories {
+            XCTAssertEqual(fields(category).expense.category, category)
+        }
+        XCTAssertEqual(fields(" software ").expense.category, "Software")
+        XCTAssertEqual(fields("Groceries").expense.category, "Other")
+        // The schema the model generates against offers exactly the supported categories.
+        let schema = String(decoding: try JSONEncoder().encode(ReceiptFields.generationSchema), as: UTF8.self)
+        for category in ExpenseValue.categories { XCTAssertTrue(schema.contains("\"\(category)\""), "\(category) missing from \(schema)") }
+    }
+
+    /// A camera-sized JPEG whose pixels are stored sideways with an EXIF orientation, as phones save them.
+    private func rotatedPhoto(width: Int, height: Int, orientation: Int = 6) throws -> Data {
+        let context = try XCTUnwrap(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                              space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        context.setFillColor(gray: 1, alpha: 1); context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.setFillColor(gray: 0, alpha: 1); context.fill(CGRect(x: 0, y: 0, width: width / 4, height: height))
+        let image = try XCTUnwrap(context.makeImage())
+        let output = NSMutableData()
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithData(output, "public.jpeg" as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, [kCGImagePropertyOrientation: orientation, kCGImageDestinationLossyCompressionQuality: 0.8] as CFDictionary)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+        return output as Data
+    }
+    private func pixelSize(_ data: Data) throws -> (width: Int, height: Int, orientation: Int) {
+        let source = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+        let properties = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        return (try XCTUnwrap(properties[kCGImagePropertyPixelWidth] as? Int), try XCTUnwrap(properties[kCGImagePropertyPixelHeight] as? Int),
+                properties[kCGImagePropertyOrientation] as? Int ?? 1)
+    }
+
+    func testLargeRotatedPhotoIsDownsampledUprightBeforeSaving() throws {
+        let original = try rotatedPhoto(width: 4032, height: 3024)
+        let stored = try ReceiptImage.storedJPEG(from: original)
+        let size = try pixelSize(stored)
+        // Orientation 6 is a portrait photo stored landscape: the saved receipt is upright and bounded.
+        XCTAssertEqual(size.width, 1800); XCTAssertEqual(size.height, 2400); XCTAssertEqual(size.orientation, 1)
+        XCTAssertLessThan(stored.count, 12 * 1024 * 1024)
+        let preview = try XCTUnwrap(ReceiptImage.preview(stored))
+        XCTAssertEqual(preview.imageOrientation, .up)
+        XCTAssertLessThanOrEqual(max(preview.size.width * preview.scale, preview.size.height * preview.scale), CGFloat(ReceiptImage.previewPixels))
+        // The stored photo still reads as a receipt-sized image in the full viewer.
+        let full = try XCTUnwrap(ReceiptImage.preview(stored, maxPixels: ReceiptImage.storedPixels))
+        XCTAssertEqual(full.size.height * full.scale, 2400)
+    }
+
+    func testSmallPhotoIsNotEnlargedAndCorruptPhotosAreRejected() throws {
+        let small = try ReceiptImage.storedJPEG(from: rotatedPhoto(width: 640, height: 480, orientation: 1))
+        let size = try pixelSize(small)
+        XCTAssertEqual(size.width, 640); XCTAssertEqual(size.height, 480)
+        for corrupt in [Data(), Data([0xFF, 0xD8, 0xFF, 0x00, 0x01]), Data(repeating: 7, count: 4096)] {
+            XCTAssertNil(ReceiptImage.preview(corrupt))
+            XCTAssertThrowsError(try ReceiptImage.storedJPEG(from: corrupt)) { error in
+                XCTAssertEqual(error.localizedDescription, ReceiptImage.unreadableMessage)
+            }
+        }
+    }
+
+    func testScannedPageIsBoundedAndKeepsOrientation() throws {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        let page = UIGraphicsImageRenderer(size: CGSize(width: 3000, height: 4000), format: format).image { renderer in
+            UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 3000, height: 4000))
+        }
+        let rotated = try XCTUnwrap(page.cgImage.map { UIImage(cgImage: $0, scale: 1, orientation: .right) })
+        let size = try pixelSize(ReceiptImage.storedJPEG(from: rotated))
+        XCTAssertEqual(size.width, 2400); XCTAssertEqual(size.height, 1800)
     }
 
     func testVisionReadsReceiptImageOnDevice() async throws {

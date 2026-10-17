@@ -12,10 +12,15 @@ final class CalendarController: ObservableObject {
     @Published private(set) var selectedID: String
     /// Set when another device holds the calendar claim, so Settings can offer a takeover.
     @Published private(set) var otherOwner: String?
+    /// The calendar a switch was refused for because the previous calendar's entries
+    /// couldn't be removed, so Settings can offer to switch and leave them in place.
+    @Published private(set) var blockedSwitch: String?
     let store: EKEventStore
     private let worker: CalendarWorker
     private let defaults: UserDefaults
-    private let deviceID: String
+    private var deviceID: String
+    /// Nil when a test injects the device ID.
+    private let resolveDeviceID: (() -> String)?
     private let publisher: any CalendarPublishing
     private var queued = false
     private var generation = 0
@@ -37,7 +42,15 @@ final class CalendarController: ObservableObject {
         self.defaults = defaults; self.store = store; self.publisher = publisher
         worker = CalendarWorker(defaults: defaults)
         selectedID = defaults.string(forKey: "calendar.selected") ?? ""
-        self.deviceID = deviceID ?? CalendarDeviceIdentity.resolve(defaults: defaults, keychain: .system)
+        let resolve = { CalendarDeviceIdentity.resolve(defaults: defaults, keychain: .system, vendor: UIDevice.current.identifierForVendor?.uuidString) }
+        resolveDeviceID = deviceID == nil ? resolve : nil
+        self.deviceID = deviceID ?? resolve()
+    }
+    /// Resolve again before claiming: a Keychain that was locked at launch may now accept
+    /// the cached ID, making it durable before another device can see it as an owner.
+    /// A connected device keeps the ID it already claimed with.
+    private func establishIdentity() {
+        if !connected, let resolveDeviceID { deviceID = resolveDeviceID() }
     }
     /// `UIDevice.name` is usually just "iPhone" on current iOS, so add when it connected.
     private var ownerLabel: String {
@@ -49,14 +62,28 @@ final class CalendarController: ObservableObject {
         guard enabled else { status = "Calendar disabled in test sessions"; return }
         for name in [NSManagedObjectContext.didSaveObjectsNotification, .NSPersistentStoreRemoteChange, .EKEventStoreChanged] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.scheduleSync() }
+                Task { @MainActor in
+                    // Calendars may have been added, removed, or changed permissions.
+                    if name == .EKEventStoreChanged { self?.refreshCalendars() }
+                    self?.scheduleSync()
+                }
             })
         }
+        // Calendar access can change in Settings while the app is in the background.
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.refreshCalendars() }
+        })
         refreshCalendars(); scheduleSync()
     }
     func refreshCalendars() {
         calendars = EKEventStore.authorizationStatus(for: .event) == .fullAccess
             ? store.calendars(for: .event).filter(\.allowsContentModifications) : []
+    }
+    /// Keeps a picker choice that is still writable, otherwise falls back to the
+    /// connected calendar, or to no choice when neither is available.
+    nonisolated static func validSelection(_ selection: String, connected: String, available: [String]) -> String {
+        if available.contains(selection) { return selection }
+        return available.contains(connected) ? connected : ""
     }
     func requestAccess() async {
         guard !disabledForTests else { return }
@@ -65,22 +92,32 @@ final class CalendarController: ObservableObject {
             store.reset(); refreshCalendars(); status = "Choose a writable calendar."
         } catch { status = error.localizedDescription }
     }
-    func connect(_ id: String) async {
+    /// `leavingOldEntries` switches without removing entries from the previous calendar,
+    /// e.g. when it became read-only. Those entries are no longer updated.
+    func connect(_ id: String, leavingOldEntries: Bool = false) async {
         guard !busy, !disabledForTests else { return }
         let generation = generation
+        let leavingOldEntries = leavingOldEntries && connected && selectedID != id
         busy = true
         do {
             guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
+            establishIdentity()
             try await publisher.claim(deviceID: deviceID, name: ownerLabel)
             guard generation == self.generation else { busy = false; return }
-            try await adopt(id, generation: generation)
+            try await adopt(id, generation: generation, leavingOldEntries: leavingOldEntries)
+        } catch let error as CalendarSwitchBlocked {
+            if generation == self.generation { status = error.localizedDescription }
         } catch CalendarOwnershipError.managedElsewhere(let owner) {
             guard generation == self.generation else { busy = false; return }
             otherOwner = owner
             status = "Calendar not connected: \(CalendarOwnershipError.managedElsewhere(owner).localizedDescription)"
         } catch { if generation == self.generation { status = "Calendar not connected: \(error.localizedDescription)" } }
         busy = false
-        if connected { await sync() }
+        guard connected else { return }
+        await sync()
+        if leavingOldEntries && selectedID == id && generation == self.generation {
+            status += " Entries in the previous calendar were left in place and are no longer updated."
+        }
     }
     /// Claims the calendar even though another device holds it. That device stops updating
     /// entries; this one adopts the existing Cuekeeper entries instead of duplicating them.
@@ -90,20 +127,31 @@ final class CalendarController: ObservableObject {
         busy = true
         do {
             guard store.calendar(withIdentifier: id)?.allowsContentModifications == true else { throw RecordError.invalid("Choose a writable calendar.") }
+            establishIdentity()
             try await publisher.takeOver(deviceID: deviceID, name: ownerLabel)
             guard generation == self.generation else { busy = false; return }
             try await adopt(id, generation: generation)
+        } catch let error as CalendarSwitchBlocked {
+            if generation == self.generation { status = error.localizedDescription }
         } catch { if generation == self.generation { status = "Calendar not connected: \(error.localizedDescription)" } }
         busy = false
         if connected { await sync() }
     }
-    private func adopt(_ id: String, generation: Int) async throws {
-        if connected && selectedID != id { try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys, permit: syncPermit) }
+    private func adopt(_ id: String, generation: Int, leavingOldEntries: Bool = false) async throws {
+        if connected && selectedID != id && !leavingOldEntries {
+            do { _ = try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys, permit: syncPermit) }
+            catch is CancellationError { throw CancellationError() }
+            catch {
+                guard generation == self.generation else { throw CancellationError() }
+                blockedSwitch = id
+                throw CalendarSwitchBlocked(reason: error.localizedDescription)
+            }
+        }
         guard generation == self.generation else { throw CancellationError() }
         syncPermit = CalendarSyncPermit()
         selectedID = id; defaults.set(id, forKey: "calendar.selected")
-        otherOwner = nil
-        status = "Connected. Updating entries…"
+        otherOwner = nil; blockedSwitch = nil
+        status = leavingOldEntries ? "Connected. Entries in the previous calendar were left in place. Updating entries…" : "Connected. Updating entries…"
     }
     func disconnect() async {
         guard !busy, !disabledForTests else { return }
@@ -120,13 +168,17 @@ final class CalendarController: ObservableObject {
                 return
             }
             guard generation == self.generation else { return }
-            try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys, permit: permit)
+            let found = try await worker.removeManagedEvents(calendarID: selectedID, knownKeys: try await currentPlan().knownKeys, permit: permit)
             guard generation == self.generation else { return }
             try await publisher.release(deviceID: deviceID)
             guard generation == self.generation else { return }
             clearConnection()
-            status = "Disconnected. Cuekeeper’s calendar entries were removed."
-        } catch { if generation == self.generation { status = "Couldn’t disconnect: \(error.localizedDescription). Retry when Calendar and iCloud are available." } }
+            status = found ? "Disconnected. Cuekeeper’s calendar entries were removed." : "Disconnected. The calendar is no longer available, so there were no entries to remove."
+        } catch {
+            if generation == self.generation {
+                status = "Couldn’t disconnect: \(error.localizedDescription) Retry when Calendar and iCloud are available, or choose Disconnect without removing entries."
+            }
+        }
     }
     /// An offline escape hatch: do not require EventKit access or contact iCloud.
     /// The remote claim may remain, so another device can use the existing takeover flow.
@@ -142,6 +194,7 @@ final class CalendarController: ObservableObject {
 
     private func clearConnection() {
         selectedID = ""; defaults.removeObject(forKey: "calendar.selected")
+        blockedSwitch = nil
         defaults.removeObject(forKey: "calendar.eventIDs")
         defaults.removeObject(forKey: "calendar.lastPublished")
     }
@@ -239,29 +292,41 @@ final class CalendarController: ObservableObject {
 /// The ID lives in a this-device-only Keychain item: it survives reinstalls, but is not
 /// carried to another phone by a device backup or restore, so two phones can't share it.
 /// A defaults marker detects a restored copy whose Keychain item didn't come along.
+///
+/// The cached copy also records the vendor ID it was cached on. When the Keychain is
+/// locked or rejects a write, that cached copy is a stable fallback on this device, but a
+/// restore onto another device (a different vendor ID) never reuses it.
 struct CalendarDeviceIdentity {
     enum Lookup { case found(String), missing, unavailable }
     var read: () -> Lookup
     var write: (String) -> Bool
-    static let legacyKey = "calendar.device", markerKey = "calendar.deviceInKeychain"
+    static let legacyKey = "calendar.device", markerKey = "calendar.deviceInKeychain", vendorKey = "calendar.deviceVendor"
 
-    static func resolve(defaults: UserDefaults, keychain: CalendarDeviceIdentity) -> String {
+    static func resolve(defaults: UserDefaults, keychain: CalendarDeviceIdentity, vendor: String?) -> String {
         let legacy = defaults.string(forKey: legacyKey)
+        let cachedVendor = defaults.string(forKey: vendorKey)
+        let inKeychain = defaults.bool(forKey: markerKey)
+        func cache(_ id: String, inKeychain: Bool) -> String {
+            defaults.set(id, forKey: legacyKey); defaults.set(inKeychain, forKey: markerKey)
+            if let vendor { defaults.set(vendor, forKey: vendorKey) } else { defaults.removeObject(forKey: vendorKey) }
+            return id
+        }
         switch keychain.read() {
         case .found(let id):
-            defaults.set(id, forKey: legacyKey); defaults.set(true, forKey: markerKey)
-            return id
+            return cache(id, inKeychain: true)
         case .unavailable:
-            // Keychain is locked (e.g. before first unlock); use the cached copy for now.
-            return legacy ?? UUID().uuidString
+            // Keychain is locked (e.g. before first unlock); use the cached copy unless it is
+            // known to come from another device. Persist any new ID so the next launch agrees.
+            if let legacy, cachedVendor == nil || vendor == nil || cachedVendor == vendor { return legacy }
+            return cache(UUID().uuidString, inKeychain: false)
         case .missing:
-            // Migrate the pre-Keychain ID once; after that, a missing item with the marker
-            // set means these defaults were restored onto a different device.
-            let restoredCopy = defaults.bool(forKey: markerKey)
-            let id = restoredCopy ? UUID().uuidString : legacy ?? UUID().uuidString
-            guard keychain.write(id) else { return id }
-            defaults.set(id, forKey: legacyKey); defaults.set(true, forKey: markerKey)
-            return id
+            // Same device: a pre-Keychain ID, or a fallback whose Keychain write failed.
+            // A copy that reached the Keychain elsewhere, or came from another vendor ID,
+            // was restored onto this device and must not be shared.
+            let sameDevice = vendor != nil && cachedVendor == vendor
+            let reusable = legacy.flatMap { sameDevice || (cachedVendor == nil && !inKeychain) ? $0 : nil }
+            let id = reusable ?? UUID().uuidString
+            return cache(id, inKeychain: keychain.write(id))
         }
     }
 
@@ -324,10 +389,12 @@ private actor CalendarWorker {
             guard let calendar = store.calendar(withIdentifier: calendarID), calendar.allowsContentModifications else {
                 throw RecordError.invalid("The selected calendar is unavailable. Choose another calendar in Cuekeeper Settings.")
             }
+            let published = publishedState()
+            // Read discovery before bounds change: a new owner hasn't published here yet.
+            let discover = published?.calendarID != calendarID
             rememberBounds(plan.bounds)
-            let published = defaults.data(forKey: "calendar.lastPublished").flatMap { try? JSONDecoder().decode(CalendarPublishedState.self, from: $0) }
             var changed = false
-            let existing = managedEvents(calendar: calendar)
+            let existing = managedEvents(calendar: calendar, discover: discover)
             let grouped = Dictionary(grouping: existing, by: { CalendarPlan.key(from: $0.url)! })
             var retained: [EKEvent] = []
             var ids: [String: String] = [:]
@@ -373,7 +440,13 @@ private actor CalendarWorker {
         defaults.set(min(low, dates.min() ?? low), forKey: "calendar.earliest")
         defaults.set(max(high, dates.max() ?? high), forKey: "calendar.latest")
     }
-    private func managedEvents(calendar: EKCalendar) -> [EKEvent] {
+    private func publishedState() -> CalendarPublishedState? {
+        defaults.data(forKey: "calendar.lastPublished").flatMap { try? JSONDecoder().decode(CalendarPublishedState.self, from: $0) }
+    }
+    /// How far a device without its own publication history searches for entries
+    /// published by a previous owner, whose dates and event IDs it never saw.
+    static let discoveryYears = 10
+    private func managedEvents(calendar: EKCalendar, discover: Bool) -> [EKEvent] {
         var result: [String: EKEvent] = [:]
         let ids = defaults.dictionary(forKey: "calendar.eventIDs") as? [String: String] ?? [:]
         for id in ids.values {
@@ -381,7 +454,11 @@ private actor CalendarWorker {
                CalendarPlan.key(from: event.url) != nil { result[event.eventIdentifier] = event }
         }
         var start = (defaults.object(forKey: "calendar.earliest") as? Date ?? Date()).addingTimeInterval(-86400)
-        let end = (defaults.object(forKey: "calendar.latest") as? Date ?? Date()).addingTimeInterval(86400)
+        var end = (defaults.object(forKey: "calendar.latest") as? Date ?? Date()).addingTimeInterval(86400)
+        if discover {
+            start = min(start, Calendar.current.date(byAdding: .year, value: -Self.discoveryYears, to: Date())!)
+            end = max(end, Calendar.current.date(byAdding: .year, value: Self.discoveryYears, to: Date())!)
+        }
         while start < end {
             let next = min(Calendar.current.date(byAdding: .year, value: 1, to: start)!, end)
             for event in store.events(matching: store.predicateForEvents(withStart: start, end: next, calendars: [calendar])) where CalendarPlan.key(from: event.url) != nil {
@@ -391,17 +468,38 @@ private actor CalendarWorker {
         }
         return Array(result.values).sorted { $0.eventIdentifier < $1.eventIdentifier }
     }
-    func removeManagedEvents(calendarID: String, knownKeys: Set<String>, permit: CalendarSyncPermit) throws {
+    /// Returns false when the calendar no longer exists, so there was nothing to remove.
+    func removeManagedEvents(calendarID: String, knownKeys: Set<String>, permit: CalendarSyncPermit) throws -> Bool {
         store.reset()
         defer { store.reset() }
-        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { throw RecordError.invalid("Restore Calendar access before disconnecting.") }
+        let calendar = EKEventStore.authorizationStatus(for: .event) == .fullAccess ? store.calendar(withIdentifier: calendarID) : nil
+        try CalendarCleanup.check(fullAccess: EKEventStore.authorizationStatus(for: .event) == .fullAccess,
+                                  calendar: calendar.map { ($0.title, $0.allowsContentModifications) })
         // With full access, a missing calendar has no entries left to remove.
         // Let disconnect release the claim, or adopt select a replacement calendar.
-        guard let calendar = store.calendar(withIdentifier: calendarID) else { return }
-        for event in managedEvents(calendar: calendar) {
+        guard let calendar else { return false }
+        for event in managedEvents(calendar: calendar, discover: publishedState()?.calendarID != calendarID) {
             guard let key = CalendarPlan.key(from: event.url), knownKeys.contains(key) else { continue }
             try store.remove(event, span: .thisEvent, commit: false)
         }
         try permit.commit { try store.commit() }
+        return true
+    }
+}
+
+/// Whether entries can be removed from a calendar this device published to.
+enum CalendarCleanup {
+    static func check(fullAccess: Bool, calendar: (title: String, writable: Bool)?) throws {
+        guard fullAccess else { throw RecordError.invalid("Full Calendar access is needed to remove Cuekeeper’s entries.") }
+        if let calendar, !calendar.writable {
+            throw RecordError.invalid("“\(calendar.title)” is read-only, so Cuekeeper’s entries there can’t be removed.")
+        }
+    }
+}
+
+struct CalendarSwitchBlocked: LocalizedError {
+    let reason: String
+    var errorDescription: String? {
+        "Still using the previous calendar. \(reason) To switch anyway, choose Switch and Leave Old Entries; existing entries stay in the previous calendar and are no longer updated."
     }
 }

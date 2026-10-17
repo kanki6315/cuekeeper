@@ -53,6 +53,10 @@ final class ExpenseNotifications: NSObject, ObservableObject, UNUserNotification
     @Published var route: Route?
     @Published private(set) var status: UNAuthorizationStatus = .notDetermined
     @Published private(set) var lastError: String?
+    /// Permission messages describe the authorization status and go stale when it changes in Settings;
+    /// delivery failures stay until a reminder is delivered.
+    private enum ErrorKind { case permission, delivery }
+    private var lastErrorKind: ErrorKind?
     private let delivery: ExpenseNotificationDelivering
     private let defaults: UserDefaults
     init(delivery: ExpenseNotificationDelivering? = nil, defaults: UserDefaults = .standard) {
@@ -60,14 +64,24 @@ final class ExpenseNotifications: NSObject, ObservableObject, UNUserNotification
         super.init()
     }
     func installDelegate() { UNUserNotificationCenter.current().delegate = self }
-    func refresh() async { status = await delivery.authorization() }
+    func refresh() async {
+        status = await delivery.authorization()
+        if lastErrorKind == .permission, Self.permits(status) { setError(nil) }
+    }
     func enable() async {
         do {
             let allowed = try await delivery.requestPermission()
             defaults.set(allowed, forKey: Self.preference)
-            lastError = allowed ? nil : "Notifications are disabled. You can still complete expenses from Upcoming or Payments."
-        } catch { lastError = "Couldn’t enable reminders. Try again in Settings." }
+            if allowed { if lastErrorKind == .permission { setError(nil) } }
+            else { setError("Notifications are disabled. You can still complete expenses from Upcoming or Payments.", kind: .permission) }
+        } catch { setError("Couldn’t enable reminders. Try again in Settings.", kind: .permission) }
         await refresh()
+    }
+    private func setError(_ message: String?, kind: ErrorKind? = nil) {
+        lastError = message; lastErrorKind = message == nil ? nil : kind
+    }
+    private static func permits(_ status: UNAuthorizationStatus) -> Bool {
+        status == .authorized || status == .provisional || status == .ephemeral
     }
     func disable() async {
         defaults.set(false, forKey: Self.preference)
@@ -84,10 +98,9 @@ final class ExpenseNotifications: NSObject, ObservableObject, UNUserNotification
     /// Saving the draft is authoritative. Notification denial/failure never rolls it back.
     func notify(id: UUID) async {
         guard defaults.bool(forKey: Self.preference) else { return }
-        let authorization = await delivery.authorization()
-        guard authorization == .authorized || authorization == .provisional || authorization == .ephemeral else { return }
-        do { try await delivery.add(Self.request(id: id)); lastError = nil }
-        catch { lastError = "A reminder couldn’t be delivered. Your expense is saved in Expenses to complete." }
+        guard Self.permits(await delivery.authorization()) else { return }
+        do { try await delivery.add(Self.request(id: id)); setError(nil) }
+        catch { setError("A reminder couldn’t be delivered. Your expense is saved in Expenses to complete.", kind: .delivery) }
     }
     func clear(id: UUID) { delivery.remove([Self.prefix + id.uuidString]) }
     func reconcile(in context: NSManagedObjectContext) async {

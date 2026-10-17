@@ -451,6 +451,7 @@ struct UpcomingView: View {
             if let id { openInvoice(id, job: target) } else if let target { show(target) }
         case .reviewExpense(let id):
             if let expense = drafts.first(where: { $0.id == id }) { sheet = .expense(target, expense) }
+        case .recordDirectPayment: if let target { show(target) }
         }
     }
 

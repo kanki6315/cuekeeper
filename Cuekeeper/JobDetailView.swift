@@ -111,6 +111,7 @@ struct JobDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) { Button("Edit Event", systemImage: "pencil") { editing = true }.accessibilityIdentifier("edit-event") }
+            ToolbarSpacer(.fixed, placement: .primaryAction)
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button("Duplicate Event", systemImage: "plus.square.on.square") { duplicating = true }

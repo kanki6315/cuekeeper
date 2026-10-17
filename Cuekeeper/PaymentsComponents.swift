@@ -168,6 +168,8 @@ struct StepBar: View {
 
 /// Names each segment of the step bar, aligned with the rows' bars.
 struct StepBarKey: View {
+    /// Indents the key to line up with the bars in the event rows below it.
+    var alignsWithRows = true
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var railWidth = 47
     @ScaledMetric(relativeTo: .caption) private var column = 56
@@ -183,12 +185,11 @@ struct StepBarKey: View {
     }
 
     private var columns: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .bottom, spacing: 3) {
                 ForEach(ReadinessGate.allCases, id: \.self) { gate in
                     VStack(spacing: 2) {
                         Text(gate.label).font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).lineLimit(1).minimumScaleFactor(0.8)
-                        Image(systemName: "arrow.down").font(.caption2.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
                         RoundedRectangle(cornerRadius: 2).fill(sample[gate]!.fill).frame(height: 6)
                     }
                     .frame(width: column)
@@ -203,7 +204,7 @@ struct StepBarKey: View {
                 }
             }
         }
-        .padding(.leading, railWidth + 12)
+        .padding(.leading, alignsWithRows ? railWidth + 12 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Each event's bar shows work, fee, receipts and client, in that order: done, missing, or not yet.")
     }

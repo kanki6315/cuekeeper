@@ -56,9 +56,16 @@ struct PaymentsView: View {
                 Section { Text("No events in \(MonthStepper.title(month)).").foregroundStyle(Color("SecondaryText")) }
             } else {
                 Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("By client").font(.title3.bold()).accessibilityAddTraits(.isHeader)
-                        StepBarKey()
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .center, spacing: 12) {
+                            byClientTitle
+                            Spacer(minLength: 0)
+                            StepBarKey(alignsWithRows: false).fixedSize()
+                        }
+                        VStack(alignment: .leading, spacing: 12) {
+                            byClientTitle
+                            StepBarKey()
+                        }
                     }
                 }.containerValue(\.daybookUnframed, true)
                 ForEach(summary.groups) { group in
@@ -79,6 +86,10 @@ struct PaymentsView: View {
                     .accessibilityIdentifier("payments-ledger")
             }
         }
+    }
+
+    private var byClientTitle: some View {
+        Text("By client").font(.headline).accessibilityAddTraits(.isHeader)
     }
 
     private var header: some View {

@@ -72,12 +72,14 @@ struct RolesView: View {
         }
         .saveErrorAlert($error)
         .onChange(of: selection) { expandedYears = [] }
+        #if DEBUG
         .task {
             // Design captures open on a selected role.
             if DesignFixtures.enabled && DesignFixtures.route == "role", selection.isEmpty, let role = roles.first(where: { $0.name == "Commentator" }) {
                 selection = RoleFact(role: role).key
             }
         }
+        #endif
     }
 
     private func page(_ agenda: RolesAgenda) -> some View {

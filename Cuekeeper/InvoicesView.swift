@@ -298,7 +298,7 @@ struct LedgerRow: View {
     private var tone: Color {
         switch entry.state {
         case .overdue: Color.theme.cancelled
-        case .review: Color.theme.amberText
+        case .review: Color.theme.caution
         case .paid, .direct: Color.theme.positive
         default: Color.theme.secondaryText
         }

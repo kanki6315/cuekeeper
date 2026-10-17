@@ -52,6 +52,38 @@
       ],
       "icon": "CuekeeperInk.icon"
     },
+    "amber": {
+      "accent": [
+        "#A0600B",
+        "#FCB442"
+      ],
+      "icon": "CuekeeperAmber.icon",
+      "caution": [
+        "#703BA1",
+        "#D0AAFC"
+      ]
+    },
+    "olive": {
+      "accent": [
+        "#646904",
+        "#CBD95B"
+      ],
+      "icon": "CuekeeperOlive.icon"
+    },
+    "espresso": {
+      "accent": [
+        "#443124",
+        "#EFD9CC"
+      ],
+      "icon": "CuekeeperEspresso.icon"
+    },
+    "graphite": {
+      "accent": [
+        "#2A2E34",
+        "#E1E5EA"
+      ],
+      "icon": "CuekeeperGraphite.icon"
+    },
     "source": "Shared/Theme.swift is authoritative for the app; the colors above are the original supplied brand palette."
   }
 }

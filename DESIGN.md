@@ -15,8 +15,8 @@ colors:
   secondaryText-dark: "#A5ADAA"
   positive-light: "#17745D"
   positive-dark: "#6FE4BF"
-  amberText-light: "#88570C"
-  amberText-dark: "#FCBF4D"
+  caution-light: "#88570C"
+  caution-dark: "#FCBF4D"
   completed-light: "#255E7F"
   completed-dark: "#93CCF2"
   cancelled-light: "#8A4343"
@@ -87,7 +87,7 @@ This records the implemented SwiftUI system, grounded in `Cuekeeper/DaybookStyle
 **Key Characteristics:**
 - Date-led agenda rows with clear booking badges.
 - Titled detail pages and compact ruled panels.
-- Five accent themes with matching app icons; status colors fixed across themes.
+- Nine accent themes with matching app icons; status colors fixed across themes.
 - Native glass actions and a floating iPad navigation surface.
 - Native controls and Dynamic Type throughout.
 
@@ -103,7 +103,11 @@ Colors come from user-selectable themes defined in `Shared/Theme.swift`, the onl
 | Indigo | #5A4EBF / #ADAEFC | `CuekeeperIndigo` |
 | Purple | #703BA1 / #D0AAFC | `CuekeeperPurple` |
 | Magenta | #A32384 / #F59CD8 | `CuekeeperMagenta` |
+| Cue Amber | #A0600B / #FCB442 | `CuekeeperAmber` |
+| Olive | #646904 / #CBD95B | `CuekeeperOlive` |
+| Espresso | #443124 / #EFD9CC | `CuekeeperEspresso` |
 | Ink | #2B2A44 / #DCDCEE | `CuekeeperInk` |
+| Graphite | #2A2E34 / #E1E5EA | `CuekeeperGraphite` |
 
 Settings → Theme stores the choice per device in the app group, so the widget follows it. Choosing a theme also switches the alternate app icon (iOS asks for confirmation), reloads the widget and sets the UIKit window tint for alerts and other UIKit-presented controls. Icon sources are `design/brand/<icon>.icon`: a pale `accentSoft` mark on the accent in light appearance, and the dark accent mark in dark appearance.
 
@@ -115,11 +119,11 @@ Settings → Theme stores the choice per device in the app group, so the widget 
 
 ### Status colors
 
-Status colors never change with the theme: `amberText` for tentative, draft and needs-attention text; `completed` blue; `cancelled` muted red; `attention` (system orange) for attention fills at reduced opacity; and `destructive` (system red).
+Status colors keep their meaning in every theme: `caution` for tentative, draft and needs-attention text (amber #88570C / #FCBF4D); `completed` blue; `cancelled` muted red; `attention` (system orange) for attention fills at reduced opacity; and `destructive` (system red). Only a theme whose accent shares a status hue moves that status: Cue Amber sets `caution` and `attention` to violet (#703BA1 / #D0AAFC), so tentative work never looks like an action. Olive's hue sits midway between tentative amber and booked green.
 
-**The Meaning Rule.** Never use the accent to mean a state. Booked, paid and done use `positive`; warnings use `amberText` and `attention`. Otherwise a state reads differently in each theme; in Ink, "done" would look like plain text.
+**The Meaning Rule.** Never use the accent to mean a state. Booked, paid and done use `positive`; warnings use `caution` and `attention`. Otherwise a state reads differently in each theme; in Ink, "done" would look like plain text.
 
-**The Theme Guard Rule.** `ThemeTests` enforces this system: every theme's text and button pairs must reach 4.5:1; every accent must sit at least 35° of OKLCH hue from each status color (Ink is exempt as a near-neutral); every alternate icon must be in the bundle; and no Swift file outside `Shared/Theme.swift` may construct a color or use a system hue. `ThemeCaptureTests` (Design Capture scheme) captures key screens in every theme and appearance for review.
+**The Theme Guard Rule.** `ThemeTests` enforces this system: every theme's text and button pairs must reach 4.5:1; every accent must sit at least 35° of OKLCH hue from each status color, including that theme's own caution and attention (near-neutral accents such as Ink, Graphite and Espresso are exempt); a moved caution must also clear the other statuses; every alternate icon must be in the bundle; and no Swift file outside `Shared/Theme.swift` may construct a color or use a system hue. `ThemeCaptureTests` (Design Capture scheme) captures key screens in every theme and appearance for review.
 
 ## Typography
 

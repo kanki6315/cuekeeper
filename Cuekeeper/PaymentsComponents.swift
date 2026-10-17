@@ -237,7 +237,7 @@ struct StepBarKey: View {
 
 enum ReadinessText {
     static func status(_ event: EventReadiness) -> Text {
-        let secondary = Color.theme.secondaryText, amber = Color.theme.amberText
+        let secondary = Color.theme.secondaryText, amber = Color.theme.caution
         switch event.state {
         case .ready: return Text("Ready to invoice").foregroundStyle(Color.theme.accent).fontWeight(.semibold)
         case .heldUp, .upcoming:
@@ -328,7 +328,7 @@ struct ClientGroupHeader: View {
                             .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     } else {
                         Text(ListFormatter.localizedString(byJoining: group.detailsMissing).capitalizedFirst + " missing")
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.amberText)
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.caution)
                     }
                 }
             }
@@ -372,7 +372,7 @@ struct OpenInvoiceRow: View {
                 else if !dueDay.isEmpty && dueDay < today {
                     let days = Day.days(from: dueDay, to: today) ?? 0
                     Text(days == 1 ? "1 day late" : "\(days) days late").fontWeight(.semibold).foregroundStyle(Color.theme.cancelled)
-                } else if dueDay == today { Text("Due today").fontWeight(.semibold).foregroundStyle(Color.theme.amberText) }
+                } else if dueDay == today { Text("Due today").fontWeight(.semibold).foregroundStyle(Color.theme.caution) }
                 else if !dueDay.isEmpty { Text("Due \(shortDay(dueDay))").foregroundStyle(Color.theme.secondaryText) }
                 else { Text("No due date").foregroundStyle(Color.theme.secondaryText) }
             }.font(.subheadline)
@@ -503,7 +503,7 @@ struct InvoicingFieldRow: View {
     var body: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: text.isEmpty && axis == .vertical ? .center : .firstTextBaseline, spacing: 12))
         layout {
-            Text(label).foregroundStyle(missing ? Color.theme.amberText : Color.theme.secondaryText).fontWeight(missing ? .semibold : .regular)
+            Text(label).foregroundStyle(missing ? Color.theme.caution : Color.theme.secondaryText).fontWeight(missing ? .semibold : .regular)
                 .frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
             TextField(label, text: $text, prompt: Text(prompt).foregroundStyle(Color.theme.secondaryText), axis: axis)
                 .keyboardType(keyboard)
@@ -666,7 +666,7 @@ struct ReadinessSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title(gate)).fontWeight(state == .missing ? .semibold : .regular)
                 Text(detail(gate, state: state, event: event)).font(.subheadline)
-                    .foregroundStyle(state == .missing ? Color.theme.amberText : Color.theme.secondaryText)
+                    .foregroundStyle(state == .missing ? Color.theme.caution : Color.theme.secondaryText)
             }
             Spacer(minLength: 8)
             if state == .missing { action(gate, event: event) }

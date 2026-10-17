@@ -137,7 +137,7 @@ private struct StatusChip: View {
     let status: BookingStatus
     private var fill: Color {
         switch status {
-        case .tentative: return Color.theme.amberText
+        case .tentative: return Color.theme.caution
         case .booked, .completed: return Color.theme.positive
         case .cancelled: return Color.theme.secondaryText
         }
@@ -282,7 +282,7 @@ struct OpenItemsPanel: View {
         }
     }
     @ViewBuilder private func row(_ item: OpenItem) -> some View {
-        let tint = item.needsAttention ? Color.theme.amberText : Color.theme.positive
+        let tint = item.needsAttention ? Color.theme.caution : Color.theme.positive
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
         layout {
             HStack(spacing: 10) {
@@ -471,9 +471,9 @@ struct RunOfShowRow: View {
                 .lineLimit(1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.8)
                 .frame(width: typeSize.isAccessibilitySize ? nil : timeWidth, alignment: .leading)
         } else {
-            Text("TBC").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.amberText)
+            Text("TBC").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.caution)
                 .frame(width: timeWidth, height: 40)
-                .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.theme.amberText.opacity(0.55), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
+                .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.theme.caution.opacity(0.55), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
                 .accessibilityLabel("Time to come")
         }
     }
@@ -487,7 +487,7 @@ struct RunOfShowRow: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
     private var subtitleColor: Color {
-        !skipped && (session.start == nil || !session.confirmed || session.coverage == "undecided") ? Color.theme.amberText : Color.theme.secondaryText
+        !skipped && (session.start == nil || !session.confirmed || session.coverage == "undecided") ? Color.theme.caution : Color.theme.secondaryText
     }
 }
 

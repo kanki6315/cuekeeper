@@ -24,7 +24,7 @@ struct PendingExpensesPrompt: View {
     }
     private var promptLabel: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "tray").foregroundStyle(Color.theme.amberText)
+            Image(systemName: "tray").foregroundStyle(Color.theme.caution)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Expenses to finish").font(.headline)
                 Text("\(count) waiting in your Expenses inbox").font(.subheadline).foregroundStyle(Color.theme.secondaryText)

@@ -79,8 +79,10 @@
 		6F10F9A23FA535E443F05AAB /* ExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */; };
 		75124E87A3A68003C805BECE /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8A51E9BA7FE1E0EA6C578E /* TodayTests.swift */; };
 		789BFF476A91BB6DA4110CE0 /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BCF474DBEC80465600AB43 /* RecoveryView.swift */; };
+		79E3CEE328F9EE460663A24C /* CuekeeperEspresso.icon in Resources */ = {isa = PBXBuildFile; fileRef = DABC6EC5BAB8496BA06382D9 /* CuekeeperEspresso.icon */; };
 		7BB717E1A46FDBF29B846F09 /* TodayCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A69458582EB391A16E9C37 /* TodayCaptureTests.swift */; };
 		7C3981B233655BCC6ADF3626 /* JobDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6813AB65D56DEB9B484FB834 /* JobDetailView.swift */; };
+		8A1C218A065A3876A8E98509 /* CuekeeperOlive.icon in Resources */ = {isa = PBXBuildFile; fileRef = 9447CB2041B42C36E5CAFC09 /* CuekeeperOlive.icon */; };
 		8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */; };
 		8DC18CBE3C781DED3F4B888C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
 		8EC3822D1BA47EBD2F378F6C /* InvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5266CDEBB4213D6B97531E4A /* InvoicesView.swift */; };
@@ -95,8 +97,10 @@
 		9DC58F2C1AE2C2F5D7730D8E /* DayScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */; };
 		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
 		9FFC5082A860AD6180BFFBA1 /* ClientSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE5950F3A628E14B78F07ED /* ClientSummary.swift */; };
+		A1D43FE4533E1039F5B72D93 /* CuekeeperAmber.icon in Resources */ = {isa = PBXBuildFile; fileRef = D3BD1C491DC42F8D2185DCC4 /* CuekeeperAmber.icon */; };
 		A28ED7E82351B9557E0B880C /* CuekeeperWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
+		A3ED138D55ED7884C4E2B0C8 /* CuekeeperGraphite.icon in Resources */ = {isa = PBXBuildFile; fileRef = C2D1A85F7803CE000ABAC95C /* CuekeeperGraphite.icon */; };
 		A8F6275D847E686B5FC978BA /* PendingExpensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC028165CC976F299783F54 /* PendingExpensesView.swift */; };
 		A933C1120214E017ABB6DABE /* FirstLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1A3615096553A427E9202D /* FirstLaunchTests.swift */; };
 		AB39FE33F51078132DD4895B /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26B1DE5EBB870F41896D3CC /* WorkSession.swift */; };
@@ -283,6 +287,7 @@
 		91C80D913C2F1C3287CFD3DF /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchTests.swift; sourceTree = "<group>"; };
 		92DB686FC647878C6FA754BA /* CuekeeperInk.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = CuekeeperInk.icon; sourceTree = "<group>"; };
+		9447CB2041B42C36E5CAFC09 /* CuekeeperOlive.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = CuekeeperOlive.icon; sourceTree = "<group>"; };
 		981D7D8A33FBEF4B6E0C6C84 /* Cuekeeper.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Cuekeeper.xcdatamodel; sourceTree = "<group>"; };
 		994C44392560A52DE055B755 /* SessionBatchEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBatchEditorView.swift; sourceTree = "<group>"; };
 		9A3763FF11F6A434226B2DBD /* Expenses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expenses.swift; sourceTree = "<group>"; };
@@ -309,6 +314,7 @@
 		BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV7.xcdatamodel; sourceTree = "<group>"; };
 		C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperMark.swift; sourceTree = "<group>"; };
 		C18C6953AC2311B5A53EB8E2 /* InvoiceLedgerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceLedgerTests.swift; sourceTree = "<group>"; };
+		C2D1A85F7803CE000ABAC95C /* CuekeeperGraphite.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = CuekeeperGraphite.icon; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C42AD7432BF268805135A824 /* CalendarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSettingsView.swift; sourceTree = "<group>"; };
 		C4ECFB76E1416305BD27E80B /* CuekeeperV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV3.xcdatamodel; sourceTree = "<group>"; };
@@ -323,12 +329,14 @@
 		D2DC533FA34F0534C2C770FB /* ClientViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientViews.swift; sourceTree = "<group>"; };
 		D305E1038A9ABA4A3975A914 /* ReceiptExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptExtractor.swift; sourceTree = "<group>"; };
 		D32CAA2E3C0D27BDF3B934FD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D3BD1C491DC42F8D2185DCC4 /* CuekeeperAmber.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = CuekeeperAmber.icon; sourceTree = "<group>"; };
 		D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D4AE67AB7F1A8CA326601086 /* CuekeeperV11.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV11.xcdatamodel; sourceTree = "<group>"; };
 		D5E2C1963461227A58D165E3 /* InvoicePlanningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicePlanningTests.swift; sourceTree = "<group>"; };
 		D682B024A3E281F66B73080A /* JobEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobEditorView.swift; sourceTree = "<group>"; };
 		D95E08FF1047E3666557F964 /* WorkEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkEvent.swift; sourceTree = "<group>"; };
 		DAB8169DE40CC3D98FB90106 /* UpcomingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpcomingView.swift; sourceTree = "<group>"; };
+		DABC6EC5BAB8496BA06382D9 /* CuekeeperEspresso.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = CuekeeperEspresso.icon; sourceTree = "<group>"; };
 		DCC5C17265C5E63723173397 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperApp.swift; sourceTree = "<group>"; };
 		DEAFA099BF381810103C04D1 /* CuekeeperV13.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV13.xcdatamodel; sourceTree = "<group>"; };
@@ -561,9 +569,13 @@
 			isa = PBXGroup;
 			children = (
 				BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */,
+				D3BD1C491DC42F8D2185DCC4 /* CuekeeperAmber.icon */,
+				DABC6EC5BAB8496BA06382D9 /* CuekeeperEspresso.icon */,
+				C2D1A85F7803CE000ABAC95C /* CuekeeperGraphite.icon */,
 				7DFBBCC3428C1232C1639861 /* CuekeeperIndigo.icon */,
 				92DB686FC647878C6FA754BA /* CuekeeperInk.icon */,
 				A98ABE7DD3F1291540A5D893 /* CuekeeperMagenta.icon */,
+				9447CB2041B42C36E5CAFC09 /* CuekeeperOlive.icon */,
 				1AE8759C86C905277BBB7B93 /* CuekeeperPurple.icon */,
 			);
 			name = brand;
@@ -752,9 +764,13 @@
 			files = (
 				039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */,
 				AD48D32DE70864BBA27CF4A5 /* Cuekeeper.icon in Resources */,
+				A1D43FE4533E1039F5B72D93 /* CuekeeperAmber.icon in Resources */,
+				79E3CEE328F9EE460663A24C /* CuekeeperEspresso.icon in Resources */,
+				A3ED138D55ED7884C4E2B0C8 /* CuekeeperGraphite.icon in Resources */,
 				9BBE609BA40883565E52101C /* CuekeeperIndigo.icon in Resources */,
 				3168A961A032B36A7A611C3E /* CuekeeperInk.icon in Resources */,
 				311EDB5359048B744C2DC585 /* CuekeeperMagenta.icon in Resources */,
+				8A1C218A065A3876A8E98509 /* CuekeeperOlive.icon in Resources */,
 				3B55C6331D1B84FD7E876AD0 /* CuekeeperPurple.icon in Resources */,
 				56FD0CB1E2686A2BD6BA0266 /* PrivacyInfo.xcprivacy in Resources */,
 				21B9B37832158DEF77AD99BC /* ThirdPartyNotices.txt in Resources */,
@@ -966,7 +982,7 @@
 		231F9572E7AF3117F92EA5B2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperInk";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperAmber CuekeeperOlive CuekeeperEspresso CuekeeperInk CuekeeperGraphite";
 				ASSETCATALOG_COMPILER_APPICON_NAME = Cuekeeper;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Cuekeeper/Cuekeeper.entitlements;
@@ -1024,7 +1040,7 @@
 		53FC7BC39177E163AB22C361 /* CloudKitSetup */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperInk";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperAmber CuekeeperOlive CuekeeperEspresso CuekeeperInk CuekeeperGraphite";
 				ASSETCATALOG_COMPILER_APPICON_NAME = Cuekeeper;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Cuekeeper/Cuekeeper.entitlements;
@@ -1164,7 +1180,7 @@
 		9FAB2B999FAC057C5C6CD694 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperInk";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperAmber CuekeeperOlive CuekeeperEspresso CuekeeperInk CuekeeperGraphite";
 				ASSETCATALOG_COMPILER_APPICON_NAME = Cuekeeper;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Cuekeeper/Cuekeeper.entitlements;

@@ -95,7 +95,7 @@ struct BookingBadge: View {
     var body: some View {
         Text(status == "notCovering" ? "Not covering" : status.capitalized)
             .font(.caption.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(tentative ? Color.theme.amberText : Color.theme.positive)
+            .foregroundStyle(tentative ? Color.theme.caution : Color.theme.positive)
             .padding(.horizontal, 9).padding(.vertical, 5)
             .background(tentative ? Color.theme.attention.opacity(0.13) : Color.theme.positive.opacity(0.1), in: Capsule())
     }
@@ -147,7 +147,7 @@ struct DaybookSegments<Value: Hashable>: View {
                         if count > 0 {
                             Text(count, format: .number)
                                 .font(.caption2.weight(.bold)).monospacedDigit()
-                                .foregroundStyle(Color.theme.amberText)
+                                .foregroundStyle(Color.theme.caution)
                                 .padding(.horizontal, 5).padding(.vertical, 1)
                                 .background(Color.theme.attention.opacity(0.18), in: Capsule())
                         }
@@ -183,7 +183,7 @@ struct DaybookSegments<Value: Hashable>: View {
 extension BookingStatus {
     var controlColor: Color {
         switch self {
-        case .tentative: Color.theme.amberText
+        case .tentative: Color.theme.caution
         case .booked: Color.theme.positive
         case .completed: Color.theme.completed
         case .cancelled: Color.theme.cancelled

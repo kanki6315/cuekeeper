@@ -248,7 +248,7 @@ struct ClientDetailView: View {
                 EventFactChip(symbol: CurrencyPreferences.symbol(summary.currency), text: summary.currency)
                 if let terms = summary.invoicing.termsDays { EventFactChip(symbol: "clock", text: "\(terms) days to pay") }
                 if !summary.overdue.isEmpty {
-                    EventChip(tint: Color.theme.amberText) { Text(ClientSummary.amounts(summary.overdue) + " overdue").fontWeight(.semibold) }
+                    EventChip(tint: Color.theme.caution) { Text(ClientSummary.amounts(summary.overdue) + " overdue").fontWeight(.semibold) }
                 } else if !summary.owed.isEmpty {
                     EventChip { Text(ClientSummary.amounts(summary.owed) + " owed") }
                 }
@@ -391,7 +391,7 @@ struct ClientDetailView: View {
                     Spacer()
                     Text(invoicing.isComplete ? "Complete" : "\(required) of 4")
                         .font(.subheadline.weight(.regular))
-                        .foregroundStyle(invoicing.isComplete ? Color.theme.positive : Color.theme.amberText)
+                        .foregroundStyle(invoicing.isComplete ? Color.theme.positive : Color.theme.caution)
                 }
             }
             if !client.notes.isEmpty {
@@ -491,7 +491,7 @@ private struct ClientInvoiceRow: View {
             VStack(alignment: .trailing, spacing: 3) {
                 if state != .review { Text(Money.format(amount, currency: invoice.currency)).font(.body.weight(.semibold)).monospacedDigit() }
                 Text(label).font(.footnote.weight(amber ? .semibold : .regular))
-                    .foregroundStyle(amber ? Color.theme.amberText : Color.theme.secondaryText)
+                    .foregroundStyle(amber ? Color.theme.caution : Color.theme.secondaryText)
             }.multilineTextAlignment(.trailing)
         }
         .opacity(state == .void ? 0.6 : 1)
@@ -511,7 +511,7 @@ private struct ClientValueRow: View {
         let empty = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
         layout {
-            Text(label).foregroundStyle(empty && missing ? Color.theme.amberText : Color.theme.secondaryText)
+            Text(label).foregroundStyle(empty && missing ? Color.theme.caution : Color.theme.secondaryText)
                 .fontWeight(empty && missing ? .semibold : .regular)
                 .frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
             Text(empty ? (missing ? "Missing" : "None") : value)

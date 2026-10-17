@@ -41,7 +41,11 @@ targets:
       - path: design/brand/CuekeeperIndigo.icon
       - path: design/brand/CuekeeperPurple.icon
       - path: design/brand/CuekeeperMagenta.icon
+      - path: design/brand/CuekeeperAmber.icon
       - path: design/brand/CuekeeperInk.icon
+      - path: design/brand/CuekeeperOlive.icon
+      - path: design/brand/CuekeeperEspresso.icon
+      - path: design/brand/CuekeeperGraphite.icon
     entitlements:
       path: Cuekeeper/Cuekeeper.entitlements
       properties:
@@ -85,7 +89,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.cuekeeper
         ASSETCATALOG_COMPILER_APPICON_NAME: Cuekeeper
         # Theme icons; ThemeStore.choose switches to the selected theme's icon.
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperInk
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperAmber CuekeeperOlive CuekeeperEspresso CuekeeperInk CuekeeperGraphite
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_MACCATALYST: NO
     dependencies:

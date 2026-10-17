@@ -317,7 +317,7 @@ struct UpcomingView: View {
         // Accessibility sizes wrap long titles, so the capsule relaxes into a rounded rectangle.
         let large = dynamicTypeSize.isAccessibilitySize
         let shape = RoundedRectangle(cornerRadius: large ? 16 : 22, style: .continuous)
-        let stroke = isHero ? Color.theme.accent : tentative ? Color.theme.amberText.opacity(0.45)
+        let stroke = isHero ? Color.theme.accent : tentative ? Color.theme.caution.opacity(0.45)
             : Color.primary.opacity(contrast == .increased ? 0.45 : 0.16)
         return HStack(spacing: 0) {
             jobButton(fact.id) {
@@ -328,7 +328,7 @@ struct UpcomingView: View {
                         CappedWidth(maximum: pillTitleWidth) { Text(fact.title).fontWeight(.semibold).lineLimit(1) }
                     }
                     if tentative {
-                        Text("tentative").foregroundStyle(Color.theme.amberText)
+                        Text("tentative").foregroundStyle(Color.theme.caution)
                     } else if let role, !large {
                         Text(role).foregroundStyle(Color.theme.secondaryText).lineLimit(1)
                     }
@@ -444,7 +444,7 @@ struct UpcomingView: View {
                 if entry.openCount > 0 {
                     Text(entry.openCount, format: .number)
                         .font(.caption.weight(.bold)).monospacedDigit()
-                        .foregroundStyle(Color.theme.amberText)
+                        .foregroundStyle(Color.theme.caution)
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(Color.theme.attention.opacity(0.18), in: Capsule())
                         .accessibilityLabel(counted(entry.openCount, "item to settle", "items to settle"))
@@ -556,7 +556,7 @@ struct SettlePanel: View {
                             Text("To settle").font(.headline)
                             Text(items.count, format: .number)
                                 .font(.caption.weight(.bold)).monospacedDigit()
-                                .foregroundStyle(Color.theme.amberText)
+                                .foregroundStyle(Color.theme.caution)
                                 .padding(.horizontal, 7).padding(.vertical, 2)
                                 .background(Color.theme.attention.opacity(0.18), in: Capsule())
                         }
@@ -602,7 +602,7 @@ struct SettlePanel: View {
         return HStack(spacing: 8) {
             Image(systemName: group.items.first?.item.symbol ?? "circle")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(attention ? Color.theme.amberText : Color.theme.positive)
+                .foregroundStyle(attention ? Color.theme.caution : Color.theme.positive)
                 .frame(width: iconSize, height: iconSize)
                 .background(attention ? Color.theme.attention.opacity(0.18) : Color.theme.positive.opacity(0.1), in: Circle())
                 .accessibilityHidden(true)
@@ -625,7 +625,7 @@ struct SettlePanel: View {
                     Text(entry.title).font(.subheadline.weight(.semibold)).lineLimit(lines)
                     if !detail.isEmpty {
                         Text(detail).font(.footnote)
-                            .foregroundStyle(entry.blocksInvoicing ? Color.theme.amberText : Color.theme.secondaryText)
+                            .foregroundStyle(entry.blocksInvoicing ? Color.theme.caution : Color.theme.secondaryText)
                             .lineLimit(lines)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
@@ -647,7 +647,7 @@ struct SettlePanel: View {
     private func dateRail(_ entry: UpcomingItem) -> some View {
         let date = entry.day.isEmpty ? nil : Day.date(from: entry.day, timeZone: entry.zone)
         let today = DaySchedule.dayKey(Date(), zone: entry.zone)
-        let tint: Color = entry.day == today ? Color.theme.accent : (entry.blocksInvoicing ? Color.theme.amberText : .primary)
+        let tint: Color = entry.day == today ? Color.theme.accent : (entry.blocksInvoicing ? Color.theme.caution : .primary)
         return VStack(spacing: 0) {
             Text(date.map { formatted($0, .dateTime.day(), zone: entry.zone) } ?? "–")
                 .font(.headline).monospacedDigit().foregroundStyle(date == nil ? Color.theme.secondaryText : tint)
@@ -736,7 +736,7 @@ struct FortnightStrip: View {
         switch mark {
         case .covering: shape.fill(past ? Color.theme.secondaryText.opacity(0.5) : Color.theme.positive).frame(width: 16, height: 4)
         case .notCovering: shape.strokeBorder(Color.primary.opacity(contrast == .increased ? 0.6 : 0.35), lineWidth: 1).frame(width: 16, height: 4)
-        case .tbc: shape.strokeBorder(Color.theme.amberText, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2])).frame(width: 16, height: 5)
+        case .tbc: shape.strokeBorder(Color.theme.caution, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2])).frame(width: 16, height: 5)
         }
     }
 

@@ -186,34 +186,6 @@
           "oklch(95.00% 0.11981 170.17)"
         ]
       },
-      "amberText-light": {
-        "role": "secondary",
-        "displayName": "amberText · light",
-        "tonalRamp": [
-          "oklch(15.00% 0.10362 70.17)",
-          "oklch(26.43% 0.10362 70.17)",
-          "oklch(37.86% 0.10362 70.17)",
-          "oklch(49.29% 0.10362 70.17)",
-          "oklch(60.71% 0.10362 70.17)",
-          "oklch(72.14% 0.10362 70.17)",
-          "oklch(83.57% 0.10362 70.17)",
-          "oklch(95.00% 0.10362 70.17)"
-        ]
-      },
-      "amberText-dark": {
-        "role": "secondary",
-        "displayName": "amberText · dark",
-        "tonalRamp": [
-          "oklch(15.00% 0.14497 79.86)",
-          "oklch(26.43% 0.14497 79.86)",
-          "oklch(37.86% 0.14497 79.86)",
-          "oklch(49.29% 0.14497 79.86)",
-          "oklch(60.71% 0.14497 79.86)",
-          "oklch(72.14% 0.14497 79.86)",
-          "oklch(83.57% 0.14497 79.86)",
-          "oklch(95.00% 0.14497 79.86)"
-        ]
-      },
       "completed-light": {
         "role": "tertiary",
         "displayName": "completed · light",
@@ -268,6 +240,34 @@
           "oklch(72.14% 0.09547 21.78)",
           "oklch(83.57% 0.09547 21.78)",
           "oklch(95.00% 0.09547 21.78)"
+        ]
+      },
+      "caution-light": {
+        "role": "secondary",
+        "displayName": "caution · light",
+        "tonalRamp": [
+          "oklch(15.00% 0.10362 70.17)",
+          "oklch(26.43% 0.10362 70.17)",
+          "oklch(37.86% 0.10362 70.17)",
+          "oklch(49.29% 0.10362 70.17)",
+          "oklch(60.71% 0.10362 70.17)",
+          "oklch(72.14% 0.10362 70.17)",
+          "oklch(83.57% 0.10362 70.17)",
+          "oklch(95.00% 0.10362 70.17)"
+        ]
+      },
+      "caution-dark": {
+        "role": "secondary",
+        "displayName": "caution · dark",
+        "tonalRamp": [
+          "oklch(15.00% 0.14497 79.86)",
+          "oklch(26.43% 0.14497 79.86)",
+          "oklch(37.86% 0.14497 79.86)",
+          "oklch(49.29% 0.14497 79.86)",
+          "oklch(60.71% 0.14497 79.86)",
+          "oklch(72.14% 0.14497 79.86)",
+          "oklch(83.57% 0.14497 79.86)",
+          "oklch(95.00% 0.14497 79.86)"
         ]
       }
     },

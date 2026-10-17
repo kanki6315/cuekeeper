@@ -136,7 +136,7 @@ struct BackupView: View {
                     if let issue = persistence.identityIssue {
                         NavigationLink { IdentityReviewView() } label: {
                             Label { Text(issue + " Review") } icon: { Image(systemName: "exclamationmark.triangle") }
-                                .font(.subheadline).foregroundStyle(Color.theme.amberText).padding(.top, 4)
+                                .font(.subheadline).foregroundStyle(Color.theme.caution).padding(.top, 4)
                         }
                         .accessibilityIdentifier("identity-review")
                     }
@@ -224,7 +224,7 @@ struct BackupView: View {
     private func summary(_ entry: CloudBackupStore.Entry) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(Self.rowTitle(entry)).font(.subheadline.weight(.semibold)).monospacedDigit()
-            Text(entry.details).font(.footnote).foregroundStyle(entry.canRestore ? Color.theme.secondaryText : Color.theme.amberText)
+            Text(entry.details).font(.footnote).foregroundStyle(entry.canRestore ? Color.theme.secondaryText : Color.theme.caution)
         }
         .accessibilityElement(children: .combine)
     }
@@ -524,7 +524,7 @@ private struct IdentityConflictView: View {
             }
             Section {
                 Label("Check your records first. The copy you don’t keep is removed from all your devices and can’t be recovered from Recently Deleted.", systemImage: "exclamationmark.triangle")
-                    .font(.subheadline).foregroundStyle(Color.theme.amberText)
+                    .font(.subheadline).foregroundStyle(Color.theme.caution)
                     .padding(12)
                     .background(Color.theme.attention.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
             }

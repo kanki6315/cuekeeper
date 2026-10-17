@@ -280,7 +280,7 @@ struct ExpensesView: View {
             Section {
                 Button { mode = .inbox } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "tray").foregroundStyle(Color.theme.amberText).accessibilityHidden(true)
+                        Image(systemName: "tray").foregroundStyle(Color.theme.caution).accessibilityHidden(true)
                         Text(draftsNote(ledger.draftsInPeriod))
                             .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
                         Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
@@ -511,20 +511,20 @@ struct ExpensesView: View {
 
     private func subtitle(_ fact: ExpenseFact) -> Text {
         if fact.isBusiness { return Text("Business · \(fact.category)").foregroundStyle(Color.theme.secondaryText) }
-        guard let event = fact.eventTitle else { return Text("Event to choose").foregroundStyle(Color.theme.amberText) }
+        guard let event = fact.eventTitle else { return Text("Event to choose").foregroundStyle(Color.theme.caution) }
         return Text(fact.state == .toFinish && fact.merchant.isEmpty ? event : "\(event) · \(fact.category)").foregroundStyle(Color.theme.secondaryText)
     }
 
     @ViewBuilder private func status(_ fact: ExpenseFact) -> some View {
         switch fact.state {
-        case .toFinish: Text("To finish").foregroundStyle(Color.theme.amberText)
+        case .toFinish: Text("To finish").foregroundStyle(Color.theme.caution)
         case .yourCost: Text("Your cost").foregroundStyle(Color.theme.secondaryText)
         case .business:
             if fact.repeats { Label("Monthly", systemImage: "repeat").labelStyle(.titleAndIcon).foregroundStyle(Color.theme.secondaryText) }
         case .toRebill: Text("To rebill").foregroundStyle(Color.theme.completed)
         case .onInvoice(let reference): Text(reference.isEmpty ? "On draft invoice" : "On \(reference)").foregroundStyle(Color.theme.secondaryText)
         case .paidBack: Text("Paid back").foregroundStyle(Color.theme.positive)
-        case .review: Text("Billing review").foregroundStyle(Color.theme.amberText)
+        case .review: Text("Billing review").foregroundStyle(Color.theme.caution)
         }
     }
 
@@ -592,7 +592,7 @@ struct AmberCount: View {
     var body: some View {
         Text(count, format: .number)
             .font(.caption.weight(.bold)).monospacedDigit()
-            .foregroundStyle(Color.theme.amberText)
+            .foregroundStyle(Color.theme.caution)
             .padding(.horizontal, 7).padding(.vertical, 2)
             .background(Color.theme.attention.opacity(0.18), in: Capsule())
     }
@@ -663,7 +663,7 @@ struct EventExpensesSection: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(expense.isDraft ? "Review receipt" : expense.value.merchant)
                             Text(expense.isDraft ? (expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm") : Day.display(expense.value.day))
-                                .font(.subheadline).foregroundStyle(expense.isDraft ? Color.theme.amberText : Color.theme.secondaryText)
+                                .font(.subheadline).foregroundStyle(expense.isDraft ? Color.theme.caution : Color.theme.secondaryText)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                         if !expense.isDraft {
                             Text(ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) ?? "Total to check").monospacedDigit()

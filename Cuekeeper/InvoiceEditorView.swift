@@ -419,7 +419,7 @@ struct InvoiceEditorView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(candidate.title).fontWeight(.semibold)
                 Text(candidate.dates).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
-                if !candidate.note.isEmpty { Text(candidate.note).font(.subheadline).foregroundStyle(Color.theme.amberText) }
+                if !candidate.note.isEmpty { Text(candidate.note).font(.subheadline).foregroundStyle(Color.theme.caution) }
             }
         } trailing: {
             Text(candidate.event.amount.map { Money.format($0, currency: currency) } ?? "Fee to enter")
@@ -495,7 +495,7 @@ struct InvoiceEditorView: View {
                 ForEach(draft.value.lines) { line in
                     InvoiceFieldRow(label: line.jobName, labelIsTitle: true) {
                         TextField("Amount", text: Binding(get: { amounts[line.jobID] ?? "" }, set: { amounts[line.jobID] = $0 }),
-                                  prompt: Text("Amount").foregroundStyle(Color.theme.amberText))
+                                  prompt: Text("Amount").foregroundStyle(Color.theme.caution))
                             .keyboardType(.decimalPad).multilineTextAlignment(.trailing).monospacedDigit()
                             .disabled(locked)
                             .accessibilityLabel("Billed amount for \(line.jobName)")
@@ -737,7 +737,7 @@ private struct InvoiceChoiceRow: View {
                         Text(title).fontWeight(.semibold)
                         if let badge { BookingBadge(status: badge.lowercased()) }
                     }
-                    Text(detail).font(.subheadline).foregroundStyle(detailIsWarning ? Color.theme.amberText : Color.theme.secondaryText)
+                    Text(detail).font(.subheadline).foregroundStyle(detailIsWarning ? Color.theme.caution : Color.theme.secondaryText)
                 }
                 Spacer(minLength: 8)
                 if !amount.isEmpty { Text(amount).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7) }

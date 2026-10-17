@@ -43,7 +43,7 @@ struct FeeEditingFields: View {
                                         Text("Breakdown is \(Money.format(abs(delta), currency: draft.currency)) \(delta > 0 ? "above" : "below") the overall fee.")
                                     } else { Text("The overall fee hasn’t been set.") }
                                 } icon: { Image(systemName: "exclamationmark.circle") }
-                                    .font(.subheadline).foregroundStyle(Color.theme.amberText)
+                                    .font(.subheadline).foregroundStyle(Color.theme.caution)
                             }
                             Button("Use Breakdown Total") {
                                 guard sum >= 0 else { error = "The overall fee cannot be negative."; return }

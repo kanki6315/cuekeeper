@@ -14,7 +14,7 @@ final class ThemeTests: XCTestCase {
         for theme in Theme.all {
             for dark in [false, true] {
                 let mode = "\(theme.name) \(dark ? "dark" : "light")"
-                for (name, foreground) in [("accent", theme.accent), ("secondary text", theme.secondaryText), ("positive", theme.positive)] {
+                for (name, foreground) in [("accent", theme.accent), ("secondary text", theme.secondaryText), ("positive", theme.positive), ("caution", theme.caution)] {
                     for (backgroundName, background) in [("page", theme.page), ("surface", theme.surface)] {
                         assertContrast(foreground, on: background, dark: dark, "\(mode): \(name) on \(backgroundName)")
                     }
@@ -27,9 +27,9 @@ final class ThemeTests: XCTestCase {
     }
 
     func testAccentsStayClearOfStatusHues() {
-        let statuses = ["tentative": StatusPalette.tentative, "completed": StatusPalette.completed,
-                        "cancelled": StatusPalette.cancelled, "attention": StatusPalette.attention]
         for theme in Theme.all {
+            let statuses = ["caution": theme.caution, "attention": theme.attention,
+                            "completed": StatusPalette.completed, "cancelled": StatusPalette.cancelled]
             for dark in [false, true] {
                 let accent = OKLCH(theme.accent.hex(dark: dark))
                 guard accent.chroma >= neutralChroma else { continue }
@@ -40,6 +40,20 @@ final class ThemeTests: XCTestCase {
                     let distance = accent.hueDistance(to: OKLCH(status.hex(dark: dark)))
                     XCTAssertGreaterThanOrEqual(distance, minimumHueDistance,
                         "\(theme.name) \(dark ? "dark" : "light") accent is \(Int(distance))° from \(name)")
+                }
+            }
+        }
+    }
+
+    /// A theme that moves caution off amber must not land it on another status.
+    func testMovedCautionStaysClearOfOtherStatuses() {
+        for theme in Theme.all where theme.caution != StatusPalette.tentative {
+            for dark in [false, true] {
+                let caution = OKLCH(theme.caution.hex(dark: dark))
+                for (name, status) in ["positive": theme.positive, "completed": StatusPalette.completed, "cancelled": StatusPalette.cancelled] {
+                    let distance = caution.hueDistance(to: OKLCH(status.hex(dark: dark)))
+                    XCTAssertGreaterThanOrEqual(distance, minimumHueDistance,
+                        "\(theme.name) \(dark ? "dark" : "light") caution is \(Int(distance))° from \(name)")
                 }
             }
         }

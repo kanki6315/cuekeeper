@@ -467,7 +467,7 @@ struct JobBillingSection: View {
         Section {
             if let note = note(active: active, directPaid: directPaid) {
                 Text(note).font(.subheadline)
-                    .foregroundStyle(note.hasSuffix("review") ? Color.theme.amberText : Color.theme.secondaryText)
+                    .foregroundStyle(note.hasSuffix("review") ? Color.theme.caution : Color.theme.secondaryText)
             }
             ForEach(invoices.filter { invoice in (try? invoice.heads().contains { $0.value?.lines.contains { $0.jobID == job.id } ?? false }) == true }, id: \.objectID) { invoice in
                 DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }

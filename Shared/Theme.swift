@@ -42,6 +42,10 @@ struct Theme: Identifiable, Equatable, Sendable {
     let secondaryText: ColorPair
     /// Booked, paid and done. A fixed green, except where the accent is itself green.
     let positive: ColorPair
+    /// Tentative, draft and needs-attention text. Amber, except where the accent is itself amber.
+    var caution: ColorPair = StatusPalette.tentative
+    /// Fills behind caution states, at reduced opacity. The system orange, except beside an amber accent.
+    var attention: ColorPair = StatusPalette.attention
 }
 
 extension Theme {
@@ -69,12 +73,34 @@ extension Theme {
         page: ColorPair(0xF7F7FA, 0x161619), surface: ColorPair(0xFFFFFF, 0x252529), secondaryText: ColorPair(0x62626A, 0xAAAAB2),
         positive: green)
 
-    static let all = [teal, indigo, purple, magenta, ink]
+    static let violet = ColorPair(0x703BA1, 0xD0AAFC)
+
+    // Amber already means tentative and needs-attention, so this theme moves those states to violet.
+    static let amber = Theme(id: "amber", name: "Cue Amber", iconName: "CuekeeperAmber",
+        accent: ColorPair(0xA0600B, 0xFCB442), onAccent: ColorPair(0xFFFFFF, 0x1A1918), accentSoft: ColorPair(0xFFF3DE, 0xFCB442),
+        page: ColorPair(0xFAF8F2, 0x1A1918), surface: ColorPair(0xFFFFFF, 0x282623), secondaryText: ColorPair(0x66625A, 0xAFABA3),
+        positive: green, caution: violet, attention: violet)
+    // Olive sits midway between tentative amber and booked green, as far from each as it can.
+    static let olive = Theme(id: "olive", name: "Olive", iconName: "CuekeeperOlive",
+        accent: ColorPair(0x646904, 0xCBD95B), onAccent: ColorPair(0xFFFFFF, 0x161614), accentSoft: ColorPair(0xE8EFD2, 0xCBD95B),
+        page: ColorPair(0xF7F7F4, 0x161614), surface: ColorPair(0xFFFFFF, 0x252622), secondaryText: ColorPair(0x62645D, 0xAAACA4),
+        positive: green)
+    static let espresso = Theme(id: "espresso", name: "Espresso", iconName: "CuekeeperEspresso",
+        accent: ColorPair(0x443124, 0xEFD9CC), onAccent: ColorPair(0xFFFFFF, 0x181513), accentSoft: ColorPair(0xFFE6D6, 0xEFD9CC),
+        page: ColorPair(0xF9F6F5, 0x181513), surface: ColorPair(0xFFFFFF, 0x282422), secondaryText: ColorPair(0x69625D, 0xB1A9A4),
+        positive: green)
+    static let graphite = Theme(id: "graphite", name: "Graphite", iconName: "CuekeeperGraphite",
+        accent: ColorPair(0x2A2E34, 0xE1E5EA), onAccent: ColorPair(0xFFFFFF, 0x151618), accentSoft: ColorPair(0xE1E5EA, 0xE1E5EA),
+        page: ColorPair(0xF6F7F9, 0x151618), surface: ColorPair(0xFFFFFF, 0x232427), secondaryText: ColorPair(0x62646B, 0xAAABB1),
+        positive: green)
+
+    static let all = [teal, indigo, purple, magenta, amber, olive, espresso, ink, graphite]
     static let standard = teal
     static func named(_ id: String?) -> Theme { all.first { $0.id == id } ?? standard }
 }
 
 /// Status colors keep one meaning in every theme; themes are checked against them.
+/// Only a theme whose accent shares a status hue may move that status, through its own role.
 enum StatusPalette {
     static let tentative = ColorPair(0x88570C, 0xFCBF4D)
     static let completed = ColorPair(0x255E7F, 0x93CCF2)
@@ -96,11 +122,11 @@ struct ThemeColors {
     var surface: Color { theme.surface.color }
     var secondaryText: Color { theme.secondaryText.color }
     var positive: Color { theme.positive.color }
-    /// Amber text for tentative and needs-attention labels.
-    var amberText: Color { StatusPalette.tentative.color }
+    /// Tentative, draft and needs-attention text.
+    var caution: Color { theme.caution.color }
     var completed: Color { StatusPalette.completed.color }
     var cancelled: Color { StatusPalette.cancelled.color }
-    var attention: Color { StatusPalette.attention.color }
+    var attention: Color { theme.attention.color }
     var destructive: Color { StatusPalette.destructive.color }
 }
 

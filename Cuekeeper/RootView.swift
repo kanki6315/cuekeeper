@@ -516,7 +516,7 @@ struct SyncFeedbackView: View {
                     HStack(spacing: 12) {
                         if activity.needsAttention {
                             Image(systemName: "exclamationmark.icloud")
-                                .foregroundStyle(Color.theme.amberText)
+                                .foregroundStyle(Color.theme.caution)
                         } else if activity.isBusy {
                             ProgressView().controlSize(.small).tint(Color.theme.accent)
                         } else {
@@ -532,7 +532,7 @@ struct SyncFeedbackView: View {
                     .background(Color.theme.surface, in: RoundedRectangle(cornerRadius: 16))
                     .overlay {
                         RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(activity.needsAttention ? Color.theme.amberText.opacity(0.5) : Color.primary.opacity(0.16), lineWidth: 1)
+                            .strokeBorder(activity.needsAttention ? Color.theme.caution.opacity(0.5) : Color.primary.opacity(0.16), lineWidth: 1)
                     }
                     .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                 }
@@ -561,7 +561,7 @@ struct SyncSummaryRow: View {
     let summary: SyncSummary
     @ScaledMetric(relativeTo: .title3) private var badge = 44
     @Environment(\.dynamicTypeSize) private var typeSize
-    private var tint: Color { summary.warning ? Color.theme.amberText : Color.theme.positive }
+    private var tint: Color { summary.warning ? Color.theme.caution : Color.theme.positive }
 
     var body: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 14))
@@ -577,7 +577,7 @@ struct SyncSummaryRow: View {
                 Text(summary.headline).font(.title3.weight(.semibold))
                 if let detail = summary.detail {
                     Text(detail).font(.subheadline)
-                        .foregroundStyle(summary.warning ? Color.theme.amberText : Color.theme.secondaryText)
+                        .foregroundStyle(summary.warning ? Color.theme.caution : Color.theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -605,10 +605,10 @@ struct SyncLedgerRow: View {
             Label {
                 Text(title)
             } icon: {
-                Image(systemName: symbol).foregroundStyle(status == .ok ? Color.theme.positive : (status == .warning ? Color.theme.amberText : Color.theme.secondaryText))
+                Image(systemName: symbol).foregroundStyle(status == .ok ? Color.theme.positive : (status == .warning ? Color.theme.caution : Color.theme.secondaryText))
             }
             if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
-            Text(value).foregroundStyle(status == .warning ? Color.theme.amberText : Color.theme.secondaryText)
+            Text(value).foregroundStyle(status == .warning ? Color.theme.caution : Color.theme.secondaryText)
         }
         .frame(minHeight: 28)
         .accessibilityElement(children: .ignore)

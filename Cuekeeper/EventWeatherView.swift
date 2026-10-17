@@ -132,7 +132,7 @@ struct WeatherStatusFooter: View {
                         .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                     if snapshot.isOutdated(at: loader.now) {
                         Label("Outdated forecast · awaiting daily update", systemImage: "clock")
-                            .font(.caption).foregroundStyle(Color.theme.amberText)
+                            .font(.caption).foregroundStyle(Color.theme.caution)
                             .accessibilityElement(children: .combine)
                             .accessibilityIdentifier("weather-outdated")
                     }

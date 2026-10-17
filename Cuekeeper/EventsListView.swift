@@ -157,7 +157,7 @@ struct EventsStatusBadge: View {
         switch badge.tone {
         case .accent: Color.theme.accent
         case .positive: Color.theme.positive
-        case .amber: Color.theme.amberText
+        case .amber: Color.theme.caution
         case .muted: Color.theme.secondaryText
         }
     }

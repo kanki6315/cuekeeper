@@ -365,7 +365,7 @@ struct EventWizardView: View {
             if count > 0 { WizardSummaryRow("Sessions", value: "\(count)") }
             WizardSummaryRow(season ? "Fee per event" : "Fee", value: (try? fee.wrappedValue.value().amount).map { Money.format($0, currency: fee.wrappedValue.currency) } ?? "Unknown")
             if let total = try? FeeValue(currency: fee.wrappedValue.currency, lines: fee.wrappedValue.lines).total(typedIn: .current), !fee.wrappedValue.lines.isEmpty,
-               total != (try? Money.parseInput(fee.wrappedValue.amount, currency: fee.wrappedValue.currency)) { WizardSummaryRow("Breakdown total", value: Money.format(total, currency: fee.wrappedValue.currency)).foregroundStyle(Color.theme.amberText) }
+               total != (try? Money.parseInput(fee.wrappedValue.amount, currency: fee.wrappedValue.currency)) { WizardSummaryRow("Breakdown total", value: Money.format(total, currency: fee.wrappedValue.currency)).foregroundStyle(Color.theme.caution) }
             if !season, let received = try? Money.parseInput(draft.payment.amount, currency: fee.wrappedValue.currency) { WizardSummaryRow("Received", value: Money.format(received, currency: fee.wrappedValue.currency)) }
         }
         Section {

@@ -6,7 +6,7 @@ final class ThemeCaptureTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         let device = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
-        for theme in ["teal", "indigo", "purple", "magenta", "ink"] {
+        for theme in ["teal", "indigo", "purple", "magenta", "amber", "olive", "espresso", "ink", "graphite"] {
             for appearance in ["light", "dark"] {
                 for route in ["root", "job", "payments", "settings"] {
                     app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=\(route)", "--design-theme=\(theme)"] + (appearance == "dark" ? ["--design-dark"] : [])

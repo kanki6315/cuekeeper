@@ -26,6 +26,9 @@ struct LibraryView: View {
         _records = FetchRequest(fetchRequest: request)
     }
     var body: some View {
+        if kind == .client { ClientRosterView() } else { library }
+    }
+    private var library: some View {
         DaybookList {
             ForEach(records.filter { query.isEmpty || ($0.value(forKey: "name") as? String ?? "").localizedCaseInsensitiveContains(query) }, id: \.objectID) { record in
                 NavigationLink {
@@ -35,7 +38,7 @@ struct LibraryView: View {
         }
         .overlay {
             if records.isEmpty {
-                ContentUnavailableView("No \(kind.title.lowercased()) yet", systemImage: kind == .client ? "person.2" : "person.text.rectangle",
+                ContentUnavailableView("No \(kind.title.lowercased()) yet", systemImage: "person.text.rectangle",
                     description: Text("Add one here or while editing a booking."))
             }
         }
@@ -63,29 +66,10 @@ struct LibraryDetailView: View {
         return related.filter { $0.deletedAt == nil }.sorted { $0.eventStartDay > $1.eventStartDay }
     }
     var body: some View {
+        if let client = record as? Client { ClientDetailView(client: client) } else { library }
+    }
+    private var library: some View {
         DaybookForm(title: record.value(forKey: "name") as? String ?? kind.singular) {
-            if let client = record as? Client {
-                Section("Client") {
-                    if !client.contact.isEmpty { DaybookMetadata(symbol: "envelope", text: client.contact).textSelection(.enabled) }
-                    DaybookMetadata(symbol: CurrencyPreferences.symbol(client.defaultCurrency), text: "Default currency · \(client.defaultCurrency)")
-                    let invoicing = client.invoicing
-                    if invoicing.isComplete {
-                        DaybookMetadata(symbol: "doc.text", text: "Invoicing details complete · \(invoicing.termsDays ?? 0) days")
-                    } else {
-                        DaybookMetadata(symbol: "doc.text", text: ListFormatter.localizedString(byJoining: invoicing.missing).capitalizedFirst + " missing")
-                            .foregroundStyle(Color("AmberText"))
-                    }
-                    if !client.notes.isEmpty { Text(client.notes).textSelection(.enabled) }
-                }
-            }
-            if let client = record as? Client {
-                Section("Related invoices") {
-                    if (client.invoices ?? []).isEmpty { Text("No invoices yet").foregroundStyle(Color("SecondaryText")) }
-                    ForEach((client.invoices ?? []).sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }, id: \.objectID) { invoice in
-                        DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
-                    }
-                }
-            }
             if kind == .project {
                 Section {
                     DaybookPicker("Year", selection: $year) {
@@ -130,22 +114,15 @@ struct LibraryEditor: View {
         _initial = State(initialValue: value)
     }
     var body: some View {
+        if kind == .client { ClientEditor(record: record) } else { editor }
+    }
+    private var editor: some View {
         NavigationStack {
             DaybookForm {
                 Section {
                     DaybookTextField("Name", text: $draft.name).focused($nameFocused)
                         .submitLabel(.done).onSubmit { nameFocused = false }
-                    if kind == .client {
-                        DaybookTextField("Contact details", text: $draft.contact, axis: .vertical).lineLimit(2...6)
-                        DaybookPicker("Default currency", selection: $draft.currency) {
-                            ForEach(CurrencyPreferences.supported, id: \.self) { Text($0).tag($0) }
-                        }
-                        DaybookTextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...10)
-                    }
                 } footer: { Text("Renaming updates the name shown on related bookings.") }
-                if kind == .client {
-                    Section("Invoicing details") { ClientInvoicingFields(draft: $draft.invoicing) }
-                }
             }
             .navigationTitle("\(record == nil ? "Add" : "Edit") \(kind.singular)")
             .navigationBarTitleDisplayMode(.inline)

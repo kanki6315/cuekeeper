@@ -200,6 +200,30 @@ change: `repeatsMonthly` and `seriesID` live in the expense value JSON and older
 older builds reject the new Software category only when that expense is edited there. The pending
 expenses prompt now appears only in Payments.
 
+### Clients
+
+Built from `ClientSummary` (`Cuekeeper/ClientSummary.swift`), derived on each render from the client's
+events, their billing positions and invoices; nothing is stored. Settings → Clients, the event header's
+client chip and the event Details link all open these screens; roles, projects and series keep the
+plain library list.
+
+- **Roster**: *Coming up* lists clients with work ahead on the agenda's date rail (soonest first,
+  *Dates to come* last) with the next event and how many follow. *All clients* lists everyone A–Z
+  with an initials monogram, event count (or *last* month worked) and currency. One badge per row:
+  amber overdue money, else muted money owed, else an amber *Needs …* when invoicing details are
+  missing and there is work to bill. Search shows the flat list.
+- **Client view**: large-title name, *Client since*, then fact chips (events, currency, days to pay,
+  overdue or owed). Events / Money / Details segments pin like the event page. Events: *Next up*, then
+  past years newest first; only the latest past year opens by default. Money: a primary *Invoice …*
+  action per currency when events are ready (it starts the existing ready-invoice flow, with
+  rebillable receipts), the year's money bar (the Payments panel and buckets, with a year menu), and
+  invoices with open and overdue first. Details: contact, invoicing on the aligned label column with
+  amber *Missing* for required gaps and an *n of 4* count, currency default and notes. Toolbar: Email
+  (first address in contact, else the billing email) and Edit.
+- **Editor**: page heading plus Client (name, contact, currency), Invoicing (a four-segment meter,
+  then the shared invoicing rows) and Notes. All rows use the invoicing sheet's label column. Required
+  gaps highlight amber only when editing an existing client; a new client needs only a name.
+
 ### Event capture and editing
 
 Each event has at most one client, with client/status, schedule,

@@ -356,16 +356,18 @@ struct NextCallPanel: View {
     }
     private var bigTime: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(next.isCallTime ? (showsYourTime ? "Your call" : "Call") : "Starts").font(.footnote.weight(.semibold)).foregroundStyle(label)
-            Text(EventTimeText.time(next.at, in: zone)).font(.system(.largeTitle, design: .default).weight(.semibold)).monospacedDigit()
+            Text(next.isLive ? "Until" : next.isCallTime ? (showsYourTime ? "Your call" : "Call") : "Starts").font(.footnote.weight(.semibold)).foregroundStyle(label)
+            Text(EventTimeText.time(shownTime, in: zone)).font(.system(.largeTitle, design: .default).weight(.semibold)).monospacedDigit()
                 .foregroundStyle(primary)
         }
     }
+    /// The end while on air, otherwise the call or start.
+    private var shownTime: Date { next.isLive ? next.session.end ?? next.at : next.at }
     @ViewBuilder private var zones: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(EventTimeText.abbreviation(zone, at: next.at) + (showsYourTime ? " · your time" : " · track time"))
+            Text(EventTimeText.abbreviation(zone, at: shownTime) + (showsYourTime ? " · your time" : " · track time"))
             if let otherZone {
-                Text("\(EventTimeText.time(next.at, in: otherZone)) \(showsYourTime ? "at the track" : "your time") (\(EventTimeText.abbreviation(otherZone, at: next.at)))")
+                Text("\(EventTimeText.time(shownTime, in: otherZone)) \(showsYourTime ? "at the track" : "your time") (\(EventTimeText.abbreviation(otherZone, at: shownTime)))")
             }
         }.font(.footnote).foregroundStyle(secondary)
     }
@@ -379,7 +381,8 @@ struct NextCallPanel: View {
     private func lead(now: Date) -> String {
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
         let day: String
-        if calendar.isDate(next.at, inSameDayAs: now) { day = "Today" }
+        if next.isLive { day = "On now" }
+        else if calendar.isDate(next.at, inSameDayAs: now) { day = "Today" }
         else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(next.at, inSameDayAs: tomorrow) { day = "Tomorrow" }
         else { var style = Date.FormatStyle.dateTime.weekday(.wide); style.timeZone = zone; day = next.at.formatted(style) }
         return ([day, next.session.title] + (next.session.confirmed ? [] : ["Tentative"])).joined(separator: " · ")
@@ -387,7 +390,7 @@ struct NextCallPanel: View {
     /// Within 90 minutes the lead becomes a countdown.
     private func countdown(now: Date) -> String? {
         let minutes = Int(next.at.timeIntervalSince(now) / 60)
-        guard minutes >= 0, minutes <= 90 else { return nil }
+        guard !next.isLive, minutes >= 0, minutes <= 90 else { return nil }
         let noun = next.isCallTime ? "Call" : "On air"
         return minutes < 1 ? "\(noun) now" : "\(noun) in \(minutes) min"
     }

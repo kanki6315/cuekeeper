@@ -108,20 +108,41 @@ final class PaymentsTests: RegressionUITestCase {
         XCTAssertTrue(app.buttons["readiness-open-event"].waitForExistence(timeout: 5))
         capture("payments-ipad-readiness")
         app.buttons["Done"].tap()
+        app.buttons["Invoices"].tap()
+        XCTAssertTrue(app.staticTexts["Owed to you"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["invoice-balance"].waitForExistence(timeout: 5), "The first invoice shows beside the list")
+        capture("payments-ipad-invoices")
         app.terminate()
         let dark = launch(dark: true)
         XCTAssertTrue(dark.staticTexts["payments-month"].waitForExistence(timeout: 10))
         capture("payments-ipad-wide-dark")
     }
 
-    func testLedgerKeepsEveryInvoice() {
+    func testInvoicesKeepsEveryInvoiceAndFilters() {
         let app = launch(dark: true)
-        let ledger = app.buttons["payments-ledger"]
         XCTAssertTrue(app.staticTexts["payments-month"].waitForExistence(timeout: 10))
-        reveal(ledger, in: app)
-        ledger.tap()
-        XCTAssertTrue(app.staticTexts["Awaiting payment"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["APX-2207"].exists)
-        capture("payments-ledger")
+        app.buttons["Invoices"].tap()
+        XCTAssertTrue(app.staticTexts["Owed to you"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Needs attention"].exists, "APX-2207 is past due")
+        XCTAssertTrue(app.buttons["ledger-APX-2207"].exists)
+        capture("payments-invoices")
+        app.buttons["ledger-filter-paid"].tap()
+        XCTAssertTrue(app.buttons["ledger-INV-0401"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["ledger-APX-2207"].exists)
+        app.buttons["ledger-filter-all"].tap()
+        let search = app.textFields["ledger-search"]
+        search.tap(); search.typeText("zzz\n")
+        XCTAssertTrue(app.buttons["ledger-clear-filters"].waitForExistence(timeout: 5))
+        capture("payments-invoices-no-match")
+        app.buttons["ledger-clear-filters"].tap()
+        let overdue = app.buttons["ledger-APX-2207"]
+        XCTAssertTrue(overdue.waitForExistence(timeout: 5))
+        overdue.swipeLeft()
+        // On iPad the selected invoice beside the list has its own Record Payment button.
+        let swipeAction = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Record Payment", "record-payment")).firstMatch
+        XCTAssertTrue(swipeAction.waitForExistence(timeout: 5))
+        capture("payments-invoices-swipe")
+        swipeAction.tap()
+        XCTAssertTrue(app.textFields["payment-amount"].waitForExistence(timeout: 5))
     }
 }

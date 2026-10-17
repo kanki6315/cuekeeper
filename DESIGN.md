@@ -290,7 +290,14 @@ key (gate labels with arrows into a sample bar, then Done / Missing / Not yet). 
 the name, details state (*Add details* when incomplete), then rows: date rail, title, a 4-segment
 step bar with the gap named in text, and the amount. Groups with ready work end in *Invoice n
 ready · total* per currency. *Still open from earlier* lists unpaid and draft invoices for earlier
-work and earlier finished work not yet invoiced. *All invoices and payments* opens the full ledger.
+work and earlier finished work not yet invoiced.
+
+A Month / Invoices switch under the header opens every invoice and direct payment across all
+months: *Owed to you* per currency (overdue in red, tappable to filter), search by number, client
+or amount, status chips and client/year menus (with billed, received and owed totals), then
+*Needs attention*, *Unpaid* by due date, *Drafts*, and paid/voided history by month. Open rows
+swipe or long-press to Record Payment, Mark Sent or Void. At 900 pt and wider the list sits
+beside the selected invoice.
 
 Rows with gaps open the readiness sheet: four gate rows with their actions (Mark completed, Add
 fee, Finish for each blocking receipt, Add client), the client invoicing form inline when details

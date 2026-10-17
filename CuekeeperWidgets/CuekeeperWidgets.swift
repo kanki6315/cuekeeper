@@ -99,13 +99,18 @@ struct ScheduleWidgetView: View {
     private var medium: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack { Text("Upcoming").font(.headline).foregroundStyle(tint); Spacer(); Text("\(rows.count) sessions · \(zone)").font(.caption2).foregroundStyle(.secondary) }
-            ForEach(Array(rows.prefix(4))) { row in
-                Divider()
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(row.start.map(when) ?? "TBD").font(.caption).monospacedDigit().frame(width: rows.prefix(4).contains { $0.start.map(isToday) == false } ? 84 : 58, alignment: .leading)
-                    Text(row.title + (!row.confirmed ? " · Tentative" : row.coverage != "covering" ? " · Undecided" : "")).font(.caption.weight(.semibold)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                    Text(eventTitle(row)).font(.caption2).foregroundStyle(tint).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                }.accessibilityLabel("\(row.start.map { $0.formatted(date: isToday($0) ? .omitted : .abbreviated, time: .shortened) } ?? "Time to come"), \(row.title), \(eventTitle(row)), \(row.confirmed ? "Confirmed" : "Tentative"), \(row.coverage == "covering" ? "Covering" : "Coverage undecided")")
+            // A Grid sizes the time column to its widest date, so "Oct 24 6:50 PM" is never truncated.
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 8, verticalSpacing: 5) {
+                ForEach(Array(rows.prefix(4))) { row in
+                    Divider()
+                    GridRow {
+                        Text(row.start.map(when) ?? "TBD").font(.caption).monospacedDigit().lineLimit(1).fixedSize()
+                        Text(row.title + (!row.confirmed ? " · Tentative" : row.coverage != "covering" ? " · Undecided" : "")).font(.caption.weight(.semibold)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(eventTitle(row)).font(.caption2).foregroundStyle(tint).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(row.start.map { $0.formatted(date: isToday($0) ? .omitted : .abbreviated, time: .shortened) } ?? "Time to come"), \(row.title), \(eventTitle(row)), \(row.confirmed ? "Confirmed" : "Tentative"), \(row.coverage == "covering" ? "Covering" : "Coverage undecided")")
+                }
             }
             if rows.count > 4 { Text("+\(rows.count - 4) more").font(.caption2).foregroundStyle(.secondary) }
             Spacer(minLength: 0)
@@ -129,13 +134,16 @@ struct ScheduleWidgetView: View {
     private func eventTitle(_ row: ScheduleSession) -> String { entry.schedule?.event(for: row)?.title ?? "Event" }
     private func time(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
     private func isToday(_ date: Date) -> Bool { Calendar.current.isDate(date, inSameDayAs: entry.date) }
-    /// Time alone for today; weekday within the coming week, otherwise month and day.
+    /// Time alone for today; weekday and time within the coming week, otherwise month, day and hour.
     private func when(_ date: Date) -> String {
         if isToday(date) { return time(date) }
         let soon = date < Calendar.current.date(byAdding: .day, value: 6, to: Calendar.current.startOfDay(for: entry.date))!
-        let day = soon ? date.formatted(.dateTime.weekday(.abbreviated)) : date.formatted(.dateTime.month(.abbreviated).day())
-        return "\(day) \(time(date))"
+        if soon { return "\(date.formatted(.dateTime.weekday(.abbreviated))) \(time(date))" }
+        // Exact minutes matter less this far out, so 12-hour clocks show "6 PM"; a bare "18" reads badly, so 24-hour clocks keep "18:50".
+        let hour = Self.uses24HourClock ? time(date) : date.formatted(.dateTime.hour())
+        return "\(date.formatted(.dateTime.month(.abbreviated).day())) \(hour)"
     }
+    private static var uses24HourClock: Bool { !(DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current) ?? "").contains("a") }
 }
 
 #if WIDGET_EXTENSION

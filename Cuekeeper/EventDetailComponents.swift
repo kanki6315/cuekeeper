@@ -304,11 +304,13 @@ struct RunOfShowDayView<Row: View>: View {
                 DaybookDateRail(day: day.key)
             }
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(coverage)
-                    Spacer(minLength: 8)
-                    if let weather { Text(weather) }
-                }.font(.footnote).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
+                if day.key.isEmpty || weather != nil {
+                    HStack {
+                        if day.key.isEmpty { Text("Date to come") }
+                        Spacer(minLength: 8)
+                        if let weather { Text(weather) }
+                    }.font(.footnote).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
+                }
                 VStack(spacing: 0) {
                     ForEach(Array(day.sessions.enumerated()), id: \.element.id) { index, session in
                         if index > 0 { EventPanelDivider() }
@@ -317,11 +319,6 @@ struct RunOfShowDayView<Row: View>: View {
                 }.eventPanel()
             }
         }
-    }
-    private var coverage: String {
-        if day.key.isEmpty { return "Date to come" }
-        let covering = day.coveringCount
-        return covering == day.sessions.count ? "Covering \(covering)" : "Covering \(covering) of \(day.sessions.count)"
     }
 }
 

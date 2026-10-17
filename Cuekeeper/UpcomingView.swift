@@ -333,8 +333,8 @@ struct UpcomingView: View {
             HStack(spacing: 0) {
                 let row = RunOfShowRow(session: fact, zone: zone, context: contextText.isEmpty ? nil : contextText)
                 if let session = sessions.first(where: { $0.id == fact.id }), let job = session.job {
-                    NavigationLink(value: ScheduleDestination.session(session.objectID)) { row }
-                        .buttonStyle(.plain).accessibilityHint("Opens the session")
+                    NavigationLink(value: ScheduleDestination.event(job.objectID)) { row }
+                        .buttonStyle(.plain).accessibilityHint("Opens the event")
                     if fact.start == nil && fact.coverage != "notCovering" {
                         Button("Add time") { sheet = .session(job, session) }
                             .font(.subheadline.weight(.semibold)).frame(minHeight: 44).padding(.trailing, 14)

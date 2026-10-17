@@ -1,7 +1,6 @@
 import XCTest
 
-final class UpcomingTests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
+final class UpcomingTests: RegressionUITestCase {
 
     private func launch(_ extra: [String]) -> XCUIApplication {
         let app = XCUIApplication()
@@ -9,9 +8,7 @@ final class UpcomingTests: XCTestCase {
         app.launch(); return app
     }
     private func shot(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        attachment.name = "upcoming-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-\(name)"
-        attachment.lifetime = .keepAlways; add(attachment)
+        captureScreenshot("upcoming-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-\(name)")
     }
 
     func testNowMergesJobsInFlightAndPlanCollapsesToSettle() {
@@ -47,6 +44,9 @@ final class UpcomingTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["upcoming-mode-plan"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["upcoming-mode-plan"].isSelected)
+        app.buttons["upcoming-mode-now"].tap()
+        XCTAssertTrue(app.buttons["upcoming-mode-now"].isSelected)
+        XCTAssertTrue(app.buttons["add-job"].isHittable)
     }
 
     func testSettleActionMarksAnOverEventCompleted() {

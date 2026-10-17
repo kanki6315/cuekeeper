@@ -24,8 +24,7 @@ final class SyncFeedbackTests: EventWorkflowTestCase {
                     XCTAssertTrue(toast.label.contains("iCloud needs attention"))
                 }
             }
-            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-            shot.name = "floating-sync-\(state)"; shot.lifetime = .keepAlways; add(shot)
+            captureScreenshot("floating-sync-\(state)")
             if state == "error" {
                 app.buttons["sync-feedback"].tap()
                 XCTAssertTrue(app.tabBars.buttons["Settings"].isSelected)
@@ -40,29 +39,18 @@ final class SyncFeedbackTests: EventWorkflowTestCase {
 
     func testSettingsSummarizesSyncStateWithoutBackups() {
         let app = XCUIApplication()
-        let cases: [(flag: String?, extra: [String], label: String, value: String?)] = [
-            (nil, [], "Saved on this device", "iCloud sync is off"),
-            ("receiving", [], "Receiving changes", nil),
-            ("offline", ["--design-dark"], "Offline", "Syncs when you reconnect"),
-            ("error", ["--design-dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"],
-             "Warning: Sync paused", "Couldn’t receive changes. iCloud will try again."),
-        ]
-        for item in cases {
-            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=settings"] + item.extra
-            if let flag = item.flag { app.launchArguments.append("--ui-test-sync-\(flag)") }
-            app.launch()
-            let summary = app.descendants(matching: .any)["sync-summary"]
-            XCTAssertTrue(summary.waitForExistence(timeout: 10))
-            reveal(summary, in: app)
-            XCTAssertEqual(summary.label, item.label)
-            XCTAssertEqual(summary.value as? String ?? "", item.value ?? "")
-            XCTAssertFalse(app.staticTexts["Storage & iCloud"].exists)
-            XCTAssertFalse(app.staticTexts["Last backup"].exists)
-            XCTAssertTrue(app.buttons["backups-link"].exists)
-            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-            shot.name = "settings-sync-\(item.flag ?? "local")"; shot.lifetime = .keepAlways; add(shot)
-            app.terminate()
-        }
+        // The state-to-copy matrix is covered by PersistenceTests. This checks UI wiring.
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=settings"]
+        app.launch()
+        let summary = app.descendants(matching: .any)["sync-summary"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 10))
+        reveal(summary, in: app)
+        XCTAssertEqual(summary.label, "Saved on this device")
+        XCTAssertEqual(summary.value as? String, "iCloud sync is off")
+        XCTAssertFalse(app.staticTexts["Storage & iCloud"].exists)
+        XCTAssertFalse(app.staticTexts["Last backup"].exists)
+        XCTAssertTrue(app.buttons["backups-link"].exists)
+        captureScreenshot("settings-sync-local")
     }
 
     func testSyncFeedbackRemainsNonblocking() {
@@ -71,8 +59,7 @@ final class SyncFeedbackTests: EventWorkflowTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["sync-feedback"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Receiving changes…"].exists)
-        let receiving = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        receiving.name = "Receiving iCloud changes"; receiving.lifetime = .keepAlways; add(receiving)
+        captureScreenshot("Receiving iCloud changes")
         app.buttons["add-job"].tap()
         XCTAssertTrue(app.buttons["wizard-continue"].waitForExistence(timeout: 5))
         app.terminate()
@@ -80,8 +67,7 @@ final class SyncFeedbackTests: EventWorkflowTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["sync-feedback"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Offline — changes saved on this device"].exists)
-        let offline = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        offline.name = "Offline local storage"; offline.lifetime = .keepAlways; add(offline)
+        captureScreenshot("Offline local storage")
         app.buttons["sync-feedback"].tap()
         XCTAssertTrue(app.staticTexts["Your data"].waitForExistence(timeout: 5))
     }

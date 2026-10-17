@@ -15,6 +15,16 @@ protocol ExpenseNotificationDelivering {
 @MainActor
 final class SystemExpenseNotifications: ExpenseNotificationDelivering {
     private let center = UNUserNotificationCenter.current()
+    private let removalQueue = DispatchQueue(label: "Cuekeeper.expense-notification-removal", qos: .utility)
+    private let removeNotifications: @Sendable ([String]) -> Void
+
+    init(removeNotifications: (@Sendable ([String]) -> Void)? = nil) {
+        let center = center
+        self.removeNotifications = removeNotifications ?? { identifiers in
+            center.removePendingNotificationRequests(withIdentifiers: identifiers)
+            center.removeDeliveredNotifications(withIdentifiers: identifiers)
+        }
+    }
     func authorization() async -> UNAuthorizationStatus { await center.notificationSettings().authorizationStatus }
     func requestPermission() async throws -> Bool { try await center.requestAuthorization(options: [.alert, .sound]) }
     func add(_ request: UNNotificationRequest) async throws { try await center.add(request) }
@@ -24,8 +34,13 @@ final class SystemExpenseNotifications: ExpenseNotificationDelivering {
         return Array(Set(pending + delivered))
     }
     func remove(_ identifiers: [String]) {
-        center.removePendingNotificationRequests(withIdentifiers: identifiers)
-        center.removeDeliveredNotifications(withIdentifiers: identifiers)
+        guard !identifiers.isEmpty else { return }
+        // These void-returning APIs can synchronously wait on the notification
+        // service. Keep that IPC off the UI thread when saving or opening a receipt.
+        let removeNotifications = removeNotifications
+        removalQueue.async {
+            removeNotifications(identifiers)
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 import XCTest
 
-final class WizardOptionalStepTests: DaybookUITestCase {
+// Keep independently reset workflows schedulable across XCTest workers.
+final class WizardSeasonTests: DaybookUITestCase {
     func testSeasonAndOptionalSteps() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -60,11 +61,13 @@ final class WizardOptionalStepTests: DaybookUITestCase {
         next.tap()
         XCTAssertTrue(next.waitForNonExistence(timeout: 5))
     }
+}
 
-    func testChampionshipReuseAndAppleLocationSuggestions() throws {
+final class WizardLibraryTests: DaybookUITestCase {
+    func testChampionshipReuseAndLocationSuggestions() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job"]
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job", "--location-fixtures"]
         app.launch()
         let next = app.buttons["wizard-continue"]
         XCTAssertTrue(next.waitForExistence(timeout: 10))
@@ -95,15 +98,14 @@ final class WizardOptionalStepTests: DaybookUITestCase {
         if !location.isHittable { app.swipeUp() }
         location.tap(); location.typeText("Silverstone")
         let locationSuggestion = app.buttons.matching(identifier: "location-suggestion").firstMatch
-        guard locationSuggestion.waitForExistence(timeout: 20) else {
-            capture("wizard-location-service-unavailable")
-            throw XCTSkip("Apple Maps suggestions unavailable in this simulator run; manual location entry retained.")
-        }
+        XCTAssertTrue(locationSuggestion.waitForExistence(timeout: 5))
         capture("wizard-apple-location-suggestions")
         locationSuggestion.tap()
         XCTAssertTrue((location.value as? String)?.localizedCaseInsensitiveContains("Silverstone") == true)
     }
+}
 
+final class WizardLocationTests: DaybookUITestCase {
     func testChosenLocationSetsEventTimezone() {
         continueAfterFailure = false
         let app = XCUIApplication()

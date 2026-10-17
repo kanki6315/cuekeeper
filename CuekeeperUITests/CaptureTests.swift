@@ -1,8 +1,9 @@
 import XCTest
 
-final class CaptureTests: EventWorkflowTestCase {
+// Keep independently reset workflows schedulable across XCTest workers.
+final class SessionCaptureTests: EventWorkflowTestCase {
     func testSessionCaptureAndConfirmationValidation() {
-        let app = createEvent("Studio finals")
+        let app = seededEvent("Studio finals")
         let addSession = app.buttons["add-session"]
         reveal(addSession, in: app)
         addSession.tap()
@@ -22,17 +23,17 @@ final class CaptureTests: EventWorkflowTestCase {
         XCTAssertTrue(alert.waitForExistence(timeout: 5))
         alert.buttons["OK"].tap()
         app.segmentedControls["session-schedule"].buttons["Tentative"].tap()
-        let editor = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        editor.name = "Session editor"; editor.lifetime = .keepAlways; add(editor)
+        captureScreenshot("Session editor")
         app.buttons["save-session"].tap()
         if !app.buttons["save-session"].waitForNonExistence(timeout: 5) { print("SAVE_SESSION_FAILURE\n" + app.debugDescription); XCTFail("Session save did not dismiss") }
-        let details = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        details.name = "Session details"; details.lifetime = .keepAlways; add(details)
+        captureScreenshot("Session details")
     }
+}
 
+final class ClientLibraryTests: EventWorkflowTestCase {
     func testClientLibraryAndFilters() {
         // Filters are only available when there is an event to filter.
-        let app = createEvent("Client filter event")
+        let app = seededEvent("Client filter event", openDetails: false)
         let settings = app.buttons["Settings"].firstMatch
         if settings.exists { settings.tap() } else { app.staticTexts["Settings"].firstMatch.tap() }
         app.buttons["Clients"].tap()
@@ -57,10 +58,7 @@ final class CaptureTests: EventWorkflowTestCase {
         let alert = app.alerts["Couldn’t save changes"]
         XCTAssertTrue(alert.waitForExistence(timeout: 5))
         XCTAssertTrue(waitUntilHittable(alert.buttons["OK"]))
-        let failure = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        failure.name = "Save error preserves draft"
-        failure.lifetime = .keepAlways
-        add(failure)
+        captureScreenshot("Save error preserves draft")
         alert.buttons["OK"].tap()
         XCTAssertEqual(name.value as? String, "North Sports")
         app.buttons["Cancel"].tap()
@@ -69,26 +67,22 @@ final class CaptureTests: EventWorkflowTestCase {
         XCTAssertTrue(app.buttons["Save"].waitForNonExistence(timeout: 5))
         app.staticTexts["North Sports"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Client"].waitForExistence(timeout: 5))
-        let client = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        client.name = "Client details"
-        client.lifetime = .keepAlways
-        add(client)
+        captureScreenshot("Client details")
         let events = app.buttons["Events"].firstMatch
         if events.exists { events.tap() } else { app.staticTexts["Events"].firstMatch.tap() }
         let filterButton = app.buttons["filter-jobs"]
         XCTAssertTrue(filterButton.waitForExistence(timeout: 5))
         filterButton.tap()
         XCTAssertTrue(waitUntilHittable(app.buttons["Done"]))
-        let filters = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        filters.name = "Job filters"
-        filters.lifetime = .keepAlways
-        add(filters)
+        captureScreenshot("Job filters")
         XCTAssertTrue(app.buttons["Done"].exists)
         app.buttons["Done"].tap()
     }
+}
 
+final class SessionSeriesTests: EventWorkflowTestCase {
     func testRepeatedSessionEntryAndBulkSeries() {
-        let app = createEvent("Race weekend", openBooking: false)
+        let app = seededEvent("Race weekend")
         reveal(app.buttons["add-session"], in: app); app.buttons["add-session"].tap()
         let name = app.textFields["session-name"]; XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText("Qualifying\n")
         let series = app.textFields["library-WorkSeries-name"]; series.tap(); series.typeText("Series A\n")
@@ -107,9 +101,11 @@ final class CaptureTests: EventWorkflowTestCase {
         XCTAssertTrue(app.buttons["apply-session-changes"].waitForNonExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts.matching(identifier: "Series B").count, 2)
     }
+}
 
+final class EventDateEditingTests: EventWorkflowTestCase {
     func testEventEditDatesAndDiscard() {
-        let app = createEvent("Original weekend", openBooking: false)
+        let app = seededEvent("Original weekend")
         app.buttons["edit-event"].tap()
         let multiple = app.switches["job-multiple-days"]; multiple.switches.firstMatch.tap()
         XCTAssertTrue(app.datePickers["job-end-date"].exists)

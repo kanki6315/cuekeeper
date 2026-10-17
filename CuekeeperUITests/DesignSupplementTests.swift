@@ -108,4 +108,22 @@ final class DesignSupplementTests: XCTestCase {
             app.terminate()
         }
     }
+
+    func testPopulatedAccessibleReview() {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
+        let app = XCUIApplication()
+        let base = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job"]
+        app.launchArguments = base + ["--wizard-populated-review", "--design-dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.buttons["wizard-continue"].waitForExistence(timeout: 10))
+        capture("wizard-populated-accessible-review")
+        for index in 0..<5 { app.swipeUp(); capture("wizard-populated-accessible-review-\(index)") }
+        app.terminate()
+    }
+
+    private func capture(_ name: String) {
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = name; shot.lifetime = .keepAlways; add(shot)
+    }
 }

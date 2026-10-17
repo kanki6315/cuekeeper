@@ -1,6 +1,6 @@
 import XCTest
 
-final class PaymentsTests: XCTestCase {
+final class PaymentsTests: RegressionUITestCase {
     func testReadyToInvoiceClientGroups() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -16,9 +16,7 @@ final class PaymentsTests: XCTestCase {
             XCTAssertFalse(app.staticTexts["Sebring AEC"].exists)
             client.tap()
             XCTAssertTrue(app.staticTexts["Sebring AEC"].waitForExistence(timeout: 5))
-            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-            shot.name = "ready-client-expanded-\(dark ? "dark-large" : "light")"
-            shot.lifetime = .keepAlways; add(shot)
+            captureScreenshot("ready-client-expanded-\(dark ? "dark-large" : "light")")
             client.tap()
             XCTAssertFalse(app.staticTexts["Sebring AEC"].exists)
             client.tap()

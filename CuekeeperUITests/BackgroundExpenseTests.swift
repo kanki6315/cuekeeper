@@ -1,14 +1,13 @@
 import XCTest
 
-final class BackgroundExpenseUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
+final class BackgroundExpenseUITests: RegressionUITestCase {
     private func launch(_ route: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=\(route)"]
         app.launch(); return app
     }
     private func shot(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        captureScreenshot(name)
     }
     func testCompleteDraftWithAttachedReceiptAndChooseEvent() {
         let app = launch("pending-expenses")

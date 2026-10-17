@@ -1,6 +1,6 @@
 import XCTest
 
-final class WeatherTests: XCTestCase {
+final class WeatherTests: RegressionUITestCase {
     private func launch(route: String, dark: Bool = false, large: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -33,9 +33,7 @@ final class WeatherTests: XCTestCase {
         }
     }
     private func capture(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        attachment.name = "weather-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-\(name)"
-        attachment.lifetime = .keepAlways; add(attachment)
+        captureScreenshot("weather-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-\(name)")
     }
 
     func testForecastAndHourlyDetails() {

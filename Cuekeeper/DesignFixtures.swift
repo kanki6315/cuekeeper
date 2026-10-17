@@ -10,6 +10,18 @@ enum DesignFixtures {
     static var route: String { ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--design-screen=") })?.replacingOccurrences(of: "--design-screen=", with: "") ?? "root" }
     @MainActor static func seed(_ context: NSManagedObjectContext) throws {
         guard enabled, try context.count(for: NSFetchRequest<Job>(entityName: "Job")) == 0 else { return }
+        // Minimal prerequisite for workflow tests: no sessions, invoices or agreed fee.
+        // `enabled` above confines this to the isolated UI-test store in Debug builds.
+        let arguments = ProcessInfo.processInfo.arguments
+        if let title = arguments.first(where: { $0.hasPrefix("--workflow-event-title=") }) {
+            let day = Calendar.current.startOfDay(for: Date())
+            var draft = JobDraft(name: String(title.dropFirst("--workflow-event-title=".count)), startDate: day, endDate: day)
+            draft.clientName = arguments.first(where: { $0.hasPrefix("--workflow-event-client=") })
+                .map { String($0.dropFirst("--workflow-event-client=".count)) } ?? "Studio Network"
+            draft.timeZoneID = TimeZone.current.identifier
+            _ = try draft.save(in: context)
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--today-fixtures") {
             try seedToday(context)
             return

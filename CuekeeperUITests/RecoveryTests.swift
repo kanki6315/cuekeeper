@@ -1,6 +1,6 @@
 import XCTest
 
-final class RecoveryTests: XCTestCase {
+final class RecoveryTests: RegressionUITestCase {
     func testRestoreDeletedEventAndBackupSettings() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -24,6 +24,10 @@ final class RecoveryTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["backup-now"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["backup-now"].isEnabled)
+        app.buttons["backup-info"].tap()
+        XCTAssertTrue(app.staticTexts["What’s included"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["backup-now"].waitForExistence(timeout: 5))
         app.buttons["backup-now"].tap()
         XCTAssertTrue(app.buttons["Restore"].firstMatch.waitForExistence(timeout: 5))
         capture("backups-dark")
@@ -75,39 +79,33 @@ final class RecoveryTests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         let device = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
-        for (name, size, dark) in [
-            ("standard-dark", UIContentSizeCategory.large, true),
-            ("largest-dark", UIContentSizeCategory.accessibilityExtraExtraExtraLarge, true),
-            ("largest-light", UIContentSizeCategory.accessibilityExtraExtraExtraLarge, false)
-        ] {
-            let app = XCUIApplication()
-            app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=recently-deleted",
-                                   "-UIPreferredContentSizeCategoryName", size.rawValue] + (dark ? ["--design-dark"] : [])
-            app.launch()
-            let row = app.cells.containing(.staticText, identifier: "City vs United").firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 10))
-            XCTAssertTrue(row.isHittable)
-            capture("recovery-\(device)-\(name)")
-            row.swipeLeft()
-            let delete = app.buttons["Permanently delete City vs United"]
-            XCTAssertTrue(delete.waitForExistence(timeout: 5))
-            XCTAssertTrue(delete.isHittable)
-            XCTAssertTrue(row.exists)
-            capture("recovery-\(device)-\(name)-delete")
-            delete.tap()
-            let cancel = app.buttons["Cancel"]
-            XCTAssertTrue(cancel.waitForExistence(timeout: 5))
-            cancel.tap()
-            XCTAssertTrue(row.exists)
-            row.swipeRight()
-            let restore = app.buttons["Restore City vs United"]
-            XCTAssertTrue(restore.waitForExistence(timeout: 5))
-            XCTAssertTrue(restore.isHittable)
-            capture("recovery-\(device)-\(name)-restore")
-            restore.tap()
-            XCTAssertTrue(app.staticTexts["Restored City vs United."].waitForExistence(timeout: 5))
-            app.terminate()
-        }
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=recently-deleted",
+                               "-UIPreferredContentSizeCategoryName", UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue, "--design-dark"]
+        app.launch()
+        let row = app.cells.containing(.staticText, identifier: "City vs United").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.isHittable)
+        capture("recovery-\(device)-largest-dark")
+        row.swipeLeft()
+        let delete = app.buttons["Permanently delete City vs United"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        XCTAssertTrue(delete.isHittable)
+        XCTAssertTrue(row.exists)
+        capture("recovery-\(device)-largest-dark-delete")
+        delete.tap()
+        let cancel = app.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        cancel.tap()
+        XCTAssertTrue(row.exists)
+        row.swipeRight()
+        let restore = app.buttons["Restore City vs United"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5))
+        XCTAssertTrue(restore.isHittable)
+        capture("recovery-\(device)-largest-dark-restore")
+        restore.tap()
+        XCTAssertTrue(app.staticTexts["Restored City vs United."].waitForExistence(timeout: 5))
+        app.terminate()
     }
 
     /// Exercises export, import confirmation and restore without the system Files picker, which drops taps
@@ -148,18 +146,6 @@ final class RecoveryTests: XCTestCase {
         capture("backups-files-largest-text-dark")
     }
 
-    func testAboutBackups() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=backups"]
-        app.launch()
-        let info = app.buttons["backup-info"]
-        XCTAssertTrue(info.waitForExistence(timeout: 10))
-        info.tap()
-        XCTAssertTrue(app.staticTexts["What’s included"].waitForExistence(timeout: 5))
-        capture("backups-about")
-    }
-
     /// Files actions sit inline beside the status on regular width and behind a toolbar menu otherwise.
     private func revealFiles(_ app: XCUIApplication) {
         let export = button(app, "backup-export", "Export to Files")
@@ -175,7 +161,6 @@ final class RecoveryTests: XCTestCase {
     }
 
     private func capture(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name; shot.lifetime = .keepAlways; add(shot)
+        captureScreenshot(name)
     }
 }

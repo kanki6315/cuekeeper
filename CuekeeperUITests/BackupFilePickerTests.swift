@@ -2,7 +2,7 @@ import XCTest
 
 /// Drives Apple's Files pickers for backup export and import. They run out of process and drop taps
 /// on parallel simulator clones, so this class runs alone from the serial `Cuekeeper - System Pickers` scheme.
-final class BackupFilePickerTests: XCTestCase {
+final class BackupFilePickerTests: RegressionUITestCase {
     func testSystemFilePickersExportAndImport() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -57,7 +57,6 @@ final class BackupFilePickerTests: XCTestCase {
     }
 
     private func capture(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name; shot.lifetime = .keepAlways; add(shot)
+        captureScreenshot(name)
     }
 }

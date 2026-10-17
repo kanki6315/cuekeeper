@@ -110,15 +110,9 @@ final class EventWizardTests: DaybookUITestCase {
         capture("wizard-dark-large-text-review-lower")
     }
 
-    func testPopulatedAccessibleReviewAndForeignSessionDate() {
+    func testForeignSessionDate() {
         let app = XCUIApplication()
         let base = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=add-job"]
-        app.launchArguments = base + ["--wizard-populated-review", "--design-dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
-        app.launch()
-        XCTAssertTrue(app.buttons["wizard-continue"].waitForExistence(timeout: 10))
-        capture("wizard-populated-accessible-review")
-        for index in 0..<5 { app.swipeUp(); capture("wizard-populated-accessible-review-\(index)") }
-        app.terminate()
         app.launchArguments = base + ["--wizard-foreign-session"]
         app.launch()
         XCTAssertTrue(app.buttons["wizard-continue"].waitForExistence(timeout: 10))

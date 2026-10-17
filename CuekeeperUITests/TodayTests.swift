@@ -1,6 +1,7 @@
 import XCTest
 
-final class TodayTests: XCTestCase {
+// Keep independently reset workflows schedulable across XCTest workers.
+final class TodayNavigationTests: RegressionUITestCase {
     func testWidgetLinkReturnsToToday() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures"]
@@ -17,6 +18,28 @@ final class TodayTests: XCTestCase {
         XCUIDevice.shared.system.open(URL(string: "cuekeeper://today")!)
         XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
     }
+
+    func testTodayScheduleListsSessionsAndOpensThem() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        let tablet = UIDevice.current.userInterfaceIdiom == .pad
+        XCUIDevice.shared.orientation = tablet ? .landscapeLeft : .portrait
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures", "--design-screen=root"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Qualifying"].firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)
+        // Scrolling to later sessions is checked on iPhone only, as in TodayCaptureTests.
+        guard !tablet else { return }
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Evening review"].firstMatch.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Studio highlights"].firstMatch.exists)
+        app.staticTexts["Evening review"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Evening review"].waitForExistence(timeout: 3))
+    }
+}
+
+final class TodayDraftRoutingTests: RegressionUITestCase {
     func testTodayLinkPreservesWizardUntilUserClosesIt() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -60,7 +83,9 @@ final class TodayTests: XCTestCase {
         app.buttons["Discard Changes"].tap()
         XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 5))
     }
+}
 
+final class FirstEventConcurrencyTests: RegressionUITestCase {
     func testFirstEventWizardSurvivesIncomingEventAndRotation() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -80,7 +105,9 @@ final class TodayTests: XCTestCase {
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.staticTexts["Arrived from another device"].firstMatch.waitForExistence(timeout: 5))
     }
+}
 
+final class ExternalRoutePresentationTests: RegressionUITestCase {
     func testExternalRoutesOpenAboveWizardAndReturnToItsDraft() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -105,6 +132,20 @@ final class TodayTests: XCTestCase {
         }
     }
 
+    func testExternalRouteOpensAboveFirstLaunch() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--first-launch"]
+        app.launch()
+        XCTAssertTrue(app.buttons["setup-start"].waitForExistence(timeout: 15))
+        XCUIDevice.shared.system.open(URL(string: "cuekeeper://ui-test/receipt")!)
+        XCTAssertTrue(app.navigationBars["Receipt for which event?"].waitForExistence(timeout: 8))
+        app.buttons["Close"].tap()
+        XCTAssertTrue(app.buttons["setup-start"].waitForExistence(timeout: 5))
+    }
+}
+
+final class CalendarDisconnectTests: RegressionUITestCase {
     func testLocalCalendarDisconnectWithoutAccess() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -118,52 +159,5 @@ final class TodayTests: XCTestCase {
         confirm.tap()
         XCTAssertTrue(disconnect.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["calendar-status"].label.contains("Disconnected on this device"))
-    }
-
-    func testExternalRouteOpensAboveFirstLaunch() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--first-launch"]
-        app.launch()
-        XCTAssertTrue(app.buttons["setup-start"].waitForExistence(timeout: 15))
-        XCUIDevice.shared.system.open(URL(string: "cuekeeper://ui-test/receipt")!)
-        XCTAssertTrue(app.navigationBars["Receipt for which event?"].waitForExistence(timeout: 8))
-        app.buttons["Close"].tap()
-        XCTAssertTrue(app.buttons["setup-start"].waitForExistence(timeout: 5))
-    }
-
-    func testTodayScheduleListsSessionsAndOpensThem() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        let tablet = UIDevice.current.userInterfaceIdiom == .pad
-        XCUIDevice.shared.orientation = tablet ? .landscapeLeft : .portrait
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--today-fixtures", "--design-screen=root"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Run of show"].firstMatch.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["Qualifying"].firstMatch.exists)
-        XCTAssertTrue(app.staticTexts["Silverstone weekend"].firstMatch.exists)
-        // Scrolling to later sessions is checked on iPhone only, as in TodayCaptureTests.
-        guard !tablet else { return }
-        app.swipeUp()
-        XCTAssertTrue(app.staticTexts["Evening review"].firstMatch.waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Studio highlights"].firstMatch.exists)
-        app.staticTexts["Evening review"].firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Evening review"].waitForExistence(timeout: 3))
-    }
-
-    func testUpcomingModeSelection() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
-        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=root"]
-        app.launch()
-        let plan = app.buttons["upcoming-mode-plan"]
-        let now = app.buttons["upcoming-mode-now"]
-        XCTAssertTrue(plan.waitForExistence(timeout: 10))
-        plan.tap()
-        XCTAssertTrue(plan.isSelected)
-        now.tap()
-        XCTAssertTrue(now.isSelected)
-        XCTAssertTrue(app.buttons["add-job"].isHittable)
     }
 }

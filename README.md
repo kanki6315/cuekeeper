@@ -133,6 +133,7 @@ xcrun simctl privacy "$SIMULATOR_ID" grant calendar com.arjunakankipati.cuekeepe
 xcodebuild test-without-building -project Cuekeeper.xcodeproj -scheme Cuekeeper \
   -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
   -parallel-testing-worker-count 4 \
+  -collect-test-diagnostics never \
   -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO
 python3 -m unittest discover -s scripts/tests
 ./cloudkit.sh check --local-only
@@ -149,12 +150,88 @@ The parallel suite covers the same export, import and restore through
 `--ui-test-backup-files`. For a quick loop, add
 `-only-testing:CuekeeperTests` to run just the unit tests.
 
+Run benchmarks only when other worktrees are not running simulator tests. Use an
+explicit simulator UDID and a separate derived-data directory per worktree.
+`-collect-test-diagnostics never` avoids the observed ten-minute diagnostic
+collection stall; ordinary test results and coverage are still produced.
+
+Regression UI tests reset orientation before each test, use a minimal seeded event
+for downstream workflows, and use synthetic location suggestions for the location
+selection test. Wizard creation remains covered by its own tests. Routine success
+screenshots are disabled; to enable them for investigation, set
+`CUEKEEPER_TEST_SCREENSHOTS=1` in the test runner's environment (in the Xcode scheme's
+Test action, or with `TEST_RUNNER_CUEKEEPER_TEST_SCREENSHOTS=1` when invoking
+`xcodebuild`). Dedicated Design Capture tests always take screenshots.
+The five-minute target applies to the default regression suite; measure build time
+and test execution separately, with Design Capture and System Pickers reported
+separately. This is a target, not a verified runtime guarantee.
+
 Without the Calendar grant, the real EventKit integration test skips; a green
 suite alone does not prove that check ran. Repeat the UI suite on an iPad by
 changing the destination. UI tests use isolated local stores, disable CloudKit
 and calendar publishing, and contain synthetic records. The EventKit test uses
 its own temporary calendar and a test publisher; real CloudKit publisher ownership
 is checked separately in Development.
+
+### Suite benchmark — 16 October 2026
+
+Measured on an Apple M4 Pro (14 cores, 48 GB memory), using an isolated iPhone 18
+Pro simulator on iOS 27.0, with coverage enabled and no retry flags. Times are
+`test-without-building` wall time, including worker startup and result collection;
+the base simulator was booted, installed and granted Calendar access. Build time
+and the separate Python suites are excluded from this table.
+
+| Change | Workers | Wall time | Passed | Failed | Skipped |
+| --- | --- | --- | --- | --- | --- |
+| Initial consolidations and navigation fixes | 2 | 10m 52s | 252 | 0 | 1 |
+| Initial consolidations and navigation fixes | 4 | 8m 12s | 252 | 0 | 1 |
+| Split long UI classes | 4 | 7m 48s | 252 | 0 | 1 |
+| Class splits and nonblocking notification cleanup | 4 | 7m 33s | 253 | 0 | 1 |
+
+The final suite has 194 unit/integration tests and the same 60 UI tests. All
+previous test methods remain; the additional regression checks that an
+unresponsive notification service cannot block the UI thread during cleanup.
+The only skip requires physical-device Data Protection support; Calendar
+integration ran. The earlier 32 tooling tests and five website tests passed in
+2.7 seconds combined. The final incremental test-bundle rebuild took 7.9 seconds;
+this is not a cold-build estimate.
+
+Twenty-four methods from CaptureTests, TodayTests, EventEditorTests,
+WizardOptionalStepTests and FeeAndInvoiceTests now occupy 17 independently
+schedulable classes instead of five. Their complete method bodies are unchanged.
+The gap between the first and last UI worker finishing fell from 84 seconds in
+the initial four-worker run to 31 seconds in the final run. Scheduling and startup
+vary, so these single complete runs do not establish a stable performance bound.
+
+The receipt edit/save/reopen test took 133.6 seconds initially, 48.6 seconds after
+splitting classes, and 16.6 seconds after the notification fix. Activity logs
+localized the delay to the idle wait after Save. A diagnostic repeat reproduced
+a related expense-route failure: a one-second process sample showed
+`ExpenseNotifications.clear` blocked in synchronous notification-service IPC
+from `removePendingNotificationRequests`. That repeat was stopped after capturing
+the failure and is not included as a completed benchmark. System notification
+removal now runs on a serial utility queue; database saving, assertions and UI
+wait limits are unchanged. The formerly failing expense-route test passed in
+28.0 seconds in the final clean run, which used no process sampling.
+
+The final run is about 8% faster than the previous four-worker baseline, but still
+2m 33s over the five-minute target before building. Summed UI test time was 1,368
+seconds: even perfect four-worker distribution would take about 5m 42s before
+startup and result collection. Further gains require shortening the workflows
+themselves, especially repeated session entry, library setup, weather and layout
+checks, as well as reducing simulator startup overhead. Keep their unique
+assertions when replacing repeated setup with fixtures; further class splitting
+alone cannot reach five minutes at these observed durations.
+
+The initial two-worker run found two navigation assumptions, both fixed and
+validated in the passing runs: library/filter setup must leave Events at its list,
+and delete-event checks must use Events rather than date-filtered Upcoming.
+Design Capture and System Pickers remain separate, as described above.
+
+The separate `./cloudkit.sh check --local-only` gate still fails because the
+reviewed manifest's `CloudBackupStore.swift` hash is stale. The mismatch also
+exists in HEAD before these test changes. No schema export or manifest update was
+performed; the release schema gate remains outstanding.
 
 Earlier V5 validation included 19 passing unit/model/EventKit tests (no skipped
 EventKit integration), 24 passing tooling tests and a passing local schema gate.

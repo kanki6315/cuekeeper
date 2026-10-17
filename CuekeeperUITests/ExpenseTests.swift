@@ -1,6 +1,6 @@
 import XCTest
 
-final class ExpenseUITests: XCTestCase {
+final class ExpenseUITests: RegressionUITestCase {
     func testReviewEditSaveAndReopenReceipt() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -25,7 +25,7 @@ final class ExpenseUITests: XCTestCase {
         screenshot("receipt-saved")
     }
     private func screenshot(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        captureScreenshot(name)
     }
     func testShortcutEventChoice() throws {
         let app = XCUIApplication()

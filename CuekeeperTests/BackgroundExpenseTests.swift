@@ -81,6 +81,21 @@ final class BackgroundExpenseTests: XCTestCase {
         XCTAssertEqual(draft.merchant, "Shop"); XCTAssertEqual(draft.amount, ""); XCTAssertEqual(draft.currency, ""); XCTAssertEqual(draft.day, "")
         XCTAssertEqual(draft.capture?.amount, "$1,234.56")
     }
+    func testNotificationCleanupDoesNotBlockUIWhileServiceIsUnresponsive() async {
+        let started = expectation(description: "Notification cleanup started")
+        let release = DispatchSemaphore(value: 0)
+        defer { release.signal() }
+        let service = SystemExpenseNotifications { identifiers in
+            XCTAssertFalse(Thread.isMainThread)
+            XCTAssertEqual(identifiers, ["receipt-to-clear"])
+            started.fulfill()
+            // Model a notification service that cannot reply until UI work continues.
+            _ = release.wait(timeout: .now() + 2)
+        }
+        service.remove(["receipt-to-clear"])
+        await fulfillment(of: [started], timeout: 1)
+    }
+
     func testNotificationsOptInDenialFailureRouteAndCleanup() async throws {
         let suite = "expense-notifications-\(UUID())"; let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }

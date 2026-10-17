@@ -2,7 +2,35 @@ import XCTest
 
 /// Helpers shared by UI workflow classes. Workflows are split into small classes
 /// so parallel test runs can spread them across simulator clones.
-class DaybookUITestCase: XCTestCase {
+class RegressionUITestCase: XCTestCase {
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
+    }
+
+    /// Upcoming is date-sensitive; record workflows use the full Events list.
+    func openEvents(in app: XCUIApplication) {
+        let events = app.buttons["Events"].firstMatch
+        if events.waitForExistence(timeout: 5) { events.tap() }
+        else {
+            let sidebarEvents = app.staticTexts["Events"].firstMatch
+            XCTAssertTrue(sidebarEvents.waitForExistence(timeout: 5))
+            sidebarEvents.tap()
+        }
+    }
+
+    /// Success captures are opt-in. XCTest still collects its normal failure evidence.
+    func captureScreenshot(_ name: String) {
+        guard ProcessInfo.processInfo.environment["CUEKEEPER_TEST_SCREENSHOTS"] == "1" else { return }
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}
+
+class DaybookUITestCase: RegressionUITestCase {
     func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
@@ -19,18 +47,12 @@ class DaybookUITestCase: XCTestCase {
     }
 
     func capture(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        captureScreenshot(name)
     }
 }
 
-/// Event workflows that start from a newly created event in an empty store.
+/// Event workflows start with one persisted event, without replaying the wizard.
 class EventWorkflowTestCase: DaybookUITestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
-    }
-
     /// Event details split into Schedule / Money / Details tabs on narrow layouts.
     func openEventTab(_ tab: String, in app: XCUIApplication) {
         let button = app.buttons["event-tab-\(tab)"]
@@ -60,23 +82,19 @@ class EventWorkflowTestCase: DaybookUITestCase {
     }
 
     @discardableResult
-    func createEvent(_ title: String, client: String = "Studio Network", openBooking: Bool = true) -> XCUIApplication {
+    func seededEvent(_ title: String, client: String = "Studio Network", openDetails: Bool = true) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--reset-test-store"]
+        app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures",
+                               "--workflow-event-title=\(title)", "--workflow-event-client=\(client)"]
         app.launch()
-        XCTAssertTrue(app.buttons["add-job"].waitForExistence(timeout: 10)); app.buttons["add-job"].tap()
-        let next = app.buttons["wizard-continue"]
-        XCTAssertTrue(next.waitForExistence(timeout: 5))
-        let titleField = app.textFields["job-name"]
-        titleField.tap(); titleField.typeText(title + "\n")
-        app.switches["Client, project & series"].tap()
-        next.tap()
-        let clientField = app.textFields["job-client"]
-        XCTAssertTrue(clientField.waitForExistence(timeout: 5))
-        clientField.tap(); clientField.typeText(client + "\n")
-        next.tap(); next.tap()
-        XCTAssertTrue(next.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["edit-event"].waitForExistence(timeout: 5))
+        // Go through Events so Upcoming's date/mode policy cannot hide the prerequisite.
+        openEvents(in: app)
+        let event = app.staticTexts[title].firstMatch
+        XCTAssertTrue(event.waitForExistence(timeout: 10))
+        if openDetails {
+            event.tap()
+            XCTAssertTrue(app.buttons["edit-event"].waitForExistence(timeout: 5))
+        }
         return app
     }
 }

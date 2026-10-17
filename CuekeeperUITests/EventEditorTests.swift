@@ -1,11 +1,13 @@
 import XCTest
 
-final class EventEditorTests: DaybookUITestCase {
+// Keep independently reset workflows schedulable across XCTest workers.
+final class EventDeletionTests: DaybookUITestCase {
     func testDeleteEventRequiresConfirmation() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=root"]
         app.launch()
+        openEvents(in: app)
         let event = app.staticTexts["City vs United"].firstMatch
         XCTAssertTrue(event.waitForExistence(timeout: 10))
         event.tap()
@@ -29,10 +31,13 @@ final class EventEditorTests: DaybookUITestCase {
         app.terminate()
         app.launchArguments.removeAll { $0 == "--reset-test-store" }
         app.launch()
+        openEvents(in: app)
         XCTAssertTrue(app.staticTexts["Studio highlights"].firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["City vs United"].exists)
     }
+}
 
+final class EventTimezoneTests: DaybookUITestCase {
     func testEventAndWorkTimezonesFollowArrangement() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -74,7 +79,9 @@ final class EventEditorTests: DaybookUITestCase {
             app.terminate()
         }
     }
+}
 
+final class EventEditorTests: DaybookUITestCase {
     func testUnifiedEditorShowsBookingFieldsAndDiscardsChanges() {
         continueAfterFailure = false
         let app = XCUIApplication()

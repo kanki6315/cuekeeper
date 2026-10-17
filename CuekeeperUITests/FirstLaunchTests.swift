@@ -1,13 +1,13 @@
 import XCTest
 
-final class FirstLaunchUITests: XCTestCase {
+final class FirstLaunchUITests: RegressionUITestCase {
     override func setUpWithError() throws {
+        try super.setUpWithError()
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
     }
     private func capture(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        captureScreenshot(name)
     }
 
     func testSetupPreferencesFinishAndReplay() {

@@ -1,6 +1,6 @@
 import XCTest
 
-final class EventVisualTests: XCTestCase {
+final class EventVisualTests: RegressionUITestCase {
     func testCompactEventFilters() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures",
@@ -15,10 +15,7 @@ final class EventVisualTests: XCTestCase {
         XCTAssertTrue(active.isSelected)
         app.buttons["event-status-scope-All"].tap()
         XCTAssertTrue(app.buttons["event-status-scope-All"].isSelected)
-        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        screenshot.name = "compact-events-page"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
+        captureScreenshot("compact-events-page")
     }
 
     func testSessionChoicesAdaptToTextSize() {
@@ -45,9 +42,7 @@ final class EventVisualTests: XCTestCase {
             XCTAssertTrue(coverage.isHittable)
             if large { coverage.tap(); app.buttons["Not covering"].tap() }
             else { coverage.buttons["Not covering"].tap(); XCTAssertTrue(coverage.buttons["Not covering"].isSelected) }
-            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-            shot.name = "session-choices-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-\(large ? "large" : "normal")"
-            shot.lifetime = .keepAlways; add(shot)
+            captureScreenshot("session-choices-\(UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone")-\(large ? "large" : "normal")")
             app.buttons["Cancel"].tap()
             if app.buttons["Discard Changes"].waitForExistence(timeout: 2) { app.buttons["Discard Changes"].tap() }
             app.terminate()

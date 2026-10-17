@@ -103,7 +103,7 @@ struct EventsListRow: Equatable, Identifiable {
             return !dueDay.isEmpty && dueDay < today ? EventsBadge(text: "Overdue", tone: .amber) : EventsBadge(text: "Invoiced", tone: .accent)
         case .draft: return EventsBadge(text: "Draft invoice", tone: .amber)
         case .ready: return EventsBadge(text: "Ready to invoice", tone: .accent)
-        case .heldUp: return EventsBadge(text: "To settle", tone: .amber)
+        case .heldUp, .directPartial: return EventsBadge(text: "To settle", tone: .amber)
         case .review: return EventsBadge(text: "Needs review", tone: .amber)
         case .noFee: return EventsBadge(text: "No fee", tone: .muted)
         case .upcoming, .cancelled, nil: return EventsBadge(text: "Completed", tone: .muted)
@@ -115,6 +115,7 @@ struct EventsListRow: Equatable, Identifiable {
         guard finished, let payment = facts.payment else { return nil }
         switch payment.state {
         case let .invoiced(_, balance, currency, _): return (currency, balance)
+        case let .directPartial(_, remaining?, currency): return remaining > 0 ? (currency, remaining) : nil
         case .ready, .draft, .heldUp:
             guard let currency = payment.currency, let amount = payment.amount, amount > 0 else { return nil }
             return (currency, amount)

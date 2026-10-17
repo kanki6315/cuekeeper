@@ -132,11 +132,7 @@ struct ClientSummary: Equatable {
     /// One year's money by state, per currency, as the Payments month shows it.
     func money(in year: String) -> [CurrencyBuckets] {
         var buckets: [String: CurrencyBuckets] = [:]
-        for event in readiness where event.facts.startDay.hasPrefix(year) {
-            guard let bucket = event.state.bucket, let currency = event.currency else { continue }
-            if let amount = event.amount { buckets[currency, default: CurrencyBuckets(currency: currency)].amounts[bucket, default: 0] += amount }
-            else { buckets[currency, default: CurrencyBuckets(currency: currency)].unknownFees += 1 }
-        }
+        for event in readiness where event.facts.startDay.hasPrefix(year) { event.add(to: &buckets) }
         return buckets.values.filter { $0.total > 0 || $0.unknownFees > 0 }.sorted { $0.currency < $1.currency }
     }
 

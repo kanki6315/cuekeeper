@@ -163,6 +163,85 @@ final class PaymentsBillingTests: XCTestCase {
         XCTAssertThrowsError(try bad.save(entity: "Client", editing: client.objectID, baseline: LibraryDraft(record: client), in: context))
     }
 
+    func testDirectPaymentsWithoutAFeeKeepTheirCurrencyAndLeaveTheRestOutstanding() async throws {
+        let context = try await context()
+        var draft = JobDraft(name: "Training day"); draft.clientName = "Northside"; draft.bookingStatus = .completed; draft.fee = nil
+        let job = try XCTUnwrap(context.existingObject(with: try draft.save(in: context)) as? Job)
+        let client = try XCTUnwrap(job.client)
+        XCTAssertTrue((job.feeRevisions ?? []).isEmpty)
+        client.defaultCurrency = "EUR"; try context.save()
+        var payment = PaymentDraft(); payment.amount = "100"
+        try payment.save(in: context, jobID: job.objectID)
+        client.defaultCurrency = "JPY"; try context.save()
+        XCTAssertEqual(job.billingSummary(in: context), "Direct payments: €100.00", "Changing defaults never relabels payment history")
+        payment.amount = "50.50"
+        try payment.save(in: context, jobID: job.objectID)
+        XCTAssertEqual(Set((job.payments ?? []).map(\.currency)), ["EUR"])
+        func state() -> PaymentState { EventReadiness(ReadinessFacts(job: job, context: context, index: InvoiceIndex(in: context)), today: "2026-10-16").state }
+        XCTAssertEqual(state(), .directPartial(received: 15_050, remaining: nil, currency: "EUR"), "No fee saved: nothing says the job is fully paid")
+
+        var fee = try FeeDraft(job: job)
+        XCTAssertEqual(fee.currency, "EUR")
+        fee.amount = "650"; fee.agreement = "agreed"
+        try fee.save(in: context, jobID: job.objectID)
+        XCTAssertEqual(state(), .directPartial(received: 15_050, remaining: 49_950, currency: "EUR"))
+        let second = try XCTUnwrap(job.payments?.first { $0.amount == 5_050 })
+        try PaymentLedger.reverse(second, in: context)
+        XCTAssertEqual(state(), .directPartial(received: 10_000, remaining: 55_000, currency: "EUR"))
+        var invoice = InvoiceDraft(clientID: client.id!, currency: "EUR")
+        invoice.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 55_000)]
+        XCTAssertThrowsError(try invoice.save(in: context), "Directly paid work is never invoiced again")
+        payment.amount = "550"
+        try payment.save(in: context, jobID: job.objectID)
+        XCTAssertEqual(state(), .directPaid)
+    }
+
+    func testDraftInvoiceKeepsItsBilledCurrencyWhenTheFeeChanges() async throws {
+        let context = try await context()
+        let job = try completedJob("Cup final", in: context)
+        var draft = InvoiceDraft(clientID: try XCTUnwrap(job.client?.id), currency: "EUR")
+        draft.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 65_000)]
+        try draft.save(in: context)
+        var fee = try FeeDraft(job: job); fee.currency = "JPY"; fee.amount = "90000"
+        try fee.save(in: context, jobID: job.objectID)
+        let month = PaymentsMonth.load(month: String(job.eventStartDay.prefix(7)), jobs: [job], invoices: try context.fetch(NSFetchRequest<Invoice>(entityName: "Invoice")),
+                                       context: context, displayed: ["EUR", "JPY"])
+        let event = try XCTUnwrap(month.events.first)
+        XCTAssertEqual(event.state, .draft)
+        XCTAssertEqual(event.amount, 65_000); XCTAssertEqual(event.currency, "EUR")
+        XCTAssertEqual(month.currencies.first { $0.currency == "EUR" }?.amounts, [.invoiced: 65_000])
+        XCTAssertEqual(month.currencies.first { $0.currency == "JPY" }?.total, 0)
+    }
+
+    func testPaymentSaveRefusesAReceiptBilledOnAnInvoiceThatArrivedLater() async throws {
+        let context = try await context()
+        let job = try completedJob("Derby", in: context)
+        let client = try XCTUnwrap(job.client)
+        let parking = try receipt(for: job, reimbursable: true, in: context)
+        var sent = InvoiceDraft(clientID: client.id!, currency: "EUR")
+        sent.value.lines = [BilledLine(jobID: job.id!, jobName: job.displayName, amount: 65_000)]
+        sent.value.expenseLines = [BilledExpense(expenseID: parking.id!, label: "Parking", amount: 2_580)]
+        sent.value.status = "sent"; sent.value.reference = "INV-1"; sent.value.sentDay = "2026-10-14"
+        let invoiceID = try sent.save(in: context)
+        XCTAssertNil(try XCTUnwrap(context.existingObject(with: invoiceID) as? Invoice).issue(in: context), "The editor opens with Save enabled")
+
+        // While the editor is open, another device's invoice for a different event syncs in with the same receipt.
+        let other = try completedJob("Cup final", in: context)
+        let synced = Invoice(entity: NSEntityDescription.entity(forEntityName: "Invoice", in: context)!, insertInto: context)
+        synced.id = UUID(); synced.createdAt = Date(); synced.client = client
+        var value = InvoiceValue(clientID: client.id!, currency: "EUR")
+        value.lines = [BilledLine(jobID: other.id!, jobName: other.displayName, amount: 65_000)]
+        value.expenseLines = sent.value.expenseLines
+        let revision = InvoiceRevision(entity: NSEntityDescription.entity(forEntityName: "InvoiceRevision", in: context)!, insertInto: context)
+        revision.id = UUID(); revision.createdAt = Date(); revision.invoice = synced; revision.parentsJSON = "[]"
+        revision.valueJSON = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        try context.save()
+
+        var payment = PaymentDraft(); payment.amount = "100"
+        XCTAssertThrowsError(try payment.save(in: context, invoiceID: invoiceID))
+        XCTAssertEqual(try context.count(for: NSFetchRequest<PaymentRecord>(entityName: "PaymentRecord")), 0)
+    }
+
     func testPaymentsFixtureSeedsAMonthWithEveryState() async throws {
         let context = try await context()
         do { try DesignFixtures.seedPayments(context) } catch { XCTFail("Seeding failed: \(error.localizedDescription)"); return }

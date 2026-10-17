@@ -146,6 +146,49 @@ final class CalendarTests: XCTestCase {
         XCTAssertEqual(CalendarPlan(jobs: [job]).knownKeys.count, 2)
     }
 
+    func testSkippedMidnightCivilDatesParseAndKeepTheirPlaceholders() throws {
+        // Santiago and Cairo skip 00:00 on these days; the day itself starts at 01:00.
+        for (zoneID, day, next) in [("America/Santiago", "2026-09-06", "2026-09-07"), ("Africa/Cairo", "2026-04-24", "2026-04-25")] {
+            let zone = try XCTUnwrap(TimeZone(identifier: zoneID))
+            var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
+            let start = try XCTUnwrap(Day.date(from: day, timeZone: zone), zoneID)
+            XCTAssertEqual(calendar.component(.hour, from: start), 1)
+            XCTAssertEqual(Day.string(from: start, timeZone: zone), day)
+            XCTAssertEqual(Day.days(from: day, to: next), 1)
+            XCTAssertTrue(EventWeatherRequest(placeID: "place", bookingStatus: "booked", arrangement: "onSite", startDay: day, endDay: day)
+                .eligible(now: start, timeZone: zone))
+
+            var session = SessionDraft(day: day, timeZoneID: zoneID)
+            session.startTime = start.addingTimeInterval(9 * 3600)
+            session.moveSchedule(to: try XCTUnwrap(Day.date(from: next, timeZone: zone)), zone: zone)
+            XCTAssertEqual(session.day, next)
+            XCTAssertEqual(session.startTime.map { Day.string(from: $0, timeZone: zone) }, next, "The times move with the day")
+
+            let container = NSPersistentContainer(name: "Cuekeeper", managedObjectModel: try XCTUnwrap(NSManagedObjectModel(contentsOf: try XCTUnwrap(Bundle.main.url(forResource: "Cuekeeper", withExtension: "momd")))))
+            let description = NSPersistentStoreDescription(); description.type = NSInMemoryStoreType
+            container.persistentStoreDescriptions = [description]
+            container.loadPersistentStores { _, error in XCTAssertNil(error) }
+            let job = Job(entity: NSEntityDescription.entity(forEntityName: "Job", in: container.viewContext)!, insertInto: container.viewContext)
+            job.id = UUID(); job.name = "Skipped midnight"; job.startDay = day; job.endDay = day; job.timeZoneID = zoneID
+            let placeholder = try XCTUnwrap(CalendarPlan(jobs: [job]).desired["job/\(job.id!.uuidString)"], "Kept, so reconciliation won't delete it")
+            XCTAssertEqual(placeholder.start, start)
+            XCTAssertEqual(placeholder.end, Day.date(from: next, timeZone: zone))
+            XCTAssertEqual(placeholder.end.timeIntervalSince(placeholder.start), 23 * 3600)
+        }
+        // Ordinary DST days, leap days and travel keep their day; impossible dates are still rejected.
+        for zoneID in ["America/New_York", "Europe/London", "Australia/Sydney", "America/Santiago"] {
+            let zone = try XCTUnwrap(TimeZone(identifier: zoneID))
+            for day in ["2026-03-08", "2026-11-01", "2026-04-05", "2028-02-29", "2026-09-06"] {
+                XCTAssertEqual(Day.date(from: day, timeZone: zone).map { Day.string(from: $0, timeZone: zone) }, day, "\(zoneID) \(day)")
+            }
+        }
+        for invalid in ["2026-02-29", "2027-02-30", "2026-13-01", "2026-04-31", "2026-00-10", "2026-9-6", "2026-09-06T00", "", "２０２６-09-06"] {
+            XCTAssertNil(Day.date(from: invalid), invalid)
+            XCTAssertNil(Day.components(invalid), invalid)
+        }
+        XCTAssertNil(Day.date(from: "2011-12-30", timeZone: TimeZone(identifier: "Pacific/Apia")!), "Samoa skipped the whole day")
+    }
+
     func testAllDayEventUsesFloatingCivilDatesAndRepairsTimedEvents() throws {
         let store = EKEventStore()
         for zoneID in ["America/New_York", "Asia/Tokyo"] {

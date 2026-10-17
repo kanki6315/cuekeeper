@@ -19,6 +19,9 @@ struct ExpenseValue: Codable, Equatable {
     var repeatsMonthly = false
     /// Shared by every month of a repeating business cost.
     var seriesID: UUID?
+    /// The day of the month a repeating cost falls on (1–31). Short months clamp to their last day
+    /// without changing it, so 31 means "month end". Nil on costs saved before this was kept.
+    var repeatDay: Int?
     /// Formatted only when the amount is valid for a supported currency, so a bad value is never shown as zero.
     static func displayAmount(_ amount: String, currency: String) -> String? {
         guard currencies.contains(currency), let value = try? Money.parse(amount, currency: currency) else { return nil }
@@ -238,7 +241,16 @@ extension ExpenseValue {
     func asBusiness(id: UUID?) -> ExpenseValue {
         var value = self
         value.reimbursable = false
-        if value.repeatsMonthly { value.seriesID = value.seriesID ?? id ?? UUID() }
+        if value.repeatsMonthly {
+            value.seriesID = value.seriesID ?? id ?? UUID()
+            // Keep the anchor while this month's date is the anchor's clamped day. A date the user
+            // moved elsewhere becomes the anchor for the months after it.
+            if let day = Day.components(value.day)?.day, value.repeatDay.map({ ExpensesMonth.clamped($0, in: value.day) != day }) ?? true {
+                value.repeatDay = day
+            }
+        } else {
+            value.repeatDay = nil
+        }
         return value
     }
     /// Typed totals, read in the device's convention, become the stored text every device reads alike.

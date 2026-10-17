@@ -56,6 +56,7 @@ struct ExpenseFact: Equatable, Identifiable {
     var photoSaved = false
     var repeats = false
     var seriesID: UUID?
+    var repeatDay: Int?
 
     var month: String { String(day.prefix(7)) }
     var isBusiness: Bool { state == .business }
@@ -80,7 +81,7 @@ extension ExpenseFact {
                   eventInvoiceable: job.flatMap { job in job.managedObjectContext.flatMap { try? job.activeInvoices(in: $0, index: index).isEmpty } } ?? false,
                   eventCurrency: (try? job?.currentFee())?.currency,
                   photoSaved: expense.photo != nil,
-                  repeats: value.repeatsMonthly, seriesID: value.seriesID)
+                  repeats: value.repeatsMonthly, seriesID: value.seriesID, repeatDay: value.repeatDay)
     }
 
     static func state(_ expense: Expense, index: InvoiceIndex) -> ExpenseState {
@@ -111,7 +112,7 @@ struct FinishItem: Equatable, Identifiable {
         /// An unfinished receipt or Wallet capture.
         case draft(UUID)
         /// The next month of a repeating business cost, offered from its latest expense.
-        case repeatDue(template: UUID, day: String)
+        case repeatDue(template: UUID, day: String, repeatDay: Int)
     }
     let kind: Kind
     let title: String
@@ -120,7 +121,7 @@ struct FinishItem: Equatable, Identifiable {
     var id: String {
         switch kind {
         case .draft(let id): id.uuidString
-        case let .repeatDue(template, day): "\(template.uuidString)-\(day)"
+        case let .repeatDue(template, day, _): "\(template.uuidString)-\(day)"
         }
     }
     var actionTitle: String { if case .repeatDue = kind { "Add" } else { "Finish" } }
@@ -220,9 +221,13 @@ struct ExpensesMonth: Equatable {
                        rankDay: fact.day)
         }
         let series = Dictionary(grouping: facts.filter { $0.isBusiness && $0.seriesID != nil }, by: { $0.seriesID! })
-        for latest in series.values.compactMap({ $0.max { ($0.day, $0.created) < ($1.day, $1.created) } }) where latest.repeats {
-            guard let due = nextMonth(latest.day), due <= today else { continue }
-            items.append(FinishItem(kind: .repeatDue(template: latest.id, day: due),
+        // A series stops when its latest month is saved without "Repeats monthly"; turning it back on
+        // resumes from that month's anchor.
+        for members in series.values {
+            guard let latest = members.max(by: { ($0.day, $0.created) < ($1.day, $1.created) }), latest.repeats,
+                  let anchor = latest.repeatDay ?? legacyRepeatDay(latest, series: members),
+                  let due = nextMonth(latest.day, repeatDay: anchor), due <= today else { continue }
+            items.append(FinishItem(kind: .repeatDue(template: latest.id, day: due, repeatDay: anchor),
                                     title: [latest.title, latest.displayAmount].compactMap { $0 }.joined(separator: " · "),
                                     detail: "Due \(shortDay(due)) · Monthly", rankDay: due))
         }
@@ -233,11 +238,34 @@ struct ExpensesMonth: Equatable {
         Day.date(from: day)?.formatted(.dateTime.day().month(.abbreviated)) ?? day
     }
 
-    /// The same day next month, clamped to the month's last day.
-    static func nextMonth(_ day: String) -> String? {
-        guard let date = Day.date(from: day), let next = Calendar(identifier: .gregorian).date(byAdding: .month, value: 1, to: date) else { return nil }
-        return Day.string(from: next)
+    /// The anchor day next month, clamped to that month's last day. Computed from the anchor, not
+    /// from `day`, so Jan 31 → Feb 28 → Mar 31 rather than drifting to the 28th.
+    static func nextMonth(_ day: String, repeatDay: Int? = nil) -> String? {
+        guard let parts = Day.components(day), let year = parts.year, let month = parts.month,
+              let anchor = repeatDay ?? parts.day, (1...31).contains(anchor) else { return nil }
+        let next = String(format: "%04d-%02d-01", month == 12 ? year + 1 : year, month == 12 ? 1 : month + 1)
+        return String(next.prefix(8)) + String(format: "%02d", clamped(anchor, in: next))
     }
+
+    /// `anchor` limited to the length of the month containing `day`.
+    static func clamped(_ anchor: Int, in day: String) -> Int {
+        guard let first = Day.components(String(day.prefix(8)) + "01").flatMap({ utc.date(from: $0) }),
+              let length = utc.range(of: .day, in: .month, for: first)?.count else { return anchor }
+        return min(anchor, length)
+    }
+
+    /// Costs saved before anchors were kept: a latest month on its month's last day was probably
+    /// clamped, so the series' largest day is the intent. Already-drifted days are left as they are.
+    static func legacyRepeatDay(_ latest: ExpenseFact, series: [ExpenseFact]) -> Int? {
+        guard let day = Day.components(latest.day)?.day else { return nil }
+        guard clamped(31, in: latest.day) == day else { return day }
+        return series.compactMap { Day.components($0.day)?.day }.max().map { max($0, day) }
+    }
+
+    private static let utc: Calendar = {
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }()
 
     static func load(month: String, expenses: [Expense], context: NSManagedObjectContext, today: String = Day.string(from: Date())) -> ExpensesMonth {
         let index = InvoiceIndex(in: context)

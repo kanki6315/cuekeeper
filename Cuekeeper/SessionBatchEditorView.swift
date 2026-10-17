@@ -24,10 +24,11 @@ struct SessionBatchChange {
                 // Shift all timed fields together in the event timezone (DST included).
                 let zone = TimeZone.effective(session.eventTimeZoneID)
                 var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
-                guard let destination = Day.date(from: day, timeZone: zone) else { throw RecordError.invalid("Choose a valid date.") }
-                let source = session.startTime.map { calendar.startOfDay(for: $0) } ?? Day.date(from: session.day, timeZone: zone)
+                guard Day.components(day) != nil else { throw RecordError.invalid("Choose a valid date.") }
+                // Count civil days; a day without a midnight would otherwise shorten the move.
+                let source = session.startTime.map { Day.string(from: $0, timeZone: zone) } ?? (session.day.isEmpty ? nil : session.day)
                 if let source {
-                    let delta = calendar.dateComponents([.day], from: source, to: destination).day ?? 0
+                    let delta = Day.days(from: source, to: day) ?? 0
                     for key in ["startTime", "endTime", "callTime"] {
                         if let value = session.value(forKey: key) as? Date {
                             guard let shifted = calendar.date(byAdding: .day, value: delta, to: value) else { throw RecordError.invalid("Couldn’t move this session’s times.") }

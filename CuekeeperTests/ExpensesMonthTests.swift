@@ -80,15 +80,43 @@ final class ExpensesMonthTests: XCTestCase {
         XCTAssertEqual(items.map(\.actionTitle), ["Finish", "Add", "Finish"])
         XCTAssertEqual(items[0].title, "Expense to complete")
         XCTAssertEqual(items[1].title, "Midjourney · $30.00")
-        guard case let .repeatDue(_, day) = items[1].kind else { return XCTFail("Expected the due repeat") }
+        guard case let .repeatDue(_, day, _) = items[1].kind else { return XCTFail("Expected the due repeat") }
         XCTAssertEqual(day, "2026-10-14")
         XCTAssertTrue(items[2].detail.hasSuffix("No event yet"))
     }
 
-    func testNextMonthKeepsTheDayAndClampsShortMonths() {
+    func testMonthlyRepeatsKeepTheirAnchorThroughShortMonths() {
+        // Each step follows from the previous clamped month, as the Finish list does.
+        for (anchor, start, expected) in [
+            (31, "2026-01-31", ["2026-02-28", "2026-03-31", "2026-04-30", "2026-05-31"]),
+            (30, "2028-01-30", ["2028-02-29", "2028-03-30", "2028-04-30"]),
+            (29, "2027-01-29", ["2027-02-28", "2027-03-29"]),
+            (28, "2026-01-28", ["2026-02-28", "2026-03-28"]),
+            (31, "2026-11-30", ["2026-12-31", "2027-01-31", "2027-02-28"]),
+        ] {
+            var day = start
+            for next in expected { day = ExpensesMonth.nextMonth(day, repeatDay: anchor) ?? ""; XCTAssertEqual(day, next, "anchor \(anchor)") }
+        }
         XCTAssertEqual(ExpensesMonth.nextMonth("2026-10-14"), "2026-11-14")
-        XCTAssertEqual(ExpensesMonth.nextMonth("2026-01-31"), "2026-02-28")
-        XCTAssertEqual(ExpensesMonth.nextMonth("2026-12-05"), "2027-01-05")
+        XCTAssertNil(ExpensesMonth.nextMonth("2026-02-30"))
+
+        // Saving keeps the anchor on a clamped month, takes a moved date as the new anchor, and drops it when stopped.
+        var value = ExpenseValue(); value.repeatsMonthly = true; value.day = "2026-02-28"; value.repeatDay = 31
+        XCTAssertEqual(value.asBusiness(id: nil).repeatDay, 31)
+        value.day = "2026-02-20"; XCTAssertEqual(value.asBusiness(id: nil).repeatDay, 20)
+        value.repeatDay = nil; value.day = "2026-01-31"; XCTAssertEqual(value.asBusiness(id: nil).repeatDay, 31)
+        value.repeatsMonthly = false; XCTAssertNil(value.asBusiness(id: nil).repeatDay)
+
+        // Costs saved before anchors existed: Jan 31 → Feb 28 resumes on Mar 31; a mid-month day stays put.
+        let clamped = UUID(), plain = UUID()
+        let items = ExpensesMonth.finishItems([
+            fact("2026-01-31", "Hosting", 900, "USD", state: .business, repeats: true, series: clamped),
+            fact("2026-02-28", "Hosting", 900, "USD", state: .business, repeats: true, series: clamped),
+            fact("2026-03-14", "Fonts", 500, "USD", state: .business, repeats: true, series: plain),
+        ], today: "2026-04-30")
+        XCTAssertEqual(items.map(\.rankDay), ["2026-03-31", "2026-04-14"])
+        guard case let .repeatDue(_, _, anchor) = items[0].kind else { return XCTFail("Expected the due repeat") }
+        XCTAssertEqual(anchor, 31)
     }
 
     // MARK: Stored business costs

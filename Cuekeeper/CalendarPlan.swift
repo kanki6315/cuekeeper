@@ -29,12 +29,10 @@ struct CalendarPlan: Sendable {
             // Retire old grouped placeholders; every client event has its own job key.
             if let oldID = job.event?.id { knownKeys.insert("event/\(oldID.uuidString)") }
             let key = legacyKey
-            var calendar = Calendar(identifier: .gregorian)
             let zone = TimeZone.effective(job.eventTimeZoneID)
-            calendar.timeZone = zone
+            // The exclusive end is the start of the next civil day, which may not be midnight.
             if let start = Day.date(from: job.eventStartDay, timeZone: zone),
-               let last = Day.date(from: job.eventEndDay, timeZone: zone),
-               let end = calendar.date(byAdding: .day, value: 1, to: last) {
+               let end = Day.adding(days: 1, to: job.eventEndDay).flatMap({ Day.date(from: $0, timeZone: zone) }) {
                 bounds += [start, end]
                 if job.deletedAt == nil && job.bookingStatus != "cancelled" {
                     desired[key] = CalendarEntry(key: key, title: job.eventTitle + (job.client.map { " · " + $0.name } ?? ""), start: start, end: end, allDay: true,

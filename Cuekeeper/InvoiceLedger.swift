@@ -105,8 +105,7 @@ struct LedgerEntry: Identifiable, Equatable {
     }
 
     static func days(from start: String, to end: String) -> Int {
-        guard let start = Day.date(from: start), let end = Day.date(from: end) else { return 0 }
-        return Calendar.current.dateComponents([.day], from: start, to: end).day ?? 0
+        Day.days(from: start, to: end) ?? 0
     }
     static func short(_ day: String) -> String {
         Day.date(from: day)?.formatted(.dateTime.month(.abbreviated).day()) ?? day

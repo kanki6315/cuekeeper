@@ -178,9 +178,7 @@ struct InvoicesList<Header: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: "doc.text").font(.title).foregroundStyle(Color.accentColor).accessibilityHidden(true)
             Text("No invoices yet").font(.title3.bold()).accessibilityAddTraits(.isHeader)
-            Text("Every invoice you create shows up here, with what each client still owes and when it was paid. Payments you record straight on an event appear here too.")
-                .foregroundStyle(Color("SecondaryText"))
-            Text("Start one from a client that’s ready to invoice in Month, or with Invoice above.")
+            Text("Invoices and event payments land here, with what’s still owed.")
                 .foregroundStyle(Color("SecondaryText"))
             Button("Go to Month", action: onGoToMonth).buttonStyle(DaybookSecondaryButton())
                 .accessibilityIdentifier("ledger-go-to-month")

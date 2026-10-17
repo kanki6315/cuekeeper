@@ -156,6 +156,56 @@ final class ExpensesMonthTests: XCTestCase {
         XCTAssertEqual((try context.existingObject(with: nextID) as? Expense)?.value.seriesID, expense.id)
     }
 
+    func testBusinessDraftsReopenAsBusinessAndKeepRepeatSettings() async throws {
+        let context = try await context()
+        // A receipt photographed as a business cost is a business draft from the start.
+        let id = try await Expense.capturePhoto(Data([1, 2, 3]), jobID: nil, in: context)
+        let expense = try XCTUnwrap(context.existingObject(with: id) as? Expense)
+        XCTAssertTrue(expense.isDraft); XCTAssertTrue(expense.isBusiness)
+        var value = ExpenseValue(merchant: "Claude Pro", day: "2026-10-31", amount: "20.00", currency: "USD", category: "Software", reimbursable: true)
+        value.repeatsMonthly = true
+        try Expense.save(value, id: id, revision: expense.revision, confirmed: false, business: true, in: context)
+        XCTAssertTrue(expense.isDraft); XCTAssertNil(expense.job); XCTAssertEqual(expense.photo, Data([1, 2, 3]))
+        XCTAssertTrue(expense.isBusiness, "A business draft reopens with Business selected")
+        XCTAssertEqual(expense.value.business, true); XCTAssertTrue(expense.value.repeatsMonthly)
+        XCTAssertEqual(expense.value.repeatDay, 31); XCTAssertEqual(expense.value.seriesID, expense.id)
+        XCTAssertFalse(expense.value.reimbursable)
+        XCTAssertEqual(ExpenseFact(expense: expense, index: InvoiceIndex(in: context))?.state, .toFinish)
+        // Keeping the draft again leaves purpose and repeat settings as they were.
+        try Expense.save(expense.value.editingAmounts(), id: id, revision: expense.revision, confirmed: false, business: true, in: context)
+        XCTAssertTrue(expense.isBusiness); XCTAssertTrue(expense.value.repeatsMonthly); XCTAssertEqual(expense.value.repeatDay, 31)
+        // Completing it needs no event.
+        try Expense.save(expense.value.editingAmounts(), id: id, revision: expense.revision, business: true, in: context)
+        XCTAssertFalse(expense.isDraft); XCTAssertTrue(expense.isBusiness)
+        XCTAssertEqual(ExpenseFact(expense: expense, index: InvoiceIndex(in: context))?.state, .business)
+        XCTAssertTrue(expense.value.repeatsMonthly)
+
+        // An event draft stays an event receipt.
+        let jobID = try JobDraft(name: "Weekend").save(in: context)
+        let eventID = try Expense.capture(Data([4]), jobID: jobID, in: context)
+        let event = try XCTUnwrap(context.existingObject(with: eventID) as? Expense)
+        XCTAssertFalse(event.isBusiness)
+        try Expense.save(ExpenseValue(merchant: "Garage"), id: eventID, revision: event.revision, confirmed: false, jobID: jobID, in: context)
+        XCTAssertTrue(event.isDraft); XCTAssertEqual(event.job?.objectID, jobID); XCTAssertFalse(event.isBusiness); XCTAssertNil(event.value.business)
+    }
+
+    func testUnassignedWalletDraftIsNotABusinessCostUntilChosen() async throws {
+        let context = try await context()
+        let capture = try Expense.captureBackground(ExpenseCaptureInput(merchant: "Shop", amount: "12.00", currency: "USD"), in: context)
+        let expense = try XCTUnwrap(context.existingObject(with: capture.objectID) as? Expense)
+        XCTAssertTrue(expense.isDraft); XCTAssertNil(expense.job); XCTAssertFalse(expense.isBusiness)
+        // Kept as a draft with "An event" selected but no event chosen: still unassigned.
+        try Expense.save(expense.value, id: capture.objectID, revision: expense.revision, confirmed: false, in: context)
+        XCTAssertFalse(expense.isBusiness); XCTAssertNil(expense.value.business); XCTAssertNotNil(expense.value.capture)
+        // Chosen as Business and kept as a draft.
+        var value = expense.value; value.repeatsMonthly = true
+        try Expense.save(value, id: capture.objectID, revision: expense.revision, confirmed: false, business: true, in: context)
+        XCTAssertTrue(expense.isBusiness); XCTAssertTrue(expense.value.repeatsMonthly); XCTAssertNotNil(expense.value.capture)
+        // Switched back without an event: unassigned again, and event receipts don't repeat.
+        try Expense.save(expense.value, id: capture.objectID, revision: expense.revision, confirmed: false, in: context)
+        XCTAssertFalse(expense.isBusiness); XCTAssertNil(expense.value.business); XCTAssertFalse(expense.value.repeatsMonthly)
+    }
+
     func testEventReceiptCanBecomeABusinessCost() async throws {
         let context = try await context()
         let jobID = try JobDraft(name: "Weekend").save(in: context)

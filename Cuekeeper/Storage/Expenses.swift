@@ -22,6 +22,9 @@ struct ExpenseValue: Codable, Equatable {
     /// The day of the month a repeating cost falls on (1–31). Short months clamp to their last day
     /// without changing it, so 31 means "month end". Nil on costs saved before this was kept.
     var repeatDay: Int?
+    /// True once someone chooses Business for this cost, even while it is still a draft, so a business receipt
+    /// reopens as one. Nil for event receipts and for Wallet captures nobody has assigned yet.
+    var business: Bool?
     /// Formatted only when the amount is valid for a supported currency, so a bad value is never shown as zero.
     static func displayAmount(_ amount: String, currency: String) -> String? {
         guard currencies.contains(currency), let value = try? Money.parse(amount, currency: currency) else { return nil }
@@ -88,7 +91,8 @@ final class Expense: NSManagedObject, Identifiable {
         let record = Expense(context: writer)
         record.id = UUID(); record.createdAt = Date(); record.updatedAt = Date(); record.revision = UUID().uuidString
         record.photo = photo; record.job = job; record.isDraft = true
-        record.valueJSON = String(decoding: try JSONEncoder().encode(ExpenseValue()), as: UTF8.self)
+        // A photo captured without an event is a business receipt from the start.
+        record.valueJSON = String(decoding: try JSONEncoder().encode(ExpenseValue(business: job == nil ? true : nil)), as: UTF8.self)
         try writer.save()
         return record.objectID
     }
@@ -203,8 +207,13 @@ extension Expense {
         try writer.save(); context.refreshAllObjects()
     }
     var needsCompletion: Bool { isDraft && !value.discarded && job?.deletedAt == nil }
-    /// A finished cost that belongs to no event, such as a software subscription.
-    var isBusiness: Bool { !isDraft && job == nil && !value.discarded }
+    /// A cost that belongs to no event, such as a software subscription: finished, or a draft someone marked as business.
+    /// Unassigned Wallet drafts are not business costs until someone chooses so.
+    var isBusiness: Bool {
+        guard job == nil else { return false }
+        let value = value
+        return !value.discarded && (!isDraft || value.business == true)
+    }
     /// Saves a business cost entered without a receipt photo, such as the next month of a subscription.
     static func createBusiness(_ value: ExpenseValue, in context: NSManagedObjectContext) throws -> NSManagedObjectID {
         let value = try value.storingAmounts()
@@ -240,7 +249,7 @@ extension ExpenseValue {
     /// Business costs are never rebilled; a repeating one joins (or starts) its series.
     func asBusiness(id: UUID?) -> ExpenseValue {
         var value = self
-        value.reimbursable = false
+        value.reimbursable = false; value.business = true
         if value.repeatsMonthly {
             value.seriesID = value.seriesID ?? id ?? UUID()
             // Keep the anchor while this month's date is the anchor's clamped day. A date the user
@@ -270,10 +279,10 @@ extension ExpenseValue {
         if let tax = try? Money.parse(tax, currency: currency) { value.tax = Money.inputText(tax, currency: currency, locale: locale) }
         return value
     }
-    /// Event receipts don't repeat.
+    /// Event receipts don't repeat. A draft taken off Business without an event becomes unassigned again.
     var asEventReceipt: ExpenseValue {
         var value = self
-        value.repeatsMonthly = false
+        value.repeatsMonthly = false; value.business = nil
         return value
     }
     /// Preserve entered/payment values. Conflicting receipt facts require explicit acceptance.

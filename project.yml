@@ -38,6 +38,14 @@ targets:
       - path: Shared
       - path: CuekeeperWidgets/CuekeeperWidgets.swift
       - path: design/brand/Cuekeeper.icon
+      - path: design/brand/CuekeeperIndigo.icon
+      - path: design/brand/CuekeeperPurple.icon
+      - path: design/brand/CuekeeperMagenta.icon
+      - path: design/brand/CuekeeperAmber.icon
+      - path: design/brand/CuekeeperInk.icon
+      - path: design/brand/CuekeeperOlive.icon
+      - path: design/brand/CuekeeperEspresso.icon
+      - path: design/brand/CuekeeperGraphite.icon
     entitlements:
       path: Cuekeeper/Cuekeeper.entitlements
       properties:
@@ -80,6 +88,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.cuekeeper
         ASSETCATALOG_COMPILER_APPICON_NAME: Cuekeeper
+        # Theme icons; ThemeStore.choose switches to the selected theme's icon.
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: CuekeeperIndigo CuekeeperPurple CuekeeperMagenta CuekeeperAmber CuekeeperOlive CuekeeperEspresso CuekeeperInk CuekeeperGraphite
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_MACCATALYST: NO
     dependencies:
@@ -179,7 +189,7 @@ schemes:
         - name: CuekeeperUITests
           parallelizable: true
           # The system Files picker runs out of process and drops taps on clones.
-          skippedTests: [DesignCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests, BackupFilePickerTests]
+          skippedTests: [DesignCaptureTests, ThemeCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests, BackupFilePickerTests]
       gatherCoverageData: true
   Cuekeeper - Design Capture:
     build:
@@ -189,7 +199,7 @@ schemes:
       targets:
         - name: CuekeeperUITests
           parallelizable: true
-          selectedTests: [DesignCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests]
+          selectedTests: [DesignCaptureTests, DesignSupplementTests, EventCaptureTests, TodayCaptureTests, ThemeCaptureTests]
   Cuekeeper - System Pickers:
     build:
       targets:

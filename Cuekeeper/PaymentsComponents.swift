@@ -17,8 +17,8 @@ struct Presented<Object: NSManagedObject>: Identifiable {
 extension GateState {
     var fill: Color {
         switch self {
-        case .done: Color.accentColor
-        case .missing: Color.orange
+        case .done: Color.theme.positive
+        case .missing: Color.theme.attention
         case .notYet: Color.primary.opacity(0.15)
         }
     }
@@ -34,10 +34,10 @@ extension GateState {
 extension MoneyBucket {
     var fill: Color {
         switch self {
-        case .paid: Color.accentColor
-        case .invoiced: Color.accentColor.opacity(0.55)
-        case .ready: Color("BookingCompleted")
-        case .heldUp: Color.orange
+        case .paid: Color.theme.positive
+        case .invoiced: Color.theme.positive.opacity(0.55)
+        case .ready: Color.theme.completed
+        case .heldUp: Color.theme.attention
         case .toHappen: Color.primary.opacity(0.12)
         }
     }
@@ -72,9 +72,9 @@ struct MonthStepper: View {
                 Text(Self.title(month)).font(inline ? .title2.bold() : .title3.bold())
                     .accessibilityIdentifier("payments-month")
                 HStack(spacing: 6) {
-                    Text(eventCount == 1 ? "1 \(noun.one)" : "\(eventCount) \(noun.many)").foregroundStyle(Color("SecondaryText"))
+                    Text(eventCount == 1 ? "1 \(noun.one)" : "\(eventCount) \(noun.many)").foregroundStyle(Color.theme.secondaryText)
                     if month != PaymentsView.currentMonth {
-                        Text("·").foregroundStyle(Color("SecondaryText"))
+                        Text("·").foregroundStyle(Color.theme.secondaryText)
                         // Tap area grows to 44pt without pushing the stepper taller.
                         Button("This month") { month = PaymentsView.currentMonth }.fontWeight(.semibold)
                             .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
@@ -102,7 +102,7 @@ struct MonthMoneyPanel: View {
             ForEach(currencies) { currency in
                 VStack(alignment: .leading, spacing: 7) {
                     let total = Text(Money.format(currency.total, currency: currency.currency)).monospacedDigit()
-                        + Text(currency.unknownFees > 0 ? " + \(currency.unknownFees) \(currency.unknownFees == 1 ? "fee" : "fees") to agree" : "").foregroundStyle(Color("SecondaryText"))
+                        + Text(currency.unknownFees > 0 ? " + \(currency.unknownFees) \(currency.unknownFees == 1 ? "fee" : "fees") to agree" : "").foregroundStyle(Color.theme.secondaryText)
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(currency.currency).fontWeight(.semibold)
@@ -202,7 +202,7 @@ struct StepBarKey: View {
             VStack(alignment: .leading, spacing: 6) {
                 StepBar(gates: sample)
                 Text("Left to right: fee, client, work, receipts. Green is done, orange is missing, grey is not yet.")
-                    .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                    .font(.footnote).foregroundStyle(Color.theme.secondaryText)
             }
         } else { columns }
     }
@@ -212,7 +212,7 @@ struct StepBarKey: View {
             HStack(alignment: .bottom, spacing: 3) {
                 ForEach(ReadinessGate.allCases, id: \.self) { gate in
                     VStack(spacing: 2) {
-                        Text(gate.label).font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(gate.label).font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).lineLimit(1).minimumScaleFactor(0.8)
                         RoundedRectangle(cornerRadius: 2).fill(sample[gate]!.fill).frame(height: 6)
                     }
                     .frame(width: column)
@@ -222,7 +222,7 @@ struct StepBarKey: View {
                 ForEach([GateState.done, .missing, .notYet], id: \.spoken) { state in
                     HStack(spacing: 5) {
                         RoundedRectangle(cornerRadius: 2).fill(state.fill).frame(width: 12, height: 6)
-                        Text(state.spoken.capitalizedFirst).font(.caption).foregroundStyle(Color("SecondaryText"))
+                        Text(state.spoken.capitalizedFirst).font(.caption).foregroundStyle(Color.theme.secondaryText)
                     }
                 }
             }
@@ -237,9 +237,9 @@ struct StepBarKey: View {
 
 enum ReadinessText {
     static func status(_ event: EventReadiness) -> Text {
-        let secondary = Color("SecondaryText"), amber = Color("AmberText")
+        let secondary = Color.theme.secondaryText, amber = Color.theme.caution
         switch event.state {
-        case .ready: return Text("Ready to invoice").foregroundStyle(Color.accentColor).fontWeight(.semibold)
+        case .ready: return Text("Ready to invoice").foregroundStyle(Color.theme.accent).fontWeight(.semibold)
         case .heldUp, .upcoming:
             var text = Text(event.gaps.map(\.text).joined(separator: " · ")).foregroundStyle(amber).fontWeight(.semibold)
             if event.state == .upcoming {
@@ -249,14 +249,14 @@ enum ReadinessText {
                 else if let when { text = text + Text(" · " + when).foregroundStyle(secondary) }
             }
             return text
-        case let .paid(reference): return Text(reference.isEmpty ? "Paid" : "Paid · \(reference)").foregroundStyle(Color.accentColor).fontWeight(.semibold)
+        case let .paid(reference): return Text(reference.isEmpty ? "Paid" : "Paid · \(reference)").foregroundStyle(Color.theme.positive).fontWeight(.semibold)
         case let .invoiced(reference, balance, currency, dueDay):
             let owed = "\(reference.isEmpty ? "Invoice" : reference) · \(Money.format(balance, currency: currency)) owed"
             let today = Day.string(from: Date())
-            if !dueDay.isEmpty && dueDay < today { return Text(owed + " · overdue").foregroundStyle(Color("BookingCancelled")).fontWeight(.semibold) }
+            if !dueDay.isEmpty && dueDay < today { return Text(owed + " · overdue").foregroundStyle(Color.theme.cancelled).fontWeight(.semibold) }
             return Text(owed).foregroundStyle(secondary) + Text(dueDay.isEmpty ? "" : " · due " + shortDay(dueDay)).foregroundStyle(secondary)
         case .draft: return Text("On draft invoice · not sent").foregroundStyle(secondary)
-        case .directPaid: return Text("Paid directly").foregroundStyle(Color.accentColor).fontWeight(.semibold)
+        case .directPaid: return Text("Paid directly").foregroundStyle(Color.theme.positive).fontWeight(.semibold)
         case let .directPartial(received, remaining, currency):
             let rest = remaining.map { "\(Money.format($0, currency: currency)) to collect" } ?? "fee to agree"
             return Text("\(Money.format(received, currency: currency)) received directly · \(rest)").foregroundStyle(amber).fontWeight(.semibold)
@@ -273,13 +273,13 @@ struct EventReadinessRow: View {
     var showsClient = false
     var body: some View {
         let amount = Text(event.amount.flatMap { amount in event.currency.map { Money.format(amount, currency: $0) } } ?? "—")
-            .monospacedDigit().foregroundStyle(event.amount == nil ? Color("SecondaryText") : .primary)
+            .monospacedDigit().foregroundStyle(event.amount == nil ? Color.theme.secondaryText : .primary)
         HStack(alignment: .center, spacing: 12) {
             if !typeSize.isAccessibilitySize { DaybookDateRail(day: event.facts.startDay) }
             VStack(alignment: .leading, spacing: 6) {
                 if typeSize.isAccessibilitySize {
                     Text(event.facts.title).foregroundStyle(.primary)
-                    Text(shortDay(event.facts.startDay)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    Text(shortDay(event.facts.startDay)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     amount
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -288,7 +288,7 @@ struct EventReadinessRow: View {
                         amount
                     }
                 }
-                if showsClient, let name = event.facts.clientName { Text(name).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                if showsClient, let name = event.facts.clientName { Text(name).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
                 if typeSize.isAccessibilitySize {
                     if event.showsGates { StepBar(gates: event.gates) }
                     ReadinessText.status(event).font(.footnote)
@@ -325,10 +325,10 @@ struct ClientGroupHeader: View {
                     if group.detailsMissing.isEmpty {
                         let terms = "\(group.termsDays ?? 0)-day terms"
                         Text(group.ready.isEmpty ? "Details complete · \(terms)" : "\(group.ready.count) ready · \(terms)")
-                            .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     } else {
                         Text(ListFormatter.localizedString(byJoining: group.detailsMissing).capitalizedFirst + " missing")
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(Color("AmberText"))
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.caution)
                     }
                 }
             }
@@ -368,16 +368,16 @@ struct OpenInvoiceRow: View {
                 Text(Money.format(draft ? total : balance, currency: currency)).fontWeight(.semibold).monospacedDigit()
             }
             Group {
-                if draft { Text("Draft · not sent").foregroundStyle(Color("SecondaryText")) }
+                if draft { Text("Draft · not sent").foregroundStyle(Color.theme.secondaryText) }
                 else if !dueDay.isEmpty && dueDay < today {
                     let days = Day.days(from: dueDay, to: today) ?? 0
-                    Text(days == 1 ? "1 day late" : "\(days) days late").fontWeight(.semibold).foregroundStyle(Color("BookingCancelled"))
-                } else if dueDay == today { Text("Due today").fontWeight(.semibold).foregroundStyle(Color("AmberText")) }
-                else if !dueDay.isEmpty { Text("Due \(shortDay(dueDay))").foregroundStyle(Color("SecondaryText")) }
-                else { Text("No due date").foregroundStyle(Color("SecondaryText")) }
+                    Text(days == 1 ? "1 day late" : "\(days) days late").fontWeight(.semibold).foregroundStyle(Color.theme.cancelled)
+                } else if dueDay == today { Text("Due today").fontWeight(.semibold).foregroundStyle(Color.theme.caution) }
+                else if !dueDay.isEmpty { Text("Due \(shortDay(dueDay))").foregroundStyle(Color.theme.secondaryText) }
+                else { Text("No due date").foregroundStyle(Color.theme.secondaryText) }
             }.font(.subheadline)
             if paid > 0 && !draft {
-                Text("\(Money.format(paid, currency: currency)) of \(Money.format(total, currency: currency)) received").font(.footnote).foregroundStyle(Color("SecondaryText")).monospacedDigit()
+                Text("\(Money.format(paid, currency: currency)) of \(Money.format(total, currency: currency)) received").font(.footnote).foregroundStyle(Color.theme.secondaryText).monospacedDigit()
             }
         }
         .frame(minHeight: 44)
@@ -394,7 +394,7 @@ struct WidePanel<Content: View>: View {
         VStack(alignment: .leading, spacing: 0) { content }
             .padding(padded ? 16 : 0)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 12))
+            .background(Color.theme.surface, in: RoundedRectangle(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(contrast == .increased ? 0.45 : 0.16), lineWidth: 0.5) }
     }
 }
@@ -416,7 +416,7 @@ struct MonthLedgerTable: View {
                     Text("Amount").gridColumnAlignment(.trailing)
                     Text("State")
                 }
-                .font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                .font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
                 .padding(.vertical, 10)
                 ForEach(groups) { group in
                     Divider()
@@ -425,7 +425,7 @@ struct MonthLedgerTable: View {
                             .gridCellColumns(7)
                     }
                     .padding(.vertical, 8)
-                    .background(Color.accentColor.opacity(0.04))
+                    .background(Color.theme.accent.opacity(0.04))
                     ForEach(group.events) { event in
                         Divider()
                         row(event)
@@ -451,7 +451,7 @@ struct MonthLedgerTable: View {
             ForEach(ReadinessGate.allCases, id: \.self) { gate in
                 Group {
                     if event.showsGates { GateGlyph(state: event.gates[gate] ?? .notYet) }
-                    else { Text("—").foregroundStyle(Color("SecondaryText")) }
+                    else { Text("—").foregroundStyle(Color.theme.secondaryText) }
                 }
                 .frame(minWidth: 48)
                 .accessibilityLabel("\(gate.label) \(event.showsGates ? (event.gates[gate] ?? .notYet).spoken : "not applicable")")
@@ -465,7 +465,7 @@ struct MonthLedgerTable: View {
     private func eventLabel(_ event: EventReadiness) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(event.facts.title).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
-            Text(shortDay(event.facts.startDay)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Text(shortDay(event.facts.startDay)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
         }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(minHeight: 44)
@@ -478,9 +478,9 @@ struct GateGlyph: View {
     var body: some View {
         Group {
             switch state {
-            case .done: Circle().fill(Color.accentColor).frame(width: 11, height: 11)
-            case .missing: Circle().fill(Color.orange).frame(width: 11, height: 11)
-            case .notYet: Circle().strokeBorder(Color("SecondaryText"), lineWidth: 1.5).frame(width: 10, height: 10)
+            case .done: Circle().fill(Color.theme.positive).frame(width: 11, height: 11)
+            case .missing: Circle().fill(Color.theme.attention).frame(width: 11, height: 11)
+            case .notYet: Circle().strokeBorder(Color.theme.secondaryText, lineWidth: 1.5).frame(width: 10, height: 10)
             }
         }
     }
@@ -503,9 +503,9 @@ struct InvoicingFieldRow: View {
     var body: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: text.isEmpty && axis == .vertical ? .center : .firstTextBaseline, spacing: 12))
         layout {
-            Text(label).foregroundStyle(missing ? Color("AmberText") : Color("SecondaryText")).fontWeight(missing ? .semibold : .regular)
+            Text(label).foregroundStyle(missing ? Color.theme.caution : Color.theme.secondaryText).fontWeight(missing ? .semibold : .regular)
                 .frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
-            TextField(label, text: $text, prompt: Text(prompt).foregroundStyle(Color("SecondaryText")), axis: axis)
+            TextField(label, text: $text, prompt: Text(prompt).foregroundStyle(Color.theme.secondaryText), axis: axis)
                 .keyboardType(keyboard)
                 .textInputAutocapitalization(keyboard == .emailAddress ? .never : .sentences)
                 .autocorrectionDisabled(keyboard == .emailAddress)
@@ -570,7 +570,7 @@ struct ClientInvoicingEditor: View {
             .interactiveDismissDisabled(draft != initial)
         }
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 }
 
@@ -606,11 +606,11 @@ struct ReadinessSheet: View {
             DaybookForm(topPadding: 8) {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text([job.eventDateDescription, job.client?.name].compactMap { $0 }.joined(separator: " · ")).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text([job.eventDateDescription, job.client?.name].compactMap { $0 }.joined(separator: " · ")).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         Text(job.displayName).font(.title2.bold())
                         HStack(spacing: 10) {
                             StepBar(gates: event.gates)
-                            Text("\(doneCount) of 4 ready").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            Text("\(doneCount) of 4 ready").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         }
                     }
                 }.containerValue(\.daybookUnframed, true)
@@ -654,19 +654,19 @@ struct ReadinessSheet: View {
             }
         }
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 
     @ViewBuilder private func gateRow(_ gate: ReadinessGate, event: EventReadiness) -> some View {
         let state = event.gates[gate] ?? .notYet
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: state == .done ? "checkmark.circle.fill" : state == .missing ? "exclamationmark.circle.fill" : "circle.dashed")
-                .font(.title3).foregroundStyle(state == .done ? Color.accentColor : state == .missing ? Color.orange : Color("SecondaryText"))
+                .font(.title3).foregroundStyle(state == .done ? Color.theme.positive : state == .missing ? Color.theme.attention : Color.theme.secondaryText)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title(gate)).fontWeight(state == .missing ? .semibold : .regular)
                 Text(detail(gate, state: state, event: event)).font(.subheadline)
-                    .foregroundStyle(state == .missing ? Color("AmberText") : Color("SecondaryText"))
+                    .foregroundStyle(state == .missing ? Color.theme.caution : Color.theme.secondaryText)
             }
             Spacer(minLength: 8)
             if state == .missing { action(gate, event: event) }
@@ -681,7 +681,7 @@ struct ReadinessSheet: View {
                         Text(expense.value.merchant.isEmpty ? "Receipt" : expense.value.merchant)
                         Spacer()
                         Text(ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) ?? "Amount to confirm").monospacedDigit()
-                        Text("Finish").fontWeight(.semibold).foregroundStyle(Color.accentColor)
+                        Text("Finish").fontWeight(.semibold).foregroundStyle(Color.theme.accent)
                     }.frame(minHeight: 44).contentShape(Rectangle())
                 }.buttonStyle(.plain).padding(.leading, 36)
             }

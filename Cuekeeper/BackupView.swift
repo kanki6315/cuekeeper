@@ -119,24 +119,24 @@ struct BackupView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     if !cloudAvailable {
                         Text("iCloud backups are off").font(.title3.weight(.semibold))
-                        Text("Export a copy to Files instead.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text("Export a copy to Files instead.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     } else if !loaded {
-                        Text("Checking iCloud…").font(.title3.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                        Text("Checking iCloud…").font(.title3.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
                     } else if let latest, let date = latest.date {
-                        Text("Last backup").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text("Last backup").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         Text(Self.relative.string(from: date)).font(.title3.weight(.semibold))
-                        Text(latest.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text(latest.details).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     } else {
                         Text("No backups yet").font(.title3.weight(.semibold))
-                        Text("Keep a copy of your daybook in iCloud.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text("Keep a copy of your daybook in iCloud.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     }
                     if let reason = persistence.syncActivity.restoreUnavailableReason {
-                        Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
+                        Text(reason).font(.subheadline).foregroundStyle(Color.theme.secondaryText).padding(.top, 4)
                     }
                     if let issue = persistence.identityIssue {
                         NavigationLink { IdentityReviewView() } label: {
                             Label { Text(issue + " Review") } icon: { Image(systemName: "exclamationmark.triangle") }
-                                .font(.subheadline).foregroundStyle(Color("AmberText")).padding(.top, 4)
+                                .font(.subheadline).foregroundStyle(Color.theme.caution).padding(.top, 4)
                         }
                         .accessibilityIdentifier("identity-review")
                     }
@@ -193,7 +193,7 @@ struct BackupView: View {
                     Text("In iCloud")
                     Spacer()
                     Text("\(entries.count) of \(CloudBackupStore.maximumBackups)")
-                        .font(.subheadline).monospacedDigit().foregroundStyle(Color("SecondaryText"))
+                        .font(.subheadline).monospacedDigit().foregroundStyle(Color.theme.secondaryText)
                         .accessibilityLabel("\(entries.count) of \(CloudBackupStore.maximumBackups) backups")
                 }
             }
@@ -203,8 +203,8 @@ struct BackupView: View {
     /// Keeps the list column occupied on wide layouts; the status panel already names the empty state.
     private var emptyList: some View {
         VStack(spacing: 8) {
-            Image(systemName: "icloud").font(.title2).foregroundStyle(Color("SecondaryText"))
-            Text("Your iCloud backups will appear here.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Image(systemName: "icloud").font(.title2).foregroundStyle(Color.theme.secondaryText)
+            Text("Your iCloud backups will appear here.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
         }
         .frame(maxWidth: .infinity, minHeight: 180)
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [4, 4])) }
@@ -224,7 +224,7 @@ struct BackupView: View {
     private func summary(_ entry: CloudBackupStore.Entry) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(Self.rowTitle(entry)).font(.subheadline.weight(.semibold)).monospacedDigit()
-            Text(entry.details).font(.footnote).foregroundStyle(entry.canRestore ? Color("SecondaryText") : Color("AmberText"))
+            Text(entry.details).font(.footnote).foregroundStyle(entry.canRestore ? Color.theme.secondaryText : Color.theme.caution)
         }
         .accessibilityElement(children: .combine)
     }
@@ -232,7 +232,7 @@ struct BackupView: View {
     @ViewBuilder private func actions(_ entry: CloudBackupStore.Entry) -> some View {
         Button("Restore") { restore(entry) }
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Color.theme.accent)
             .buttonStyle(.glass).buttonBorderShape(.capsule)
             .frame(minHeight: 44)
             .disabled(workflow.busy || !entry.canRestore)
@@ -240,7 +240,7 @@ struct BackupView: View {
         Menu {
             Button("Delete Backup", systemImage: "trash", role: .destructive) { deleting = entry; confirmDelete = true }
         } label: {
-            Image(systemName: "ellipsis").foregroundStyle(Color("SecondaryText"))
+            Image(systemName: "ellipsis").foregroundStyle(Color.theme.secondaryText)
                 .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
         }
         .disabled(workflow.busy)
@@ -352,10 +352,10 @@ struct BackupInfoView: View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.subheadline.weight(.semibold))
-                Text(text).font(.subheadline).foregroundStyle(Color("SecondaryText")).fixedSize(horizontal: false, vertical: true)
+                Text(text).font(.subheadline).foregroundStyle(Color.theme.secondaryText).fixedSize(horizontal: false, vertical: true)
             }
         } icon: {
-            Image(systemName: symbol).foregroundStyle(Color.accentColor).frame(width: iconWidth)
+            Image(systemName: symbol).foregroundStyle(Color.theme.accent).frame(width: iconWidth)
         }
         .padding(.vertical, 12)
         .accessibilityElement(children: .combine)
@@ -400,7 +400,7 @@ struct IdentityReviewView: View {
             Section {
                 if conflicts.isEmpty {
                     Text("Nothing to review. Copies that match are combined automatically.")
-                        .foregroundStyle(Color("SecondaryText"))
+                        .foregroundStyle(Color.theme.secondaryText)
                 }
                 ForEach(conflicts) { conflict in
                     DaybookLink {
@@ -408,7 +408,7 @@ struct IdentityReviewView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(ConflictText.title(conflict.copies.first.flatMap { try? context.existingObject(with: $0) })).font(.headline)
-                            Text(ConflictText.summary(conflict, in: context)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            Text(ConflictText.summary(conflict, in: context)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         }
                     }
                     .accessibilityIdentifier("identity-conflict")
@@ -504,11 +504,11 @@ private struct IdentityConflictView: View {
                             radio(kept == copy.objectID)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(summary.headline).font(.title2.bold()).monospacedDigit()
-                                Text(summary.detail).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                                Text(summary.detail).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                                 if let after = summary.after {
                                     Divider().padding(.vertical, 4)
                                     HStack {
-                                        Text(after.label).foregroundStyle(Color("SecondaryText"))
+                                        Text(after.label).foregroundStyle(Color.theme.secondaryText)
                                         Spacer()
                                         Text(after.value).fontWeight(.semibold).monospacedDigit()
                                     }.font(.subheadline)
@@ -524,9 +524,9 @@ private struct IdentityConflictView: View {
             }
             Section {
                 Label("Check your records first. The copy you don’t keep is removed from all your devices and can’t be recovered from Recently Deleted.", systemImage: "exclamationmark.triangle")
-                    .font(.subheadline).foregroundStyle(Color("AmberText"))
+                    .font(.subheadline).foregroundStyle(Color.theme.caution)
                     .padding(12)
-                    .background(Color.orange.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color.theme.attention.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
             }
             .containerValue(\.daybookUnframed, true)
         }
@@ -542,7 +542,7 @@ private struct IdentityConflictView: View {
 
     private func radio(_ selected: Bool) -> some View {
         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-            .font(.title3).foregroundStyle(selected ? Color.accentColor : Color("SecondaryText"))
+            .font(.title3).foregroundStyle(selected ? Color.theme.accent : Color.theme.secondaryText)
             .accessibilityHidden(true)
     }
 
@@ -551,7 +551,7 @@ private struct IdentityConflictView: View {
             HStack(spacing: 12) {
                 radio(selected)
                 Text(value).foregroundStyle(Color.primary).frame(maxWidth: .infinity, alignment: .leading)
-                Text(source).font(.caption).foregroundStyle(Color("SecondaryText"))
+                Text(source).font(.caption).foregroundStyle(Color.theme.secondaryText)
             }
             .frame(minHeight: 32).contentShape(Rectangle())
         }
@@ -566,12 +566,12 @@ private struct IdentityConflictView: View {
                 .buttonStyle(DaybookPrimaryButton())
                 .accessibilityIdentifier("resolve-conflict")
             Button("Decide later") { dismiss() }
-                .frame(minHeight: 44).foregroundStyle(Color.accentColor)
+                .frame(minHeight: 44).foregroundStyle(Color.theme.accent)
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 6)
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
-        .background(Color("PageBackground"))
+        .background(Color.theme.page)
     }
 
     private func save(_ choice: IdentityReconciliation.Choice?) {

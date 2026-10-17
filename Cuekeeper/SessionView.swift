@@ -30,7 +30,7 @@ struct SessionEditorView: View {
     var body: some View {
         NavigationStack {
             DaybookForm {
-                if savedCount > 0 { Section { Text("\(savedCount) saved. Ready for the next session.").foregroundStyle(Color("SecondaryText")) } }
+                if savedCount > 0 { Section { Text("\(savedCount) saved. Ready for the next session.").foregroundStyle(Color.theme.secondaryText) } }
                 Section("Client & series") {
                     Text(job.client?.name ?? "Client to add")
                     NamedLibraryField(kind: .series, name: $draft.seriesName)
@@ -69,8 +69,8 @@ struct SessionEditorView: View {
                         ForEach(Array(Set(roles.map(\.name))).sorted(), id: \.self) { role in
                             Toggle(role, isOn: Binding(get: { draft.roleNames.contains(role) }, set: { if $0 { draft.roleNames.insert(role) } else { draft.roleNames.remove(role) } }))
                         }
-                        if roles.isEmpty { Text("Add reusable roles in Settings or in the booking editor.").foregroundStyle(Color("SecondaryText")) }
-                    } else { Text(job.roleNames.isEmpty ? "No booking roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(Color("SecondaryText")) }
+                        if roles.isEmpty { Text("Add reusable roles in Settings or in the booking editor.").foregroundStyle(Color.theme.secondaryText) }
+                    } else { Text(job.roleNames.isEmpty ? "No booking roles selected" : job.roleNames.joined(separator: ", ")).foregroundStyle(Color.theme.secondaryText) }
                 }
                 Section("Notes") { DaybookTextField("Session notes", text: $draft.notes, axis: .vertical).lineLimit(3...8) }
                 }
@@ -99,7 +99,7 @@ struct SessionEditorView: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
     private func save(another: Bool) {
         do {
@@ -132,7 +132,7 @@ struct SessionsSection: View {
     }
     var body: some View {
         Section {
-            if sessions.isEmpty { Text("Schedule to come").foregroundStyle(Color("SecondaryText")) }
+            if sessions.isEmpty { Text("Schedule to come").foregroundStyle(Color.theme.secondaryText) }
             ForEach(sessions, id: \.objectID) { session in
                 DaybookLink { SessionDetailView(session: session) } label: { EventScheduleRow(session: session) }
             }
@@ -150,8 +150,8 @@ struct SessionRow: View {
             Text(session.title).font(.headline)
             if !session.effectiveSeriesNames.isEmpty { Text(session.effectiveSeriesNames.joined(separator: ", ")).font(.subheadline) }
             DaybookMetadata(symbol: "clock", text: session.compactSchedule)
-            if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-            HStack { BookingBadge(status: session.scheduleStatus); Text(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized).font(.caption).foregroundStyle(Color("SecondaryText")) }
+            if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
+            HStack { BookingBadge(status: session.scheduleStatus); Text(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized).font(.caption).foregroundStyle(Color.theme.secondaryText) }
             if let call = session.callTime { DaybookMetadata(symbol: "video", text: "Call \(session.shortTime(call))") }
         }.padding(.vertical, 4)
     }
@@ -177,7 +177,7 @@ struct SessionDetailView: View {
             Section("Series") { Text(session.effectiveSeries?.name ?? "Not added") }
             Section("Schedule") {
                 Text(session.scheduleDescription)
-                if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
                 LabeledContent("Schedule", value: session.scheduleStatus.capitalized)
                 LabeledContent("Coverage", value: session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized)
                 if let call = session.callTime {
@@ -190,7 +190,7 @@ struct SessionDetailView: View {
             if !session.notes.isEmpty { Section("Notes") { Text(session.notes).textSelection(.enabled) } }
             Section("Calendar") {
                 Text(session.calendarEligible ? "Eligible for a timed entry in your connected calendar." : "A timed entry requires confirmed start and end times and coverage set to Covering.")
-                Text(calendar.status).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(calendar.status).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             Section { Button("Duplicate Session", systemImage: "plus.square.on.square") { duplicating = true }.accessibilityIdentifier("duplicate-session") }
             Section { Button("Remove Session", role: .destructive) { removing = true } }

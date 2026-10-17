@@ -67,7 +67,7 @@ struct JobFiltersView: View {
         }
         .presentationDetents([.height(contentHeight + navigationHeight), .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 }
 

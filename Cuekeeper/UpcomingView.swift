@@ -124,7 +124,7 @@ struct UpcomingView: View {
             Button {
                 sheet = .chooseCaptureEvent(summary.inFlight.compactMap { job($0.id) })
             } label: {
-                Image(systemName: "receipt").foregroundStyle(Color.accentColor)
+                Image(systemName: "receipt").foregroundStyle(Color.theme.accent)
             }
             .buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.large)
             .accessibilityLabel("Scan Receipt")
@@ -137,14 +137,14 @@ struct UpcomingView: View {
 
     private var emptyState: some View {
         VStack(spacing: 24) {
-            CuekeeperMark().fill(Color.accentColor.opacity(0.2), style: FillStyle(eoFill: true))
+            CuekeeperMark().fill(Color.theme.accent.opacity(0.2), style: FillStyle(eoFill: true))
                 .frame(width: 90, height: 104).accessibilityHidden(true)
             Text("Your next event\nstarts here").font(.title2.bold())
             Text("Start with a date. Add the details when you know them.")
-                .foregroundStyle(Color("SecondaryText"))
+                .foregroundStyle(Color.theme.secondaryText)
             if persistence.awaitingInitialImport {
                 Label("Existing work may still arrive from iCloud. You can add an event now.", systemImage: "icloud.and.arrow.down")
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             Button("Add your first event") { sheet = .add }
                 .buttonStyle(LaunchPrimaryButton()).accessibilityIdentifier("add-job")
@@ -182,18 +182,18 @@ struct UpcomingView: View {
                     }
                     if summary.days.isEmpty {
                         Text("Schedule to come. The dates stay on your daybook until sessions are added.")
-                            .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     }
                 }
                 if let after = summary.afterThis {
                     Button { setMode(.plan, summary) } label: {
                         HStack(spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(summary.inFlight.count > 1 ? "After these" : "After this").font(.footnote).foregroundStyle(Color("SecondaryText"))
+                                Text(summary.inFlight.count > 1 ? "After these" : "After this").font(.footnote).foregroundStyle(Color.theme.secondaryText)
                                 Text(afterText(after)).font(.subheadline)
                             }.frame(maxWidth: .infinity, alignment: .leading)
-                            Text("Plan").font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor).accessibilityHidden(true)
+                            Text("Plan").font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.accent)
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.accent).accessibilityHidden(true)
                         }
                         .padding(.horizontal, 16).padding(.vertical, 12)
                         .contentShape(Rectangle())
@@ -210,25 +210,25 @@ struct UpcomingView: View {
         var title = AttributedString(fact.title); title.font = .subheadline.weight(.semibold)
         var rest = AttributedString(" · " + UpcomingSummary.shortDay(fact.facts.startDay, zone: fact.facts.eventZone)
                                     + (fact.facts.bookingStatus == "tentative" ? " · tentative" : ""))
-        rest.foregroundColor = Color("SecondaryText")
+        rest.foregroundColor = Color.theme.secondaryText
         return title + rest
     }
 
     private func idle(_ summary: UpcomingSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Nothing in the next 3 days.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Text("Nothing in the next 3 days.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             if let next = summary.nextWork {
                 jobButton(next.job.id) {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(next.daysUntil <= 1 ? (next.daysUntil == 0 ? "Next work today" : "Next work tomorrow") : "Next work in \(next.daysUntil) days")
-                                .font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.accent)
                             Text(next.job.title).font(.title3.bold())
-                            Text(nextWorkLine(next)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            Text(nextWorkLine(next)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                             Text(([next.job.client ?? "Client to add"] + (next.job.work.isEmpty ? [] : [next.job.work])).joined(separator: " · "))
-                                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                                .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         }.frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
                     }
                     .padding(16).contentShape(Rectangle())
                 }
@@ -239,9 +239,9 @@ struct UpcomingView: View {
             }
             Button { setMode(.plan, summary) } label: {
                 HStack {
-                    Text("See the next two weeks in \(Text("Plan").fontWeight(.semibold).foregroundStyle(Color.accentColor))")
+                    Text("See the next two weeks in \(Text("Plan").fontWeight(.semibold).foregroundStyle(Color.theme.accent))")
                     Spacer(minLength: 8)
-                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor).accessibilityHidden(true)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.accent).accessibilityHidden(true)
                 }
                 .font(.subheadline)
                 .padding(.horizontal, 16).frame(minHeight: 48).contentShape(Rectangle())
@@ -271,9 +271,9 @@ struct UpcomingView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(fact.title).font(.title3.bold()).accessibilityAddTraits(.isHeader)
                         Text(([fact.client ?? "Client to add"] + (fact.work.isEmpty ? [] : [fact.work])).joined(separator: " · "))
-                            .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
                 }.contentShape(Rectangle())
             }
             if let job = job(fact.id), hasNotes(job) {
@@ -293,7 +293,7 @@ struct UpcomingView: View {
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("On deck").font(.headline)
-                Text("\(summary.inFlight.count)").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text("\(summary.inFlight.count)").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("On deck, \(counted(summary.inFlight.count, "job", "jobs"))")
@@ -317,7 +317,7 @@ struct UpcomingView: View {
         // Accessibility sizes wrap long titles, so the capsule relaxes into a rounded rectangle.
         let large = dynamicTypeSize.isAccessibilitySize
         let shape = RoundedRectangle(cornerRadius: large ? 16 : 22, style: .continuous)
-        let stroke = isHero ? Color.accentColor : tentative ? Color("AmberText").opacity(0.45)
+        let stroke = isHero ? Color.theme.accent : tentative ? Color.theme.caution.opacity(0.45)
             : Color.primary.opacity(contrast == .increased ? 0.45 : 0.16)
         return HStack(spacing: 0) {
             jobButton(fact.id) {
@@ -328,9 +328,9 @@ struct UpcomingView: View {
                         CappedWidth(maximum: pillTitleWidth) { Text(fact.title).fontWeight(.semibold).lineLimit(1) }
                     }
                     if tentative {
-                        Text("tentative").foregroundStyle(Color("AmberText"))
+                        Text("tentative").foregroundStyle(Color.theme.caution)
                     } else if let role, !large {
-                        Text(role).foregroundStyle(Color("SecondaryText")).lineLimit(1)
+                        Text(role).foregroundStyle(Color.theme.secondaryText).lineLimit(1)
                     }
                 }
                 .padding(.leading, 14).padding(.trailing, notesJob == nil ? 14 : 4).padding(.vertical, large ? 8 : 0)
@@ -339,7 +339,7 @@ struct UpcomingView: View {
             .accessibilityHint("Opens the event")
             if let notesJob {
                 Button { sheet = .notes(notesJob) } label: {
-                    Image(systemName: "note.text").foregroundStyle(Color.accentColor)
+                    Image(systemName: "note.text").foregroundStyle(Color.theme.accent)
                         .frame(width: 36, height: 44).padding(.trailing, 4).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -347,7 +347,7 @@ struct UpcomingView: View {
             }
         }
         .font(.subheadline)
-        .background(tentative ? Color.orange.opacity(0.14) : Color("SurfaceBackground"), in: shape)
+        .background(tentative ? Color.theme.attention.opacity(0.14) : Color.theme.surface, in: shape)
         .overlay { shape.strokeBorder(stroke, lineWidth: isHero ? 1 : 0.5) }
     }
 
@@ -362,10 +362,10 @@ struct UpcomingView: View {
                     Image(systemName: "clock").accessibilityHidden(true)
                     Text("\(Self.gapText(gap)) before \(meta.jobTitle)")
                 }
-                .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16).padding(.vertical, 6)
-                .background(Color.accentColor.opacity(0.04))
+                .background(Color.theme.accent.opacity(0.04))
             }
             HStack(spacing: 0) {
                 let row = RunOfShowRow(session: fact, zone: zone, context: contextText.isEmpty ? nil : contextText)
@@ -401,7 +401,7 @@ struct UpcomingView: View {
                 EventSectionTitle(title: "Next two weeks") {
                     if let first = summary.fortnight.first, let last = summary.fortnight.last {
                         Text("\(first.date.formatted(.dateTime.day().month(.abbreviated))) – \(last.date.formatted(.dateTime.day().month(.abbreviated)))")
-                            .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     }
                 }
                 FortnightStrip(days: summary.fortnight) { day in
@@ -416,7 +416,7 @@ struct UpcomingView: View {
                         .frame(minHeight: 44).accessibilityIdentifier("upcoming-all-events")
                 }
                 if summary.comingUp.isEmpty {
-                    Text("Nothing booked in the next 30 days.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    Text("Nothing booked in the next 30 days.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(summary.comingUp.enumerated()), id: \.element.id) { index, entry in
@@ -435,21 +435,21 @@ struct UpcomingView: View {
                 DaybookDateRail(day: entry.job.facts.startDay)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.job.title).font(.headline)
-                    Text(entry.summary).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    Text(entry.summary).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     if entry.job.lastDay != entry.job.facts.startDay {
                         Text("Until " + UpcomingSummary.shortDay(entry.job.lastDay, zone: entry.job.facts.eventZone))
-                            .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                            .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 if entry.openCount > 0 {
                     Text(entry.openCount, format: .number)
                         .font(.caption.weight(.bold)).monospacedDigit()
-                        .foregroundStyle(Color("AmberText"))
+                        .foregroundStyle(Color.theme.caution)
                         .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.18), in: Capsule())
+                        .background(Color.theme.attention.opacity(0.18), in: Capsule())
                         .accessibilityLabel(counted(entry.openCount, "item to settle", "items to settle"))
                 }
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
             }
             .padding(.horizontal, 14).padding(.vertical, 14)
             .contentShape(Rectangle())
@@ -556,16 +556,16 @@ struct SettlePanel: View {
                             Text("To settle").font(.headline)
                             Text(items.count, format: .number)
                                 .font(.caption.weight(.bold)).monospacedDigit()
-                                .foregroundStyle(Color("AmberText"))
+                                .foregroundStyle(Color.theme.caution)
                                 .padding(.horizontal, 7).padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.18), in: Capsule())
+                                .background(Color.theme.attention.opacity(0.18), in: Capsule())
                         }
-                        if !expanded { Text(summaryText).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                        if !expanded { Text(summaryText).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                    if expanded { Text("Show less").font(.subheadline).foregroundStyle(Color.accentColor) }
+                    if expanded { Text("Show less").font(.subheadline).foregroundStyle(Color.theme.accent) }
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(expanded ? Color.accentColor : Color("SecondaryText"))
+                        .foregroundStyle(expanded ? Color.theme.accent : Color.theme.secondaryText)
                         .accessibilityHidden(true)
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
@@ -602,11 +602,11 @@ struct SettlePanel: View {
         return HStack(spacing: 8) {
             Image(systemName: group.items.first?.item.symbol ?? "circle")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(attention ? Color("AmberText") : Color.accentColor)
+                .foregroundStyle(attention ? Color.theme.caution : Color.theme.positive)
                 .frame(width: iconSize, height: iconSize)
-                .background(attention ? Color.orange.opacity(0.18) : Color.accentColor.opacity(0.1), in: Circle())
+                .background(attention ? Color.theme.attention.opacity(0.18) : Color.theme.positive.opacity(0.1), in: Circle())
                 .accessibilityHidden(true)
-            Text(group.heading).font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+            Text(group.heading).font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
                 .accessibilityAddTraits(.isHeader)
         }
         .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 2)
@@ -625,7 +625,7 @@ struct SettlePanel: View {
                     Text(entry.title).font(.subheadline.weight(.semibold)).lineLimit(lines)
                     if !detail.isEmpty {
                         Text(detail).font(.footnote)
-                            .foregroundStyle(entry.blocksInvoicing ? Color("AmberText") : Color("SecondaryText"))
+                            .foregroundStyle(entry.blocksInvoicing ? Color.theme.caution : Color.theme.secondaryText)
                             .lineLimit(lines)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
@@ -647,12 +647,12 @@ struct SettlePanel: View {
     private func dateRail(_ entry: UpcomingItem) -> some View {
         let date = entry.day.isEmpty ? nil : Day.date(from: entry.day, timeZone: entry.zone)
         let today = DaySchedule.dayKey(Date(), zone: entry.zone)
-        let tint: Color = entry.day == today ? .accentColor : (entry.blocksInvoicing ? Color("AmberText") : .primary)
+        let tint: Color = entry.day == today ? Color.theme.accent : (entry.blocksInvoicing ? Color.theme.caution : .primary)
         return VStack(spacing: 0) {
             Text(date.map { formatted($0, .dateTime.day(), zone: entry.zone) } ?? "–")
-                .font(.headline).monospacedDigit().foregroundStyle(date == nil ? Color("SecondaryText") : tint)
+                .font(.headline).monospacedDigit().foregroundStyle(date == nil ? Color.theme.secondaryText : tint)
             Text(date.map { formatted($0, .dateTime.weekday(.abbreviated), zone: entry.zone) } ?? "TBC")
-                .font(.caption2).foregroundStyle(Color("SecondaryText"))
+                .font(.caption2).foregroundStyle(Color.theme.secondaryText)
         }
         .frame(width: railWidth)
         .accessibilityHidden(true)
@@ -697,7 +697,7 @@ struct FortnightStrip: View {
                 VStack(spacing: 2) {
                     HStack(spacing: 4) {
                         ForEach(Array(weekdays.enumerated()), id: \.offset) { _, symbol in
-                            Text(symbol).font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).frame(maxWidth: .infinity)
+                            Text(symbol).font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).frame(maxWidth: .infinity)
                         }
                     }.accessibilityHidden(true)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 2) {
@@ -717,13 +717,13 @@ struct FortnightStrip: View {
             VStack(spacing: 4) {
                 Text(day.date.formatted(.dateTime.day()))
                     .font(.body.weight(day.isToday ? .bold : (day.marks.isEmpty ? .regular : .semibold))).monospacedDigit()
-                    .foregroundStyle(day.isToday ? Color.accentColor : (day.marks.isEmpty || day.isPast ? Color("SecondaryText") : Color.primary))
+                    .foregroundStyle(day.isToday ? Color.theme.accent : (day.marks.isEmpty || day.isPast ? Color.theme.secondaryText : Color.primary))
                 ForEach(Array(day.marks.prefix(3).enumerated()), id: \.offset) { _, mark in markView(mark, past: day.isPast) }
             }
             .frame(maxWidth: .infinity, minHeight: 52, alignment: .top)
             .padding(.vertical, 4)
-            .background(day.isToday ? Color.accentColor.opacity(0.06) : Color.clear, in: RoundedRectangle(cornerRadius: 10))
-            .overlay { if day.isToday { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.accentColor, lineWidth: 1.5) } }
+            .background(day.isToday ? Color.theme.accent.opacity(0.06) : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+            .overlay { if day.isToday { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.theme.accent, lineWidth: 1.5) } }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -734,9 +734,9 @@ struct FortnightStrip: View {
     @ViewBuilder private func markView(_ mark: StripMark, past: Bool) -> some View {
         let shape = RoundedRectangle(cornerRadius: 2)
         switch mark {
-        case .covering: shape.fill(past ? Color("SecondaryText").opacity(0.5) : Color.accentColor).frame(width: 16, height: 4)
+        case .covering: shape.fill(past ? Color.theme.secondaryText.opacity(0.5) : Color.theme.positive).frame(width: 16, height: 4)
         case .notCovering: shape.strokeBorder(Color.primary.opacity(contrast == .increased ? 0.6 : 0.35), lineWidth: 1).frame(width: 16, height: 4)
-        case .tbc: shape.strokeBorder(Color("AmberText"), style: StrokeStyle(lineWidth: 1.5, dash: [3, 2])).frame(width: 16, height: 5)
+        case .tbc: shape.strokeBorder(Color.theme.caution, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2])).frame(width: 16, height: 5)
         }
     }
 
@@ -773,7 +773,7 @@ private struct UpcomingNotesSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 }
 

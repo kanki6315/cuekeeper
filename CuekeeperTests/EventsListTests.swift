@@ -129,7 +129,7 @@ final class EventsListTests: XCTestCase {
 
     func testBadgeShowsBookingBeforeTheWorkAndMoneyAfter() {
         XCTAssertEqual(EventsListRow(event("A", start: "2026-10-23", status: "tentative"), today: today).badge, EventsBadge(text: "Tentative", tone: .amber))
-        XCTAssertEqual(EventsListRow(event("A", start: "2026-10-16", end: "2026-10-18"), today: today).badge, EventsBadge(text: "Booked", tone: .accent))
+        XCTAssertEqual(EventsListRow(event("A", start: "2026-10-16", end: "2026-10-18"), today: today).badge, EventsBadge(text: "Booked", tone: .positive))
         XCTAssertEqual(EventsListRow(event("A", start: "2026-10-09", status: "completed", payment: .ready), today: today).badge.text, "Ready to invoice")
         XCTAssertEqual(EventsListRow(event("A", start: "2026-10-09", status: "completed", payment: .paid(reference: "INV-1")), today: today).badge, EventsBadge(text: "Paid", tone: .muted))
         XCTAssertEqual(EventsListRow(event("A", start: "2026-10-09", status: "completed", payment: .heldUp), today: today).badge, EventsBadge(text: "To settle", tone: .amber))

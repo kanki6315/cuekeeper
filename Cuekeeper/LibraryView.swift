@@ -83,12 +83,12 @@ struct LibraryDetailView: View {
                 }
             }
             Section("Related bookings") {
-                if jobs.isEmpty { Text("No bookings yet").foregroundStyle(Color("SecondaryText")) }
+                if jobs.isEmpty { Text("No bookings yet").foregroundStyle(Color.theme.secondaryText) }
                 ForEach(jobs.filter { year.isEmpty || $0.eventStartDay.hasPrefix(year) }, id: \.objectID) { job in
                     DaybookLink { JobDetailView(job: job) } label: {
                         VStack(alignment: .leading) {
                             HStack { Text(job.displayName).font(.headline); Spacer(); BookingBadge(status: job.bookingStatus) }
-                            Text(dateRange(job)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            Text(dateRange(job)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         }
                     }
                 }
@@ -151,7 +151,7 @@ struct LibraryEditor: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 }
 
@@ -171,7 +171,7 @@ struct NamedLibraryField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(kind.singular).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(kind.singular).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 Spacer()
                 if !records.isEmpty {
                     Menu {

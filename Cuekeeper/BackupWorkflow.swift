@@ -160,7 +160,7 @@ struct BackupProgressView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
                 if workflow.fraction == nil { ProgressView() }
-                Text(workflow.stage).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(workflow.stage).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 if workflow.canCancel { Button("Cancel", role: .cancel) { workflow.cancel() }.frame(minHeight: 44) }
@@ -187,7 +187,7 @@ struct BackupNoticeToast: View {
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 16).padding(.vertical, 12)
                         .frame(maxWidth: 540, minHeight: 48)
-                        .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 16))
+                        .background(Color.theme.surface, in: RoundedRectangle(cornerRadius: 16))
                         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.primary.opacity(0.16), lineWidth: 1) }
                         .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                 }

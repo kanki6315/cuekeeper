@@ -43,7 +43,7 @@ enum EventsListLine: Equatable {
     case blank
 }
 
-enum EventsBadgeTone: Equatable { case accent, amber, muted }
+enum EventsBadgeTone: Equatable { case accent, positive, amber, muted }
 
 struct EventsBadge: Equatable {
     let text: String
@@ -94,7 +94,7 @@ struct EventsListRow: Equatable, Identifiable {
         if facts.bookingStatus == "cancelled" { return EventsBadge(text: "Cancelled", tone: .muted) }
         guard finished else {
             let tentative = facts.bookingStatus == "tentative"
-            return EventsBadge(text: facts.bookingStatus.capitalized, tone: tentative ? .amber : .accent)
+            return EventsBadge(text: facts.bookingStatus.capitalized, tone: tentative ? .amber : .positive)
         }
         // Once the work is over, what matters is the money.
         switch facts.payment?.state {

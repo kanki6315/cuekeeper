@@ -72,7 +72,7 @@ struct EventDateFields: View {
                     TimeZoneValueLabel(title: multipleDays ? "Dates" : "Date", value: dateSummary)
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color("SecondaryText"))
+                        .foregroundStyle(Color.theme.secondaryText)
                         .accessibilityHidden(true)
                 }
                 .foregroundStyle(.primary)
@@ -134,7 +134,7 @@ struct LibraryTypeaheadField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(title).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 DaybookTextField(prompt, text: $text)
                     .focused($focused).submitLabel(.done)
                     .accessibilityLabel(title).accessibilityIdentifier(identifier)
@@ -464,7 +464,7 @@ struct TimeZoneValueLabel: View {
             Text(title).fixedSize()
             Spacer(minLength: 0)
             Text(text)
-                .foregroundStyle(Color("SecondaryText"))
+                .foregroundStyle(Color.theme.secondaryText)
                 .fixedSize()
         }
     }
@@ -472,7 +472,7 @@ struct TimeZoneValueLabel: View {
     private var stackedLabel: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-            Text(value).foregroundStyle(Color("SecondaryText"))
+            Text(value).foregroundStyle(Color.theme.secondaryText)
         }
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)

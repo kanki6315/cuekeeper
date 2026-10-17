@@ -163,7 +163,7 @@ struct ExpensesView: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(([inbox.count == 1 ? "1 to finish" : "\(inbox.count) to finish"]
                   + inbox.amounts.keys.sorted().map { Money.format(inbox.amounts[$0]!, currency: $0) }).joined(separator: " · "))
-                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if inbox.drafts > 0 {
                 Button(selecting ? "Done" : "Select") { selecting ? endSelecting() : (selecting = true) }
@@ -183,7 +183,7 @@ struct ExpensesView: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                        .font(.title3).foregroundStyle(selected ? Color.accentColor : Color("SecondaryText"))
+                        .font(.title3).foregroundStyle(selected ? Color.theme.accent : Color.theme.secondaryText)
                         .accessibilityHidden(true)
                     itemText(item)
                 }
@@ -196,7 +196,7 @@ struct ExpensesView: View {
             Button { perform(item) } label: {
                 HStack(spacing: 10) {
                     itemText(item)
-                    Text(item.actionTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                    Text(item.actionTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.accent)
                         .accessibilityHidden(true)
                 }
                 .frame(minHeight: 44).contentShape(Rectangle())
@@ -212,7 +212,7 @@ struct ExpensesView: View {
     private func itemText(_ item: FinishItem) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(item.title).font(.subheadline.weight(.semibold))
-            Text(item.detail).font(.footnote).foregroundStyle(Color("SecondaryText"))
+            Text(item.detail).font(.footnote).foregroundStyle(Color.theme.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -221,7 +221,7 @@ struct ExpensesView: View {
     private var selectionBar: some View {
         HStack(spacing: 12) {
             Text(selection.isEmpty ? "Select drafts" : "\(selection.count) selected")
-                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button("Remove", systemImage: "trash", role: .destructive) { removing = true }
                 .fontWeight(.semibold).frame(minHeight: 44)
@@ -280,10 +280,10 @@ struct ExpensesView: View {
             Section {
                 Button { mode = .inbox } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "tray").foregroundStyle(Color("AmberText")).accessibilityHidden(true)
+                        Image(systemName: "tray").foregroundStyle(Color.theme.caution).accessibilityHidden(true)
                         Text(draftsNote(ledger.draftsInPeriod))
                             .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
                     }
                     .frame(minHeight: 44).contentShape(Rectangle())
                 }
@@ -383,9 +383,9 @@ struct ExpensesView: View {
                 Image(systemName: "chevron.down").font(.caption2.weight(.bold)).accessibilityHidden(true)
             }
             .font(.subheadline.weight(active ? .semibold : .regular))
-            .foregroundStyle(active ? Color.accentColor : Color.primary)
+            .foregroundStyle(active ? Color.theme.accent : Color.primary)
             .padding(.horizontal, 12).frame(minHeight: 34)
-            .background(active ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.06), in: Capsule())
+            .background(active ? Color.theme.accent.opacity(0.18) : Color.primary.opacity(0.06), in: Capsule())
             .frame(minHeight: 44).contentShape(Rectangle())
         }
         .accessibilityIdentifier(identifier)
@@ -411,9 +411,9 @@ struct ExpensesView: View {
             VStack(spacing: 2) {
                 Text(period.title).font(.title3.bold()).accessibilityIdentifier("expenses-period")
                 HStack(spacing: 6) {
-                    Text(count == 1 ? "1 expense" : "\(count) expenses").foregroundStyle(Color("SecondaryText"))
+                    Text(count == 1 ? "1 expense" : "\(count) expenses").foregroundStyle(Color.theme.secondaryText)
                     if period.kind != .all && period.months?.first != current.months?.first {
-                        Text("·").foregroundStyle(Color("SecondaryText"))
+                        Text("·").foregroundStyle(Color.theme.secondaryText)
                         Button("This \(period.kind.rawValue.lowercased())") { filter.period = current }.fontWeight(.semibold)
                             .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
                             .accessibilityIdentifier("period-current")
@@ -440,7 +440,7 @@ struct ExpensesView: View {
                 Text(group.name).font(.headline)
                 Text((group.events + [group.receipts.count == 1 ? "1 receipt" : "\(group.receipts.count) receipts", Money.format(group.amount, currency: group.currency)])
                     .joined(separator: " · "))
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
@@ -463,7 +463,7 @@ struct ExpensesView: View {
             if !typeSize.isAccessibilitySize { DaybookDateRail(day: day.day) }
             VStack(alignment: .leading, spacing: 0) {
                 if typeSize.isAccessibilitySize {
-                    Text(Day.display(day.day)).font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor).padding(.bottom, 6)
+                    Text(Day.display(day.day)).font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.accent).padding(.bottom, 6)
                 }
                 ForEach(Array(day.expenses.enumerated()), id: \.element.id) { index, fact in
                     if index > 0 { Divider().padding(.vertical, 10) }
@@ -502,7 +502,7 @@ struct ExpensesView: View {
             }
             if fact.eventDeleted {
                 Text("Deleted event · Restore it in Settings to open this expense.")
-                    .font(.caption).foregroundStyle(Color("SecondaryText"))
+                    .font(.caption).foregroundStyle(Color.theme.secondaryText)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -510,21 +510,21 @@ struct ExpensesView: View {
     }
 
     private func subtitle(_ fact: ExpenseFact) -> Text {
-        if fact.isBusiness { return Text("Business · \(fact.category)").foregroundStyle(Color("SecondaryText")) }
-        guard let event = fact.eventTitle else { return Text("Event to choose").foregroundStyle(Color("AmberText")) }
-        return Text(fact.state == .toFinish && fact.merchant.isEmpty ? event : "\(event) · \(fact.category)").foregroundStyle(Color("SecondaryText"))
+        if fact.isBusiness { return Text("Business · \(fact.category)").foregroundStyle(Color.theme.secondaryText) }
+        guard let event = fact.eventTitle else { return Text("Event to choose").foregroundStyle(Color.theme.caution) }
+        return Text(fact.state == .toFinish && fact.merchant.isEmpty ? event : "\(event) · \(fact.category)").foregroundStyle(Color.theme.secondaryText)
     }
 
     @ViewBuilder private func status(_ fact: ExpenseFact) -> some View {
         switch fact.state {
-        case .toFinish: Text("To finish").foregroundStyle(Color("AmberText"))
-        case .yourCost: Text("Your cost").foregroundStyle(Color("SecondaryText"))
+        case .toFinish: Text("To finish").foregroundStyle(Color.theme.caution)
+        case .yourCost: Text("Your cost").foregroundStyle(Color.theme.secondaryText)
         case .business:
-            if fact.repeats { Label("Monthly", systemImage: "repeat").labelStyle(.titleAndIcon).foregroundStyle(Color("SecondaryText")) }
-        case .toRebill: Text("To rebill").foregroundStyle(Color("BookingCompleted"))
-        case .onInvoice(let reference): Text(reference.isEmpty ? "On draft invoice" : "On \(reference)").foregroundStyle(Color("SecondaryText"))
-        case .paidBack: Text("Paid back").foregroundStyle(Color.accentColor)
-        case .review: Text("Billing review").foregroundStyle(Color("AmberText"))
+            if fact.repeats { Label("Monthly", systemImage: "repeat").labelStyle(.titleAndIcon).foregroundStyle(Color.theme.secondaryText) }
+        case .toRebill: Text("To rebill").foregroundStyle(Color.theme.completed)
+        case .onInvoice(let reference): Text(reference.isEmpty ? "On draft invoice" : "On \(reference)").foregroundStyle(Color.theme.secondaryText)
+        case .paidBack: Text("Paid back").foregroundStyle(Color.theme.positive)
+        case .review: Text("Billing review").foregroundStyle(Color.theme.caution)
         }
     }
 
@@ -534,10 +534,10 @@ struct ExpensesView: View {
                 Text("Still to rebill from earlier")
                 Text(([earlier.count == 1 ? "1 receipt" : "\(earlier.count) receipts"]
                       + earlier.amounts.keys.sorted().map { Money.format(earlier.amounts[$0]!, currency: $0) }).joined(separator: " · "))
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
         }
         .frame(minHeight: 44).contentShape(Rectangle())
     }
@@ -555,11 +555,11 @@ private struct InboxRowActions: ViewModifier {
             content
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     if canAssign {
-                        Button("Choose Event", systemImage: "calendar.badge.plus") { assign(draft) }.tint(Color.accentColor)
+                        Button("Choose Event", systemImage: "calendar.badge.plus") { assign(draft) }.tint(Color.theme.accent)
                     }
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Remove", systemImage: "trash") { remove(draft) }.tint(.red)
+                    Button("Remove", systemImage: "trash") { remove(draft) }.tint(Color.theme.destructive)
                 }
                 .contextMenu {
                     if canAssign { Button("Choose Event", systemImage: "calendar.badge.plus") { assign(draft) } }
@@ -592,19 +592,19 @@ struct AmberCount: View {
     var body: some View {
         Text(count, format: .number)
             .font(.caption.weight(.bold)).monospacedDigit()
-            .foregroundStyle(Color("AmberText"))
+            .foregroundStyle(Color.theme.caution)
             .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(Color.orange.opacity(0.18), in: Capsule())
+            .background(Color.theme.attention.opacity(0.18), in: Capsule())
     }
 }
 
 extension ExpenseBucket {
     var fill: Color {
         switch self {
-        case .paidBack: Color.accentColor
-        case .onInvoice: Color.accentColor.opacity(0.55)
-        case .toRebill: Color("BookingCompleted")
-        case .toFinish: Color.orange
+        case .paidBack: Color.theme.positive
+        case .onInvoice: Color.theme.positive.opacity(0.55)
+        case .toRebill: Color.theme.completed
+        case .toFinish: Color.theme.attention
         case .yourCost: Color.primary.opacity(0.28)
         }
     }
@@ -663,7 +663,7 @@ struct EventExpensesSection: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(expense.isDraft ? "Review receipt" : expense.value.merchant)
                             Text(expense.isDraft ? (expense.photo == nil ? "Receipt to add · Details to confirm" : "Photo saved · Details to confirm") : Day.display(expense.value.day))
-                                .font(.subheadline).foregroundStyle(expense.isDraft ? Color("AmberText") : Color("SecondaryText"))
+                                .font(.subheadline).foregroundStyle(expense.isDraft ? Color.theme.caution : Color.theme.secondaryText)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                         if !expense.isDraft {
                             Text(ExpenseValue.displayAmount(expense.value.amount, currency: expense.value.currency) ?? "Total to check").monospacedDigit()
@@ -753,8 +753,8 @@ struct ExpenseEditorView: View {
                 Section {
                     if let selected = events.first(where: { $0.objectID == selectedJobID }) {
                         Text(selected.eventTitle).font(.headline)
-                        if let client = selected.client { Text(client.name).foregroundStyle(Color("SecondaryText")) }
-                    } else { Text("Choose an event to complete this expense.").foregroundStyle(Color("SecondaryText")) }
+                        if let client = selected.client { Text(client.name).foregroundStyle(Color.theme.secondaryText) }
+                    } else { Text("Choose an event to complete this expense.").foregroundStyle(Color.theme.secondaryText) }
                     Button(selectedJobID == nil ? "Choose Event" : "Change Event") { choosingEvent = true }.accessibilityIdentifier("expense-choose-event")
                 }.containerValue(\.daybookUnframed, true)
                 }
@@ -765,7 +765,7 @@ struct ExpenseEditorView: View {
                                 Image(uiImage: preview).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 220)
                             }.accessibilityLabel("View full receipt photo")
                         } else if previewFailed {
-                            Text("This receipt photo can’t be shown. Replace it or enter the details below.").foregroundStyle(Color("SecondaryText"))
+                            Text("This receipt photo can’t be shown. Replace it or enter the details below.").foregroundStyle(Color.theme.secondaryText)
                         } else {
                             ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                         }
@@ -773,7 +773,7 @@ struct ExpenseEditorView: View {
                             ProgressView(processingLocation.progressMessage)
                             Button("Enter details myself") { task?.cancel(); busy = false; message = "Check the receipt and enter its details below." }.disabled(savingPhoto)
                         } else {
-                            if let message { Text(message).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                            if let message { Text(message).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
                             if isDraft {
                                 Button("Read Receipt Again") { retry = true }
                                 Button("Replace Receipt Photo") { replacing = true }
@@ -782,14 +782,14 @@ struct ExpenseEditorView: View {
                     } else {
                         if VNDocumentCameraViewController.isSupported {
                             if cameraUnavailable {
-                                Text(cameraUnavailableMessage).foregroundStyle(Color("SecondaryText"))
+                                Text(cameraUnavailableMessage).foregroundStyle(Color.theme.secondaryText)
                                 if cameraAccess == .denied { Button("Open Settings", systemImage: "gear") { openSettings() }.accessibilityIdentifier("receipt-camera-settings") }
                             } else {
                                 Button("Open Camera", systemImage: "doc.viewfinder") { Task { await openCamera() } }.accessibilityIdentifier("receipt-camera")
                             }
                         }
                         PhotosPicker(selection: $picker, matching: .images) { Label("Choose Receipt Photo", systemImage: "photo") }
-                        Text("Scan one receipt. Its photo stays with this draft while you review the details.").foregroundStyle(Color("SecondaryText"))
+                        Text("Scan one receipt. Its photo stays with this draft while you review the details.").foregroundStyle(Color.theme.secondaryText)
                     }
                 } header: {
                     Text("Receipt")
@@ -801,12 +801,12 @@ struct ExpenseEditorView: View {
                         if !captured.merchant.isEmpty { Text(captured.merchant) }
                         if !captured.amount.isEmpty { Text(ExpenseValue.displayAmount(captured.amount, currency: captured.currency) ?? [captured.amount, captured.currency].filter { !$0.isEmpty }.joined(separator: " ")) }
                         if let date = captured.date { Text(date.formatted(date: .abbreviated, time: .shortened)) }
-                        Text("Payment details are kept here for comparison. Review the fields below before saving.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text("Payment details are kept here for comparison. Review the fields below before saving.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     }
                 }
                 if let proposal, !conflicts.isEmpty {
                     Section("Receipt differences") {
-                        Text("Your entered details have been kept. Choose which receipt values to use.").foregroundStyle(Color("SecondaryText"))
+                        Text("Your entered details have been kept. Choose which receipt values to use.").foregroundStyle(Color.theme.secondaryText)
                         ForEach(conflicts) { field in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(field.rawValue).font(.headline)
@@ -948,7 +948,7 @@ struct ExpenseEditorView: View {
                 Button("Read Receipt Again") { extract() }
                 Button("Keep Editing", role: .cancel) {}
             }
-        }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
+        }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color.theme.page)
     }
     /// Explains what stays fixed while the receipt is on an active invoice.
     private var billingNote: String? {
@@ -962,7 +962,7 @@ struct ExpenseEditorView: View {
     @ViewBuilder private var dateField: some View {
         if draft.day.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Date").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text("Date").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 Button("Add Date") { draft.day = Day.string(from: Date()) }.accessibilityIdentifier("expense-date")
             }
         } else {
@@ -972,7 +972,7 @@ struct ExpenseEditorView: View {
     }
     private func field(_ label: String, text: Binding<String>, identifier: String, decimal: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Text(label).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             DaybookTextField(label, text: text).keyboardType(decimal ? .decimalPad : .default).accessibilityIdentifier(identifier)
         }
     }
@@ -1078,7 +1078,7 @@ private struct ReceiptPhotoViewer: View {
     var body: some View {
         Group {
             if let image { Image(uiImage: image).accessibilityLabel("Receipt photo") }
-            else if failed { Text("This receipt photo can’t be shown.").foregroundStyle(Color("SecondaryText")).padding() }
+            else if failed { Text("This receipt photo can’t be shown.").foregroundStyle(Color.theme.secondaryText).padding() }
             else { ProgressView().padding() }
         }
         .task {

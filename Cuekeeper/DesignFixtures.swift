@@ -412,9 +412,9 @@ struct WidgetFixtureGallery: View {
         }.daybookSurface()
     }
     private func specimen(_ snapshot: DaySchedule, hour: Double, family: WidgetFamily, width: CGFloat, height: CGFloat) -> some View {
-        ScheduleWidgetView(familyOverride: family, entry: ScheduleEntry(date: Calendar.current.startOfDay(for: Date()).addingTimeInterval(hour * 3600), schedule: snapshot))
+        ScheduleWidgetView(familyOverride: family, entry: ScheduleEntry(date: Calendar.current.startOfDay(for: Date()).addingTimeInterval(hour * 3600), schedule: snapshot, theme: ThemeStore.shared.theme))
             .padding(family == .systemSmall || family == .systemMedium ? 14 : 4).frame(width: width, height: height)
-            .background(Color("PageBackground"), in: RoundedRectangle(cornerRadius: 22))
+            .background(Color.theme.page, in: RoundedRectangle(cornerRadius: 22))
             .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.secondary.opacity(0.25)))
     }
 }

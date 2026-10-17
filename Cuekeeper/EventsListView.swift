@@ -11,7 +11,7 @@ struct EventsListRowView: View {
     @ScaledMetric(relativeTo: .subheadline) private var weekdayWidth = 34
     @ScaledMetric(relativeTo: .subheadline) private var lineHeight = 22
 
-    private var tint: Color { row.finished ? Color("SecondaryText") : Color.accentColor }
+    private var tint: Color { row.finished ? Color.theme.secondaryText : Color.theme.accent }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -19,11 +19,11 @@ struct EventsListRowView: View {
                 start.frame(width: railWidth)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(row.facts.title).font(.headline).foregroundStyle(row.finished ? Color("SecondaryText") : Color.primary).lineLimit(1)
+                        Text(row.facts.title).font(.headline).foregroundStyle(row.finished ? Color.theme.secondaryText : Color.primary).lineLimit(1)
                         Spacer(minLength: 4)
                         EventsStatusBadge(badge: row.badge)
                     }
-                    Text(subtitle).font(.subheadline).foregroundStyle(Color("SecondaryText")).lineLimit(1)
+                    Text(subtitle).font(.subheadline).foregroundStyle(Color.theme.secondaryText).lineLimit(1)
                 }
             }
             VStack(spacing: 0) {
@@ -95,11 +95,11 @@ struct EventsListRowView: View {
                 }
             case let .scheduleToCome(day):
                 if let day { weekday(day) }
-                Text("Schedule to come").foregroundStyle(Color("SecondaryText")).lineLimit(1)
+                Text("Schedule to come").foregroundStyle(Color.theme.secondaryText).lineLimit(1)
                 Spacer(minLength: 0)
             case let .more(days, sessions):
                 Color.clear.frame(width: weekdayWidth, height: 1)
-                Text(Self.moreText(days: days, sessions: sessions)).foregroundStyle(Color("SecondaryText")).lineLimit(1)
+                Text(Self.moreText(days: days, sessions: sessions)).foregroundStyle(Color.theme.secondaryText).lineLimit(1)
                 Spacer(minLength: 0)
             case .blank:
                 Spacer(minLength: 0)
@@ -110,7 +110,7 @@ struct EventsListRowView: View {
 
     private func weekday(_ day: String) -> some View {
         Text(Day.date(from: day)?.formatted(.dateTime.weekday(.abbreviated)) ?? "")
-            .foregroundStyle(Color("SecondaryText"))
+            .foregroundStyle(Color.theme.secondaryText)
             .frame(width: weekdayWidth, alignment: .leading)
     }
 
@@ -155,15 +155,17 @@ struct EventsStatusBadge: View {
     }
     private var foreground: Color {
         switch badge.tone {
-        case .accent: Color.accentColor
-        case .amber: Color("AmberText")
-        case .muted: Color("SecondaryText")
+        case .accent: Color.theme.accent
+        case .positive: Color.theme.positive
+        case .amber: Color.theme.caution
+        case .muted: Color.theme.secondaryText
         }
     }
     private var background: Color {
         switch badge.tone {
-        case .accent: Color.accentColor.opacity(0.1)
-        case .amber: Color.orange.opacity(0.13)
+        case .accent: Color.theme.accent.opacity(0.1)
+        case .positive: Color.theme.positive.opacity(0.1)
+        case .amber: Color.theme.attention.opacity(0.13)
         case .muted: Color.primary.opacity(0.06)
         }
     }
@@ -176,7 +178,7 @@ struct EventsTodayMarker: View {
             Text("Today").font(.caption.weight(.semibold))
             Rectangle().frame(height: 1)
         }
-        .foregroundStyle(Color.accentColor)
+        .foregroundStyle(Color.theme.accent)
         .padding(.top, 10)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Today")

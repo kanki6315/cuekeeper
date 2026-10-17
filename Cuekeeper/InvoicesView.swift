@@ -71,14 +71,14 @@ struct InvoicesList<Header: View>: View {
         let owed = ledger.owed(client: filter.client)
         return Section {
             if owed.isEmpty {
-                Text("Nothing outstanding. Every sent invoice is paid.").foregroundStyle(Color("SecondaryText"))
+                Text("Nothing outstanding. Every sent invoice is paid.").foregroundStyle(Color.theme.secondaryText)
             }
             ForEach(owed) { line in
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text(line.currency).fontWeight(.semibold)
                     Spacer(minLength: 0)
                     VStack(alignment: .trailing, spacing: 4) {
-                        (Text(Money.format(line.owed, currency: line.currency)).fontWeight(.semibold) + Text(" owed").foregroundStyle(Color("SecondaryText")))
+                        (Text(Money.format(line.owed, currency: line.currency)).fontWeight(.semibold) + Text(" owed").foregroundStyle(Color.theme.secondaryText))
                             .monospacedDigit()
                         if line.overdue > 0 {
                             Button { filter.status = .overdue } label: {
@@ -88,11 +88,11 @@ struct InvoicesList<Header: View>: View {
                                 }
                             }
                             .buttonStyle(.borderless)
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(Color("BookingCancelled"))
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.cancelled)
                             .accessibilityHint("Shows overdue invoices")
                             .accessibilityIdentifier("ledger-overdue-\(line.currency)")
                         } else {
-                            Text("Nothing overdue").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            Text("Nothing overdue").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         }
                     }
                 }
@@ -104,12 +104,12 @@ struct InvoicesList<Header: View>: View {
     private var filters: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                Image(systemName: "magnifyingglass").foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
                 DaybookTextField("Invoice number, client or amount", text: $filter.query)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.search)
                     .accessibilityLabel("Search invoices").accessibilityIdentifier("ledger-search")
                 if !filter.query.isEmpty {
-                    Button { filter.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Color("SecondaryText")) }
+                    Button { filter.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Color.theme.secondaryText) }
                         .buttonStyle(.borderless).accessibilityLabel("Clear search")
                 }
             }
@@ -138,7 +138,7 @@ struct InvoicesList<Header: View>: View {
     private var totalsSection: some View {
         let totals = ledger.totals(filter)
         return Section {
-            if totals.isEmpty { Text("Nothing billed").foregroundStyle(Color("SecondaryText")) }
+            if totals.isEmpty { Text("Nothing billed").foregroundStyle(Color.theme.secondaryText) }
             ForEach(totals) { line in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(line.currency).fontWeight(.semibold)
@@ -161,13 +161,13 @@ struct InvoicesList<Header: View>: View {
 
     @ViewBuilder private func totalColumns(_ line: LedgerTotals) -> some View {
         totalColumn("Billed", Money.format(line.billed, currency: line.currency), color: .primary)
-        totalColumn("Received", Money.format(line.received, currency: line.currency), color: Color.accentColor)
+        totalColumn("Received", Money.format(line.received, currency: line.currency), color: Color.theme.positive)
         totalColumn("Owed", Money.format(line.owed, currency: line.currency), color: .primary)
     }
 
     private func totalColumn(_ label: String, _ value: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.footnote).foregroundStyle(Color("SecondaryText"))
+            Text(label).font(.footnote).foregroundStyle(Color.theme.secondaryText)
             Text(value).fontWeight(.semibold).monospacedDigit().foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -176,10 +176,10 @@ struct InvoicesList<Header: View>: View {
 
     private var noInvoices: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: "doc.text").font(.title).foregroundStyle(Color.accentColor).accessibilityHidden(true)
+            Image(systemName: "doc.text").font(.title).foregroundStyle(Color.theme.accent).accessibilityHidden(true)
             Text("No invoices yet").font(.title3.bold()).accessibilityAddTraits(.isHeader)
             Text("Invoices and event payments land here, with what’s still owed.")
-                .foregroundStyle(Color("SecondaryText"))
+                .foregroundStyle(Color.theme.secondaryText)
             Button("Go to Month", action: onGoToMonth).buttonStyle(DaybookSecondaryButton())
                 .accessibilityIdentifier("ledger-go-to-month")
         }
@@ -190,7 +190,7 @@ struct InvoicesList<Header: View>: View {
     private var noMatch: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(ledger.emptyMessage(filter)).font(.headline)
-            Text("Try another client or year, or clear the filters to see everything.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Text("Try another client or year, or clear the filters to see everything.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             Button("Clear Filters") { filter = LedgerFilter() }.buttonStyle(DaybookSecondaryButton())
                 .accessibilityIdentifier("ledger-clear-filters")
         }
@@ -201,7 +201,7 @@ struct InvoicesList<Header: View>: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(title).font(.headline).foregroundStyle(Color.primary).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
-            if !meta.isEmpty { Text(meta).font(.subheadline).foregroundStyle(Color("SecondaryText")).monospacedDigit().multilineTextAlignment(.trailing) }
+            if !meta.isEmpty { Text(meta).font(.subheadline).foregroundStyle(Color.theme.secondaryText).monospacedDigit().multilineTextAlignment(.trailing) }
         }
         .textCase(nil)
     }
@@ -214,11 +214,11 @@ struct InvoicesList<Header: View>: View {
                 Button { selection.wrappedValue = entry.id } label: {
                     HStack(spacing: 10) {
                         LedgerRow(entry: entry, today: ledger.today).frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
                     }.contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .listRowBackground(selection.wrappedValue == entry.id ? Color.accentColor.opacity(0.12) : Color("SurfaceBackground"))
+                .listRowBackground(selection.wrappedValue == entry.id ? Color.theme.accent.opacity(0.12) : Color.theme.surface)
                 .accessibilityAddTraits(selection.wrappedValue == entry.id ? .isSelected : [])
             } else {
                 NavigationLink { LedgerDestination(entry: entry, invoice: invoice, job: job) } label: { LedgerRow(entry: entry, today: ledger.today) }
@@ -271,9 +271,9 @@ private struct LedgerActions: ViewModifier {
         if let invoice, canPay || canSend {
             content
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if canVoid { Button("Void", systemImage: "xmark.circle") { void(invoice) }.tint(Color("SecondaryText")) }
-                    if canPay { Button("Record Payment", systemImage: "banknote") { pay(invoice) }.tint(Color.accentColor) }
-                    if canSend { Button("Mark Sent", systemImage: "paperplane") { markSent(invoice) }.tint(Color.accentColor) }
+                    if canVoid { Button("Void", systemImage: "xmark.circle") { void(invoice) }.tint(Color.theme.secondaryText) }
+                    if canPay { Button("Record Payment", systemImage: "banknote") { pay(invoice) }.tint(Color.theme.accent) }
+                    if canSend { Button("Mark Sent", systemImage: "paperplane") { markSent(invoice) }.tint(Color.theme.accent) }
                 }
                 .contextMenu {
                     if canPay { Button("Record Payment", systemImage: "banknote") { pay(invoice) } }
@@ -297,10 +297,10 @@ struct LedgerRow: View {
 
     private var tone: Color {
         switch entry.state {
-        case .overdue: Color("BookingCancelled")
-        case .review: Color("AmberText")
-        case .paid, .direct: Color.accentColor
-        default: Color("SecondaryText")
+        case .overdue: Color.theme.cancelled
+        case .review: Color.theme.caution
+        case .paid, .direct: Color.theme.positive
+        default: Color.theme.secondaryText
         }
     }
     private var emphasised: Bool {
@@ -318,7 +318,7 @@ struct LedgerRow: View {
                 if !entry.currency.isEmpty {
                     Text(Money.format(entry.shownAmount, currency: entry.currency)).fontWeight(.semibold).monospacedDigit()
                         .strikethrough(entry.state == .void)
-                        .foregroundStyle(entry.state == .void ? Color("SecondaryText") : Color.primary)
+                        .foregroundStyle(entry.state == .void ? Color.theme.secondaryText : Color.primary)
                 }
             }
             Text([entry.clientName, entry.detail].filter { !$0.isEmpty }.joined(separator: " · "))
@@ -370,9 +370,9 @@ private struct LedgerChip: View {
         Button(action: action) {
             Text(title).font(.subheadline.weight(.semibold))
                 .padding(.horizontal, 14).frame(minHeight: 34)
-                .foregroundStyle(selected ? Color("PrimaryButtonText") : Color.primary)
-                .background(selected ? Color.accentColor : Color.clear, in: Capsule())
-                .overlay { Capsule().strokeBorder(selected ? Color.accentColor : Color.primary.opacity(contrast == .increased ? 0.45 : 0.16), lineWidth: 1) }
+                .foregroundStyle(selected ? Color.theme.onAccent : Color.primary)
+                .background(selected ? Color.theme.accent : Color.clear, in: Capsule())
+                .overlay { Capsule().strokeBorder(selected ? Color.theme.accent : Color.primary.opacity(contrast == .increased ? 0.45 : 0.16), lineWidth: 1) }
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }
@@ -400,7 +400,7 @@ private struct LedgerMenu: View {
             }
             .font(.subheadline.weight(.semibold)).foregroundStyle(Color.primary)
             .padding(.horizontal, 14).frame(minHeight: 34)
-            .overlay { Capsule().strokeBorder(selection.isEmpty ? Color.primary.opacity(contrast == .increased ? 0.45 : 0.16) : Color.accentColor, lineWidth: 1) }
+            .overlay { Capsule().strokeBorder(selection.isEmpty ? Color.primary.opacity(contrast == .increased ? 0.45 : 0.16) : Color.theme.accent, lineWidth: 1) }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }

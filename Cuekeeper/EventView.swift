@@ -40,7 +40,7 @@ struct EventEditorView: View {
                 DaybookForm {
                     Section("Event details") {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Title").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            Text("Title").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                             DaybookTextField("Custom title (optional)", text: $draft.title).accessibilityIdentifier("event-title")
                         }
                         EventPlaceFields(location: $draft.location, trackPlaceID: $draft.trackPlaceID, timeZoneID: $draft.timeZoneID,
@@ -101,7 +101,7 @@ struct EventEditorView: View {
             }
             .saveErrorAlert($error).interactiveDismissDisabled(changed)
             .preservesDraftOnTodayLink()
-        }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
+        }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color.theme.page)
     }
 }
 
@@ -112,7 +112,7 @@ private struct EditorSectionLabel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title).font(.headline)
-            Text(summary).font(.subheadline).foregroundStyle(Color("SecondaryText")).fixedSize(horizontal: false, vertical: true)
+            Text(summary).font(.subheadline).foregroundStyle(Color.theme.secondaryText).fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .accessibilityElement(children: .combine)
     }
@@ -173,7 +173,7 @@ private struct EventBookingFields: View {
                             FeeEditingFields(draft: Binding(get: { draft.fee ?? FeeDraft() }, set: { draft.fee = $0 }))
                         }.padding(.top, 12)
                     } else {
-                        Text("This fee needs review. Resolve conflicting revisions from the booking’s Fee screen.").foregroundStyle(Color("SecondaryText"))
+                        Text("This fee needs review. Resolve conflicting revisions from the booking’s Fee screen.").foregroundStyle(Color.theme.secondaryText)
                     }
                 } label: {
                     EditorSectionLabel(title: "Overall fee & breakdown", summary: feeSummary(draft.fee), expanded: feeExpanded)
@@ -223,20 +223,20 @@ struct EventScheduleRow: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(session.title).font(.headline)
-                Text(session.job?.client?.name ?? "Client to add").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(session.job?.client?.name ?? "Client to add").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 if !session.effectiveSeriesNames.isEmpty { Text(session.effectiveSeriesNames.joined(separator: ", ")).font(.subheadline) }
             }
             VStack(alignment: .leading, spacing: 4) {
                 if let start = session.startTime {
                     Text(session.shortTime(start) + (session.endTime.map { " – " + session.shortTime($0) } ?? ""))
                         .font(.title3.weight(.semibold)).multilineTextAlignment(.leading)
-                    Text(scheduleDates(start)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    Text(scheduleDates(start)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 } else {
                     Text("Time to come").font(.title3.weight(.semibold))
-                    if !session.day.isEmpty { Text(Day.display(session.day)).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+                    if !session.day.isEmpty { Text(Day.display(session.day)).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
                 }
             }.fixedSize(horizontal: false, vertical: true)
-            if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+            if let local = session.localScheduleDescription { Text(local).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
             if let call = session.callTime {
                 Divider()
                 ViewThatFits(in: .horizontal) {
@@ -246,7 +246,7 @@ struct EventScheduleRow: View {
             }
             HStack {
                 BookingBadge(status: session.scheduleStatus)
-                Text(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(session.coverage == "notCovering" ? "Not covering" : session.coverage.capitalized).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
         }.padding(.vertical, 4)
     }

@@ -1,31 +1,57 @@
 {
-  "fill" : {
-    "solid" : "extended-srgb:0.02745,0.24314,0.15294,1.00000"
+  "fill": {
+    "solid": "extended-srgb:0.09020,0.45490,0.36471,1.00000"
   },
-  "groups" : [
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "image-name" : "rear-card.svg",
-          "name" : "Rear cue card"
+          "image-name": "rear-card.svg",
+          "name": "Rear cue card",
+          "fill-specializations": [
+            {
+              "value": {
+                "solid": "extended-srgb:0.77647,0.95686,0.89412,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "extended-srgb:0.43529,0.89412,0.74902,1.00000"
+              }
+            }
+          ]
         },
         {
-          "image-name" : "front-bookmark.svg",
-          "name" : "Bookmark with cue line"
+          "image-name": "front-bookmark.svg",
+          "name": "Bookmark with cue line",
+          "fill-specializations": [
+            {
+              "value": {
+                "solid": "extended-srgb:0.77647,0.95686,0.89412,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "extended-srgb:0.43529,0.89412,0.74902,1.00000"
+              }
+            }
+          ]
         }
       ],
-      "name" : "Kept cues",
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.12
+      "name": "Kept cues",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.12
       },
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0
+      "translucency": {
+        "enabled": false,
+        "value": 0
       }
     }
   ],
-  "supported-platforms" : {
-    "squares" : "shared"
+  "supported-platforms": {
+    "squares": "shared"
   }
 }

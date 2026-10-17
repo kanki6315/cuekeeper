@@ -20,7 +20,7 @@ struct RecentlyDeletedView: View {
                 Section {
                     Text("Restore deleted items for 30 days.")
                         .font(.subheadline)
-                        .foregroundStyle(Color("SecondaryText"))
+                        .foregroundStyle(Color.theme.secondaryText)
                         .padding(.top, 8)
                         .padding(.bottom, 4)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -93,24 +93,24 @@ struct RecentlyDeletedView: View {
     private func recoveryRow(_ record: NSManagedObject, title: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.headline)
-            Text(subtitle).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Text(subtitle).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             if let deadline = Recovery.deadline(record) {
                 Text("Restore by \(deadline.formatted(date: .abbreviated, time: .omitted))")
-                    .font(.caption).foregroundStyle(Color("SecondaryText"))
+                    .font(.caption).foregroundStyle(Color.theme.secondaryText)
             }
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button("Restore", systemImage: "arrow.uturn.backward") { restore(record, title: title) }
-                .tint(Color.accentColor)
+                .tint(Color.theme.accent)
                 .accessibilityLabel("Restore \(title)")
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             // Only mark the confirmation button destructive: revealing this action
             // must not optimistically remove the row before the user confirms.
             Button("Delete", systemImage: "trash") { requestDiscard(record) }
-                .tint(.red)
+                .tint(Color.theme.destructive)
                 .accessibilityLabel("Permanently delete \(title)")
         }
         .contextMenu {

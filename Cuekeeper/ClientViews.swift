@@ -82,7 +82,7 @@ private struct ClientComingUpRow: View {
             ClientRail(day: next?.facts.startDay ?? "", quiet: false)
             VStack(alignment: .leading, spacing: 4) {
                 Text(name).font(.headline)
-                Text(detail).font(.subheadline).foregroundStyle(Color("SecondaryText")).lineLimit(2)
+                Text(detail).font(.subheadline).foregroundStyle(Color.theme.secondaryText).lineLimit(2)
                 if let standing = summary.standing { EventsStatusBadge(badge: standing).padding(.top, 2) }
             }
             .multilineTextAlignment(.leading)
@@ -111,7 +111,7 @@ private struct ClientRosterRow: View {
             ClientMonogram(name: name)
             VStack(alignment: .leading, spacing: 3) {
                 Text(name).font(.body.weight(.semibold))
-                Text(detail).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(detail).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 if showsStanding, let standing = summary.standing { EventsStatusBadge(badge: standing).padding(.top, 2) }
             }
             .multilineTextAlignment(.leading)
@@ -126,9 +126,9 @@ struct ClientMonogram: View {
     var body: some View {
         Text(name.initials)
             .font(.subheadline.weight(.semibold)).minimumScaleFactor(0.7).lineLimit(1)
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Color.theme.accent)
             .frame(width: size, height: size)
-            .background(Color.accentColor.opacity(0.1), in: Circle())
+            .background(Color.theme.accent.opacity(0.1), in: Circle())
             .accessibilityHidden(true)
     }
 }
@@ -150,7 +150,7 @@ private struct ClientRail: View {
                 Text("Dates to come").font(.caption).multilineTextAlignment(.center)
             }
         }
-        .foregroundStyle(quiet ? Color("SecondaryText") : Color.accentColor)
+        .foregroundStyle(quiet ? Color.theme.secondaryText : Color.theme.accent)
         .frame(width: width)
         .accessibilityElement(children: .combine)
     }
@@ -205,7 +205,7 @@ struct ClientDetailView: View {
                                     options: ClientTab.allCases, identifier: "client-tab", label: { $0.title },
                                     badge: { $0 == .details ? (summary.detailsNeeded.isEmpty ? 0 : summary.detailsNeeded.count) : 0 })
                         .padding(.vertical, 4)
-                        .background(Color("PageBackground"))
+                        .background(Color.theme.page)
                 }
             }
             .frame(maxWidth: 760)
@@ -242,13 +242,13 @@ struct ClientDetailView: View {
     private func header(_ summary: ClientSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(client.name).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-            Text(sinceText(summary)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            Text(sinceText(summary)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             ChipFlow(spacing: 6) {
                 EventFactChip(symbol: "calendar", text: summary.eventCount == 0 ? "No events yet" : counted(summary.eventCount, "event", "events"))
                 EventFactChip(symbol: CurrencyPreferences.symbol(summary.currency), text: summary.currency)
                 if let terms = summary.invoicing.termsDays { EventFactChip(symbol: "clock", text: "\(terms) days to pay") }
                 if !summary.overdue.isEmpty {
-                    EventChip(tint: Color("AmberText")) { Text(ClientSummary.amounts(summary.overdue) + " overdue").fontWeight(.semibold) }
+                    EventChip(tint: Color.theme.caution) { Text(ClientSummary.amounts(summary.overdue) + " overdue").fontWeight(.semibold) }
                 } else if !summary.owed.isEmpty {
                     EventChip { Text(ClientSummary.amounts(summary.owed) + " owed") }
                 }
@@ -266,7 +266,7 @@ struct ClientDetailView: View {
     @ViewBuilder private func eventsTab(_ summary: ClientSummary) -> some View {
         if summary.upcoming.isEmpty && summary.past.isEmpty {
             Text("No events yet. Choose \(client.name) as the client when you add an event.")
-                .foregroundStyle(Color("SecondaryText")).frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(Color.theme.secondaryText).frame(maxWidth: .infinity, alignment: .leading)
         } else {
             DaybookSections {
                 if !summary.upcoming.isEmpty {
@@ -286,7 +286,7 @@ struct ClientDetailView: View {
                                     Spacer()
                                     Image(systemName: "chevron.down").font(.caption.weight(.semibold))
                                 }.frame(minHeight: 32).contentShape(Rectangle())
-                            }.foregroundStyle(Color.accentColor).accessibilityIdentifier("client-year-\(year.year)")
+                            }.foregroundStyle(Color.theme.accent).accessibilityIdentifier("client-year-\(year.year)")
                         }
                     } header: {
                         Text(year.year.isEmpty ? "Dates to come" : year.year)
@@ -319,7 +319,7 @@ struct ClientDetailView: View {
             DaybookSections {
                 Section {
                     if money.isEmpty {
-                        Text("No fees recorded for \(shown).").foregroundStyle(Color("SecondaryText"))
+                        Text("No fees recorded for \(shown).").foregroundStyle(Color.theme.secondaryText)
                     } else {
                         MonthMoneyPanel(currencies: money)
                     }
@@ -341,7 +341,7 @@ struct ClientDetailView: View {
                 }
                 Section("Invoices") {
                     if summary.invoices.isEmpty {
-                        Text("No invoices yet").foregroundStyle(Color("SecondaryText"))
+                        Text("No invoices yet").foregroundStyle(Color.theme.secondaryText)
                     }
                     ForEach(summary.invoices) { invoice in
                         if let id = invoice.objectID, let record = try? context.existingObject(with: id) as? Invoice {
@@ -374,7 +374,7 @@ struct ClientDetailView: View {
         return DaybookSections {
             Section("Contact") {
                 if client.contact.isEmpty {
-                    Text("No contact details").foregroundStyle(Color("SecondaryText"))
+                    Text("No contact details").foregroundStyle(Color.theme.secondaryText)
                 } else {
                     Text(client.contact).textSelection(.enabled)
                 }
@@ -391,7 +391,7 @@ struct ClientDetailView: View {
                     Spacer()
                     Text(invoicing.isComplete ? "Complete" : "\(required) of 4")
                         .font(.subheadline.weight(.regular))
-                        .foregroundStyle(invoicing.isComplete ? Color.accentColor : Color("AmberText"))
+                        .foregroundStyle(invoicing.isComplete ? Color.theme.positive : Color.theme.caution)
                 }
             }
             if !client.notes.isEmpty {
@@ -421,7 +421,7 @@ struct ClientEventRow: View {
         return parts.joined(separator: " · ")
     }
     private var title: some View {
-        Text(row.facts.title).font(.headline).foregroundStyle(row.finished ? Color("SecondaryText") : Color.primary)
+        Text(row.facts.title).font(.headline).foregroundStyle(row.finished ? Color.theme.secondaryText : Color.primary)
     }
     var body: some View {
         HStack(spacing: 14) {
@@ -437,7 +437,7 @@ struct ClientEventRow: View {
                         EventsStatusBadge(badge: row.badge)
                     }
                 }
-                Text(detail).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(detail).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 if !tags.isEmpty {
                     ChipFlow(spacing: 4) { ForEach(tags, id: \.self) { RoleTag(name: $0) } }.padding(.top, 2)
                 }
@@ -485,13 +485,13 @@ private struct ClientInvoiceRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(invoice.reference).font(.headline).multilineTextAlignment(.leading)
-                if !detail.isEmpty { Text(detail).font(.subheadline).foregroundStyle(Color("SecondaryText")).multilineTextAlignment(.leading) }
+                if !detail.isEmpty { Text(detail).font(.subheadline).foregroundStyle(Color.theme.secondaryText).multilineTextAlignment(.leading) }
             }
             Spacer(minLength: 6)
             VStack(alignment: .trailing, spacing: 3) {
                 if state != .review { Text(Money.format(amount, currency: invoice.currency)).font(.body.weight(.semibold)).monospacedDigit() }
                 Text(label).font(.footnote.weight(amber ? .semibold : .regular))
-                    .foregroundStyle(amber ? Color("AmberText") : Color("SecondaryText"))
+                    .foregroundStyle(amber ? Color.theme.caution : Color.theme.secondaryText)
             }.multilineTextAlignment(.trailing)
         }
         .opacity(state == .void ? 0.6 : 1)
@@ -511,11 +511,11 @@ private struct ClientValueRow: View {
         let empty = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
         layout {
-            Text(label).foregroundStyle(empty && missing ? Color("AmberText") : Color("SecondaryText"))
+            Text(label).foregroundStyle(empty && missing ? Color.theme.caution : Color.theme.secondaryText)
                 .fontWeight(empty && missing ? .semibold : .regular)
                 .frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
             Text(empty ? (missing ? "Missing" : "None") : value)
-                .foregroundStyle(empty ? Color("SecondaryText") : Color.primary)
+                .foregroundStyle(empty ? Color.theme.secondaryText : Color.primary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -574,7 +574,7 @@ struct ClientEditor: View {
                         Spacer()
                         Text(missing.isEmpty ? "Complete" : "\(4 - missing.count) of 4")
                             .font(.subheadline.weight(.regular))
-                            .foregroundStyle(missing.isEmpty ? Color.accentColor : Color("SecondaryText"))
+                            .foregroundStyle(missing.isEmpty ? Color.theme.positive : Color.theme.secondaryText)
                     }
                 }
                 Section("Notes") {
@@ -605,13 +605,13 @@ struct ClientEditor: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 
     @ViewBuilder private func labeled<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
         layout {
-            Text(label).foregroundStyle(Color("SecondaryText"))
+            Text(label).foregroundStyle(Color.theme.secondaryText)
                 .frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
             content().frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -625,7 +625,7 @@ private struct InvoicingMeter: View {
     var body: some View {
         HStack(spacing: 3) {
             ForEach(0..<4, id: \.self) { index in
-                Capsule().fill(index < filled ? Color.accentColor : Color.primary.opacity(0.12))
+                Capsule().fill(index < filled ? Color.theme.accent : Color.primary.opacity(0.12))
             }
         }
         .frame(height: 4)

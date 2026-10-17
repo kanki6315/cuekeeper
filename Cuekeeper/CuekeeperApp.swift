@@ -55,6 +55,10 @@ struct CuekeeperApp: App {
             for key in [UpcomingView.modeKey, UpcomingView.modeSetKey, "upcoming.scope", "upcoming.dismissedAttention", "firstLaunchCompleted", "defaultRole", "homeTimeZone", "homeLocation", "appearance", "defaultCurrency", "displayCurrencies", "walletAutomationGuideStep", "walletAutomationGuideStepV2"] {
                 UserDefaults.standard.removeObject(forKey: key)
             }
+            ThemeStore.defaults.removeObject(forKey: ThemeStore.key)
+        }
+        if ProcessInfo.processInfo.isUITesting, let theme = arguments.first(where: { $0.hasPrefix("--design-theme=") }) {
+            ThemeStore.shared.preview(Theme.named(String(theme.dropFirst("--design-theme=".count))))
         }
         #endif
         _persistence = StateObject(wrappedValue: controller)
@@ -103,12 +107,12 @@ struct CuekeeperApp: App {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color("PageBackground"))
+            .background(Color.theme.page)
             .environmentObject(persistence)
             .environmentObject(calendar)
             .background {
                 ExternalPresentationHost(presentations: presentations, ready: persistence.isLoaded && !isUnitTestHost) { request in
-                    AnyView(externalContent(request)
+                    AnyView(externalContent(request).tint(Color.theme.accent)
                         .environment(\.managedObjectContext, persistence.container.viewContext)
                         .environmentObject(persistence).environmentObject(calendar))
                 } onClose: { request in
@@ -170,8 +174,9 @@ struct CuekeeperApp: App {
                 guard url.scheme == "cuekeeper", url.host == "today" else { return }
                 pendingToday = true
             }
-            .tint(Color("AccentColor"))
+            .tint(Color.theme.accent)
             .preferredColorScheme(preferredAppearance)
+            .task { ThemeStore.shared.applyWindowTint() }
             .task {
                 #if DEBUG
                 if ProcessInfo.processInfo.isUITesting, ProcessInfo.processInfo.arguments.contains("--siri-wizard-test"), handoff.pending == nil {

@@ -9,19 +9,22 @@ final class BackgroundExpenseUITests: RegressionUITestCase {
     private func shot(_ name: String) {
         captureScreenshot(name)
     }
+    private func draft(_ merchant: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", merchant)).firstMatch
+    }
+    /// The inbox lists drafts oldest first, so the dated Circuit Parking capture comes before Hotel.
+    private func finish(_ app: XCUIApplication) -> XCUIElement { app.buttons.matching(identifier: "expenses-finish-finish").firstMatch }
     func testCompleteDraftWithAttachedReceiptAndChooseEvent() {
         let app = launch("pending-expenses")
-        let row = app.buttons.matching(identifier: "pending-expense-row").matching(NSPredicate(format: "label CONTAINS %@", "Circuit Parking")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 15)); shot("pending-expenses")
-        row.tap()
+        XCTAssertTrue(draft("Circuit Parking", in: app).waitForExistence(timeout: 15)); shot("pending-expenses")
+        finish(app).tap()
         XCTAssertTrue(app.buttons["expense-choose-event"].waitForExistence(timeout: 5)); shot("background-draft")
         app.buttons["expense-choose-event"].tap()
         let event = app.buttons["choose-expense-event-row"].firstMatch
         XCTAssertTrue(event.waitForExistence(timeout: 5)); event.tap()
         XCTAssertTrue(app.buttons["save-expense"].waitForExistence(timeout: 5)); app.buttons["save-expense"].tap()
-        XCTAssertTrue(app.navigationBars["Expenses to complete"].waitForExistence(timeout: 5))
-        XCTAssertFalse(row.exists)
-        XCTAssertTrue(app.buttons.matching(identifier: "pending-expense-row").matching(NSPredicate(format: "label CONTAINS %@", "Hotel")).firstMatch.exists)
+        XCTAssertTrue(draft("Hotel", in: app).waitForExistence(timeout: 5))
+        XCTAssertFalse(draft("Circuit Parking", in: app).exists)
         shot("completed-draft-removed")
     }
     func testNotificationRouteOpensExactPhotoLessDraftAndKeepsIt() {
@@ -37,9 +40,8 @@ final class BackgroundExpenseUITests: RegressionUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures", "--design-screen=pending-expenses", "--ui-test-expense-conflict"]
         app.launch()
-        let row = app.buttons.matching(identifier: "pending-expense-row").matching(NSPredicate(format: "label CONTAINS %@", "Circuit Parking")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 15))
-        row.tap()
+        XCTAssertTrue(finish(app).waitForExistence(timeout: 15))
+        finish(app).tap()
         let keep = app.buttons["Keep Draft"]
         XCTAssertTrue(keep.waitForExistence(timeout: 5))
         keep.tap()
@@ -50,20 +52,23 @@ final class BackgroundExpenseUITests: RegressionUITestCase {
         keep.tap()
         XCTAssertTrue(close.waitForExistence(timeout: 5))
         close.tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(draft("Circuit Parking", in: app).waitForExistence(timeout: 5))
     }
 
     func testSettingsInstructionsAndPendingPrompt() {
         let app = launch("pending-root")
-        // The Expenses tab lists drafts under To finish; the full completion list opens from Payments.
+        // Payments points at the Expenses inbox, which links to Wallet setup.
         let payments = app.buttons["Payments"].firstMatch
         _ = payments.waitForExistence(timeout: 15)
         if payments.exists { payments.tap() } else { app.staticTexts["Payments"].firstMatch.tap() }
         let pending = app.buttons["pending-expenses"].firstMatch
         XCTAssertTrue(pending.waitForExistence(timeout: 10))
         pending.tap()
-        XCTAssertTrue(app.navigationBars["Expenses to complete"].waitForExistence(timeout: 5))
-        app.buttons["Wallet automation setup"].tap()
+        XCTAssertTrue(finish(app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["expenses-mode-inbox"].isSelected)
+        let wallet = app.buttons["Wallet automation"]
+        for _ in 0..<6 where !wallet.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        wallet.tap()
         XCTAssertTrue(app.navigationBars["Wallet Automation"].waitForExistence(timeout: 5))
         shot("wallet-automation-steps")
         app.buttons["Help & Options"].tap()
@@ -93,16 +98,20 @@ final class BackgroundExpenseUITests: RegressionUITestCase {
         XCTAssertTrue(app.buttons["Include Payment Details"].waitForExistence(timeout: 5))
     }
 
-    func testRemoveDraftHasConfirmation() {
+    func testRemoveDraftFromEditorHasConfirmation() {
         let app = launch("pending-expenses")
-        XCTAssertTrue(app.buttons["remove-expense-draft"].firstMatch.waitForExistence(timeout: 15))
-        let initial = app.buttons.matching(identifier: "pending-expense-row").count
-        app.buttons["remove-expense-draft"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["Keep Draft"].waitForExistence(timeout: 5)); app.buttons["Keep Draft"].tap()
-        XCTAssertEqual(app.buttons.matching(identifier: "pending-expense-row").count, initial)
-        app.buttons["remove-expense-draft"].firstMatch.tap()
+        XCTAssertTrue(finish(app).waitForExistence(timeout: 15))
+        let initial = app.buttons.matching(identifier: "expenses-finish-finish").count
+        finish(app).tap()
+        let remove = app.buttons["remove-expense-draft"]
+        XCTAssertTrue(app.buttons["Keep Draft"].waitForExistence(timeout: 5))
+        for _ in 0..<6 where !remove.isHittable { app.swipeUp() }
+        remove.tap()
+        XCTAssertTrue(app.alerts.buttons["Keep Draft"].waitForExistence(timeout: 5)); app.alerts.buttons["Keep Draft"].tap()
+        remove.tap()
         shot("remove-draft-confirmation")
         app.alerts.buttons["Remove Draft"].tap()
-        XCTAssertEqual(app.buttons.matching(identifier: "pending-expense-row").count, initial - 1)
+        XCTAssertTrue(draft("Hotel", in: app).waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(identifier: "expenses-finish-finish").count, initial - 1)
     }
 }

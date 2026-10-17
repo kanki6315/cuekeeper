@@ -4,6 +4,7 @@ import UserNotifications
 struct ExpenseAutomationSettingsView: View {
     private static let shortcutURL = URL(string: "https://www.icloud.com/shortcuts/7fcd1ee447d343d59ac8ff14dcaaf10e")!
     @Environment(\.openURL) private var openURL
+    @Environment(\.openExpensesInbox) private var openInbox
     @State private var linkUnavailable = false
 
     var body: some View {
@@ -28,9 +29,12 @@ struct ExpenseAutomationSettingsView: View {
             Section {
                 DaybookLink("Set Up Manually") { ExpenseAutomationManualSetupView() }
                     .accessibilityIdentifier("wallet-manual-setup")
-                DaybookLink("Expenses to complete") { PendingExpensesView() }
+                if let openInbox {
+                    DaybookActionRow("Open Expenses Inbox", systemImage: "tray") { openInbox() }
+                        .accessibilityIdentifier("wallet-open-inbox")
+                }
             } footer: {
-                Text("After your next card tap, check Expenses for a draft.")
+                Text("After your next card tap, check the Expenses inbox for a draft.")
             }
         }
         .navigationTitle("Wallet Automation").navigationBarTitleDisplayMode(.inline)
@@ -204,7 +208,7 @@ struct ExpenseRemindersSection: View {
 
     var body: some View {
         Section {
-            Text("Get a notification that opens your captured draft. Drafts remain in Upcoming and Payments when reminders are off.")
+            Text("Get a notification that opens your captured draft. With reminders off, drafts wait in the Expenses inbox.")
             if enabled {
                 Button("Turn Off Reminders") { Task { await notifications.disable() } }
             }

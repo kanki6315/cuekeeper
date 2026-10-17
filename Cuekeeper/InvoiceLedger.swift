@@ -1,7 +1,17 @@
 import CoreData
 import Foundation
 
+/// One receipt that still counts (reversed receipts and their reversals drop out together).
+struct LedgerReceipt: Equatable {
+    let day: String
+    let amount: Int64
+}
+
 /// One invoice, direct payment, or fee that needs review, flattened for the Invoices view.
+///
+/// Money is dated on two bases. Billing: an invoice is billed on its sent day (a draft or never-sent
+/// invoice falls back to the day it was started); a direct payment is billed when it is received,
+/// since nothing was invoiced. Receipts: each payment counts on the day it was received.
 struct LedgerEntry: Identifiable, Equatable {
     enum Kind: Equatable { case invoice, directPayment, feeReview }
     enum State: Equatable { case review(String), overdue, unpaid, draft, paid, direct, void }
@@ -23,10 +33,37 @@ struct LedgerEntry: Identifiable, Equatable {
     var settledDay = ""
     /// A review entry for a sent invoice still counts toward what is owed.
     var sent = false
+    /// The receipts behind `received`, dated for yearly totals.
+    var receipts: [LedgerReceipt] = []
 
     var id: String { "\(kind)-\(recordID)" }
     var remaining: Int64 { state == .void ? 0 : total - received }
-    var year: String { String([settledDay, sentDay, createdDay].first { !$0.isEmpty }?.prefix(4) ?? "") }
+    /// The year this entry was billed in. Paying an invoice later never moves it.
+    var billingYear: String { String((sentDay.isEmpty ? createdDay : sentDay).prefix(4)) }
+    /// Receipts by day; an entry built without them dates its received total to when it settled.
+    private var datedReceipts: [LedgerReceipt] {
+        guard receipts.isEmpty, received != 0 else { return receipts }
+        let day = settledDay.isEmpty ? (sentDay.isEmpty ? createdDay : sentDay) : settledDay
+        return [LedgerReceipt(day: day, amount: received)]
+    }
+    /// Every year the entry has activity in: billed or money received. Browsing a year shows all of them.
+    var years: Set<String> {
+        let received = Set(datedReceipts.map { String($0.day.prefix(4)) })
+        return (kind == .directPayment ? received : received.union([billingYear])).filter { !$0.isEmpty }
+    }
+    /// Money received in `year`, or in total when `year` is empty.
+    func received(in year: String) -> Int64 {
+        year.isEmpty ? received : datedReceipts.filter { $0.day.hasPrefix(year) }.reduce(0) { $0 + $1.amount }
+    }
+    /// What was billed in `year`, or in total when `year` is empty.
+    func billed(in year: String) -> Int64 {
+        if year.isEmpty { return total }
+        return kind == .directPayment ? received(in: year) : billingYear == year ? total : 0
+    }
+    /// What is still owed today on what was billed in `year`.
+    func owed(in year: String) -> Int64 {
+        kind == .directPayment || !(year.isEmpty || billingYear == year) ? 0 : remaining
+    }
     var isOwed: Bool {
         switch state {
         case .overdue, .unpaid: true
@@ -134,12 +171,15 @@ struct LedgerOwed: Identifiable, Equatable {
     let overdue: Int64
 }
 
+/// Totals for a client and/or year. Billed is dated by billing day, Received by receipt day,
+/// and Owed is today's open balance on what was billed in that period, so for one year
+/// Owed is not Billed − Received: a December invoice paid in January is billed in one year and received in the next.
 struct LedgerTotals: Identifiable, Equatable {
     var id: String { currency }
     let currency: String
     let billed: Int64
     let received: Int64
-    var owed: Int64 { billed - received }
+    let owed: Int64
 }
 
 /// Every invoice and direct payment, across all months.
@@ -149,7 +189,7 @@ struct InvoiceLedger {
     var displayed: [String] = CurrencyPreferences.supported
 
     var clients: [String] { Array(Set(entries.map(\.clientName).filter { !$0.isEmpty })).sorted() }
-    var years: [String] { Array(Set(entries.map(\.year).filter { !$0.isEmpty })).sorted(by: >) }
+    var years: [String] { Array(Set(entries.flatMap(\.years))).sorted(by: >) }
 
     private func ordered(_ currencies: Set<String>) -> [String] {
         currencies.sorted { (displayed.firstIndex(of: $0) ?? .max, $0) < (displayed.firstIndex(of: $1) ?? .max, $1) }
@@ -169,11 +209,13 @@ struct InvoiceLedger {
     func totals(_ filter: LedgerFilter) -> [LedgerTotals] {
         let rows = entries.filter { entry in
             entry.kind != .feeReview && entry.state != .draft && entry.state != .void && (entry.kind == .directPayment || entry.sent)
-                && (filter.client.isEmpty || entry.clientName == filter.client) && (filter.year.isEmpty || entry.year == filter.year)
+                && (filter.client.isEmpty || entry.clientName == filter.client) && (filter.year.isEmpty || entry.years.contains(filter.year))
         }
+        let year = filter.year
         return ordered(Set(rows.map(\.currency))).map { currency in
             let rows = rows.filter { $0.currency == currency }
-            return LedgerTotals(currency: currency, billed: rows.reduce(0) { $0 + $1.total }, received: rows.reduce(0) { $0 + $1.received })
+            return LedgerTotals(currency: currency, billed: rows.reduce(0) { $0 + $1.billed(in: year) },
+                                received: rows.reduce(0) { $0 + $1.received(in: year) }, owed: rows.reduce(0) { $0 + $1.owed(in: year) })
         }
     }
 
@@ -181,7 +223,7 @@ struct InvoiceLedger {
         entries.filter { entry in
             filter.status.includes(entry) && entry.matches(filter.query)
                 && (filter.client.isEmpty || entry.clientName == filter.client)
-                && (filter.year.isEmpty || entry.year == filter.year)
+                && (filter.year.isEmpty || entry.years.contains(filter.year))
         }
     }
 
@@ -243,7 +285,7 @@ extension InvoiceLedger {
                 guard received > 0, let currency = records.first?.currency else { continue }
                 entries.append(LedgerEntry(recordID: id, kind: .directPayment, title: "Direct payment", clientName: job.client?.name ?? "", detail: name,
                                            currency: currency, total: received, received: received, state: .direct,
-                                           settledDay: lastReceipt(Array(records)).map { Day.string(from: $0) } ?? ""))
+                                           settledDay: lastReceipt(Array(records)).map { Day.string(from: $0) } ?? "", receipts: receipts(Array(records))))
             } catch {
                 entries.append(LedgerEntry(recordID: id, kind: .directPayment, title: "Direct payment", clientName: job.client?.name ?? "", detail: name,
                                            currency: records.first?.currency ?? "", total: 0, state: .review(error.localizedDescription)))
@@ -268,7 +310,8 @@ extension InvoiceLedger {
         var entry = LedgerEntry(recordID: id, title: value.status == "draft" && value.reference.isEmpty ? "Draft" : value.reference,
                                 clientName: invoice.client?.name ?? "Client syncing", detail: (value.lines.map(\.jobName) + (value.lines.isEmpty ? value.expenseLines.map(\.label) : [])).joined(separator: ", "),
                                 currency: value.currency, total: total, received: received, state: .draft,
-                                sentDay: value.sentDay, dueDay: value.dueDay, createdDay: created, sent: value.status == "sent")
+                                sentDay: value.sentDay, dueDay: value.dueDay, createdDay: created, sent: value.status == "sent",
+                                receipts: (try? invoice.paid()) == nil ? [] : receipts(Array(invoice.payments ?? [])))
         if let issue = invoice.issue(in: context, index: index) ?? invoice.duplicateReference(index: index) {
             entry.state = .review(issue)
         } else if value.status == "draft" {
@@ -287,9 +330,14 @@ extension InvoiceLedger {
         return entry
     }
 
-    /// The latest receipt that still counts, ignoring reversed ones.
-    private static func lastReceipt(_ records: [PaymentRecord]) -> Date? {
+    /// Original receipts that still count, ignoring reversed ones, as `PaymentLedger.net` does.
+    private static func counted(_ records: [PaymentRecord]) -> [PaymentRecord] {
         let reversed = Set(records.compactMap(\.reversesID))
-        return records.filter { $0.reversesID == nil && !reversed.contains($0.id ?? UUID()) }.compactMap(\.receivedAt).max()
+        return records.filter { $0.reversesID == nil && !reversed.contains($0.id ?? UUID()) }
+    }
+    /// The latest receipt that still counts.
+    private static func lastReceipt(_ records: [PaymentRecord]) -> Date? { counted(records).compactMap(\.receivedAt).max() }
+    private static func receipts(_ records: [PaymentRecord]) -> [LedgerReceipt] {
+        counted(records).compactMap { record in record.receivedAt.map { LedgerReceipt(day: Day.string(from: $0), amount: record.amount) } }
     }
 }

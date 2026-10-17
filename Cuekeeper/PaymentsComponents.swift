@@ -257,6 +257,9 @@ enum ReadinessText {
             return Text(owed).foregroundStyle(secondary) + Text(dueDay.isEmpty ? "" : " · due " + shortDay(dueDay)).foregroundStyle(secondary)
         case .draft: return Text("On draft invoice · not sent").foregroundStyle(secondary)
         case .directPaid: return Text("Paid directly").foregroundStyle(Color.accentColor).fontWeight(.semibold)
+        case let .directPartial(received, remaining, currency):
+            let rest = remaining.map { "\(Money.format($0, currency: currency)) to collect" } ?? "fee to agree"
+            return Text("\(Money.format(received, currency: currency)) received directly · \(rest)").foregroundStyle(amber).fontWeight(.semibold)
         case .noFee: return Text("No fee").foregroundStyle(secondary)
         case .review(let message): return Text(message).foregroundStyle(amber).fontWeight(.semibold)
         case .cancelled: return Text("Cancelled").foregroundStyle(secondary)

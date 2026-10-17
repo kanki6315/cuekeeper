@@ -1,80 +1,80 @@
 {
   "title": "Privacy policy",
   "description": "How Cuekeeper handles your daybook, receipts, iCloud data and support correspondence.",
-  "updated": "October 15, 2026",
+  "updated": "October 17, 2026",
   "introduction": "Cuekeeper is developed by Arjuna Kankipati. Questions about this policy can be sent to cuekeeper@arjunakankipati.com.",
   "sections": [
     {
       "id": "your-daybook",
       "title": "Your daybook",
       "paragraphs": [
-        "Cuekeeper stores the information you enter on your device: events, clients and contact details, sessions, locations, notes, fees, invoices, payments, expenses and receipt photos. You do not create a separate Cuekeeper account. The app does not include advertising, tracking, or a third-party analytics SDK. Cuekeeper does not send your daybook to a developer-operated server."
+        "Cuekeeper stores what you enter on your device: events, clients and their contact and invoicing details (billing name, email, address, payment terms and an optional tax ID), sessions, locations, notes, fees, invoices, payments, event expenses, business costs and receipt photos. There is no Cuekeeper account, advertising, tracking or third-party analytics SDK, and Cuekeeper does not send your daybook to a developer-operated server."
       ]
     },
     {
       "id": "icloud-sync-and-backups",
       "title": "iCloud sync and backups",
       "paragraphs": [
-        "When iCloud is available, Cuekeeper uses Apple's CloudKit service to sync your daybook, including receipt photos and expense drafts, through your private iCloud database. Explicit backups are also stored in your private iCloud storage. The developer does not have access to these private daybook records through Cuekeeper. Apple's services are governed by Apple's privacy policy and your Apple Account settings. Sync is separate from backup, and a backup includes only the records already available on the device creating it.",
-        "You can also export a ZIP backup to a location you select in Files and import a backup you select. The ZIP includes record details and separate receipt image files and is not encrypted by Cuekeeper. Any storage provider you choose handles the exported copy under its own terms and your sharing settings. Cuekeeper uses temporary local files when preparing, downloading and checking backups; these are removed when the operation releases them. An interrupted app session can leave temporary files for the system to clear."
+        "When iCloud is available, Cuekeeper uses Apple's CloudKit to sync your daybook, including receipt photos and expense drafts, through your private iCloud database, and stores backups you create in your private iCloud storage. The developer cannot access these records through Cuekeeper. Apple's privacy policy and your Apple Account settings govern these services. Sync is separate from backup, and a backup includes only the records on the device that creates it.",
+        "You can also export a ZIP backup, containing record details and receipt images and not encrypted by Cuekeeper, to a location you choose in Files, and import one you select. The storage provider you choose handles that copy under its own terms and your sharing settings. Temporary local files used while preparing, downloading and checking backups are removed afterwards; if the app is interrupted, the system clears them."
       ]
     },
     {
       "id": "receipt-processing",
       "title": "Receipt processing",
       "paragraphs": [
-        "Camera access is used when you choose to scan a receipt. Photo import uses Apple's photo picker to access the image you select. Text recognition uses Vision on your device. Automatic receipt-field extraction first uses Apple's on-device Foundation Models model when available. If a receipt's text is too long for the on-device model, Cuekeeper automatically sends the recognized text, not the photo, to Apple Private Cloud Compute to suggest the fields. This requires an internet connection, and the receipt screen says when Private Cloud Compute was used. Apple operates Private Cloud Compute and handles these requests under its own privacy terms; the developer does not receive the text. Cuekeeper does not send receipt images or extracted text to a third-party AI service. If you prefer that a receipt's text not leave your device, enter its details manually instead of scanning it. Receipt images and saved expense fields can still sync through iCloud and be included in backups. You can review and correct suggested fields before saving an expense."
+        "Camera access is used when you choose to scan a receipt, and photo import uses Apple's photo picker to access only the image you select. Text is recognized on your device with Vision, and fields are suggested by Apple's on-device Foundation Models when available. If a receipt's text is too long for the on-device model, Cuekeeper sends the recognized text, not the photo, to Apple Private Cloud Compute. This requires an internet connection, the receipt screen says when it happened, and Apple handles the request under its own privacy terms. The developer does not receive the text, and Cuekeeper does not send receipt images or text to a third-party AI service. To keep a receipt's text on your device, enter its details manually. Receipt images and saved fields can still sync through iCloud and be included in backups."
       ]
     },
     {
       "id": "calendar-maps-and-weather",
       "title": "Calendar, Maps and weather",
       "paragraphs": [
-        "Calendar access is optional. If connected, Cuekeeper reads calendar information needed to find and reconcile its entries and publishes event placeholders and eligible sessions to your selected calendar. Published entries can include event and client names, times, locations and notes. Those entries are subject to that calendar provider's storage and sharing settings.",
-        "Place search and maps use Apple Maps. Search terms and place identifiers are sent to Apple to retrieve results. Weather uses Apple Weather for the selected venue's coordinates. Cuekeeper does not request your device's GPS location for these features. Apple handles these requests under its own privacy terms. Opening an external link takes you to the relevant app or website, whose privacy practices apply."
+        "Calendar access is optional. If connected, Cuekeeper reads the calendar information needed to find and reconcile its own entries, and publishes event placeholders and eligible sessions to the calendar you select. These entries can include event and client names, times, locations and notes, and are subject to that calendar provider's storage and sharing settings.",
+        "Place search, maps and timezone lookup use Apple Maps, which receives search terms and place identifiers. This includes your Home location, stored on your device as a preference, and Your location for remote or hybrid work, saved with the event. Weather uses Apple Weather with the venue's coordinates. Cuekeeper does not request your device's GPS location. Apple handles these requests under its own privacy terms. External links open apps or websites with their own privacy practices."
       ]
     },
     {
       "id": "shortcuts-siri-and-notifications",
       "title": "Shortcuts, Siri and notifications",
       "paragraphs": [
-        "Cuekeeper receives the event or expense fields supplied to its App Intents. It does not receive a recording or full transcript of your Siri conversation. A Wallet personal automation you configure can pass transaction fields to Cuekeeper; Cuekeeper does not independently read your Wallet or banking history. Supplied payment evidence is saved with the draft. If a stable transaction ID is provided, a hash is retained to help prevent repeat imports, including after a draft is removed. Local completion reminders are optional and use generic text without merchant or amount details. Apple's Siri, Shortcuts and Wallet services have their own privacy practices."
+        "Cuekeeper receives the event or expense fields supplied to its App Intents, not a recording or full transcript of your Siri conversation. A Wallet automation you configure can pass transaction fields to Cuekeeper, which saves them with the draft; Cuekeeper does not read your Wallet or banking history. If a stable transaction ID is supplied, a hash of it is kept, even after the draft is removed, to prevent repeat imports. Optional completion reminders are local and omit merchant and amount details. Apple's Siri, Shortcuts and Wallet services have their own privacy practices."
       ]
     },
     {
       "id": "your-choices",
       "title": "Your choices",
       "paragraphs": [
-        "You can disconnect Calendar in Cuekeeper Settings and change camera, Calendar and notification permissions in device Settings. You can disable a Wallet automation in Shortcuts and remove widgets using the system controls. Manage iCloud access through your Apple Account settings; disabling access does not itself erase previously saved copies."
+        "You can disconnect Calendar in Cuekeeper Settings; change camera, Calendar and notification permissions in device Settings; disable a Wallet automation in Shortcuts; and remove widgets. Disabling iCloud access in your Apple Account settings does not erase copies already saved."
       ]
     },
     {
       "id": "widgets",
       "title": "Widgets",
       "paragraphs": [
-        "Cuekeeper shares a schedule snapshot with its own widget extension on your device. This includes schedule labels, such as event and client names and session times, but excludes notes and financial details. Widget content may be visible on your Home or Lock Screen according to your system settings. Widgets reflect the most recent snapshot written by the app."
+        "Cuekeeper shares a schedule snapshot with its widgets on your device: event and client names and session times for today and upcoming days, but no notes or financial details. Depending on your system settings, widget content can be visible on your Home or Lock Screen."
       ]
     },
     {
       "id": "retention-and-deletion",
       "title": "Retention and deletion",
       "paragraphs": [
-        "Your daybook stays in the app and, when synced, your private iCloud storage. Deleted events and sessions can normally be recovered in Recently Deleted for 30 days. Ending recovery does not securely erase the underlying record: Cuekeeper retains records needed for calendar cleanup, financial history and relationships, and retained event records can include expenses and receipt photos. Removed payment drafts retain capture identity to prevent repeat imports. Existing backups are independent copies and remain until you delete them separately in Settings → Recovery & backups → Backups. Exported backups remain wherever you saved or shared them and must be deleted separately. Restoring a backup can recover deleted records and sync them to your other devices.",
-        "Deleting the app does not by itself delete private iCloud records or backups. Cuekeeper currently has no in-app command to erase all local and cloud data. Apple provides controls for managing app data in iCloud; their effect depends on your devices and account settings. Contact support for guidance before removing data you may need. The developer cannot access or erase your private daybook on your behalf."
+        "Your daybook stays on your device and, when synced, in your private iCloud storage. Deleted events and sessions can normally be recovered from Recently Deleted for 30 days. Ending recovery does not securely erase them: Cuekeeper retains records needed for calendar cleanup, financial history and relationships, which can include expenses and receipt photos, and removed payment drafts keep their capture identity to prevent repeat imports. Backups are independent copies: delete iCloud backups in Settings → Recovery & backups → Backups, and exported files wherever you saved or shared them. Restoring a backup can recover deleted records and sync them to your other devices.",
+        "Deleting the app does not by itself delete your private iCloud records or backups, and Cuekeeper has no in-app command to erase all local and cloud data. Apple provides controls for managing app data in iCloud; their effect depends on your devices and account settings. The developer cannot access or erase your daybook on your behalf, so contact support for guidance before removing data you may need."
       ]
     },
     {
       "id": "support",
       "title": "Support",
       "paragraphs": [
-        "If you email support, we receive your email address and the message and attachments you choose to send. We use that correspondence to respond and troubleshoot. Do not send receipts, financial records or other sensitive information unless necessary; redact personal details from screenshots. Support correspondence is handled separately from your private iCloud daybook. You may request deletion of support correspondence by emailing cuekeeper@arjunakankipati.com; information may need to be retained to meet legal obligations or resolve an ongoing issue."
+        "If you email support, we receive your email address and the message and attachments you send, and use them to respond and troubleshoot. Support correspondence is kept separate from your iCloud daybook. Please redact personal details from screenshots and avoid sending receipts, financial records or other sensitive information unless necessary. You can request deletion of your correspondence by emailing cuekeeper@arjunakankipati.com; some may need to be retained to meet legal obligations or resolve an ongoing issue."
       ]
     },
     {
       "id": "this-website",
       "title": "This website",
       "paragraphs": [
-        "This website does not use analytics, advertising, cookies or browser storage. Pages, styles and branding are served from the same site; there are no third-party fonts or embedded media. Cloudflare hosts the website and processes connection information, such as your IP address and requested URL, to deliver and protect it. Cloudflare handles that information under its own privacy policy. Email links open your email app and do not send a message automatically."
+        "This website uses no analytics, advertising, cookies, browser storage, third-party fonts or embedded media. Cloudflare hosts it and processes connection information, such as your IP address and the requested URL, to deliver and protect the site, under Cloudflare's own privacy policy. Email links open your email app and do not send a message automatically."
       ]
     },
     {

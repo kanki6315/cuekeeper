@@ -341,7 +341,13 @@ extension Job {
                 return remaining > 0 ? "Invoice balance: \(Money.format(remaining, currency: value.currency))" : "Invoice paid"
             }
             let received = try directPaid()
-            return received > 0 ? "Direct payments: \(Money.format(received, currency: try currentFee().currency))" : "Not invoiced"
+            guard received > 0 else { return "Not invoiced" }
+            let currency = try paymentCurrency ?? currentFee().currency
+            let summary = "Direct payments: \(Money.format(received, currency: currency))"
+            if let fee = try? currentFee(), fee.currency == currency, let amount = fee.amount, received < amount, bookingStatus != "cancelled" {
+                return summary + " · \(Money.format(amount - received, currency: currency)) to collect"
+            }
+            return summary
         } catch { return "Billing needs review" }
     }
 }
@@ -425,19 +431,16 @@ struct PaymentDraft: Equatable {
             let value = try invoice!.currentValue()
             let index = InvoiceIndex(in: writer)
             guard value.status == "sent" else { throw RecordError.invalid("Mark the invoice sent before recording payment.") }
-            for line in value.lines {
-                let request = NSFetchRequest<Job>(entityName: "Job"); request.predicate = NSPredicate(format: "id == %@", line.jobID as CVarArg)
-                guard let job = try writer.fetch(request).first, try job.activeInvoices(in: writer, index: index).count == 1, try job.directPaid() == 0 else { throw RecordError.invalid("Resolve duplicate billing before recording a payment.") }
-            }
-            for line in value.expenseLines {
-                let request = NSFetchRequest<Expense>(entityName: "Expense"); request.predicate = NSPredicate(format: "id == %@", line.expenseID as CVarArg)
-                guard let expense = try writer.fetch(request).first, try expense.activeInvoices(index: index).count == 1 else { throw RecordError.invalid("Resolve duplicate billing before recording a payment.") }
-            }
+            // Recheck every integrity condition here, inside the transaction: an invoice that synced
+            // in after the editor opened may now bill the same job or receipt.
+            if let issue = invoice!.issue(in: writer, index: index) { throw RecordError.invalid("Resolve duplicate billing before recording a payment. \(issue)") }
             _ = try invoice!.paid(); currency = value.currency
         } else {
             job = try writer.existingObject(with: jobID!) as? Job
             guard try job!.activeInvoices(in: writer).isEmpty else { throw RecordError.invalid("This job belongs to an invoice. Record payment on that invoice instead.") }
-            _ = try job!.directPaid(); currency = try job!.currentFee().currency
+            _ = try job!.directPaid()
+            // Earlier receipts fix the currency; the fee (or a default, with no fee saved) only applies to the first one.
+            currency = try job!.paymentCurrency ?? job!.currentFee().currency
         }
         guard let amount = try Money.parseInput(amount, currency: currency), amount > 0 else { throw RecordError.invalid("Enter a positive payment amount and choose one invoice or direct-payment job.") }
         let payment = PaymentRecord(entity: NSEntityDescription.entity(forEntityName: "PaymentRecord", in: writer)!, insertInto: writer)

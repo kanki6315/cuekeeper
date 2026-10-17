@@ -362,7 +362,7 @@ struct PaymentEditorView: View {
     @State private var initial: PaymentDraft?
     @State private var error: String?
     @State private var discard = false
-    private var currency: String { (try? invoice?.currentValue().currency) ?? (try? job?.currentFee().currency) ?? "USD" }
+    private var currency: String { (try? invoice?.currentValue().currency) ?? job?.paymentCurrency ?? (try? job?.currentFee().currency) ?? "USD" }
     var body: some View {
         NavigationStack {
             DaybookForm {

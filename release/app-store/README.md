@@ -19,8 +19,8 @@ mailbox and keep these pages current:
 | URL | Content |
 | --- | --- |
 | `https://cuekeeper.arjunakankipati.com/` | Public product page; `listing.txt` supplies factual product copy |
-| `https://cuekeeper.arjunakankipati.com/privacy` | Reviewed `privacy.txt` |
-| `https://cuekeeper.arjunakankipati.com/support` | Reviewed `support.txt` |
+| `https://cuekeeper.arjunakankipati.com/privacy` | `website/content/privacy.json` |
+| `https://cuekeeper.arjunakankipati.com/support` | `website/content/support.json` |
 
 Serve readable public pages without login. Redirect HTTP to HTTPS. Hosting is
 intentionally not changed here. Review the policy's developer identity, support

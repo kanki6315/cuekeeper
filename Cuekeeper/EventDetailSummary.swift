@@ -99,6 +99,7 @@ struct OpenItem: Equatable, Identifiable {
         case openInvoice(UUID)
         case reviewBilling(UUID?)
         case reviewExpense(UUID)
+        case recordDirectPayment
     }
     let kind: Kind
     let title: String
@@ -224,8 +225,12 @@ struct EventDetailSummary: Equatable {
                     items.append(OpenItem(kind: .clientDetails, title: "Invoicing details to add", detail: list.prefix(1).uppercased() + list.dropFirst() + " missing", tab: .money, action: .editClientInvoicing))
                 }
             }
-        case .directPayments:
-            break
+        case let .directPayments(paid, currency):
+            // Money received directly settles only what it covers; the rest of the fee is still to collect.
+            if status != "cancelled", let fee, let amount = fee.amount, fee.currency == currency, paid < amount {
+                items.append(OpenItem(kind: .balanceOwed, title: "\(Money.format(amount - paid, currency: currency)) still to collect",
+                                      detail: "\(Money.format(paid, currency: currency)) received directly", tab: .money, action: .recordDirectPayment))
+            }
         case .draft(let id):
             items.append(OpenItem(kind: .invoiceDraft, title: "Invoice not sent", detail: "On a draft invoice", tab: .money, action: .openInvoice(id)))
         case let .sent(id, reference, currency, _, balance, dueDay, others):
@@ -344,8 +349,7 @@ extension EventDetailFacts {
                              balance: try invoice.balance(), dueDay: value.dueDay, otherEvents: others)
             }
             if direct > 0 {
-                let currency = (job.payments ?? []).first?.currency ?? (try? job.currentFee().currency) ?? "USD"
-                return .directPayments(paid: direct, currency: currency)
+                return .directPayments(paid: direct, currency: job.paymentCurrency ?? (try? job.currentFee().currency) ?? "USD")
             }
             return .notInvoiced
         } catch {

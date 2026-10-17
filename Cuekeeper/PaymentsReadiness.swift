@@ -43,6 +43,8 @@ struct ReadinessFacts: Equatable {
     var billing: EventBillingFact
     /// What this event is billed at on its active invoice, when it has one.
     var billedAmount: Int64?
+    /// The currency of that invoice snapshot. The billed terms travel together, so a later fee edit cannot relabel them.
+    var billedCurrency: String? = nil
     /// Receipts on the event still saved as drafts. Any draft holds up invoicing so the
     /// bookkeeping gets finished; finished non-reimbursable receipts never do.
     var blockingReceipts: [EventExpenseFact]
@@ -55,7 +57,10 @@ enum PaymentState: Equatable {
     case paid(reference: String)
     case invoiced(reference: String, balance: Int64, currency: String, dueDay: String)
     case draft
+    /// Direct payments cover the whole fee (or more).
     case directPaid
+    /// Some money was received directly; `remaining` is nil when the fee is unknown or cannot be compared.
+    case directPartial(received: Int64, remaining: Int64?, currency: String)
     case noFee
     case ready
     case heldUp
@@ -67,6 +72,7 @@ enum PaymentState: Equatable {
         switch self {
         case .paid, .directPaid: .paid
         case .invoiced, .draft: .invoiced
+        case .directPartial: .heldUp
         case .ready: .ready
         case .heldUp, .review: .heldUp
         case .upcoming: .toHappen
@@ -90,11 +96,19 @@ enum MoneyBucket: String, CaseIterable, Hashable {
 
 // MARK: - One event
 
+/// A share of an event's money in one bucket; a nil amount is a fee still to agree.
+struct MoneyPart: Equatable {
+    let bucket: MoneyBucket
+    let amount: Int64?
+}
+
 struct EventReadiness: Equatable, Identifiable {
     let facts: ReadinessFacts
     let gates: [ReadinessGate: GateState]
     let gaps: [ReadinessGap]
     let state: PaymentState
+    /// How this event's money splits across the month's buckets, in `currency`.
+    let parts: [MoneyPart]
     var id: UUID { facts.jobID }
 
     /// The amount this event contributes: what it is billed at, else its agreed fee.
@@ -108,11 +122,26 @@ struct EventReadiness: Equatable, Identifiable {
         case let .sent(_, _, currency, _, _, _, _): return currency
         case let .directPayments(_, currency): return currency
         default:
+            if facts.billedAmount != nil, let billed = facts.billedCurrency { return billed }
             if case .value(let fee) = facts.fee { return fee.currency }
             return nil
         }
     }
+
+    /// Adds this event's money to per-currency buckets, as the month and client views show it.
+    func add(to buckets: inout [String: CurrencyBuckets]) {
+        guard let currency else { return }
+        for part in parts {
+            if let amount = part.amount { buckets[currency, default: CurrencyBuckets(currency: currency)].amounts[part.bucket, default: 0] += amount }
+            else { buckets[currency, default: CurrencyBuckets(currency: currency)].unknownFees += 1 }
+        }
+    }
     var showsGates: Bool { [.ready, .heldUp, .upcoming].contains(state) }
+    /// Finished work with money still to bill or collect.
+    var isOutstanding: Bool {
+        if case .directPartial = state { return gates[.work] != .notYet }
+        return state == .ready || state == .heldUp
+    }
 
     init(_ facts: ReadinessFacts, today: String) {
         self.facts = facts
@@ -157,7 +186,18 @@ struct EventReadiness: Equatable, Identifiable {
 
         self.gates = gates
         self.gaps = gaps
-        self.state = Self.state(facts: facts, gates: gates, feeAmount: feeAmount, finished: finished)
+        let state = Self.state(facts: facts, gates: gates, feeAmount: feeAmount, finished: finished)
+        self.state = state
+        switch state {
+        case let .directPartial(received, remaining, _):
+            // Received money is paid; the rest of the fee stays outstanding work.
+            parts = [MoneyPart(bucket: .paid, amount: received), MoneyPart(bucket: gates[.work] == .notYet ? .toHappen : .heldUp, amount: remaining)]
+        case .directPaid:
+            if case let .directPayments(received, _) = facts.billing { parts = [MoneyPart(bucket: .paid, amount: received)] } else { parts = [] }
+        default:
+            let amount: Int64? = facts.billedAmount ?? feeAmount
+            parts = state.bucket.map { [MoneyPart(bucket: $0, amount: amount)] } ?? []
+        }
     }
 
     private static func state(facts: ReadinessFacts, gates: [ReadinessGate: GateState], feeAmount: Int64?, finished: Bool) -> PaymentState {
@@ -166,7 +206,13 @@ struct EventReadiness: Equatable, Identifiable {
         case let .sent(_, reference, currency, _, balance, dueDay, _):
             return balance <= 0 ? .paid(reference: reference) : .invoiced(reference: reference, balance: balance, currency: currency, dueDay: dueDay)
         case .draft: return .draft
-        case .directPayments: return .directPaid
+        case let .directPayments(received, currency):
+            // Direct receipts block invoicing, so what they leave of the fee is collected directly too.
+            if facts.bookingStatus == "cancelled" { return .directPaid }
+            guard case .value(let fee) = facts.fee, let amount = feeAmount, fee.currency == currency else {
+                return .directPartial(received: received, remaining: nil, currency: currency)
+            }
+            return received >= amount ? .directPaid : .directPartial(received: received, remaining: amount - received, currency: currency)
         case .notInvoiced: break
         }
         if facts.bookingStatus == "cancelled" { return .cancelled }
@@ -259,19 +305,14 @@ struct PaymentsMonth: Equatable {
         }.sorted { lhs, rhs in
             // Clients with something to do first, then alphabetical; events without a client last.
             if (lhs.clientID == nil) != (rhs.clientID == nil) { return rhs.clientID == nil }
-            let lw = lhs.events.contains { $0.state == .ready || $0.state == .heldUp }, rw = rhs.events.contains { $0.state == .ready || $0.state == .heldUp }
+            let lw = lhs.events.contains(where: \.isOutstanding), rw = rhs.events.contains(where: \.isOutstanding)
             if lw != rw { return lw }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
 
         var buckets: [String: CurrencyBuckets] = [:]
         for code in displayed { buckets[code] = CurrencyBuckets(currency: code) }
-        for event in inMonth {
-            guard let bucket = event.state.bucket else { continue }
-            guard let currency = event.currency else { continue }
-            if let amount = event.amount { buckets[currency, default: CurrencyBuckets(currency: currency)].amounts[bucket, default: 0] += amount }
-            else { buckets[currency, default: CurrencyBuckets(currency: currency)].unknownFees += 1 }
-        }
+        for event in inMonth { event.add(to: &buckets) }
         currencies = buckets.values.filter { displayed.contains($0.currency) || $0.total > 0 || $0.unknownFees > 0 }
             .sorted { (displayed.firstIndex(of: $0.currency) ?? 99, $0.currency) < (displayed.firstIndex(of: $1.currency) ?? 99, $1.currency) }
 
@@ -282,7 +323,7 @@ struct PaymentsMonth: Equatable {
             .map { .invoice(id: $0.id, reference: $0.reference, clientName: $0.clientName, balance: $0.balance, currency: $0.currency,
                             dueDay: $0.dueDay, draft: $0.draft, paidSoFar: $0.paid, total: $0.total) }
         let work: [EarlierItem] = all
-            .filter { $0.facts.startDay < start && ($0.state == .ready || $0.state == .heldUp) }
+            .filter { $0.facts.startDay < start && $0.isOutstanding }
             .sorted { $0.facts.startDay < $1.facts.startDay }
             .map { .event($0) }
         earlier = invoices + work
@@ -302,9 +343,10 @@ extension ReadinessFacts {
             let value = expense.value
             return EventExpenseFact(id: id, merchant: value.merchant, amount: (try? Money.parse(value.amount, currency: value.currency)).flatMap { $0 }, currency: value.currency)
         }
-        var billed: Int64?
-        if let invoice = try? job.activeInvoices(in: context, index: index).first, let value = try? invoice.currentValue() {
-            billed = value.lines.first { $0.jobID == job.id }?.amount
+        var billed: Int64?, billedCurrency: String?
+        if let invoice = try? job.activeInvoices(in: context, index: index).first, let value = try? invoice.currentValue(),
+           let line = value.lines.first(where: { $0.jobID == job.id }) {
+            billed = line.amount; billedCurrency = value.currency
         }
         self.init(
             jobID: job.id ?? UUID(),
@@ -318,6 +360,7 @@ extension ReadinessFacts {
             fee: fee,
             billing: EventDetailFacts.billing(job: job, context: context, index: index),
             billedAmount: billed,
+            billedCurrency: billedCurrency,
             blockingReceipts: expenses.filter(\.isDraft).compactMap(fact),
             rebillable: expenses.filter { $0.isRebillable && ((try? $0.activeInvoices(index: index).isEmpty) ?? false) }.compactMap(fact)
         )

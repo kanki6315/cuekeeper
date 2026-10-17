@@ -393,10 +393,6 @@ struct ClientDetailView: View {
                         .font(.subheadline.weight(.regular))
                         .foregroundStyle(invoicing.isComplete ? Color.accentColor : Color("AmberText"))
                 }
-            } footer: {
-                if !invoicing.isComplete {
-                    Text(ListFormatter.localizedString(byJoining: invoicing.missing).capitalizedFirst + (invoicing.missing.count == 1 ? " is" : " are") + " needed before \(client.name) events can be ready to invoice.")
-                }
             }
             Section("Defaults") {
                 LabeledContent("Currency for new events", value: client.defaultCurrency)
@@ -574,8 +570,6 @@ struct ClientEditor: View {
                             .font(.subheadline.weight(.regular))
                             .foregroundStyle(missing.isEmpty ? Color.accentColor : Color("SecondaryText"))
                     }
-                } footer: {
-                    Text(missing.isEmpty ? "Ready for invoicing." : ListFormatter.localizedString(byJoining: missing).capitalizedFirst + (missing.count == 1 ? " is" : " are") + " needed before this client's events can be ready to invoice.")
                 }
                 Section("Notes") {
                     DaybookTextField("Anything to remember about working with them", text: $draft.notes, axis: .vertical).lineLimit(3...10)

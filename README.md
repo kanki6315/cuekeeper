@@ -21,7 +21,7 @@ entitlements. Regenerate and commit generated files when changing it.
 - Bundle: `com.arjunakankipati.cuekeeper`
 - Team: `TDBAHN96B3`
 - CloudKit container: `iCloud.com.arjunakankipati.cuekeeper`
-- Version: `0.2.1`
+- Version: `0.2.2`
 - Signing: automatic, using the Apple Account in Xcode
 - Debug uses CloudKit Development; Release uses Production
 
@@ -701,7 +701,9 @@ The app writes an atomic, schedule-only JSON snapshot to App Group
 `group.com.arjunakankipati.cuekeeper`. Both the main app and
 `com.arjunakankipati.cuekeeper.widgets` extension must have that group enabled in
 Apple Developer and their signing profiles. No Core Data migration or CloudKit
-schema change is needed. Snapshots exclude notes, links and financial data and are
+schema change is needed. Snapshots hold event names, dates and booking status, client names, and session
+names, times, confirmation and coverage for events that aren't deleted or
+cancelled. They exclude notes, links, venues and financial data and are
 protected until the first device unlock. Widget content is marked privacy-sensitive.
 The app refreshes the snapshot after local/merged changes and foreground activation;
 WidgetKit schedules time transitions and controls reload delivery. Widgets do not

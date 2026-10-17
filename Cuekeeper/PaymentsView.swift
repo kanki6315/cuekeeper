@@ -461,17 +461,32 @@ struct JobBillingSection: View {
     let onInvoice: () -> Void
     let onPayment: () -> Void
     var body: some View {
+        let active = (try? job.activeInvoices(in: context)) ?? []
+        let directPaid = (try? job.directPaid()) ?? 0
+        let payments = Array(job.payments ?? [])
         Section {
-            Text(job.billingSummary(in: context))
+            if let note = note(active: active, directPaid: directPaid) {
+                Text(note).font(.subheadline)
+                    .foregroundStyle(note.hasSuffix("review") ? Color("AmberText") : Color("SecondaryText"))
+            }
             ForEach(invoices.filter { invoice in (try? invoice.heads().contains { $0.value?.lines.contains { $0.jobID == job.id } ?? false }) == true }, id: \.objectID) { invoice in
                 DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
             }
-            if (try? job.activeInvoices(in: context).isEmpty) == true {
-                if job.client != nil && (try? job.directPaid()) == 0 { Button("Add to Invoice", action: onInvoice).accessibilityIdentifier("add-job-invoice") }
-                else if job.client == nil { Text("Add a client to include this booking on an invoice.").font(.subheadline).foregroundStyle(Color("SecondaryText")) }
-                Button("Record Direct Payment", action: onPayment).accessibilityIdentifier("record-direct-payment")
+            if !payments.isEmpty { ReceiptLinks(records: payments) }
+            if active.isEmpty {
+                if job.client == nil {
+                    Text("Add a client to include this booking on an invoice.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                } else if directPaid == 0 {
+                    DaybookActionRow("Add to Invoice", systemImage: "doc.text", action: onInvoice).accessibilityIdentifier("add-job-invoice")
+                }
+                DaybookActionRow("Record Direct Payment", systemImage: "banknote", action: onPayment).accessibilityIdentifier("record-direct-payment")
             }
-            ReceiptLinks(records: Array(job.payments ?? []))
         } header: { Text("Invoices & payments") }
+    }
+    /// The money panel above already states not-invoiced, draft and single-invoice progress, so only add what it can't say.
+    private func note(active: [Invoice], directPaid: Int64) -> String? {
+        if active.count == 1 && directPaid == 0 { return nil }
+        let summary = job.billingSummary(in: context)
+        return summary == "Not invoiced" ? nil : summary
     }
 }

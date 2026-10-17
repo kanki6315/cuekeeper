@@ -67,7 +67,7 @@ final class BackgroundExpenseUITests: RegressionUITestCase {
         XCTAssertTrue(finish(app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["expenses-mode-inbox"].isSelected)
         let wallet = app.buttons["Wallet automation"]
-        for _ in 0..<6 where !wallet.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        for _ in 0..<6 where !wallet.isHittable { app.swipeUp() }
         wallet.tap()
         XCTAssertTrue(app.navigationBars["Wallet Automation"].waitForExistence(timeout: 5))
         shot("wallet-automation-steps")

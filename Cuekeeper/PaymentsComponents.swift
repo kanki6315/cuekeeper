@@ -493,10 +493,12 @@ struct InvoicingFieldRow: View {
     @Binding var text: String
     var missing = false
     var axis: Axis = .horizontal
+    /// Visible lines for a vertical field.
+    var lines: ClosedRange<Int> = 2...5
     var keyboard: UIKeyboardType = .default
     var identifier: String
     var body: some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: text.isEmpty && axis == .vertical ? .center : .firstTextBaseline, spacing: 12))
         layout {
             Text(label).foregroundStyle(missing ? Color("AmberText") : Color("SecondaryText")).fontWeight(missing ? .semibold : .regular)
                 .frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
@@ -504,7 +506,7 @@ struct InvoicingFieldRow: View {
                 .keyboardType(keyboard)
                 .textInputAutocapitalization(keyboard == .emailAddress ? .never : .sentences)
                 .autocorrectionDisabled(keyboard == .emailAddress)
-                .lineLimit(axis == .vertical ? 2...5 : 1...1)
+                .lineLimit(axis == .vertical ? lines : 1...1)
                 .accessibilityIdentifier(identifier)
         }
         .frame(minHeight: 32)

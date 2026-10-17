@@ -314,6 +314,24 @@ simulator preparation are excluded; preparing the four fresh devices took 67.21
 seconds separately. Results are local observations, not a cold-start guarantee.
 Artifacts for this pass are under `build/benchmarks/consolidated-{first,warm,balanced}-4/`.
 
+Run the complete build, simulator preparation and two-pass benchmark with:
+
+```sh
+./benchmark.sh
+```
+
+This creates four dedicated iPhone 18 Pro / iOS 27 simulators, builds in an
+isolated directory, enumerates the current tests, and runs the full suite twice.
+The second run uses the first run's timings to balance warmed workers. Logs,
+results, device UUIDs and build products are retained under the printed
+`build/balanced.*` directory; read `warm/summary.json` for the final timing.
+Only simulators created by this invocation are removed on exit, including after
+failure. A failed first run stops before the second run. The iOS 27 runtime and
+Xcode command-line tools must already be installed. Run while other worktrees
+are not testing; this script does not archive or upload a release.
+
+For manual control of already prepared simulators:
+
 `scripts/benchmark_tests.py` partitions whole UI classes across explicitly supplied
 simulators, keeps unit tests together, and rejects missing, duplicate or unexpected
 result methods. It creates one result bundle per worker, `plan.json`, `summary.json`

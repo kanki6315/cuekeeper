@@ -14,5 +14,44 @@
   },
   "logo": "Two overlapping cue cards, tilted rear card, front bookmark with V notch and centered rounded horizontal cutout",
   "reference": "cuekeeper-brand-identity.png",
-  "icon": "Cuekeeper.icon"
+  "icon": "Cuekeeper.icon",
+  "themes": {
+    "default": "teal",
+    "teal": {
+      "accent": [
+        "#17745D",
+        "#6FE4BF"
+      ],
+      "icon": "Cuekeeper.icon"
+    },
+    "indigo": {
+      "accent": [
+        "#5A4EBF",
+        "#ADAEFC"
+      ],
+      "icon": "CuekeeperIndigo.icon"
+    },
+    "purple": {
+      "accent": [
+        "#703BA1",
+        "#D0AAFC"
+      ],
+      "icon": "CuekeeperPurple.icon"
+    },
+    "magenta": {
+      "accent": [
+        "#A32384",
+        "#F59CD8"
+      ],
+      "icon": "CuekeeperMagenta.icon"
+    },
+    "ink": {
+      "accent": [
+        "#2B2A44",
+        "#DCDCEE"
+      ],
+      "icon": "CuekeeperInk.icon"
+    },
+    "source": "Shared/Theme.swift is authoritative for the app; the colors above are the original supplied brand palette."
+  }
 }

@@ -26,7 +26,7 @@ struct FirstLaunchBackupView: View {
         LaunchPage {
             LaunchHeading("Choose a backup")
             if let reason = persistence.syncActivity.restoreUnavailableReason {
-                Text(reason).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(reason).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             if busy { BackupProgressView(workflow: workflow) }
             if workflow.canRetryRestore {
@@ -48,11 +48,11 @@ struct FirstLaunchBackupView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(entry.title).font(.headline)
-                                        Text(entry.details).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                                        Text(entry.details).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                                     }
                                     Spacer()
                                     Image(systemName: selected == entry.id ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(selected == entry.id ? Color.accentColor : Color("SecondaryText"))
+                                        .foregroundStyle(selected == entry.id ? Color.theme.accent : Color.theme.secondaryText)
                                 }.frame(minHeight: 44).contentShape(Rectangle())
                             }.buttonStyle(.plain).disabled(!entry.canRestore).accessibilityAddTraits(selected == entry.id ? .isSelected : [])
                         }
@@ -65,7 +65,7 @@ struct FirstLaunchBackupView: View {
             Button("Import from Files") { importing = true }.frame(minHeight: 44).disabled(busy)
                 .accessibilityIdentifier("setup-import-backup")
             Text("Choose a Cuekeeper ZIP backup. Exported files contain personal and financial records and are not encrypted.")
-                .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                .font(.footnote).foregroundStyle(Color.theme.secondaryText)
             Spacer(minLength: 0)
         } actions: {
             Button("Review restore", action: review).buttonStyle(LaunchPrimaryButton())

@@ -19,7 +19,7 @@ struct CalendarSettingsView: View {
                 Section {
                     Button("Allow Calendar Access") { Task { await calendar.requestAccess() } }
                     Link("Open System Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
-                    Text("Allow full access to add and update entries. If access is already allowed, add an editable calendar in Calendar.").foregroundStyle(Color("SecondaryText"))
+                    Text("Allow full access to add and update entries. If access is already allowed, add an editable calendar in Calendar.").foregroundStyle(Color.theme.secondaryText)
                 }
             } else {
                 Section("Calendar") {
@@ -37,7 +37,7 @@ struct CalendarSettingsView: View {
                                 if let choice = calendar.calendars.first(where: { $0.calendarIdentifier == selected }) {
                                     Text(choice.source.title)
                                         .font(.subheadline)
-                                        .foregroundStyle(Color("SecondaryText"))
+                                        .foregroundStyle(Color.theme.secondaryText)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)

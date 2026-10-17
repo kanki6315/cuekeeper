@@ -13,7 +13,7 @@ struct PendingExpensesPrompt: View {
                     Button(action: openInbox) {
                         HStack(spacing: 10) {
                             promptLabel.foregroundStyle(Color.primary).frame(maxWidth: .infinity, alignment: .leading)
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
                         }.contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 } else {
@@ -24,10 +24,10 @@ struct PendingExpensesPrompt: View {
     }
     private var promptLabel: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "tray").foregroundStyle(Color("AmberText"))
+            Image(systemName: "tray").foregroundStyle(Color.theme.amberText)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Expenses to finish").font(.headline)
-                Text("\(count) waiting in your Expenses inbox").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text("\(count) waiting in your Expenses inbox").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             Spacer()
         }.frame(minHeight: 44)

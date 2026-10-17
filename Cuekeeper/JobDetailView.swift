@@ -92,7 +92,7 @@ struct JobDetailView: View {
                                     options: EventTab.allCases, identifier: "event-tab", label: { $0.title },
                                     badge: { summary.count(in: $0) })
                         .padding(.vertical, 4)
-                        .background(Color("PageBackground"))
+                        .background(Color.theme.page)
                 }
                 }
             }
@@ -168,7 +168,7 @@ struct JobDetailView: View {
                 }
                 if summary.days.isEmpty {
                     Text("No sessions yet. Event dates remain useful until the schedule arrives.")
-                        .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 }
                 ForEach(summary.days) { day in
                     RunOfShowDayView(day: day, weather: weather.day(day.key, request: job.weatherRequest).map(WeatherFormat.headline)) { fact in

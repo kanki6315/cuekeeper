@@ -43,7 +43,7 @@ struct TrackMap: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .accessibilityLabel("Map of \(item.name ?? "selected track")")
             Text(item.name ?? "Selected track").font(.headline)
-            if let address = item.address?.fullAddress { Text(address).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+            if let address = item.address?.fullAddress { Text(address).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
             Button("Open in Apple Maps", systemImage: "arrow.up.right") { item.openInMaps() }
                 .frame(minHeight: 44)
         }
@@ -57,7 +57,7 @@ struct SavedTrackView: View {
     var body: some View {
         Group {
             if let item { TrackMap(item: item).id(placeID) }
-            else if failed { Text("Track saved. Connect to the internet to load its map.").foregroundStyle(Color("SecondaryText")) }
+            else if failed { Text("Track saved. Connect to the internet to load its map.").foregroundStyle(Color.theme.secondaryText) }
             else { ProgressView("Loading track…") }
         }
         .task(id: placeID) {
@@ -94,7 +94,7 @@ struct TrackLocationPicker: View {
                 if searching { Section { ProgressView("Searching Apple Maps…") } }
                 if let error {
                     Section {
-                        Text(error).foregroundStyle(Color("SecondaryText"))
+                        Text(error).foregroundStyle(Color.theme.secondaryText)
                         Button("Try again") { search() }.frame(minHeight: 44)
                     }
                 }
@@ -108,7 +108,7 @@ struct TrackLocationPicker: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(item.name ?? "Unnamed venue").foregroundStyle(.primary)
                                         if let address = item.address?.fullAddress {
-                                            Text(address).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                                            Text(address).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                                         }
                                     }
                                     Spacer()
@@ -118,7 +118,7 @@ struct TrackLocationPicker: View {
                         }
                     }
                 } else if searched && !searching && error == nil && selected == nil {
-                    Section { Text("No matching tracks. Try the full venue name and city.").foregroundStyle(Color("SecondaryText")) }
+                    Section { Text("No matching tracks. Try the full venue name and city.").foregroundStyle(Color.theme.secondaryText) }
                 }
                 if let selected {
                     Section("Confirm track") {
@@ -141,7 +141,7 @@ struct TrackLocationPicker: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 
     private func identifier(for item: MKMapItem) -> String? {

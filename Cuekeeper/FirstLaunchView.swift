@@ -47,9 +47,9 @@ struct FirstLaunchView: View {
                             LaunchPage {
                                 Text("See your work in Calendar").font(.title2.bold())
                                 Image(systemName: "calendar").font(.system(size: 76, weight: .regular))
-                                    .foregroundStyle(Color.accentColor).accessibilityHidden(true).padding(.vertical, 24)
+                                    .foregroundStyle(Color.theme.accent).accessibilityHidden(true).padding(.vertical, 24)
                                 Text("Publish event dates and confirmed sessions to a calendar you choose.")
-                                    .foregroundStyle(Color("SecondaryText"))
+                                    .foregroundStyle(Color.theme.secondaryText)
                             } actions: {
                                 NavigationLink { LaunchCalendarConnection(onFinish: onFinish) } label: { Text("Set up Calendar") }
                                     .buttonStyle(LaunchPrimaryButton())
@@ -63,7 +63,7 @@ struct FirstLaunchView: View {
                     .toolbar { ToolbarItem(placement: .principal) { BrandLockup() } }
                 }
         }
-        .tint(Color("AccentColor"))
+        .tint(Color.theme.accent)
     }
 
     @ViewBuilder private var backupRecovery: some View {
@@ -81,9 +81,9 @@ struct FirstLaunchView: View {
     private var welcome: some View {
         LaunchPage {
             VStack(spacing: 16) {
-                CuekeeperMark().fill(Color.accentColor, style: FillStyle(eoFill: true))
+                CuekeeperMark().fill(Color.theme.accent, style: FillStyle(eoFill: true))
                     .frame(width: 100, height: 116).accessibilityHidden(true)
-                Text("Cuekeeper").font(.largeTitle.bold()).foregroundStyle(Color.accentColor)
+                Text("Cuekeeper").font(.largeTitle.bold()).foregroundStyle(Color.theme.accent)
             }.padding(.top, 28).padding(.bottom, 30)
             Text(returning ? "Welcome back" : "Your work,\nkept together.")
                 .font(.largeTitle.bold()).accessibilityIdentifier("setup-welcome-heading")
@@ -91,13 +91,13 @@ struct FirstLaunchView: View {
             VStack(spacing: 12) {
                 HStack(spacing: 16) {
                     Image(systemName: persistence.syncActivity.offline ? "icloud.slash" : "icloud")
-                        .font(.title).foregroundStyle(Color.accentColor)
+                        .font(.title).foregroundStyle(Color.theme.accent)
                     if persistence.syncActivity.isBusy { ProgressView() }
                 }.accessibilityHidden(true)
                 Text(persistence.syncActivity.accountIssue == nil ? persistence.syncActivity.launchMessage(hasRecords: returning) : persistence.accountStatus)
-                    .foregroundStyle(Color("SecondaryText")).accessibilityIdentifier("setup-sync-status")
+                    .foregroundStyle(Color.theme.secondaryText).accessibilityIdentifier("setup-sync-status")
                 if !returning && !persistence.syncActivity.needsAttention && !persistence.syncActivity.offline {
-                    Text("You can continue while we check.").font(.footnote).foregroundStyle(Color("SecondaryText"))
+                    Text("You can continue while we check.").font(.footnote).foregroundStyle(Color.theme.secondaryText)
                 }
             }
         } actions: {
@@ -127,9 +127,9 @@ struct LaunchPage<Content: View, Actions: View>: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) { actions }
                 .frame(maxWidth: 480).padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 16)
-                .frame(maxWidth: .infinity).background(Color("PageBackground"))
+                .frame(maxWidth: .infinity).background(Color.theme.page)
         }
-        .background(Color("PageBackground"))
+        .background(Color.theme.page)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -163,7 +163,7 @@ private struct LaunchCalendarConnection: View {
         CalendarSettingsView()
             .safeAreaInset(edge: .bottom) {
                 Button("Continue to daybook", action: onFinish).buttonStyle(LaunchPrimaryButton())
-                    .frame(maxWidth: 480).padding().frame(maxWidth: .infinity).background(Color("PageBackground"))
+                    .frame(maxWidth: 480).padding().frame(maxWidth: .infinity).background(Color.theme.page)
             }
     }
 }

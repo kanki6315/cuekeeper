@@ -238,14 +238,14 @@ private struct JobsView: View {
                 if jobs.isEmpty {
                     if selectedJob == nil { Text("Events").font(.largeTitle.bold()) }
                     VStack(spacing: 24) {
-                        CuekeeperMark().fill(Color.accentColor.opacity(0.2), style: FillStyle(eoFill: true))
+                        CuekeeperMark().fill(Color.theme.accent.opacity(0.2), style: FillStyle(eoFill: true))
                             .frame(width: 90, height: 104).accessibilityHidden(true)
                         Text("Your next event\nstarts here").font(.title2.bold())
                         Text("Start with a date. Add the details when you know them.")
-                            .foregroundStyle(Color("SecondaryText"))
+                            .foregroundStyle(Color.theme.secondaryText)
                         if persistence.awaitingInitialImport {
                             Label("Existing work may still arrive from iCloud. You can add an event now.", systemImage: "icloud.and.arrow.down")
-                                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                                .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         }
                         Button("Add your first event") { showingAdd = true }
                             .buttonStyle(LaunchPrimaryButton()).accessibilityIdentifier("add-job")
@@ -257,14 +257,14 @@ private struct JobsView: View {
                 }
                 if !representatives.isEmpty {
                     if list.rows.isEmpty {
-                        Text("No events in the last two weeks.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text("No events in the last two weeks.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     }
                     if list.hiddenEarlier > 0 { earlierButton(list) }
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(list.months) { month in
                             EventSectionTitle(title: month.title(currentYear: String(today.prefix(4)))) {
                                 if let collect = month.collectText {
-                                    Text(collect).font(.footnote).foregroundStyle(Color("SecondaryText")).monospacedDigit()
+                                    Text(collect).font(.footnote).foregroundStyle(Color.theme.secondaryText).monospacedDigit()
                                 }
                             }
                             .padding(.top, month.id == list.months.first?.id ? 4 : 22)
@@ -354,7 +354,7 @@ struct SettingsView: View {
                     HStack {
                         tiledLabel("Calendar", symbol: "calendar")
                         Spacer(minLength: 8)
-                        Text(calendar.connected ? "On" : "Off").foregroundStyle(Color("SecondaryText"))
+                        Text(calendar.connected ? "On" : "Off").foregroundStyle(Color.theme.secondaryText)
                     }
                 }
                 .accessibilityIdentifier("calendar-settings")
@@ -383,7 +383,7 @@ struct SettingsView: View {
                         tiledLabel("Backups", symbol: "icloud.and.arrow.up")
                         Spacer(minLength: 8)
                         if let latestBackup {
-                            Text(latestBackup).foregroundStyle(Color("SecondaryText"))
+                            Text(latestBackup).foregroundStyle(Color.theme.secondaryText)
                                 .accessibilityLabel("Latest manual backup \(latestBackup)")
                         }
                     }
@@ -443,9 +443,9 @@ struct SettingsView: View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.theme.accent)
                 .frame(width: tileSize, height: tileSize)
-                .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                .background(Color.theme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
                 .accessibilityHidden(true)
             Text(title)
         }
@@ -457,7 +457,7 @@ struct SettingsView: View {
                 Image(systemName: symbol).font(.title3).accessibilityHidden(true)
                 Text(title).font(.subheadline.weight(.semibold))
             }
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Color.theme.accent)
             .frame(maxWidth: .infinity, minHeight: 60)
             .contentShape(Rectangle())
         }
@@ -516,23 +516,23 @@ struct SyncFeedbackView: View {
                     HStack(spacing: 12) {
                         if activity.needsAttention {
                             Image(systemName: "exclamationmark.icloud")
-                                .foregroundStyle(Color("AmberText"))
+                                .foregroundStyle(Color.theme.amberText)
                         } else if activity.isBusy {
-                            ProgressView().controlSize(.small).tint(Color.accentColor)
+                            ProgressView().controlSize(.small).tint(Color.theme.accent)
                         } else {
-                            Image(systemName: activity.offline ? "icloud.slash" : "icloud").foregroundStyle(Color.accentColor)
+                            Image(systemName: activity.offline ? "icloud.slash" : "icloud").foregroundStyle(Color.theme.accent)
                         }
                         Text(message).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
-                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color("SecondaryText"))
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color.theme.secondaryText)
                     }
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .frame(maxWidth: 540, minHeight: 48)
-                    .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 16))
+                    .background(Color.theme.surface, in: RoundedRectangle(cornerRadius: 16))
                     .overlay {
                         RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(activity.needsAttention ? Color("AmberText").opacity(0.5) : Color.primary.opacity(0.16), lineWidth: 1)
+                            .strokeBorder(activity.needsAttention ? Color.theme.amberText.opacity(0.5) : Color.primary.opacity(0.16), lineWidth: 1)
                     }
                     .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                 }
@@ -561,7 +561,7 @@ struct SyncSummaryRow: View {
     let summary: SyncSummary
     @ScaledMetric(relativeTo: .title3) private var badge = 44
     @Environment(\.dynamicTypeSize) private var typeSize
-    private var tint: Color { summary.warning ? Color("AmberText") : Color.accentColor }
+    private var tint: Color { summary.warning ? Color.theme.amberText : Color.theme.positive }
 
     var body: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 14))
@@ -577,7 +577,7 @@ struct SyncSummaryRow: View {
                 Text(summary.headline).font(.title3.weight(.semibold))
                 if let detail = summary.detail {
                     Text(detail).font(.subheadline)
-                        .foregroundStyle(summary.warning ? Color("AmberText") : Color("SecondaryText"))
+                        .foregroundStyle(summary.warning ? Color.theme.amberText : Color.theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -605,10 +605,10 @@ struct SyncLedgerRow: View {
             Label {
                 Text(title)
             } icon: {
-                Image(systemName: symbol).foregroundStyle(status == .ok ? Color.accentColor : (status == .warning ? Color("AmberText") : Color("SecondaryText")))
+                Image(systemName: symbol).foregroundStyle(status == .ok ? Color.theme.positive : (status == .warning ? Color.theme.amberText : Color.theme.secondaryText))
             }
             if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
-            Text(value).foregroundStyle(status == .warning ? Color("AmberText") : Color("SecondaryText"))
+            Text(value).foregroundStyle(status == .warning ? Color.theme.amberText : Color.theme.secondaryText)
         }
         .frame(minHeight: 28)
         .accessibilityElement(children: .ignore)

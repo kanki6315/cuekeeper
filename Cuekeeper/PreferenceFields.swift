@@ -36,6 +36,9 @@ struct PreferenceFields: View {
                     }
                 }
             appearanceRow
+            NavigationLink { ThemePicker() } label: {
+                preferenceRow("Theme", value: ThemeStore.shared.theme.name)
+            }.accessibilityIdentifier("preference-theme")
         }
         }
     }
@@ -64,7 +67,7 @@ struct PreferenceFields: View {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title)
-                    Text(value).foregroundStyle(Color("SecondaryText"))
+                    Text(value).foregroundStyle(Color.theme.secondaryText)
                 }.frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 LabeledContent(title, value: value)
@@ -72,7 +75,7 @@ struct PreferenceFields: View {
             }
             Image(systemName: indicator)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(Color("SecondaryText"))
+                .foregroundStyle(Color.theme.secondaryText)
                 .frame(width: 12)
         }
         .foregroundStyle(Color.primary)
@@ -137,7 +140,7 @@ private struct DefaultRolePicker: View {
                     if !trimmedCustom.isEmpty {
                         Button("Use", action: useCustom)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color("PrimaryButtonText"))
+                            .foregroundStyle(Color.theme.onAccent)
                             .buttonStyle(.glassProminent).buttonBorderShape(.capsule).controlSize(.small)
                             .accessibilityLabel("Use \(trimmedCustom) as default role")
                             .accessibilityIdentifier("custom-role-use")

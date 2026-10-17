@@ -108,6 +108,6 @@ struct SessionBatchEditorView: View {
                 }
                 .saveErrorAlert($error).interactiveDismissDisabled(changed)
             .preservesDraftOnTodayLink()
-        }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color("PageBackground"))
+        }.presentationSizing(.page).presentationDetents([.large]).presentationBackground(Color.theme.page)
     }
 }

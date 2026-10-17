@@ -54,10 +54,10 @@ struct DaybookSections<Content: View>: View {
                                 .frame(minHeight: compact ? 44 : nil)
                         }
                     }
-                    .background(section.containerValues.daybookUnframed ? Color.clear : Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 12))
+                    .background(section.containerValues.daybookUnframed ? Color.clear : Color.theme.surface, in: RoundedRectangle(cornerRadius: 12))
                     .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(section.containerValues.daybookUnframed ? 0 : (contrast == .increased ? 0.45 : 0.16)), lineWidth: 0.5) }
                     if !section.footer.isEmpty {
-                        section.footer.font(.footnote).foregroundStyle(Color("SecondaryText"))
+                        section.footer.font(.footnote).foregroundStyle(Color.theme.secondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -72,7 +72,7 @@ struct DaybookList<Content: View>: View {
     var sectionSpacing: CGFloat = 18
     @ViewBuilder var content: Content
     var body: some View {
-        List { content.listRowBackground(Color("SurfaceBackground")) }
+        List { content.listRowBackground(Color.theme.surface) }
             .listSectionSpacing(sectionSpacing)
             .daybookSurface()
     }
@@ -84,7 +84,7 @@ struct DaybookPageHeading: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-            if !subtitle.isEmpty { Text(subtitle).font(.subheadline).foregroundStyle(Color("SecondaryText")) }
+            if !subtitle.isEmpty { Text(subtitle).font(.subheadline).foregroundStyle(Color.theme.secondaryText) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -95,9 +95,9 @@ struct BookingBadge: View {
     var body: some View {
         Text(status == "notCovering" ? "Not covering" : status.capitalized)
             .font(.caption.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(tentative ? Color("AmberText") : Color.accentColor)
+            .foregroundStyle(tentative ? Color.theme.amberText : Color.theme.positive)
             .padding(.horizontal, 9).padding(.vertical, 5)
-            .background(tentative ? Color.orange.opacity(0.13) : Color.accentColor.opacity(0.1), in: Capsule())
+            .background(tentative ? Color.theme.attention.opacity(0.13) : Color.theme.positive.opacity(0.1), in: Capsule())
     }
 }
 
@@ -109,7 +109,7 @@ struct DaybookSegments<Value: Hashable>: View {
     let options: [Value]
     let identifier: String
     let label: (Value) -> String
-    var color: (Value) -> Color = { _ in Color.accentColor }
+    var color: (Value) -> Color = { _ in Color.theme.accent }
     /// Open items behind a segment, shown as a small amber count.
     var badge: (Value) -> Int = { _ in 0 }
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -147,9 +147,9 @@ struct DaybookSegments<Value: Hashable>: View {
                         if count > 0 {
                             Text(count, format: .number)
                                 .font(.caption2.weight(.bold)).monospacedDigit()
-                                .foregroundStyle(Color("AmberText"))
+                                .foregroundStyle(Color.theme.amberText)
                                 .padding(.horizontal, 5).padding(.vertical, 1)
-                                .background(Color.orange.opacity(0.18), in: Capsule())
+                                .background(Color.theme.attention.opacity(0.18), in: Capsule())
                         }
                     }
                         .padding(.horizontal, 3)
@@ -181,7 +181,14 @@ struct DaybookSegments<Value: Hashable>: View {
 }
 
 extension BookingStatus {
-    var controlColor: Color { Color("Booking" + title) }
+    var controlColor: Color {
+        switch self {
+        case .tentative: Color.theme.amberText
+        case .booked: Color.theme.positive
+        case .completed: Color.theme.completed
+        case .cancelled: Color.theme.cancelled
+        }
+    }
 }
 
 struct BookingStatusSegments: View {
@@ -199,7 +206,7 @@ struct DaybookMetadata: View {
     let symbol: String
     let text: String
     var body: some View {
-        Label { Text(text).foregroundStyle(Color.primary) } icon: { Image(systemName: symbol).foregroundStyle(Color("SecondaryText")).frame(width: iconWidth) }
+        Label { Text(text).foregroundStyle(Color.primary) } icon: { Image(systemName: symbol).foregroundStyle(Color.theme.secondaryText).frame(width: iconWidth) }
             .font(.subheadline)
     }
 }
@@ -208,7 +215,7 @@ struct DaybookMetadata: View {
 struct DaybookPrimaryButton: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(role: configuration.role, action: configuration.trigger) {
-            configuration.label.foregroundStyle(Color("PrimaryButtonText"))
+            configuration.label.foregroundStyle(Color.theme.onAccent)
         }
             .font(.subheadline.weight(.semibold))
             .buttonStyle(.glassProminent)
@@ -220,7 +227,7 @@ struct DaybookPrimaryButton: PrimitiveButtonStyle {
 struct DaybookSecondaryButton: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(role: configuration.role, action: configuration.trigger) {
-            configuration.label.foregroundStyle(Color.accentColor)
+            configuration.label.foregroundStyle(Color.theme.accent)
         }
             .font(.subheadline.weight(.semibold))
             .buttonStyle(.glass)
@@ -236,9 +243,9 @@ struct DaybookSidebarSurface: ViewModifier {
 
     func body(content: Content) -> some View {
         if reduceTransparency || contrast == .increased {
-            content.background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 26))
+            content.background(Color.theme.surface, in: RoundedRectangle(cornerRadius: 26))
         } else {
-            content.glassEffect(.regular.tint(Color.accentColor.opacity(0.08)), in: .rect(cornerRadius: 26))
+            content.glassEffect(.regular.tint(Color.theme.accent.opacity(0.08)), in: .rect(cornerRadius: 26))
         }
     }
 }
@@ -252,7 +259,7 @@ struct DaybookDateRail: View {
                 Text(date.formatted(.dateTime.weekday(.abbreviated))).font(.caption)
                 Text(date.formatted(.dateTime.day())).font(.title.weight(.semibold)).monospacedDigit()
                 Text(date.formatted(.dateTime.month(.abbreviated))).font(.caption)
-            }.foregroundStyle(Color.accentColor).frame(width: railWidth).accessibilityElement(children: .combine)
+            }.foregroundStyle(Color.theme.accent).frame(width: railWidth).accessibilityElement(children: .combine)
         }
     }
 }
@@ -292,10 +299,10 @@ struct DaybookTabHeader<Action: View>: View {
 struct BrandLockup: View {
     var body: some View {
         HStack(spacing: 8) {
-            CuekeeperMark().fill(Color.accentColor, style: FillStyle(eoFill: true)).frame(width: 27, height: 31)
+            CuekeeperMark().fill(Color.theme.accent, style: FillStyle(eoFill: true)).frame(width: 27, height: 31)
                 .accessibilityHidden(true)
             Text("Cuekeeper").font(.title3.weight(.bold)).tracking(-0.5)
-        }.foregroundStyle(Color.accentColor).accessibilityElement(children: .combine)
+        }.foregroundStyle(Color.theme.accent).accessibilityElement(children: .combine)
     }
 }
 
@@ -304,7 +311,7 @@ extension View {
     func daybookSurface() -> some View {
         toolbar(.visible, for: .navigationBar)
             .scrollContentBackground(.hidden)
-            .background(Color("PageBackground"))
+            .background(Color.theme.page)
             .toolbarBackground(.automatic, for: .navigationBar, .tabBar)
     }
 }
@@ -383,7 +390,7 @@ struct DaybookLink<Destination: View, Label: View>: View {
         NavigationLink { destination } label: {
             HStack(spacing: 10) {
                 label.foregroundStyle(Color.primary).frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
             }.contentShape(Rectangle())
         }
     }
@@ -408,11 +415,11 @@ struct DaybookActionRow: View {
             HStack(spacing: 12) {
                 Image(systemName: symbol).font(.subheadline.weight(.semibold))
                     .frame(width: iconSize, height: iconSize)
-                    .background(Color.accentColor.opacity(0.13), in: Circle())
+                    .background(Color.theme.accent.opacity(0.13), in: Circle())
                     .accessibilityHidden(true)
                 Text(title).frame(maxWidth: .infinity, alignment: .leading)
             }
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Color.theme.accent)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -457,6 +464,6 @@ struct DaybookTextField: View {
         self.title = title; self._text = text; self.axis = axis
     }
     var body: some View {
-        TextField(title, text: $text, prompt: Text(title).foregroundStyle(Color("SecondaryText")), axis: axis)
+        TextField(title, text: $text, prompt: Text(title).foregroundStyle(Color.theme.secondaryText), axis: axis)
     }
 }

@@ -198,7 +198,7 @@ struct InvoiceEditorView: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
@@ -213,7 +213,7 @@ struct InvoiceEditorView: View {
         ToolbarItem(placement: .principal) {
             VStack(spacing: 0) {
                 Text(invoice == nil ? "New invoice" : "Edit invoice").font(.headline)
-                if !locked { Text(step == .record ? "Step 2 of 2" : "Step 1 of 2").font(.caption).foregroundStyle(Color("SecondaryText")) }
+                if !locked { Text(step == .record ? "Step 2 of 2" : "Step 1 of 2").font(.caption).foregroundStyle(Color.theme.secondaryText) }
             }.accessibilityElement(children: .combine)
         }
         if canGoBack {
@@ -234,7 +234,7 @@ struct InvoiceEditorView: View {
                     // Accessibility sizes keep the bar short; the selection itself shows the count.
                     if !large {
                         Text(nothingSelected ? "Choose the work to bill" : selectionSummary)
-                            .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                            .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -278,10 +278,10 @@ struct InvoiceEditorView: View {
                 .containerValue(\.daybookUnframed, true)
             Section {
                 Label { DaybookTextField("Search clients", text: $search).accessibilityIdentifier("invoice-client-search") }
-                    icon: { Image(systemName: "magnifyingglass").foregroundStyle(Color("SecondaryText")) }
+                    icon: { Image(systemName: "magnifyingglass").foregroundStyle(Color.theme.secondaryText) }
             }
             if clients.isEmpty {
-                Section { Text("Add a client in Settings or on an event before creating an invoice.").foregroundStyle(Color("SecondaryText")) }
+                Section { Text("Add a client in Settings or on an event before creating an invoice.").foregroundStyle(Color.theme.secondaryText) }
             }
             if !options.isEmpty {
                 Section {
@@ -341,7 +341,7 @@ struct InvoiceEditorView: View {
             }
             Section {
                 if work.ready.isEmpty {
-                    Text("Nothing is ready for \(client?.name ?? "this client") in \(currency).").foregroundStyle(Color("SecondaryText"))
+                    Text("Nothing is ready for \(client?.name ?? "this client") in \(currency).").foregroundStyle(Color.theme.secondaryText)
                 }
                 ForEach(work.ready) { candidate in candidateRows(candidate, ready: true) }
             } header: { Text("Ready to bill") } footer: {
@@ -359,7 +359,7 @@ struct InvoiceEditorView: View {
                     ForEach(work.receiptsOnly) { candidate in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(candidate.title).fontWeight(.semibold)
-                            Text([candidate.dates, candidate.note].joined(separator: " · ")).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                            Text([candidate.dates, candidate.note].joined(separator: " · ")).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         }.accessibilityElement(children: .combine)
                         receiptRows(candidate.receipts, enabled: true)
                     }
@@ -381,7 +381,7 @@ struct InvoiceEditorView: View {
             if work.alreadyInvoiced > 0 {
                 Section {
                     Text(work.alreadyInvoiced == 1 ? "1 more event is already on another invoice." : "\(work.alreadyInvoiced) more events are already on other invoices.")
-                        .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                        .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                 }.containerValue(\.daybookUnframed, true)
             }
         }
@@ -408,7 +408,7 @@ struct InvoiceEditorView: View {
                     }
                 }
                 .accessibilityIdentifier("invoice-currency")
-                if let origin { Text("· from \(origin.title)").foregroundStyle(Color("SecondaryText")).lineLimit(1) }
+                if let origin { Text("· from \(origin.title)").foregroundStyle(Color.theme.secondaryText).lineLimit(1) }
             }.font(.subheadline)
         }
     }
@@ -418,12 +418,12 @@ struct InvoiceEditorView: View {
         Toggle(isOn: Binding(get: { included }, set: { toggle(candidate, on: $0) })) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(candidate.title).fontWeight(.semibold)
-                Text(candidate.dates).font(.subheadline).foregroundStyle(Color("SecondaryText"))
-                if !candidate.note.isEmpty { Text(candidate.note).font(.subheadline).foregroundStyle(Color("AmberText")) }
+                Text(candidate.dates).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
+                if !candidate.note.isEmpty { Text(candidate.note).font(.subheadline).foregroundStyle(Color.theme.amberText) }
             }
         } trailing: {
             Text(candidate.event.amount.map { Money.format($0, currency: currency) } ?? "Fee to enter")
-                .monospacedDigit().foregroundStyle(included || candidate.event.amount == nil ? Color.primary : Color("SecondaryText"))
+                .monospacedDigit().foregroundStyle(included || candidate.event.amount == nil ? Color.primary : Color.theme.secondaryText)
                 .font(candidate.event.amount == nil ? .subheadline : .body)
         }
         .toggleStyle(InvoiceCheckStyle(size: .event))
@@ -435,7 +435,7 @@ struct InvoiceEditorView: View {
         ForEach(receipts) { receipt in
             let on = draft.value.expenseLines.contains { $0.expenseID == receipt.id }
             Toggle(isOn: Binding(get: { on }, set: { toggle(receipt: receipt, on: $0) })) {
-                (Text(receipt.merchant.isEmpty ? "Receipt" : receipt.merchant) + Text(" · receipt").foregroundStyle(Color("SecondaryText"))).font(.subheadline)
+                (Text(receipt.merchant.isEmpty ? "Receipt" : receipt.merchant) + Text(" · receipt").foregroundStyle(Color.theme.secondaryText)).font(.subheadline)
             } trailing: {
                 Text(receipt.amount.map { Money.format($0, currency: currency) } ?? "").font(.subheadline).monospacedDigit()
             }
@@ -453,7 +453,7 @@ struct InvoiceEditorView: View {
             if !locked { Section { InvoiceStepBar(recording: true) }.containerValue(\.daybookUnframed, true) }
             Section {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(client?.name ?? "Client syncing").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    Text(client?.name ?? "Client syncing").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     Text(Money.format(liveTotal, currency: currency)).font(.largeTitle.bold()).monospacedDigit()
                         .accessibilityIdentifier("invoice-total")
                 }.accessibilityElement(children: .combine)
@@ -465,7 +465,7 @@ struct InvoiceEditorView: View {
                 .containerValue(\.daybookUnframed, true)
             Section {
                 InvoiceFieldRow(label: "Reference") {
-                    TextField("Reference", text: $draft.value.reference, prompt: Text(draft.value.status == "sent" ? "Required" : "Optional").foregroundStyle(Color("SecondaryText")))
+                    TextField("Reference", text: $draft.value.reference, prompt: Text(draft.value.status == "sent" ? "Required" : "Optional").foregroundStyle(Color.theme.secondaryText))
                         .multilineTextAlignment(.trailing).monospacedDigit()
                         .textInputAutocapitalization(.characters).autocorrectionDisabled()
                         .accessibilityIdentifier("invoice-reference")
@@ -486,7 +486,7 @@ struct InvoiceEditorView: View {
                     }
                 }
                 if draft.value.status == "void" {
-                    Text("Voiding keeps the history and releases bookings for rebilling. Reverse any payments first.").foregroundStyle(Color("SecondaryText"))
+                    Text("Voiding keeps the history and releases bookings for rebilling. Reverse any payments first.").foregroundStyle(Color.theme.secondaryText)
                 }
             } footer: {
                 if let note = recordFootnote { Text(note) }
@@ -495,7 +495,7 @@ struct InvoiceEditorView: View {
                 ForEach(draft.value.lines) { line in
                     InvoiceFieldRow(label: line.jobName, labelIsTitle: true) {
                         TextField("Amount", text: Binding(get: { amounts[line.jobID] ?? "" }, set: { amounts[line.jobID] = $0 }),
-                                  prompt: Text("Amount").foregroundStyle(Color("AmberText")))
+                                  prompt: Text("Amount").foregroundStyle(Color.theme.amberText))
                             .keyboardType(.decimalPad).multilineTextAlignment(.trailing).monospacedDigit()
                             .disabled(locked)
                             .accessibilityLabel("Billed amount for \(line.jobName)")
@@ -505,7 +505,7 @@ struct InvoiceEditorView: View {
                 ForEach(draft.value.expenseLines) { line in
                     LabeledContent {
                         Text(Money.format(line.amount, currency: currency)).monospacedDigit().foregroundStyle(.primary)
-                    } label: { Text(line.label).foregroundStyle(Color("SecondaryText")) }
+                    } label: { Text(line.label).foregroundStyle(Color.theme.secondaryText) }
                     .font(.subheadline)
                 }
             } header: {
@@ -513,7 +513,7 @@ struct InvoiceEditorView: View {
                     Text("Billed amounts")
                     Spacer()
                     if !locked {
-                        Button("Edit lines") { step = .lines }.font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                        Button("Edit lines") { step = .lines }.font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.accent)
                             .accessibilityIdentifier("invoice-edit-lines")
                     }
                 }
@@ -714,9 +714,9 @@ private struct InvoiceStepBar: View {
     }
     private func segment(_ title: String, done: Bool, current: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Capsule().fill(done ? Color.accentColor : Color.primary.opacity(0.12)).frame(height: 4)
+            Capsule().fill(done ? Color.theme.accent : Color.primary.opacity(0.12)).frame(height: 4)
             Text(title).font(.footnote.weight(current ? .semibold : .regular))
-                .foregroundStyle(current ? Color.accentColor : Color("SecondaryText"))
+                .foregroundStyle(current ? Color.theme.accent : Color.theme.secondaryText)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -737,11 +737,11 @@ private struct InvoiceChoiceRow: View {
                         Text(title).fontWeight(.semibold)
                         if let badge { BookingBadge(status: badge.lowercased()) }
                     }
-                    Text(detail).font(.subheadline).foregroundStyle(detailIsWarning ? Color("AmberText") : Color("SecondaryText"))
+                    Text(detail).font(.subheadline).foregroundStyle(detailIsWarning ? Color.theme.amberText : Color.theme.secondaryText)
                 }
                 Spacer(minLength: 8)
                 if !amount.isEmpty { Text(amount).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7) }
-                Image(systemName: "chevron.forward").font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                Image(systemName: "chevron.forward").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
             }
             .foregroundStyle(.primary)
             .contentShape(Rectangle())
@@ -782,7 +782,7 @@ private struct InvoiceCheck: View {
         HStack(alignment: size == .event ? .top : .center, spacing: 12) {
             Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
                 .font(size == .event ? .title3 : .body)
-                .foregroundStyle(configuration.isOn ? Color.accentColor : Color.primary.opacity(enabled ? 0.35 : 0.16))
+                .foregroundStyle(configuration.isOn ? Color.theme.accent : Color.primary.opacity(enabled ? 0.35 : 0.16))
                 .padding(.leading, size == .receipt ? 34 : 0)
                 .accessibilityHidden(true)
             configuration.label.frame(maxWidth: .infinity, alignment: .leading)

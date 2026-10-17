@@ -4,6 +4,8 @@ import WidgetKit
 struct ScheduleEntry: TimelineEntry {
     let date: Date
     let schedule: DaySchedule?
+    /// Read fresh for each timeline; the app reloads timelines when the theme changes.
+    var theme: Theme = ThemeStore.saved()
 }
 
 struct ScheduleProvider: TimelineProvider {
@@ -38,7 +40,7 @@ struct ScheduleWidgetView: View {
     private var family: WidgetFamily { familyOverride ?? systemFamily }
     @Environment(\.colorScheme) private var appearance
     let entry: ScheduleEntry
-    private var tint: Color { appearance == .dark ? Color(red: 0.65, green: 0.86, blue: 0.71) : Color(red: 0.027, green: 0.243, blue: 0.153) }
+    private var tint: Color { entry.theme.accent.color(for: appearance) }
     private var rows: [ScheduleSession] { entry.schedule?.upcoming(at: entry.date) ?? [] }
     private var accessorySession: ScheduleSession? { next ?? rows.first }
     private var next: ScheduleSession? { entry.schedule?.nextCommitment(at: entry.date) }
@@ -71,7 +73,7 @@ struct ScheduleWidgetView: View {
         .privacySensitive()
         .widgetURL(URL(string: "cuekeeper://today"))
         .containerBackground(for: .widget) {
-            (appearance == .dark ? Color(red: 0.09, green: 0.118, blue: 0.098) : Color(red: 0.98, green: 0.973, blue: 0.949))
+            entry.theme.page.color(for: appearance)
         }
     }
     private var small: some View {

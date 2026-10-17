@@ -66,6 +66,9 @@
                   Identifier = "DesignCaptureTests">
                </Test>
                <Test
+                  Identifier = "ThemeCaptureTests">
+               </Test>
+               <Test
                   Identifier = "DesignSupplementTests">
                </Test>
                <Test

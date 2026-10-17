@@ -90,7 +90,7 @@ struct RolesView: View {
                     }
                     .padding(.top, 12)
                 } header: {
-                    chips(agenda).background(Color("PageBackground"))
+                    chips(agenda).background(Color.theme.page)
                 }
             }
             .frame(maxWidth: 760)
@@ -141,7 +141,7 @@ struct RolesView: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(focus.role.name).font(.title2.bold()).accessibilityAddTraits(.isHeader)
-                    Text(Self.focusSubtitle(focus)).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    Text(Self.focusSubtitle(focus)).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 actions(focus, agenda: agenda)
@@ -153,7 +153,7 @@ struct RolesView: View {
                         ForEach(focus.clients, id: \.name) { client in
                             EventChip {
                                 Text(client.name)
-                                Text(client.count, format: .number).monospacedDigit().foregroundStyle(Color("SecondaryText"))
+                                Text(client.count, format: .number).monospacedDigit().foregroundStyle(Color.theme.secondaryText)
                             }
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel("\(client.name), \(counted(client.count, "event", "events"))")
@@ -163,7 +163,7 @@ struct RolesView: View {
             }
         }
         .padding(16)
-        .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color.theme.surface, in: RoundedRectangle(cornerRadius: 12))
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(contrast == .increased ? 0.45 : 0.16), lineWidth: 0.5) }
     }
 
@@ -192,7 +192,7 @@ struct RolesView: View {
             Image(systemName: "ellipsis")
                 .font(.body.weight(.semibold))
                 .frame(width: 44, height: 44)
-                .background(Color.accentColor.opacity(0.08), in: Circle())
+                .background(Color.theme.accent.opacity(0.08), in: Circle())
                 .contentShape(Circle())
         }
         .accessibilityLabel("\(focus.role.name) actions")
@@ -204,7 +204,7 @@ struct RolesView: View {
     @ViewBuilder private func agendaList(_ agenda: RolesAgenda) -> some View {
         if agenda.isEmpty {
             Text(emptyText(agenda))
-                .foregroundStyle(Color("SecondaryText"))
+                .foregroundStyle(Color.theme.secondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             DaybookSections {
@@ -225,7 +225,7 @@ struct RolesView: View {
                                     Spacer()
                                     Image(systemName: "chevron.down").font(.caption.weight(.semibold))
                                 }.frame(minHeight: 32).contentShape(Rectangle())
-                            }.foregroundStyle(Color.accentColor).accessibilityIdentifier("role-year-\(year.year)")
+                            }.foregroundStyle(Color.theme.accent).accessibilityIdentifier("role-year-\(year.year)")
                         }
                     } header: {
                         Text(year.year.isEmpty ? "Dates to come" : year.year)
@@ -235,7 +235,7 @@ struct RolesView: View {
         }
         if agenda.focus == nil && agenda.untagged > 0 && query.isEmpty {
             Text("\(counted(agenda.untagged, "event", "events")) without a role \(agenda.untagged == 1 ? "is" : "are") listed on the Events tab only.")
-                .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -290,12 +290,12 @@ private struct RoleChip: View {
             Text(title).font(.subheadline.weight(selected ? .semibold : .regular)).lineLimit(1)
             Text(count, format: .number)
                 .font(.footnote.weight(.semibold)).monospacedDigit()
-                .foregroundStyle(selected ? Color("PrimaryButtonText").opacity(0.8) : Color("SecondaryText"))
+                .foregroundStyle(selected ? Color.theme.onAccent.opacity(0.8) : Color.theme.secondaryText)
         }
-        .foregroundStyle(selected ? Color("PrimaryButtonText") : Color.primary)
+        .foregroundStyle(selected ? Color.theme.onAccent : Color.primary)
         .padding(.horizontal, 13)
         .frame(minHeight: height)
-        .background(selected ? Color.accentColor : Color("SurfaceBackground"), in: Capsule())
+        .background(selected ? Color.theme.accent : Color.theme.surface, in: Capsule())
         .overlay { Capsule().strokeBorder(Color.primary.opacity(selected ? 0 : (contrast == .increased ? 0.45 : 0.16)), lineWidth: 0.5) }
         .frame(minHeight: 44)
         .contentShape(Rectangle())
@@ -318,7 +318,7 @@ struct RoleYearStrip: View {
                 ForEach(0..<12, id: \.self) { index in
                     let count = focus.months[index]
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(count == 0 ? Color.primary.opacity(0.1) : Color.accentColor.opacity(index + 1 > currentMonth ? 0.4 : 0.85))
+                        .fill(count == 0 ? Color.primary.opacity(0.1) : Color.theme.accent.opacity(index + 1 > currentMonth ? 0.4 : 0.85))
                         .frame(height: count == 0 ? 3 : max(6, height * CGFloat(count) / peak))
                         .frame(maxWidth: .infinity)
                 }
@@ -328,7 +328,7 @@ struct RoleYearStrip: View {
                 ForEach(0..<12, id: \.self) { index in
                     Text(Self.letters[index])
                         .font(.caption2.weight(index + 1 == currentMonth ? .bold : .regular))
-                        .foregroundStyle(index + 1 == currentMonth ? Color.accentColor : Color("SecondaryText"))
+                        .foregroundStyle(index + 1 == currentMonth ? Color.theme.accent : Color.theme.secondaryText)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -350,8 +350,8 @@ struct RoleTag: View {
     var body: some View {
         Text(name)
             .font(.caption.weight(.semibold)).lineLimit(1)
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Color.theme.accent)
             .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+            .background(Color.theme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
     }
 }

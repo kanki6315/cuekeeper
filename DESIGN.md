@@ -2,19 +2,25 @@
 name: Cuekeeper
 description: Native Combined Glass navigation and actions over the warm Daybook agenda.
 colors:
-  AccentColor-light: "#073E27"
-  AccentColor-dark: "#99E4AF"
-  PageBackground-light: "#FAF8F2"
-  PageBackground-dark: "#171E19"
-  SurfaceBackground-light: "#FFFFFF"
-  SurfaceBackground-dark: "#27392E"
-  SecondaryText-light: "#626860"
-  SecondaryText-dark: "#A5B2A8"
-  PrimaryButtonText-light: "#FFFFFF"
-  PrimaryButtonText-dark: "#073E27"
-  AmberText-light: "#88570C"
-  AmberText-dark: "#FCBF4D"
-  SidebarSelection-light: "#073E27"
+  accent-light: "#17745D"
+  accent-dark: "#6FE4BF"
+  onAccent-light: "#FFFFFF"
+  onAccent-dark: "#151817"
+  accentSoft-light: "#C6F4E4"
+  page-light: "#F5F8F7"
+  page-dark: "#151817"
+  surface-light: "#FFFFFF"
+  surface-dark: "#222625"
+  secondaryText-light: "#5E6663"
+  secondaryText-dark: "#A5ADAA"
+  positive-light: "#17745D"
+  positive-dark: "#6FE4BF"
+  amberText-light: "#88570C"
+  amberText-dark: "#FCBF4D"
+  completed-light: "#255E7F"
+  completed-dark: "#93CCF2"
+  cancelled-light: "#8A4343"
+  cancelled-dark: "#F5A5A2"
 typography:
   headline:
     fontFamily: "SF Pro"
@@ -41,31 +47,31 @@ spacing:
   sidebar-inset: "10pt"
 components:
   button-primary:
-    textColor: "{colors.PrimaryButtonText-light}"
+    textColor: "{colors.onAccent-light}"
     rounded: "{rounded.button}"
   button-primary-dark:
-    textColor: "{colors.PrimaryButtonText-dark}"
+    textColor: "{colors.onAccent-dark}"
     rounded: "{rounded.button}"
   button-secondary:
-    textColor: "{colors.AccentColor-light}"
+    textColor: "{colors.accent-light}"
     rounded: "{rounded.button}"
   button-secondary-dark:
-    textColor: "{colors.AccentColor-dark}"
+    textColor: "{colors.accent-dark}"
     rounded: "{rounded.button}"
   sidebar-fallback:
-    backgroundColor: "{colors.SurfaceBackground-light}"
+    backgroundColor: "{colors.surface-light}"
     rounded: "{rounded.sidebar}"
   sidebar-fallback-dark:
-    backgroundColor: "{colors.SurfaceBackground-dark}"
+    backgroundColor: "{colors.surface-dark}"
     rounded: "{rounded.sidebar}"
   panel:
-    backgroundColor: "{colors.SurfaceBackground-light}"
+    backgroundColor: "{colors.surface-light}"
     rounded: "{rounded.panel}"
   panel-dark:
-    backgroundColor: "{colors.SurfaceBackground-dark}"
+    backgroundColor: "{colors.surface-dark}"
     rounded: "{rounded.panel}"
   text-field-prompt:
-    textColor: "{colors.SecondaryText-light}"
+    textColor: "{colors.secondaryText-light}"
 ---
 
 # Design System: Cuekeeper
@@ -74,36 +80,46 @@ components:
 
 **Creative North Star: "Combined Glass with Daybook warmth"**
 
-Cuekeeper pairs a date-led working agenda with quiet paper surfaces, forest accents and a warm charcoal night palette. The approved Combined Glass direction uses Quiet Glass as its base, an expressive floating iPad sidebar and rounded native glass actions. Its hierarchy supports quick capture, incomplete schedules and independent booking, coverage and payment states. The stacked cue-card mark and native SF typography retain the identity.
+Cuekeeper pairs a date-led working agenda with quiet tinted surfaces, a user-selectable accent theme (Teal by default) and fixed status colors. The approved Combined Glass direction uses Quiet Glass as its base, an expressive floating iPad sidebar and rounded native glass actions. Its hierarchy supports quick capture, incomplete schedules and independent booking, coverage and payment states. The stacked cue-card mark and native SF typography retain the identity.
 
 This records the implemented SwiftUI system, grounded in `Cuekeeper/DaybookStyle.swift`, the color assets and the existing screen implementations. The approved boards in `design/branded/` supply the composition and hierarchy direction; `design/liquid-glass/implementation-brief.md` records the combined material direction. The multi-device comparison boards are conceptual images. Native system glass optics, SF typography, navigation, tabs, sheets, pickers and menus remain authoritative; this is not a claim of pixel equality with the boards.
 
 **Key Characteristics:**
 - Date-led agenda rows with clear booking badges.
 - Titled detail pages and compact ruled panels.
-- Forest and mint accents on ivory and warm charcoal.
+- Five accent themes with matching app icons; status colors fixed across themes.
 - Native glass actions and a floating iPad navigation surface.
 - Native controls and Dynamic Type throughout.
 
 ## Colors
 
-The palette combines restrained forest and mint accents with warm paper and green-charcoal neutrals. Asset names and their appearance variants in the frontmatter are the source for exact extracted values.
+Colors come from user-selectable themes defined in `Shared/Theme.swift`, the only file allowed to construct a color. Views read them as `Color.theme.<role>`; the frontmatter lists the default Teal theme. Each theme also sets a matching app icon.
 
-### Primary
+### Themes
 
-`AccentColor` uses forest in light appearance and mint in dark appearance for primary actions, the brand mark, date rails and positive status text. `PrimaryButtonText` reverses white to forest with the appearance. `SidebarSelection` stays forest as the native sidebar selection tint. Unselected sidebar symbols explicitly use the named `AccentColor` asset to avoid inheriting the selection tint; selected symbols remain white. The primary glass button label explicitly uses `PrimaryButtonText`; secondary glass labels explicitly use `AccentColor`.
+| Theme | Accent light / dark | Icon |
+|---|---|---|
+| Teal (default) | #17745D / #6FE4BF | `Cuekeeper` |
+| Indigo | #5A4EBF / #ADAEFC | `CuekeeperIndigo` |
+| Purple | #703BA1 / #D0AAFC | `CuekeeperPurple` |
+| Magenta | #A32384 / #F59CD8 | `CuekeeperMagenta` |
+| Ink | #2B2A44 / #DCDCEE | `CuekeeperInk` |
 
-### Secondary
+Settings → Theme stores the choice per device in the app group, so the widget follows it. Choosing a theme also switches the alternate app icon (iOS asks for confirmation), reloads the widget and sets the UIKit window tint for alerts and other UIKit-presented controls. Icon sources are `design/brand/<icon>.icon`: a pale `accentSoft` mark on the accent in light appearance, and the dark accent mark in dark appearance.
 
-`AmberText` supplies the darker amber light-mode and lighter amber dark-mode foregrounds for tentative, draft and estimated badges. These badges use native orange at reduced opacity for their fill rather than the supplied brand amber as body text.
+### Theme roles
 
-### Neutral
+`accent` is for interaction and brand only: primary actions, links, selection, the mark and date rails. `onAccent` is text on a solid accent fill. `accentSoft` labels sit on an accent fill, as in the light next-call panel. `page`, `surface` and `secondaryText` are lightly tinted toward the accent's hue. Main text and native separators retain system semantic colors.
 
-`PageBackground` supplies ivory or warm charcoal across the page. Navigation and tab bars use automatic system backgrounds. `SurfaceBackground` supplies white or raised green charcoal for panels. `SecondaryText` is the readable muted foreground used for subtitles, metadata, helper text and text-field prompts. Main text and native separators retain system semantic colors.
+`positive` means booked, paid, received and done. It is a fixed green (#05773B / #6DE18B) in every theme except Teal, whose accent sits too close to green; there, confirmed work takes the accent.
 
-**The Appearance Pair Rule.** Use the named color assets so light and dark roles change together.
+### Status colors
 
-**The Night Separation Rule.** Dark appearance keeps the brand charcoal page but separates roles by lightness and chroma: SecondaryText sits clearly below the accent (OKLCH L 0.75 vs 0.86), the dark accent and status colors run more saturated than the supplied pastel mint so tinted fills read on charcoal, and SurfaceBackground carries more green so panels lift off the page. The dark accent intentionally deviates from the supplied Mint #A7DCB4; the app icon and design/brand artwork keep the supplied value.
+Status colors never change with the theme: `amberText` for tentative, draft and needs-attention text; `completed` blue; `cancelled` muted red; `attention` (system orange) for attention fills at reduced opacity; and `destructive` (system red).
+
+**The Meaning Rule.** Never use the accent to mean a state. Booked, paid and done use `positive`; warnings use `amberText` and `attention`. Otherwise a state reads differently in each theme; in Ink, "done" would look like plain text.
+
+**The Theme Guard Rule.** `ThemeTests` enforces this system: every theme's text and button pairs must reach 4.5:1; every accent must sit at least 35° of OKLCH hue from each status color (Ink is exempt as a near-neutral); every alternate icon must be in the bundle; and no Swift file outside `Shared/Theme.swift` may construct a color or use a system hue. `ThemeCaptureTests` (Design Capture scheme) captures key screens in every theme and appearance for review.
 
 ## Typography
 
@@ -144,7 +160,7 @@ Panels and search use gently rounded rectangles. Primary and secondary actions u
 
 ### Primary and secondary actions
 
-DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `PrimaryButtonText` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Event uses the primary style; Add Session uses the secondary style.
+DaybookPrimaryButton wraps a native button with `.glassProminent`, a capsule border shape, large control size and semibold subheadline. Its label explicitly uses the appearance-aware `onAccent` asset. DaybookSecondaryButton uses `.glass` with the same shape, control size and typography, and an explicit accent label. Native controls determine sizing, material, press and disabled behavior; there is no custom opacity animation or fixed button padding token. Add Event uses the primary style; Add Session uses the secondary style.
 
 Event details change booking status from the header badge menu; the next step for a tentative booking, an owed balance or a ready-to-invoice event appears as the prominent To settle action. Edit Event and a More menu (Duplicate, Delete) are toolbar actions; Duplicate and confirmed Delete also close the Details tab. Upcoming uses DaybookSegments for Now / Plan, with Plan carrying the amber To settle count. Events uses the same control for All / Active / Completed / Cancelled. These compact, text-only controls keep all choices in one row. The visible track is 36 points high at default text size (32-point segments), with a separate 44-point touch area. Selection uses a slightly stronger tinted fill, a fine outline and semibold text; inactive options keep a faint tint without individual outlines. No icons or grid fallback. At accessibility text sizes the same row scrolls horizontally rather than compressing enlarged labels.
 
@@ -154,7 +170,7 @@ DaybookForm and DaybookSections create a clear page heading followed by titled, 
 
 ### Fields and navigation rows
 
-DaybookTextField uses a plain native TextField with its prompt explicitly colored SecondaryText; entered text retains native primary styling. Pickers keep an explicit visible label. DaybookLink combines a leading label with a subdued chevron and a rectangular content hit area. Native focus, keyboard, date selection, search/filter controls and sheet dismissal behaviors remain functional. At accessibility text sizes, the session editor stacks date/time labels above native controls, gives the clear action an independent row with a 44-point minimum height, and stacks the timezone label and value.
+DaybookTextField uses a plain native TextField with its prompt explicitly colored secondaryText; entered text retains native primary styling. Pickers keep an explicit visible label. DaybookLink combines a leading label with a subdued chevron and a rectangular content hit area. Native focus, keyboard, date selection, search/filter controls and sheet dismissal behaviors remain functional. At accessibility text sizes, the session editor stacks date/time labels above native controls, gives the clear action an independent row with a 44-point minimum height, and stacks the timezone label and value.
 
 ### Booking badges and metadata
 
@@ -162,7 +178,7 @@ BookingBadge displays the status as text as well as color, wrapping when require
 
 ### Events list
 
-Events groups rows under month headings, with a footnote of what that month's finished events still owe per currency. All and Completed show events that ended within the last two weeks; a Show earlier events control above the list reveals the rest, and searching or a date filter lifts the window. Active and Cancelled are not windowed. A forest Today rule marks where past events end.
+Events groups rows under month headings, with a footnote of what that month's finished events still owe per currency. All and Completed show events that ended within the last two weeks; a Show earlier events control above the list reveals the rest, and searching or a date filter lifts the window. Active and Cancelled are not windowed. An accent Today rule marks where past events end.
 
 Each row starts with the date rail beside the title and client. Multi-day events extend the rail: a fine line runs beside the day lines and the end day sits level with the last day, so a multi-day row always carries three day lines and a single-day row one, ending in the month as on Upcoming. Each day line shows the weekday, that day's sessions and its first start time. Events longer than three days fold later days into the third line; days without dated sessions read Schedule to come. Before the work the badge shows the booking status; afterwards it shows the money state (Ready to invoice, Invoiced, Overdue, To settle, Paid). Finished rows quiet the rail and title to the secondary color.
 
@@ -233,7 +249,7 @@ nothing is stored. Settings → Roles is one page with no per-role subpage. An e
 plus any a live session sets in their place.
 
 - **Chips**: a horizontal row pinned above the content: *All*, then roles with the most events (cancelled
-  events not counted). Selected is a solid accent capsule with `PrimaryButtonText`; the others are quiet
+  events not counted). Selected is a solid accent capsule with `onAccent`; the others are quiet
   ruled capsules. The selection is remembered per scene.
 - **All**: *Coming up* (soonest first), then past years newest first, with only the latest past year open.
   Rows reuse the client event row with the client name and accent role tags. A footnote counts events
@@ -266,7 +282,7 @@ and Cancelled.
 Schedule (Tentative / Confirmed), Coverage (Undecided / Covering / Not covering),
 and new-event status use DaybookChoicePicker. The label stays above the native
 segments. A labelled menu replaces them above xLarge Dynamic Type or when the
-scaled 300-point minimum width cannot fit. Existing-event booking status uses BookingStatusSegments in both detail and editing, with dedicated light/dark BookingTentative (amber), BookingBooked (forest/mint), BookingCompleted (blue), and BookingCancelled (muted red) tokens. Detail selections save immediately through the existing conflict-aware save path; editor selections remain draft changes until Save. Arrangement retains its menu.
+scaled 300-point minimum width cannot fit. Existing-event booking status uses BookingStatusSegments in both detail and editing, with dedicated light/dark tentative (amber), booked (`positive`), completed (blue) and cancelled (muted red) status colors. Detail selections save immediately through the existing conflict-aware save path; editor selections remain draft changes until Save. Arrangement retains its menu.
 
 The event owns every session's timezone. Event setup and the wizard session list
 expose it once; session editing displays it read-only. Remote/hybrid Work fields
@@ -314,8 +330,8 @@ before "Show all". The panel disappears when nothing is open, and cancelled even
 accessibility sizes where a pinned bar would cover the screen. The selection is remembered per event; completed or
 cancelled events with money items open on Money.
 
-**Schedule** shows a next-call panel for covered work within seven days: forest fill in light mode, raised surface with
-a mint hairline in dark mode, the call time large in the chosen clock, the other clock beneath, then on-air range and
+**Schedule** shows a next-call panel for covered work within seven days: accent fill with `accentSoft` labels in light mode, raised surface with
+an accent hairline in dark mode, the call time large in the chosen clock, the other clock beneath, then on-air range and
 series. Within 90 minutes it becomes a countdown. Remote work offers *Your time / Track* segments, defaulting to your
 time; on-site work always reads track time. The run of show groups sessions under the date rail with a covering count
 and, inside the forecast window, that day's track weather. Rows are quiet when confirmed and covering; not-covering rows
@@ -454,7 +470,7 @@ followed by observed iCloud status and a primary setup action. Backup recovery
 stays secondary. Preferences, Calendar and backup selection retain the native
 navigation stack and reuse BrandLockup in the principal toolbar. Setup actions
 wrap the existing primary/secondary glass styles; preference and backup rows reuse
-DaybookSections. Reading surfaces retain PageBackground and SurfaceBackground.
+DaybookSections. Reading surfaces retain the theme page and surface colors.
 
 Preferences and Settings share the same labelled fields. Appearance uses native
 segments at standard text sizes and a labelled menu at accessibility sizes;
@@ -475,7 +491,7 @@ the incumbent visual system rather than claiming a new full-product audit.
 ### Do:
 - **Do** preserve the date-led hierarchy; event details open on Schedule and promote Money once the event is completed with money still to settle.
 - **Do** keep Upcoming's To settle collapsed by default and derived from records, never dismissible.
-- **Do** use named appearance-aware color assets and semantic text styles.
+- **Do** use `Color.theme` roles and semantic text styles; never construct colors in views.
 - **Do** keep USD and EUR separate and show real partial balances and pending schedules.
 - **Do** retain native controls, navigation and accessibility adaptation.
 - **Do** keep reading surfaces matte and let native glass define action and navigation depth.

@@ -63,6 +63,9 @@
                <Test
                   Identifier = "TodayCaptureTests">
                </Test>
+               <Test
+                  Identifier = "ThemeCaptureTests">
+               </Test>
             </SelectedTests>
          </TestableReference>
       </Testables>

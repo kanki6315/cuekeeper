@@ -129,10 +129,10 @@ struct WeatherStatusFooter: View {
             VStack(alignment: .leading, spacing: 6) {
                 if let snapshot = loader.current(request) {
                     Text("Track forecast updated \(snapshot.fetchedAt.formatted(date: .abbreviated, time: .shortened)) · \(snapshot.timeZoneID.replacingOccurrences(of: "_", with: " ")) time")
-                        .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                        .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                     if snapshot.isOutdated(at: loader.now) {
                         Label("Outdated forecast · awaiting daily update", systemImage: "clock")
-                            .font(.caption).foregroundStyle(Color("AmberText"))
+                            .font(.caption).foregroundStyle(Color.theme.amberText)
                             .accessibilityElement(children: .combine)
                             .accessibilityIdentifier("weather-outdated")
                     }
@@ -142,10 +142,10 @@ struct WeatherStatusFooter: View {
                 } else {
                     Label("Weather unavailable", systemImage: "cloud").font(.footnote)
                     Text(loader.error ?? "Open this event while connected to load the forecast.")
-                        .font(.footnote).foregroundStyle(Color("SecondaryText"))
+                        .font(.footnote).foregroundStyle(Color.theme.secondaryText)
                     if let next = EventWeatherStore.shared.nextAttempt(placeID: request.placeID) {
                         Text("Next update available \(next.formatted(date: .abbreviated, time: .shortened)).")
-                            .font(.caption).foregroundStyle(Color("SecondaryText"))
+                            .font(.caption).foregroundStyle(Color.theme.secondaryText)
                     } else {
                         Button("Try again") { Task { await loader.load() } }.frame(minHeight: 44)
                     }
@@ -192,7 +192,7 @@ struct SessionWeatherSection: View {
                             .accessibilityElement(children: .combine)
                     }
                     if hours.isEmpty {
-                        Text("Hourly forecast isn’t available for this session yet.").foregroundStyle(Color("SecondaryText"))
+                        Text("Hourly forecast isn’t available for this session yet.").foregroundStyle(Color.theme.secondaryText)
                     }
                     ForEach(hours) { hour in
                         VStack(alignment: .leading, spacing: 6) {
@@ -222,7 +222,7 @@ struct WeatherMetrics: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 16) { rain; windLabel }
             VStack(alignment: .leading, spacing: 6) { rain; windLabel }
-        }.font(.subheadline).foregroundStyle(Color("SecondaryText"))
+        }.font(.subheadline).foregroundStyle(Color.theme.secondaryText)
     }
     private var rain: some View {
         Label("Precipitation \(precipitation.formatted(.percent.precision(.fractionLength(0))))", systemImage: "drop")

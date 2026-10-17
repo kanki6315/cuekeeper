@@ -62,7 +62,7 @@ struct PaymentsView: View {
                 Section { MonthMoneyPanel(currencies: summary.currencies) }
             }
             if summary.groups.isEmpty {
-                Section { Text("No events in \(MonthStepper.title(month)).").foregroundStyle(Color("SecondaryText")) }
+                Section { Text("No events in \(MonthStepper.title(month)).").foregroundStyle(Color.theme.secondaryText) }
             } else {
                 Section {
                     ViewThatFits(in: .horizontal) {
@@ -151,7 +151,7 @@ struct PaymentsView: View {
                 HStack(alignment: .top, spacing: 24) {
                     VStack(alignment: .leading, spacing: 12) {
                         if summary.groups.isEmpty {
-                            Text("No events in \(MonthStepper.title(month)).").foregroundStyle(Color("SecondaryText"))
+                            Text("No events in \(MonthStepper.title(month)).").foregroundStyle(Color.theme.secondaryText)
                         } else {
                             MonthLedgerTable(groups: summary.groups, job: job, client: client,
                                              onReadiness: { readiness = Presented($0) }, onDetails: { detailsClient = Presented($0) },
@@ -216,7 +216,7 @@ struct PaymentsView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color("PageBackground"))
+            .background(Color.theme.page)
         }
     }
 
@@ -250,7 +250,7 @@ struct InvoiceRow: View {
             Text(invoice.client?.name ?? "Client syncing").font(.subheadline)
             if let value = try? invoice.currentValue(), let balance = try? invoice.balance() {
                 Text(value.status == "void" ? "Voided" : value.status == "draft" ? "Draft · \(Money.format((try? value.total()) ?? 0, currency: value.currency))" : balance < 0 ? "Credit · \(Money.format(-balance, currency: value.currency))" : "\(invoice.overdue ? "Overdue · " : "")\(Money.format(balance, currency: value.currency)) remaining")
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText")).monospacedDigit()
+                    .font(.subheadline).foregroundStyle(Color.theme.secondaryText).monospacedDigit()
             }
         }.padding(.vertical, 4)
     }
@@ -369,17 +369,17 @@ struct PaymentEditorView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 7) {
                         Text(invoice?.title ?? job?.displayName ?? "").font(.title2.bold())
-                        Text(invoice?.client?.name ?? job?.client?.name ?? "").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text(invoice?.client?.name ?? job?.client?.name ?? "").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                     }
                     if let balance = try? invoice?.balance() { LabeledContent("Balance before payment") { Text(Money.format(balance, currency: currency)).fontWeight(.semibold).monospacedDigit() } }
                 }
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Amount received").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                        Text("Amount received").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                         HStack {
                         DaybookTextField("Amount", text: $draft.amount).keyboardType(.decimalPad).font(.title2.weight(.semibold))
                             .accessibilityLabel("Amount received").accessibilityIdentifier("payment-amount")
-                        Text(currency).foregroundStyle(Color("SecondaryText"))
+                        Text(currency).foregroundStyle(Color.theme.secondaryText)
                         }
                     }.padding(.vertical, 4)
                     DatePicker("Received", selection: $draft.date, displayedComponents: .date)
@@ -411,19 +411,19 @@ struct PaymentEditorView: View {
         }
         .presentationSizing(.page)
         .presentationDetents([.large])
-        .presentationBackground(Color("PageBackground"))
+        .presentationBackground(Color.theme.page)
     }
 }
 
 struct ReceiptLinks: View {
     let records: [PaymentRecord]
     var body: some View {
-        if records.isEmpty { Text("No payments recorded").foregroundStyle(Color("SecondaryText")) }
+        if records.isEmpty { Text("No payments recorded").foregroundStyle(Color.theme.secondaryText) }
         ForEach(records.sorted { ($0.receivedAt ?? .distantPast) > ($1.receivedAt ?? .distantPast) }, id: \.objectID) { payment in
             DaybookLink { ReceiptDetailView(payment: payment) } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(Money.format(payment.amount, currency: payment.currency)).monospacedDigit()
-                    Text("\(payment.reversesID == nil ? "Received" : "Reversal") · \(payment.receivedAt?.formatted(date: .abbreviated, time: .omitted) ?? "Date unknown")").font(.caption).foregroundStyle(Color("SecondaryText"))
+                    Text("\(payment.reversesID == nil ? "Received" : "Reversal") · \(payment.receivedAt?.formatted(date: .abbreviated, time: .omitted) ?? "Date unknown")").font(.caption).foregroundStyle(Color.theme.secondaryText)
                 }
             }
         }
@@ -467,7 +467,7 @@ struct JobBillingSection: View {
         Section {
             if let note = note(active: active, directPaid: directPaid) {
                 Text(note).font(.subheadline)
-                    .foregroundStyle(note.hasSuffix("review") ? Color("AmberText") : Color("SecondaryText"))
+                    .foregroundStyle(note.hasSuffix("review") ? Color.theme.amberText : Color.theme.secondaryText)
             }
             ForEach(invoices.filter { invoice in (try? invoice.heads().contains { $0.value?.lines.contains { $0.jobID == job.id } ?? false }) == true }, id: \.objectID) { invoice in
                 DaybookLink { InvoiceDetailView(invoice: invoice) } label: { InvoiceRow(invoice: invoice) }
@@ -475,7 +475,7 @@ struct JobBillingSection: View {
             if !payments.isEmpty { ReceiptLinks(records: payments) }
             if active.isEmpty {
                 if job.client == nil {
-                    Text("Add a client to include this booking on an invoice.").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    Text("Add a client to include this booking on an invoice.").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 } else if directPaid == 0 {
                     DaybookActionRow("Add to Invoice", systemImage: "doc.text", action: onInvoice).accessibilityIdentifier("add-job-invoice")
                 }

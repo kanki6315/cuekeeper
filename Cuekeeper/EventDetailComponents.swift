@@ -8,7 +8,7 @@ struct EventPanel: ViewModifier {
     func body(content: Content) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color("SurfaceBackground"), in: RoundedRectangle(cornerRadius: 12))
+            .background(Color.theme.surface, in: RoundedRectangle(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(contrast == .increased ? 0.45 : 0.16), lineWidth: 0.5) }
     }
 }
@@ -118,14 +118,14 @@ struct EventHeader: View {
     @ViewBuilder private var client: some View {
         if let client = job.client {
             NavigationLink { LibraryDetailView(record: client, kind: .client) } label: {
-                EventChip(tint: .accentColor) {
+                EventChip(tint: Color.theme.accent) {
                     Text(client.name).fontWeight(.semibold)
                     Image(systemName: "chevron.right").font(.caption2.weight(.bold))
                 }
             }.buttonStyle(.plain).accessibilityLabel("Client, \(client.name)").accessibilityIdentifier("event-client")
         } else {
             Button(action: onEdit) {
-                EventChip(tint: Color("SecondaryText")) { Image(systemName: "plus"); Text("Add client") }
+                EventChip(tint: Color.theme.secondaryText) { Image(systemName: "plus"); Text("Add client") }
             }.buttonStyle(.plain).accessibilityIdentifier("event-add-client")
         }
     }
@@ -137,9 +137,9 @@ private struct StatusChip: View {
     let status: BookingStatus
     private var fill: Color {
         switch status {
-        case .tentative: return Color("AmberText")
-        case .booked, .completed: return .accentColor
-        case .cancelled: return Color("SecondaryText")
+        case .tentative: return Color.theme.amberText
+        case .booked, .completed: return Color.theme.positive
+        case .cancelled: return Color.theme.secondaryText
         }
     }
     var body: some View {
@@ -147,7 +147,7 @@ private struct StatusChip: View {
             Text(status.title)
             Image(systemName: "chevron.down").font(.caption2.weight(.bold))
         }
-        .font(.subheadline.weight(.semibold)).foregroundStyle(Color("PageBackground"))
+        .font(.subheadline.weight(.semibold)).foregroundStyle(Color.theme.page)
         .padding(.horizontal, 11).frame(minHeight: height)
         .background(fill, in: Capsule())
     }
@@ -162,7 +162,7 @@ struct EventChip<Content: View>: View {
         HStack(spacing: 5) { content }
             .font(.subheadline).foregroundStyle(tint)
             .padding(.horizontal, 11).frame(minHeight: height)
-            .background(Color("SurfaceBackground"), in: Capsule())
+            .background(Color.theme.surface, in: Capsule())
             .overlay { Capsule().strokeBorder(tint == .primary ? Color.primary.opacity(contrast == .increased ? 0.45 : 0.16) : tint.opacity(0.55), lineWidth: 0.5) }
     }
 }
@@ -172,7 +172,7 @@ struct EventFactChip: View {
     let text: String
     var body: some View {
         EventChip {
-            Image(systemName: symbol).foregroundStyle(Color("SecondaryText"))
+            Image(systemName: symbol).foregroundStyle(Color.theme.secondaryText)
             Text(text)
         }.accessibilityElement(children: .combine)
     }
@@ -260,7 +260,7 @@ struct OpenItemsPanel: View {
     var body: some View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                Text("To settle · \(items.count)").font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                Text("To settle · \(items.count)").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.secondaryText)
                     .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 4)
                     .accessibilityAddTraits(.isHeader)
                 let shown = expanded ? items : Array(items.prefix(limit))
@@ -282,17 +282,17 @@ struct OpenItemsPanel: View {
         }
     }
     @ViewBuilder private func row(_ item: OpenItem) -> some View {
-        let tint = item.needsAttention ? Color("AmberText") : Color.accentColor
+        let tint = item.needsAttention ? Color.theme.amberText : Color.theme.positive
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
         layout {
             HStack(spacing: 10) {
                 Image(systemName: item.symbol).font(.footnote.weight(.semibold)).foregroundStyle(tint)
                     .frame(width: iconSize, height: iconSize)
-                    .background((item.needsAttention ? Color.orange.opacity(0.18) : Color.accentColor.opacity(0.1)), in: Circle())
+                    .background((item.needsAttention ? Color.theme.attention.opacity(0.18) : Color.theme.positive.opacity(0.1)), in: Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.title).font(.subheadline.weight(.semibold))
-                    if let detail = item.detail { Text(detail).font(.footnote).foregroundStyle(Color("SecondaryText")) }
+                    if let detail = item.detail { Text(detail).font(.footnote).foregroundStyle(Color.theme.secondaryText) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.accessibilityElement(children: .combine)
             if item.isPrimary {
@@ -320,11 +320,10 @@ struct NextCallPanel: View {
     /// Names the event when the panel sits outside the event's own page.
     var subtitle: String? = nil
     @Environment(\.colorScheme) private var scheme
-    private static let mint = Color(red: 167 / 255, green: 220 / 255, blue: 180 / 255)
-    private var fill: Color { scheme == .dark ? Color("SurfaceBackground") : Color.accentColor }
-    private var label: Color { scheme == .dark ? Color.accentColor : Self.mint }
-    private var primary: Color { scheme == .dark ? Color.primary : Color("PageBackground") }
-    private var secondary: Color { scheme == .dark ? Color("SecondaryText") : Color.white.opacity(0.82) }
+    private var fill: Color { scheme == .dark ? Color.theme.surface : Color.theme.accent }
+    private var label: Color { scheme == .dark ? Color.theme.accent : Color.theme.accentSoft }
+    private var primary: Color { scheme == .dark ? Color.primary : Color.theme.page }
+    private var secondary: Color { scheme == .dark ? Color.theme.secondaryText : Color.theme.onAccent.opacity(0.9) }
 
     var body: some View {
         TimelineView(.everyMinute) { context in
@@ -349,7 +348,7 @@ struct NextCallPanel: View {
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(fill, in: RoundedRectangle(cornerRadius: 12))
-            .overlay { if scheme == .dark { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.5) } }
+            .overlay { if scheme == .dark { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.theme.accent.opacity(0.35), lineWidth: 0.5) } }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("next-call")
         }
@@ -406,7 +405,7 @@ struct RunOfShowDayView<Row: View>: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if day.key.isEmpty {
-                Image(systemName: "calendar.badge.questionmark").font(.title3).foregroundStyle(Color.accentColor)
+                Image(systemName: "calendar.badge.questionmark").font(.title3).foregroundStyle(Color.theme.accent)
                     .frame(width: railWidth).padding(.top, 4).accessibilityLabel("Date to come")
             } else {
                 DaybookDateRail(day: day.key)
@@ -417,7 +416,7 @@ struct RunOfShowDayView<Row: View>: View {
                         if day.key.isEmpty { Text("Date to come") }
                         Spacer(minLength: 8)
                         if let weather { Text(weather) }
-                    }.font(.footnote).foregroundStyle(Color("SecondaryText")).padding(.top, 4)
+                    }.font(.footnote).foregroundStyle(Color.theme.secondaryText).padding(.top, 4)
                 }
                 VStack(spacing: 0) {
                     ForEach(Array(day.sessions.enumerated()), id: \.element.id) { index, session in
@@ -458,10 +457,10 @@ struct RunOfShowRow: View {
             if session.start == nil, !skipped, let onAddTime {
                 Button("Add time", action: onAddTime).font(.subheadline.weight(.semibold)).frame(minHeight: 44)
             } else if let trackZone, let start = session.start, !typeSize.isAccessibilitySize {
-                Text("\(EventTimeText.time(start, in: trackZone)) track").font(.subheadline).monospacedDigit().foregroundStyle(Color("SecondaryText"))
+                Text("\(EventTimeText.time(start, in: trackZone)) track").font(.subheadline).monospacedDigit().foregroundStyle(Color.theme.secondaryText)
             }
         }
-        .foregroundStyle(skipped ? Color("SecondaryText") : Color.primary)
+        .foregroundStyle(skipped ? Color.theme.secondaryText : Color.primary)
         .padding(.horizontal, 16).padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -472,9 +471,9 @@ struct RunOfShowRow: View {
                 .lineLimit(1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.8)
                 .frame(width: typeSize.isAccessibilitySize ? nil : timeWidth, alignment: .leading)
         } else {
-            Text("TBC").font(.footnote.weight(.semibold)).foregroundStyle(Color("AmberText"))
+            Text("TBC").font(.footnote.weight(.semibold)).foregroundStyle(Color.theme.amberText)
                 .frame(width: timeWidth, height: 40)
-                .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Color("AmberText").opacity(0.55), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
+                .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.theme.amberText.opacity(0.55), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
                 .accessibilityLabel("Time to come")
         }
     }
@@ -488,7 +487,7 @@ struct RunOfShowRow: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
     private var subtitleColor: Color {
-        !skipped && (session.start == nil || !session.confirmed || session.coverage == "undecided") ? Color("AmberText") : Color("SecondaryText")
+        !skipped && (session.start == nil || !session.confirmed || session.coverage == "undecided") ? Color.theme.amberText : Color.theme.secondaryText
     }
 }
 
@@ -504,9 +503,9 @@ struct MoneySummaryPanel: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(amount).font(.title2.bold()).monospacedDigit()
                 Spacer(minLength: 8)
-                Text(agreement).font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text(agreement).font(.subheadline).foregroundStyle(Color.theme.secondaryText)
                 if chevron {
-                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.theme.secondaryText).accessibilityHidden(true)
                 }
             }
             switch progress {
@@ -514,16 +513,16 @@ struct MoneySummaryPanel: View {
                 bar(fraction: total > 0 ? Double(min(max(paid, 0), total)) / Double(total) : 0)
                     .accessibilityLabel("\(Money.format(paid, currency: currency)) paid of \(Money.format(total, currency: currency)) invoiced")
                 HStack(spacing: 16) {
-                    legend("Paid \(Money.format(paid, currency: currency))", fill: Color.accentColor)
-                    legend("Owed \(Money.format(total - paid, currency: currency))", fill: Color.accentColor.opacity(0.3))
+                    legend("Paid \(Money.format(paid, currency: currency))", fill: Color.theme.positive)
+                    legend("Owed \(Money.format(total - paid, currency: currency))", fill: Color.theme.positive.opacity(0.3))
                 }
             case let .shared(reference, others, total, balance, currency):
                 Text("On \(reference.isEmpty ? "an invoice" : reference) with \(counted(others, "other event", "other events")) · \(Money.format(balance, currency: currency)) of \(Money.format(total, currency: currency)) owed on the invoice")
-                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                    .font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             case .draft:
-                Text("On draft invoice").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text("On draft invoice").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             case .none:
-                Text("Not invoiced yet").font(.subheadline).foregroundStyle(Color("SecondaryText"))
+                Text("Not invoiced yet").font(.subheadline).foregroundStyle(Color.theme.secondaryText)
             }
             if case .value(let value) = fee, !value.lines.isEmpty {
                 VStack(spacing: 0) {
@@ -533,7 +532,7 @@ struct MoneySummaryPanel: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(line.description.isEmpty ? "Item" : line.description)
                                 if let rate = try? Money.parse(line.rate, currency: value.currency, allowNegative: true) {
-                                    Text("\(line.quantity) × \(Money.format(rate, currency: value.currency))").font(.footnote).foregroundStyle(Color("SecondaryText"))
+                                    Text("\(line.quantity) × \(Money.format(rate, currency: value.currency))").font(.footnote).foregroundStyle(Color.theme.secondaryText)
                                 }
                             }
                             Spacer(minLength: 8)
@@ -559,8 +558,8 @@ struct MoneySummaryPanel: View {
     private func bar(fraction: Double) -> some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.accentColor.opacity(0.3))
-                Capsule().fill(Color.accentColor).frame(width: proxy.size.width * fraction)
+                Capsule().fill(Color.theme.positive.opacity(0.3))
+                Capsule().fill(Color.theme.positive).frame(width: proxy.size.width * fraction)
             }
         }.frame(height: 10).accessibilityElement()
     }
@@ -582,7 +581,7 @@ struct EventFactRow<Value: View>: View {
     var body: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
         layout {
-            Text(label).foregroundStyle(Color("SecondaryText")).frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
+            Text(label).foregroundStyle(Color.theme.secondaryText).frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
             value.frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(.subheadline)
@@ -636,6 +635,6 @@ private enum EventDetailPreview {
                 EventFactRow("Series", "National League")
             }.eventPanel()
         }.padding(20)
-    }.background(Color("PageBackground"))
+    }.background(Color.theme.page)
 }
 #endif

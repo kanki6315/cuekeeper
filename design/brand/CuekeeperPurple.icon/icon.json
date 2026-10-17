@@ -1,0 +1,57 @@
+{
+  "fill": {
+    "solid": "extended-srgb:0.43922,0.23137,0.63137,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "rear-card.svg",
+          "name": "Rear cue card",
+          "fill-specializations": [
+            {
+              "value": {
+                "solid": "extended-srgb:0.92157,0.86667,0.99608,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "extended-srgb:0.81569,0.66667,0.98824,1.00000"
+              }
+            }
+          ]
+        },
+        {
+          "image-name": "front-bookmark.svg",
+          "name": "Bookmark with cue line",
+          "fill-specializations": [
+            {
+              "value": {
+                "solid": "extended-srgb:0.92157,0.86667,0.99608,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "extended-srgb:0.81569,0.66667,0.98824,1.00000"
+              }
+            }
+          ]
+        }
+      ],
+      "name": "Kept cues",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.12
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

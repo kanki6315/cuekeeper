@@ -85,7 +85,7 @@ private struct ExpenseAutomationManualSetupView: View {
                     Text("Amount → transaction’s Amount")
                     Text("Transaction date → Current Date output")
                     Text("If you know the currency, enter its three-letter code (e.g. USD). Otherwise, leave it blank. Leave Transaction ID blank, then save.")
-                        .foregroundStyle(Color("SecondaryText"))
+                        .foregroundStyle(Color.theme.secondaryText)
                 }
                 .accessibilityIdentifier("wallet-setup-mappings")
             }
@@ -106,7 +106,7 @@ private struct ExpenseAutomationManualSetupView: View {
             .buttonStyle(DaybookPrimaryButton())
             .accessibilityIdentifier("open-wallet-shortcuts")
             .frame(maxWidth: 480).padding(.horizontal, 24).padding(.vertical, 12)
-            .frame(maxWidth: .infinity).background(Color("PageBackground"))
+            .frame(maxWidth: .infinity).background(Color.theme.page)
         }
         .daybookSurface()
         .navigationTitle("Set Up Manually").navigationBarTitleDisplayMode(.inline)
@@ -141,7 +141,7 @@ private struct ExpenseAutomationHelpView: View {
                     Text("No Capture Expense run recorded yet")
                 }
                 Text("Cuekeeper can’t check whether your Wallet automation exists or is enabled. Runs from Siri and manual shortcuts also appear here. Older runs may not be recorded.")
-                    .foregroundStyle(Color("SecondaryText"))
+                    .foregroundStyle(Color.theme.secondaryText)
             }
             Section {
                 DisclosureGroup("Installing the shared shortcut") {
@@ -224,7 +224,7 @@ struct ExpenseRemindersSection: View {
                 }.disabled(requesting).accessibilityIdentifier("enable-expense-reminders")
             }
             if requesting { ProgressView("Requesting permission…") }
-            if let error = notifications.lastError { Text(error).foregroundStyle(Color("SecondaryText")) }
+            if let error = notifications.lastError { Text(error).foregroundStyle(Color.theme.secondaryText) }
         } header: {
             if let header { Text(header) }
         }

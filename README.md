@@ -193,7 +193,7 @@ previous test methods remain; the additional regression checks that an
 unresponsive notification service cannot block the UI thread during cleanup.
 These measurements precede the subsequent Payments redesign merged from main,
 which replaces the old Payments test with five new workflows and adds unit tests.
-Rebenchmark the combined suite before treating these counts or times as current.
+See the merged-suite worker benchmark below for current counts and timings.
 The only skip in the measured suite requires physical-device Data Protection support; Calendar
 integration ran. The earlier 32 tooling tests and five website tests passed in
 2.7 seconds combined. The final incremental test-bundle rebuild took 7.9 seconds;
@@ -235,6 +235,79 @@ The separate `./cloudkit.sh check --local-only` gate still fails because the
 reviewed manifest's `CloudBackupStore.swift` hash is stale. The mismatch also
 exists in HEAD before these test changes. No schema export or manifest update was
 performed; the release schema gate remains outstanding.
+
+### Merged-suite benchmark with prepared workers — 16 October 2026
+
+After merging Payments, the enabled Xcode suite contains 217 unit/integration
+methods and 64 UI methods (281 total). No methods were removed in this pass.
+Seven seeded workflows now open their prerequisite in the normal Events
+navigation stack; separate navigation tests still exercise list entry. Weather
+checks retain visibility assertions but only perform extra screenshot framing
+when success screenshots are enabled.
+
+| Four explicit simulator workers | Test wall time | Passed | Failed | Skipped |
+| --- | --- | --- | --- | --- |
+| First pass on newly prepared devices | 7m 10s | 278 | 1 | 2 |
+| Warm devices, updated Payments assertion | 6m 07s | 279 | 0 | 2 |
+| Warm devices, balanced from warm timings, wizard wait fixed | **5m 27s** | **279** | **0** | **2** |
+
+The final run is 27 seconds above the five-minute target. Times include runner
+startup and result collection, with coverage enabled and no failure retries.
+They exclude build, test enumeration and simulator preparation. Creating four
+fresh simulators, booting them concurrently, installing the app and granting
+Calendar access took another **59.7 seconds**, measured separately. These are
+local observations, not a five-minute cold-start guarantee. The earlier 7m 33s
+clone-based result covered a smaller 254-test suite and is not a controlled
+before/after comparison.
+
+Xcode's automatic clone scheduler previously dispatched its fourth UI worker
+73 seconds after the first. Explicit prepared devices reduced that spread to
+17 seconds on their first test run. On warmed devices three UI workers started
+together, while the fourth first ran the unit suite. Balancing whole classes
+using warm durations reduced the first-to-last worker completion gap from 88 to
+16 seconds. Final summed UI time was 1,237 seconds, an ideal four-worker floor
+of about 5m 9s before overhead: scheduling alone cannot guarantee five minutes.
+
+The first merged run found an obsolete `Invoiced` heading assertion. It now
+checks the redesigned Payments row for the actual invoice reference and $125
+remaining balance. A further balancing run finished in 5m 31s but failed an
+immediate wizard selection assertion; it is excluded from successful results.
+That assertion now waits up to five seconds for the same selected label. Three
+consecutive focused runs and the final full suite passed after the correction.
+The two skips are physical-device Data Protection and the iPad-only Payments
+layout test on iPhone. All 36 Python tooling tests and five website tests passed.
+The schema-test success mock now includes V15's client invoicing field and a
+negative test rejects its absence; the reviewed CloudKit snapshot is unchanged.
+
+`scripts/benchmark_tests.py` partitions whole UI classes across explicitly supplied
+simulators, keeps unit tests together, and rejects missing, duplicate or unexpected
+result methods. It creates one result bundle per worker, `plan.json`, `summary.json`
+and combined `tests.json` for subsequent timing input. It does not create, erase
+or delete devices. Supply four distinct, dedicated, booted iPhone simulators with
+the app installed and Calendar permission granted; never use a simulator involved
+in another worktree's test run.
+
+Enumerate the current compiled bundle after changing its test inventory. Do not
+reuse enumeration from an older suite: result verification cannot discover a new
+class absent from both an old inventory and its selected classes.
+
+```sh
+xcodebuild test-without-building -xctestrun "$TEST_RUN" \
+  -destination "platform=iOS Simulator,id=$SIM_A" \
+  -enumerate-tests -test-enumeration-style flat -test-enumeration-format json \
+  -test-enumeration-output-path build/enabled-tests.json
+
+python3 scripts/benchmark_tests.py --xctestrun "$TEST_RUN" \
+  --enumeration build/enabled-tests.json \
+  --timings build/previous-benchmark/tests.json \
+  --device "$SIM_A" --device "$SIM_B" --device "$SIM_C" --device "$SIM_D" \
+  --output build/new-benchmark
+```
+
+`TEST_RUN` is the built `.xctestrun` path; each `SIM_*` is a prepared device UUID.
+Use a new output directory each time. Omit `--timings` on the first run; the
+fallback estimates are less accurate. Keep provisioning and enumeration time
+separate in reports, and include them when budgeting a fresh-machine CI job.
 
 Earlier V5 validation included 19 passing unit/model/EventKit tests (no skipped
 EventKit integration), 24 passing tooling tests and a passing local schema gate.

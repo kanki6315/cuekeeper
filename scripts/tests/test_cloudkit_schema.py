@@ -12,7 +12,12 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("cloudkit_schema", ROOT / "scripts/cloudkit_schema.py")
 ck = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ck)
-SCHEMA = (ROOT / "cloudkit/schema.ckdb").read_text()
+REVIEWED_SCHEMA = (ROOT / "cloudkit/schema.ckdb").read_text()
+# Synthetic successful export for the V15 model. The reviewed remote snapshot
+# intentionally remains separate: updating this mock is not a schema deployment.
+SCHEMA = REVIEWED_SCHEMA
+if "CD_invoicingJSON" not in SCHEMA:
+    SCHEMA = SCHEMA.replace("RECORD TYPE CD_Client (", "RECORD TYPE CD_Client (\n    CD_invoicingJSON STRING,")
 
 
 class SchemaTests(unittest.TestCase):
@@ -37,6 +42,11 @@ class SchemaTests(unittest.TestCase):
     def test_missing_snapshot_blocks_release(self):
         with self.assertRaisesRegex(ck.SchemaError, "No reviewed schema"):
             ck.check_local(self.root)
+
+    def test_export_without_client_invoicing_field_blocks_v15(self):
+        source = re.sub(r"\s*CD_invoicingJSON\s+STRING[^,]*,", "", SCHEMA)
+        with self.assertRaisesRegex(ck.SchemaError, "CD_invoicingJSON"):
+            self.export(source)
 
     def test_only_users_type_is_not_a_valid_model_export(self):
         with self.assertRaisesRegex(ck.SchemaError, "not initialized"):

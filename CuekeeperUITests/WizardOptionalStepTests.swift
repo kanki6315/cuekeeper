@@ -81,14 +81,14 @@ final class WizardLibraryTests: DaybookUITestCase {
         let suggestion = app.buttons["SportsCar Championship"]
         for _ in 0..<4 where !suggestion.isHittable || suggestion.frame.maxY > next.frame.minY { app.swipeUp() }
         suggestion.tap()
-        XCTAssertTrue(app.staticTexts["SportsCar Championship"].exists)
+        XCTAssertTrue(app.staticTexts["SportsCar Championship"].waitForExistence(timeout: 5))
 
         for _ in 0..<3 where !championship.isHittable || championship.frame.maxY > next.frame.minY - 12 { app.swipeUp() }
         championship.tap(); dismissKeyboardIntroduction(in: app); championship.typeText("Support championship")
         let add = app.buttons["championship-search-add"]
         for _ in 0..<4 where !add.isHittable || add.frame.maxY > next.frame.minY { app.swipeUp() }
         add.tap()
-        XCTAssertTrue(app.staticTexts["Support championship"].exists)
+        XCTAssertTrue(app.staticTexts["Support championship"].waitForExistence(timeout: 5))
         capture("wizard-multiple-series")
         next.tap()
         let arrangement = app.buttons["work-arrangement"]

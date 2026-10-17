@@ -86,13 +86,12 @@ class EventWorkflowTestCase: DaybookUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--reset-test-store", "--design-fixtures",
                                "--workflow-event-title=\(title)", "--workflow-event-client=\(client)"]
+            + (openDetails ? ["--workflow-open-event"] : [])
         app.launch()
-        // Go through Events so Upcoming's date/mode policy cannot hide the prerequisite.
-        openEvents(in: app)
+        // The fixture opens the normal Events stack; navigation has its own tests.
         let event = app.staticTexts[title].firstMatch
         XCTAssertTrue(event.waitForExistence(timeout: 10))
         if openDetails {
-            event.tap()
             XCTAssertTrue(app.buttons["edit-event"].waitForExistence(timeout: 5))
         }
         return app

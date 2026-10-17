@@ -24,6 +24,8 @@ final class WeatherTests: RegressionUITestCase {
     }
     private func positionNearTop(_ element: XCUIElement, in app: XCUIApplication) {
         reveal(element, in: app)
+        // Visibility is a regression check; extra framing is only for screenshots.
+        guard ProcessInfo.processInfo.environment["CUEKEEPER_TEST_SCREENSHOTS"] == "1" else { return }
         let forms = app.scrollViews.matching(identifier: "daybook-form")
         let scroll = forms.element(boundBy: forms.count - 1)
         let delta = min(max(element.frame.minY - scroll.frame.minY - 80, 0), scroll.frame.height * 0.6)

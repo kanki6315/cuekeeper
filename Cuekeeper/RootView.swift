@@ -67,6 +67,9 @@ struct RootView: View {
     @StateObject private var todayNavigation = TodayNavigation()
     @State private var selectedTab: AppSection = .upcoming
     @State private var paths: [AppSection: NavigationPath] = [:]
+    #if DEBUG
+    @State private var openedWorkflowFixture = false
+    #endif
     @FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "deletedAt == nil")) private var allJobs: FetchedResults<Job>
     private var showsSyncFeedback: Bool {
         !allJobs.isEmpty || persistence.syncActivity.needsAttention || persistence.syncActivity.offline
@@ -109,6 +112,19 @@ struct RootView: View {
         .onAppear {
             if DesignFixtures.enabled && DesignFixtures.route == "expenses-overview" { selectedTab = .expenses }
             if DesignFixtures.enabled && DesignFixtures.route == "payments-root" { selectedTab = .payments }
+            // Workflow prerequisites use the real Events navigation stack, including
+            // its tab switching and back navigation, without replaying list setup.
+            if DesignFixtures.enabled, !openedWorkflowFixture,
+               ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--workflow-event-title=") }),
+               let job = allJobs.first {
+                openedWorkflowFixture = true
+                if ProcessInfo.processInfo.arguments.contains("--workflow-open-event") {
+                    var path = NavigationPath()
+                    path.append(ScheduleDestination.event(job.objectID))
+                    paths[.jobs] = path
+                }
+                selectedTab = .jobs
+            }
         }
         #endif
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CuekeeperOpenToday"))) { _ in

@@ -43,7 +43,14 @@ final class InvoicePaymentWorkflowTests: EventWorkflowTestCase {
         let sidebar = app.collectionViews["Sidebar"]
         if sidebar.exists { sidebar.cells.containing(.staticText, identifier: "Payments").firstMatch.tap() }
         else { app.buttons["Payments"].firstMatch.tap() }
-        XCTAssertTrue(app.staticTexts["Invoiced"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["payments-month"].waitForExistence(timeout: 5))
+        let paymentRow = app.buttons["readiness-Invoiced show"]
+        reveal(paymentRow, in: app)
+        XCTAssertTrue(paymentRow.exists)
+        // Compact rows combine the status into their label; wide layouts expose it separately.
+        let owed = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "INV-200", "$125.00 owed")).firstMatch
+        XCTAssertTrue(owed.waitForExistence(timeout: 5))
         captureScreenshot("Payments overview")
     }
 }

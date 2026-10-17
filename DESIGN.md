@@ -3,17 +3,17 @@ name: Cuekeeper
 description: Native Combined Glass navigation and actions over the warm Daybook agenda.
 colors:
   AccentColor-light: "#073E27"
-  AccentColor-dark: "#A7DCB4"
+  AccentColor-dark: "#99E4AF"
   PageBackground-light: "#FAF8F2"
   PageBackground-dark: "#171E19"
   SurfaceBackground-light: "#FFFFFF"
-  SurfaceBackground-dark: "#2C352F"
+  SurfaceBackground-dark: "#27392E"
   SecondaryText-light: "#626860"
-  SecondaryText-dark: "#B7BFB8"
+  SecondaryText-dark: "#A5B2A8"
   PrimaryButtonText-light: "#FFFFFF"
   PrimaryButtonText-dark: "#073E27"
   AmberText-light: "#88570C"
-  AmberText-dark: "#F0BC59"
+  AmberText-dark: "#FCBF4D"
   SidebarSelection-light: "#073E27"
 typography:
   headline:
@@ -102,6 +102,8 @@ The palette combines restrained forest and mint accents with warm paper and gree
 `PageBackground` supplies ivory or warm charcoal across the page. Navigation and tab bars use automatic system backgrounds. `SurfaceBackground` supplies white or raised green charcoal for panels. `SecondaryText` is the readable muted foreground used for subtitles, metadata, helper text and text-field prompts. Main text and native separators retain system semantic colors.
 
 **The Appearance Pair Rule.** Use the named color assets so light and dark roles change together.
+
+**The Night Separation Rule.** Dark appearance keeps the brand charcoal page but separates roles by lightness and chroma: SecondaryText sits clearly below the accent (OKLCH L 0.75 vs 0.86), the dark accent and status colors run more saturated than the supplied pastel mint so tinted fills read on charcoal, and SurfaceBackground carries more green so panels lift off the page. The dark accent intentionally deviates from the supplied Mint #A7DCB4; the app icon and design/brand artwork keep the supplied value.
 
 ## Typography
 

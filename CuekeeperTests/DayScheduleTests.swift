@@ -34,6 +34,18 @@ final class DayScheduleTests: XCTestCase {
         let schedule = DaySchedule(events: [event()], sessions: [finished, running, excluded])
         XCTAssertEqual(schedule.remaining(at: date("2026-11-01T16:00:00Z"), calendar: calendar).map(\.id), [running.id])
     }
+    func testUpcomingListsRemainingTodayThenLaterDaysAndNextCallLooksAhead() {
+        let now = date("2026-11-01T16:00:00Z")
+        let finished = session("2026-11-01T13:00:00Z", end: "2026-11-01T14:00:00Z")
+        let tonight = session("2026-11-01T22:00:00Z", confirmed: false)
+        let nextWeek = session("2026-11-06T14:00:00Z")
+        let untimed = session(nil, day: "2026-11-03")
+        let tomorrow = session("2026-11-02T14:00:00Z", call: "2026-11-02T13:00:00Z")
+        let excluded = session("2026-11-02T18:00:00Z", coverage: "notCovering")
+        let schedule = DaySchedule(events: [event()], sessions: [nextWeek, excluded, untimed, tomorrow, finished, tonight])
+        XCTAssertEqual(schedule.upcoming(at: now, calendar: calendar).map(\.id), [tonight.id, tomorrow.id, untimed.id, nextWeek.id])
+        XCTAssertEqual(schedule.nextCommitment(at: now, calendar: calendar)?.id, tomorrow.id)
+    }
     func testIncompleteScheduleAndCancelledEvent() throws {
         let now = date("2026-11-01T16:00:00Z")
         var schedule = DaySchedule(events: [event()], sessions: [])

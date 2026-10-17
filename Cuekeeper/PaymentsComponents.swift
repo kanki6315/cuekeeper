@@ -54,6 +54,7 @@ struct MonthStepper: View {
     @Binding var month: String
     let eventCount: Int
     var inline = false
+    var noun = (one: "event", many: "events")
 
     static func date(_ month: String) -> Date? { Day.date(from: month + "-01") }
     static func title(_ month: String) -> String { date(month)?.formatted(.dateTime.month(.wide).year()) ?? month }
@@ -71,7 +72,7 @@ struct MonthStepper: View {
                 Text(Self.title(month)).font(inline ? .title2.bold() : .title3.bold())
                     .accessibilityIdentifier("payments-month")
                 HStack(spacing: 6) {
-                    Text(eventCount == 1 ? "1 event" : "\(eventCount) events").foregroundStyle(Color("SecondaryText"))
+                    Text(eventCount == 1 ? "1 \(noun.one)" : "\(eventCount) \(noun.many)").foregroundStyle(Color("SecondaryText"))
                     if month != PaymentsView.currentMonth {
                         Text("·").foregroundStyle(Color("SecondaryText"))
                         // Tap area grows to 44pt without pushing the stepper taller.
@@ -136,22 +137,38 @@ struct MonthMoneyPanel: View {
 struct MoneyBar: View {
     let buckets: CurrencyBuckets
     var body: some View {
-        let parts = MoneyBucket.allCases.compactMap { bucket in (buckets.amounts[bucket] ?? 0) > 0 ? (bucket, buckets.amounts[bucket]!) : nil }
-        let total = max(1, parts.reduce(0) { $0 + $1.1 })
+        SegmentedMoneyBar(currency: buckets.currency, parts: MoneyBucket.allCases.compactMap { bucket in
+            (buckets.amounts[bucket] ?? 0) > 0 ? .init(label: bucket.label, fill: bucket.fill, amount: buckets.amounts[bucket]!) : nil
+        })
+    }
+}
+
+/// One currency's money split into proportional colored segments.
+struct SegmentedMoneyBar: View {
+    struct Part: Identifiable {
+        let label: String
+        let fill: Color
+        let amount: Int64
+        var id: String { label }
+    }
+    let currency: String
+    let parts: [Part]
+    var body: some View {
+        let total = max(1, parts.reduce(0) { $0 + $1.amount })
         GeometryReader { geometry in
             HStack(spacing: 2) {
                 if parts.isEmpty { Capsule().fill(Color.primary.opacity(0.08)) }
-                ForEach(parts, id: \.0) { bucket, amount in
-                    Rectangle().fill(bucket.fill)
-                        .frame(width: max(3, (geometry.size.width - CGFloat(parts.count - 1) * 2) * CGFloat(amount) / CGFloat(total)))
+                ForEach(parts) { part in
+                    Rectangle().fill(part.fill)
+                        .frame(width: max(3, (geometry.size.width - CGFloat(parts.count - 1) * 2) * CGFloat(part.amount) / CGFloat(total)))
                 }
             }
         }
         .frame(height: 12)
         .clipShape(Capsule())
         .accessibilityElement()
-        .accessibilityLabel(buckets.currency)
-        .accessibilityValue(parts.isEmpty ? "Nothing yet" : parts.map { "\(Money.format($0.1, currency: buckets.currency)) \($0.0.label.lowercased())" }.joined(separator: ", "))
+        .accessibilityLabel(currency)
+        .accessibilityValue(parts.isEmpty ? "Nothing yet" : parts.map { "\(Money.format($0.amount, currency: currency)) \($0.label.lowercased())" }.joined(separator: ", "))
     }
 }
 
@@ -179,12 +196,12 @@ struct StepBarKey: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var railWidth = 47
     @ScaledMetric(relativeTo: .caption) private var column = 56
-    private let sample: [ReadinessGate: GateState] = [.work: .done, .fee: .done, .receipts: .missing, .client: .notYet]
+    private let sample: [ReadinessGate: GateState] = [.fee: .done, .client: .missing, .work: .notYet, .receipts: .done]
     var body: some View {
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 6) {
                 StepBar(gates: sample)
-                Text("Left to right: work, fee, receipts, client. Green is done, orange is missing, grey is not yet.")
+                Text("Left to right: fee, client, work, receipts. Green is done, orange is missing, grey is not yet.")
                     .font(.footnote).foregroundStyle(Color("SecondaryText"))
             }
         } else { columns }
@@ -212,7 +229,7 @@ struct StepBarKey: View {
         }
         .padding(.leading, alignsWithRows ? railWidth + 12 : 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Each event's bar shows work, fee, receipts and client, in that order: done, missing, or not yet.")
+        .accessibilityLabel("Each event's bar shows fee, client, work and receipts, in that order: done, missing, or not yet.")
     }
 }
 
@@ -476,10 +493,12 @@ struct InvoicingFieldRow: View {
     @Binding var text: String
     var missing = false
     var axis: Axis = .horizontal
+    /// Visible lines for a vertical field.
+    var lines: ClosedRange<Int> = 2...5
     var keyboard: UIKeyboardType = .default
     var identifier: String
     var body: some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: text.isEmpty && axis == .vertical ? .center : .firstTextBaseline, spacing: 12))
         layout {
             Text(label).foregroundStyle(missing ? Color("AmberText") : Color("SecondaryText")).fontWeight(missing ? .semibold : .regular)
                 .frame(width: typeSize.isAccessibilitySize ? nil : labelWidth, alignment: .leading)
@@ -487,7 +506,7 @@ struct InvoicingFieldRow: View {
                 .keyboardType(keyboard)
                 .textInputAutocapitalization(keyboard == .emailAddress ? .never : .sentences)
                 .autocorrectionDisabled(keyboard == .emailAddress)
-                .lineLimit(axis == .vertical ? 2...5 : 1...1)
+                .lineLimit(axis == .vertical ? lines : 1...1)
                 .accessibilityIdentifier(identifier)
         }
         .frame(minHeight: 32)

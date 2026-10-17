@@ -92,9 +92,18 @@ struct ExpenseEventSelection: View {
     /// Events in flight, offered first so a receipt from today's work is one tap away.
     var suggested: [Job] = []
     let select: (NSManagedObjectID) -> Void
+    /// Offered from the Expenses tab, for costs that belong to no event.
+    var onBusiness: (() -> Void)? = nil
     var body: some View {
         NavigationStack {
             List {
+                if let onBusiness, search.isEmpty {
+                    Section {
+                        Button { onBusiness() } label: {
+                            Label("Business cost", systemImage: "briefcase").font(.headline).frame(minHeight: 44)
+                        }.accessibilityIdentifier("choose-expense-business")
+                    }
+                }
                 if jobs.isEmpty { Text("Create an event from Upcoming, then return here to choose it.") }
                 if search.isEmpty && !suggested.isEmpty {
                     Section("In flight") {

@@ -3,17 +3,17 @@ name: Cuekeeper
 description: Native Combined Glass navigation and actions over the warm Daybook agenda.
 colors:
   AccentColor-light: "#073E27"
-  AccentColor-dark: "#A7DCB4"
+  AccentColor-dark: "#99E4AF"
   PageBackground-light: "#FAF8F2"
   PageBackground-dark: "#171E19"
   SurfaceBackground-light: "#FFFFFF"
-  SurfaceBackground-dark: "#2C352F"
+  SurfaceBackground-dark: "#27392E"
   SecondaryText-light: "#626860"
-  SecondaryText-dark: "#B7BFB8"
+  SecondaryText-dark: "#A5B2A8"
   PrimaryButtonText-light: "#FFFFFF"
   PrimaryButtonText-dark: "#073E27"
   AmberText-light: "#88570C"
-  AmberText-dark: "#F0BC59"
+  AmberText-dark: "#FCBF4D"
   SidebarSelection-light: "#073E27"
 typography:
   headline:
@@ -103,6 +103,8 @@ The palette combines restrained forest and mint accents with warm paper and gree
 
 **The Appearance Pair Rule.** Use the named color assets so light and dark roles change together.
 
+**The Night Separation Rule.** Dark appearance keeps the brand charcoal page but separates roles by lightness and chroma: SecondaryText sits clearly below the accent (OKLCH L 0.75 vs 0.86), the dark accent and status colors run more saturated than the supplied pastel mint so tinted fills read on charcoal, and SurfaceBackground carries more green so panels lift off the page. The dark accent intentionally deviates from the supplied Mint #A7DCB4; the app icon and design/brand artwork keep the supplied value.
+
 ## Typography
 
 **Display and Body Font:** SF Pro through SwiftUI semantic text styles, as approved for this native application. The brand lockup uses native title3 bold text; the exact raster wordmark font is not asserted.
@@ -172,19 +174,57 @@ DaybookDateRail stacks abbreviated weekday, day number and month in accent color
 
 Upcoming, Events, Payments, Expenses and Settings form the tab/sidebar destinations. The sidebar groups the brand, native sidebar list and sync feedback into one floating glass surface with an opaque accessibility fallback. Native navigation and tab bar backgrounds use automatic material behavior. Sync feedback leads to Settings and describes observed activity without claiming that every device is current.
 
-### Expenses overview
+### Expenses month
 
-Expenses reuses DaybookForm and DaybookTabHeader with a primary Scan Receipt action,
-followed directly by All / Saved / Needs review segments, without a repeated title or search field. Rows lead with merchant
-and amount, then subdued event/client, date/category and reimbursement metadata;
-drafts carry an amber Needs review label. Records sort by expense date, newest
-first. Rows open the existing expense editor; expenses linked to deleted events
-remain visible with restoration guidance and cannot be opened. Scan Receipt asks
-for an event before capture. The empty state offers capture guidance or suggests
-changing the filter. This extension was source-reviewed and passed
-build-for-testing plus all 22 ExpenseTests and BackgroundExpenseTests. iPhone and
-iPad simulator captures verified the compact rows; those captures predate removal
-of the heading and search field. The final heading removal also passed a build.
+Built from `ExpensesMonth` (`Cuekeeper/ExpensesMonth.swift`), derived on each render from expenses,
+their events and invoices; nothing is stored. Order: tab header with Scan Receipt, the shared month
+stepper (expense count, *This month* when away), a panel with one bar per currency split into Paid
+back, On an invoice, To rebill (blue), To finish (orange) and Your cost (faint ink), then:
+
+- **To finish**: collapsed to its first item with an amber count; expanded it lists every unfinished
+  receipt or Wallet capture from any month (Finish) and each repeating business cost whose next month
+  is due (Add, which opens a prefilled business cost). Oldest first. Hidden when empty.
+- **To rebill**: finished reimbursable receipts in the month not yet on an invoice, per client and
+  currency, with *Invoice* when at least one of their events is on no active invoice (invoices still
+  need an event line). It starts the existing ready-invoice flow with those events and receipts.
+- **Expenses**: All / Events / Business segments over one date-ordered list, with date rails per day.
+  Rows show merchant, event · category (or *Business · category*, or amber *Event to choose*), amount
+  and state: To finish, Your cost, To rebill, On INV-…, Paid back, Billing review, or *Monthly* for a
+  repeating business cost. Expenses on deleted events stay listed with restoration guidance.
+- *Still to rebill from earlier* jumps to the latest earlier month holding unbilled receipts.
+
+Business costs are finished expenses with no event (for example software subscriptions). They count
+as Your cost, are never reimbursable or rebilled, and need no photo. Scan Receipt offers *Business cost*
+above the event list; the editor's *What it's for* segments (An event / Business) switch an expense
+between them, and *Repeats monthly* links each month into a series. The next month is offered under
+To finish once due rather than created automatically, so devices never create duplicates. No schema
+change: `repeatsMonthly` and `seriesID` live in the expense value JSON and older builds ignore them;
+older builds reject the new Software category only when that expense is edited there. The pending
+expenses prompt now appears only in Payments.
+
+### Clients
+
+Built from `ClientSummary` (`Cuekeeper/ClientSummary.swift`), derived on each render from the client's
+events, their billing positions and invoices; nothing is stored. Settings → Clients, the event header's
+client chip and the event Details link all open these screens; roles, projects and series keep the
+plain library list.
+
+- **Roster**: *Coming up* lists clients with work ahead on the agenda's date rail (soonest first,
+  *Dates to come* last) with the next event and how many follow. *All clients* lists everyone A–Z
+  with an initials monogram, event count (or *last* month worked) and currency. One badge per row:
+  amber overdue money, else muted money owed, else an amber *Needs …* when invoicing details are
+  missing and there is work to bill. Search shows the flat list.
+- **Client view**: large-title name, *Client since*, then fact chips (events, currency, days to pay,
+  overdue or owed). Events / Money / Details segments pin like the event page. Events: *Next up*, then
+  past years newest first; only the latest past year opens by default. Money: a primary *Invoice …*
+  action per currency when events are ready (it starts the existing ready-invoice flow, with
+  rebillable receipts), the year's money bar (the Payments panel and buckets, with a year menu), and
+  invoices with open and overdue first. Details: contact, invoicing on the aligned label column with
+  amber *Missing* for required gaps and an *n of 4* count, currency default and notes. Toolbar: Email
+  (first address in contact, else the billing email) and Edit.
+- **Editor**: page heading plus Client (name, contact, currency), Invoicing (a four-segment meter,
+  then the shared invoicing rows) and Notes. All rows use the invoicing sheet's label column. Required
+  gaps highlight amber only when editing an existing client; a new client needs only a name.
 
 ### Event capture and editing
 
@@ -229,9 +269,9 @@ the next 3 days", a link to the next job with its first call, and a link to Plan
 
 **Plan** opens with To settle collapsed: title, amber count and a category summary ("2 bookings · 1 schedule · 2 money"),
 then the item with the earliest day and its action, unlabelled. Expanded, every item lists its event, detail and action,
-with Show less. Items rank by the day they are tied to: an ended event by its last day, invoices by due day, receipts by
-purchase day, everything else by the event's start. Booking and schedule gaps surface only for events within 30 days;
-money items always surface. A booked or tentative event that has ended asks to be marked completed. Items cannot be
+with Show less. Items rank by the day they are tied to: an ended event by its last day, everything else by the event's start. Money
+items are fee gaps only; invoicing, owed balances, billing reviews and receipt details are settled on the event page,
+Payments and Expenses. Booking and schedule gaps surface only for events within 30 days; fee gaps always surface. A booked or tentative event that has ended asks to be marked completed. Items cannot be
 dismissed; they clear when the data is fixed. Below sit a two-week strip from this Monday (one mark per session: solid
 covering, outlined not covering, dashed amber time to come; past unscheduled days stay blank) whose days scroll Coming
 up to the matching job, and Coming up: jobs within 30 days with their coverage summary and open-item count, then All events.
@@ -277,12 +317,12 @@ Sources: `Cuekeeper/JobDetailView.swift`, `Cuekeeper/EventDetailSummary.swift`, 
 
 Built from `PaymentsMonth` (`Cuekeeper/PaymentsReadiness.swift`), derived on each render from
 events, fees, invoices, receipts and client invoicing details; nothing is stored. Each event has
-four gates in a fixed order — **Work · Fee · Receipts · Client** — each done, missing or not yet:
+four gates in a fixed order — **Fee · Client · Work · Receipts** — each done, missing or not yet:
 
-- Work: completed is done; ended but not completed is missing (*Mark completed*); otherwise not yet.
 - Fee: a known amount is done; unknown or conflicting is missing. A zero fee reads *No fee* and is not counted.
-- Receipts: any draft receipt on the event blocks, prompting the bookkeeping. Finished receipts never block.
 - Client: needs a client with billing name, billing email, address and payment terms (tax ID optional).
+- Work: completed is done; ended but not completed is missing (*Mark completed*); otherwise not yet.
+- Receipts: any draft receipt on the event blocks, prompting the bookkeeping. Finished receipts never block.
 
 Billing state wins over gates: review, paid, invoiced (with balance and due), draft, paid directly.
 Otherwise all four done is *Ready to invoice*, work done with a gap is *Held up*, and work still to
@@ -296,7 +336,14 @@ key (gate labels with arrows into a sample bar, then Done / Missing / Not yet). 
 the name, details state (*Add details* when incomplete), then rows: date rail, title, a 4-segment
 step bar with the gap named in text, and the amount. Groups with ready work end in *Invoice n
 ready · total* per currency. *Still open from earlier* lists unpaid and draft invoices for earlier
-work and earlier finished work not yet invoiced. *All invoices and payments* opens the full ledger.
+work and earlier finished work not yet invoiced.
+
+A Month / Invoices switch under the header opens every invoice and direct payment across all
+months: *Owed to you* per currency (overdue in red, tappable to filter), search by number, client
+or amount, status chips and client/year menus (with billed, received and owed totals), then
+*Needs attention*, *Unpaid* by due date, *Drafts*, and paid/voided history by month. Open rows
+swipe or long-press to Record Payment, Mark Sent or Void. At 900 pt and wider the list sits
+beside the selected invoice.
 
 Rows with gaps open the readiness sheet: four gate rows with their actions (Mark completed, Add
 fee, Finish for each blocking receipt, Add client), the client invoicing form inline when details
@@ -336,7 +383,8 @@ step under the inline title. Candidates come from `InvoiceCandidates` and `Invoi
 
 Entry points: the event page and Upcoming open on the lines with that event ticked, together with
 its receipts, even when the event isn't ready. The readiness sheet does the same. A Payments
-client group opens on *Record it* with the group ticked. Editing opens on *Record it*, and sent
+client group, or a client page's ready work, opens on *Record it* with that work ticked. The Expenses
+rebilling *Invoice* opens on the lines, with those receipts ticked. Editing opens on *Record it*, and sent
 invoices hide the step line and lock the lines. A new invoice suggests the reference after the
 client's latest one, skipping references that any invoice already uses, and says so in the
 footnote. Marking it sent fills the due date from the client's terms.

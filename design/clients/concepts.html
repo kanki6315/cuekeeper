@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Screen Concepts</title>
+<style>
+:root{
+  --forest:#073E27; --mint:#A7DCB4; --ivory:#FAF8F2; --surface:#FFFFFF; --ink:#171E19;
+  --muted:#626860; --amber:#88570C; --amber-fill:rgba(255,149,0,.16); --rule:rgba(23,30,25,.16);
+  --forest-fill:rgba(7,62,39,.07); --blue:#1F5FAE; --board:#E9E6DD; --red:#A8331F;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--board);color:var(--ink);font:15px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;padding:48px 16px 80px}
+.board{max-width:1320px;margin:0 auto}
+.board>header{max-width:68ch;margin-bottom:40px}
+.board>header h1{font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.board>header p{color:#3f4540;margin-top:8px;text-wrap:pretty}
+.concept{margin-bottom:72px}
+.concept h2{font-size:24px;font-weight:700;letter-spacing:-.015em;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.concept h2 span{font-size:15px;font-weight:500;color:#3f4540;letter-spacing:0}
+.concept>.lede{max-width:72ch;margin:8px 0 24px;color:#3f4540;text-wrap:pretty}
+.row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+figure{display:flex;flex-direction:column;gap:12px;width:360px;max-width:100%}
+figcaption{font-size:13px;color:#3f4540;max-width:360px}
+figcaption b{color:var(--ink);display:block;font-size:14px;margin-bottom:2px}
+
+/* phone */
+.phone{width:360px;max-width:100%;height:760px;background:var(--ivory);border-radius:44px;box-shadow:0 0 0 9px #1b1f1c,0 18px 40px rgba(0,0,0,.18);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.status{height:44px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:6px 28px 0;font-weight:600;font-size:14px}
+.status i{font-style:normal;letter-spacing:2px;font-size:11px}
+.nav{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:relative}
+.nav .t{position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:16px;pointer-events:none}
+.glassbtn{height:36px;min-width:36px;padding:0 12px;border-radius:18px;background:rgba(255,255,255,.75);box-shadow:0 0 0 .5px var(--rule),0 2px 6px rgba(0,0,0,.06);display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:15px;color:var(--forest);font-weight:500;position:relative;z-index:1}
+.glassbtn.round{padding:0;width:36px}
+.glassbtn.prom{background:var(--forest);color:#fff;font-weight:600}
+.scroll{flex:1;overflow:hidden;padding:0 18px 24px}
+.tabbar{position:absolute;left:12px;right:12px;bottom:14px;height:58px;border-radius:29px;background:rgba(255,255,255,.82);box-shadow:0 0 0 .5px var(--rule),0 6px 18px rgba(0,0,0,.08);display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--ink)}
+.tabbar span{display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar span::before{content:"";width:20px;height:18px;border-radius:5px;background:currentColor;opacity:.85}
+.tabbar .on{color:var(--forest);font-weight:600}
+.home{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:3px;background:#1b1f1c}
+
+h3.big{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin:4px 0 6px;text-wrap:balance}
+.sub{color:var(--muted);font-size:14px}
+.sechead{font-size:16px;font-weight:600;margin:20px 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+.sechead small{font-size:13px;font-weight:500;color:var(--muted)}
+.sechead a{font-size:14px;font-weight:500;color:var(--forest);text-decoration:none}
+.panel{background:var(--surface);border-radius:12px;box-shadow:0 0 0 .5px var(--rule)}
+.panel>.r{padding:11px 14px;display:flex;gap:12px;align-items:center;position:relative}
+.panel>.r+.r::before{content:"";position:absolute;top:0;left:14px;right:0;border-top:.5px solid var(--rule)}
+.panel>.r.inset+.r::before,.panel>.r+.r.inset::before{left:58px}
+.grow{flex:1;min-width:0}
+.name{font-weight:600;font-size:16px}
+.meta{color:var(--muted);font-size:13px;margin-top:1px}
+.num{font-variant-numeric:tabular-nums}
+.chev{color:#B0B4AE;font-size:18px;line-height:1}
+.badge{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.b-amber{background:var(--amber-fill);color:var(--amber)}
+.b-forest{background:var(--forest-fill);color:var(--forest)}
+.b-blue{background:rgba(31,95,174,.1);color:var(--blue)}
+.b-quiet{background:rgba(23,30,25,.06);color:var(--muted)}
+.b-red{background:rgba(168,51,31,.1);color:var(--red)}
+.search{height:36px;border-radius:10px;background:rgba(118,118,128,.12);display:flex;align-items:center;gap:6px;padding:0 10px;color:var(--muted);font-size:15px}
+.search::before{content:"⌕";font-size:17px}
+.segs{display:flex;gap:4px;padding:2px;border-radius:18px;background:rgba(7,62,39,.04);height:36px;align-items:center}
+.segs span{flex:1;text-align:center;height:32px;line-height:32px;border-radius:16px;font-size:14px;color:var(--ink)}
+.segs .on{background:rgba(7,62,39,.1);box-shadow:0 0 0 .5px rgba(7,62,39,.3);font-weight:600}
+.rail{width:40px;flex:none;text-align:center;color:var(--forest);line-height:1.05}
+.rail .w{font-size:11px;font-weight:600;text-transform:uppercase}
+.rail .d{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.rail .m{font-size:11px}
+.rail.quiet{color:var(--muted)}
+.icon{width:30px;height:30px;flex:none;border-radius:8px;background:var(--forest-fill);color:var(--forest);display:grid;place-items:center;font-size:15px}
+.amt{text-align:right;flex:none}
+.amt .v{font-weight:600;font-variant-numeric:tabular-nums}
+.amt .l{font-size:12px;color:var(--muted)}
+.amberText{color:var(--amber)}
+.forestText{color:var(--forest)}
+.pill-actions{display:flex;gap:8px;margin:12px 0 4px;flex-wrap:wrap}
+.pill-actions .glassbtn{height:34px;font-size:14px}
+
+/* concept A specifics */
+.standing{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.standing>div{padding:12px 14px}
+.standing>div+div{border-left:.5px solid var(--rule)}
+.standing .k{font-size:12px;color:var(--muted);font-weight:500}
+.standing .v{font-size:22px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums;margin-top:2px}
+.standing .v small{font-size:13px;font-weight:600;color:var(--muted);margin-left:4px}
+.standing .n{font-size:12px;margin-top:2px}
+.standing-foot{border-top:.5px solid var(--rule);padding:10px 14px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between}
+.year{font-size:13px;font-weight:600;color:var(--muted);margin:14px 2px 6px;display:flex;justify-content:space-between}
+.billto{font-size:14px;line-height:1.45}
+.billto .lab{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:3px}
+.field{padding:10px 14px;position:relative}
+.field+.field::before{content:"";position:absolute;top:0;left:14px;right:0;border-top:.5px solid var(--rule)}
+.field .lab{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:3px;display:flex;justify-content:space-between}
+.field .val{font-size:16px}
+.field .ph{font-size:16px;color:var(--muted)}
+.field .lab .need{color:var(--amber);font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chips span{font-size:14px;padding:6px 12px;border-radius:99px;box-shadow:inset 0 0 0 .5px var(--rule);background:#fff}
+.chips .on{background:var(--forest);color:#fff;box-shadow:none;font-weight:600}
+.toggle{width:44px;height:26px;border-radius:13px;background:var(--forest);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;right:2px;top:2px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle.off{background:rgba(120,120,128,.2)}
+.toggle.off::after{right:auto;left:2px}
+.preview{background:var(--forest-fill);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45}
+.preview .lab{font-size:12px;font-weight:600;color:var(--forest);margin-bottom:4px;display:flex;justify-content:space-between}
+.sheetgrab{width:36px;height:5px;border-radius:3px;background:rgba(23,30,25,.2);margin:8px auto 0}
+
+/* concept B specifics */
+.idx{position:absolute;right:4px;top:200px;display:flex;flex-direction:column;gap:2px;font-size:10px;font-weight:600;color:var(--forest);text-align:center}
+.mono{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--forest);background:var(--forest-fill)}
+.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.facts span{font-size:13px;color:var(--ink);background:rgba(23,30,25,.05);border-radius:8px;padding:4px 8px}
+.facts span.warn{background:var(--amber-fill);color:var(--amber);font-weight:600}
+.lrow{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:11px 14px;position:relative;align-items:baseline}
+.lrow+.lrow::before{content:"";position:absolute;top:0;left:14px;right:0;border-top:.5px solid var(--rule)}
+.lrow .k{color:var(--muted);font-size:15px}
+.lrow .k.need{color:var(--amber);font-weight:600}
+.lrow .v{font-size:15px}
+.lrow .v.ph{color:var(--muted)}
+.meter{display:flex;gap:3px;margin-top:6px}
+.meter i{flex:1;height:4px;border-radius:2px;background:var(--forest)}
+.meter i.off{background:rgba(23,30,25,.12)}
+.foot{font-size:13px;color:var(--muted);margin:6px 2px 0;text-wrap:pretty}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:8px 0 6px;gap:2px}
+.bar i{display:block}
+.key{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.key b{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:0}
+.notes{font-size:14px;line-height:1.45;padding:12px 14px;color:var(--ink)}
+.dim{opacity:.55}
+.callout{font-size:12px;font-weight:600;color:#fff;background:#1b1f1c;border-radius:6px;padding:2px 6px;position:absolute;z-index:3;white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){.phone{transition:transform .2s cubic-bezier(.22,1,.36,1)}.phone:hover{transform:translateY(-2px)}}
+</style>
+</head>
+<body>
+<div class="board">
+<header>
+  <h1>Clients — two directions</h1>
+  <p>Client list, client view and edit client, shown on iPhone in light appearance with fictional data. Both stay inside the shipped Daybook system: SF Pro, forest on ivory, ruled panels, capsule glass actions. They differ in what the client screens are <em>for</em>.</p>
+</header>
+
+<!-- ============ CONCEPT A ============ -->
+<section class="concept">
+  <h2>A · Account ledger <span>The client as a running account: who owes what, and what's next.</span></h2>
+  <p class="lede">Every list row answers "do they owe me, and when do I work for them next?". The client view leads with a currency-split standing panel, then one combined history where each event carries its money state, so invoices no longer sit in a separate disconnected list. The editor is grouped by purpose, with presets for terms and currency and a live preview of the bill-to block that will appear on invoices.</p>
+  <div class="row">
+
+  <!-- A1 list -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn round">‹</span><span class="t">Clients</span><span class="glassbtn round">+</span></div>
+    <div class="scroll">
+      <div class="search">Search clients</div>
+      <div class="segs" style="margin-top:10px"><span class="on">Recent</span><span>Owes you</span><span>A–Z</span></div>
+
+      <div class="sechead" style="margin-top:16px">Working with now <small>4</small></div>
+      <div class="panel">
+        <div class="r"><div class="grow"><div class="name">Apex Media</div><div class="meta">Next · Laguna Seca, Fri Oct 24</div><div class="meta">14 events since 2024</div></div><div class="amt"><div class="v amberText">$3,150</div><div class="l amberText">overdue</div></div><span class="chev">›</span></div>
+        <div class="r"><div class="grow"><div class="name">Northside Sports</div><div class="meta">Next · Monza weekend, Sat Nov 1</div><div class="meta">6 events since 2025</div></div><div class="amt"><div class="v">€1,300</div><div class="l">owed</div></div><span class="chev">›</span></div>
+        <div class="r"><div class="grow"><div class="name">Fieldhouse Sports</div><div class="meta">Next · Season finale, Sat Nov 8</div><div style="margin-top:5px"><span class="badge b-amber">Add billing address</span></div></div><div class="amt"><div class="v">—</div><div class="l">settled</div></div><span class="chev">›</span></div>
+        <div class="r"><div class="grow"><div class="name">Trackside Radio</div><div class="meta">Next · Date to confirm</div><div class="meta">9 events since 2023</div></div><div class="amt"><div class="v">€480</div><div class="l">owed</div></div><span class="chev">›</span></div>
+      </div>
+
+      <div class="sechead">Earlier <small>Last worked</small></div>
+      <div class="panel">
+        <div class="r"><div class="grow"><div class="name">Meridian Motorsport TV</div><div class="meta">Aug 2026 · 3 events</div></div><div class="amt"><div class="v">—</div><div class="l">settled</div></div><span class="chev">›</span></div>
+        <div class="r"><div class="grow"><div class="name">Coastline Broadcasting</div><div class="meta">Mar 2026 · 1 event</div></div><div class="amt"><div class="v">—</div><div class="l">settled</div></div><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>Client list</b>Rows carry next event, history depth and outstanding balance (per the client's currency). Amber only for overdue money or a billing gap that blocks invoicing. Clients without upcoming work drop to Earlier.</figcaption>
+  </figure>
+
+  <!-- A2 detail -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn">‹ Clients</span><span class="glassbtn">Edit</span></div>
+    <div class="scroll">
+      <h3 class="big">Apex Media</h3>
+      <div class="sub">Dana Ortiz · production@apexmedia.tv</div>
+      <div class="pill-actions"><span class="glassbtn">✉︎ Email</span><span class="glassbtn">＋ New event</span></div>
+
+      <div class="sechead">Standing <small>USD</small></div>
+      <div class="panel">
+        <div class="standing">
+          <div><div class="k">Owed to you</div><div class="v amberText">$3,150</div><div class="n amberText">APX-2207 · 12 days overdue</div></div>
+          <div><div class="k">Paid in 2026</div><div class="v">$18,400</div><div class="n" style="color:var(--muted)">across 9 events</div></div>
+        </div>
+        <div class="standing-foot"><span>Ready to invoice · 1 event</span><span class="forestText" style="font-weight:600">Invoice ›</span></div>
+      </div>
+
+      <div class="sechead">History <a href="#">See all</a></div>
+      <div class="panel">
+        <div class="r inset"><div class="rail"><div class="w">Fri</div><div class="d">24</div><div class="m">Oct</div></div><div class="grow"><div class="name" style="font-size:15px">Laguna Seca</div><div class="meta">3 days · Commentator</div></div><span class="badge b-forest">Booked</span></div>
+        <div class="r inset"><div class="rail quiet"><div class="w">Sat</div><div class="d">27</div><div class="m">Sep</div></div><div class="grow"><div class="name" style="font-size:15px">Road America</div><div class="meta">2 days · Commentator</div></div><span class="badge b-blue">Ready to invoice</span></div>
+        <div class="r inset"><div class="rail quiet"><div class="w">Sat</div><div class="d">30</div><div class="m">Aug</div></div><div class="grow"><div class="name" style="font-size:15px">Watkins Glen</div><div class="meta">APX-2207 · $3,150</div></div><span class="badge b-red">Overdue</span></div>
+        <div class="r inset"><div class="rail quiet"><div class="w">Sun</div><div class="d">10</div><div class="m">Aug</div></div><div class="grow"><div class="name" style="font-size:15px">Mid-Ohio</div><div class="meta">APX-2198 · $2,400</div></div><span class="badge b-quiet">Paid</span></div>
+      </div>
+
+      <div class="sechead">Billing</div>
+      <div class="panel">
+        <div class="r" style="align-items:flex-start"><div class="billto grow"><div class="lab">Bill to</div>Apex Media Group LLC<br>accounts@apexmedia.tv<br>220 Harbor Way, Long Beach CA 90802</div></div>
+        <div class="r"><span class="grow sub" style="color:var(--ink)">Net 30 · Tax ID 84-2219034</span><span class="badge b-forest">Complete</span></div>
+      </div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>Client view</b>Standing replaces the loose metadata block. History merges bookings and invoices on the date rail, newest first, each with its booking or money badge. Billing details read as the actual bill-to block.</figcaption>
+  </figure>
+
+  <!-- A3 edit -->
+  <figure>
+  <div class="phone" style="background:#E3E1DA">
+    <div style="height:44px"></div>
+    <div style="flex:1;background:var(--ivory);border-radius:14px 14px 0 0;display:flex;flex-direction:column;overflow:hidden">
+    <div class="sheetgrab"></div>
+    <div class="nav"><span class="glassbtn">Cancel</span><span class="t">Edit client</span><span class="glassbtn prom">Save</span></div>
+    <div class="scroll">
+      <div class="sechead" style="margin-top:8px">Who</div>
+      <div class="panel">
+        <div class="field"><div class="lab">Name</div><div class="val">Fieldhouse Sports</div></div>
+        <div class="field"><div class="lab">Contact</div><div class="val">Priya Shah · priya@fieldhouse.co</div></div>
+      </div>
+
+      <div class="sechead">Invoicing <small class="amberText" style="font-weight:600">1 detail missing</small></div>
+      <div class="panel">
+        <div class="r"><span class="grow">Bill to client name</span><span class="toggle"></span></div>
+        <div class="field"><div class="lab">Billing email</div><div class="val">accounts@fieldhouse.co</div></div>
+        <div class="field"><div class="lab"><span>Address</span><span class="need">Needed to invoice</span></div><div class="ph">Street, city, postcode, country</div></div>
+        <div class="field"><div class="lab">Payment terms</div><div class="chips"><span>14</span><span class="on">30 days</span><span>45</span><span>60</span><span>Other</span></div></div>
+        <div class="field"><div class="lab">Tax ID</div><div class="ph">Optional</div></div>
+      </div>
+      <div class="preview" style="margin-top:10px"><div class="lab"><span>On invoices</span><span class="amberText">Address missing</span></div>Fieldhouse Sports<br>accounts@fieldhouse.co · Net 30</div>
+
+      <div class="sechead">Defaults</div>
+      <div class="panel">
+        <div class="field"><div class="lab">Currency for new events</div><div class="chips"><span class="on">USD</span><span>EUR</span><span>GBP</span><span>More…</span></div></div>
+        <div class="field"><div class="lab">Notes</div><div class="val" style="font-size:15px">Confirm call times with the producer the Tuesday before.</div></div>
+      </div>
+    </div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>Edit client</b>Three purpose groups instead of one long mixed panel. "Bill to client name" removes the most common duplicate entry; terms and currency become one-tap presets. The preview shows exactly what's missing before you invoice.</figcaption>
+  </figure>
+  </div>
+</section>
+
+<!-- ============ CONCEPT B ============ -->
+<section class="concept">
+  <h2>B · Daybook roster <span>The client as a working relationship, read through the calendar.</span></h2>
+  <p class="lede">The list borrows the agenda's date rail so clients sort by when you'll see them next, with an A–Z index for lookup. The client view mirrors the event page: a compact header with fact chips, then Events / Money / Details tabs, so long histories and invoice lists stop competing on one scroll. The editor keeps native label-and-value rows (the same pattern as the invoicing sheet) and shows invoicing readiness as a small meter.</p>
+  <div class="row">
+
+  <!-- B1 list -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn round">‹</span><span class="t">Clients</span><span class="glassbtn round">+</span></div>
+    <div class="scroll">
+      <div class="search">Search clients</div>
+
+      <div class="sechead" style="margin-top:16px">Coming up</div>
+      <div class="panel">
+        <div class="r inset"><div class="rail"><div class="w">Fri</div><div class="d">24</div><div class="m">Oct</div></div><div class="grow"><div class="name">Apex Media</div><div class="meta">Laguna Seca · then 2 more</div></div><span class="badge b-red">$3,150 overdue</span></div>
+        <div class="r inset"><div class="rail"><div class="w">Sat</div><div class="d">1</div><div class="m">Nov</div></div><div class="grow"><div class="name">Northside Sports</div><div class="meta">Monza weekend</div></div><span class="badge b-quiet">€1,300 owed</span></div>
+        <div class="r inset"><div class="rail"><div class="w">Sat</div><div class="d">8</div><div class="m">Nov</div></div><div class="grow"><div class="name">Fieldhouse Sports</div><div class="meta">Season finale</div></div><span class="badge b-amber">Needs address</span></div>
+        <div class="r inset"><div class="rail"><div class="w">&nbsp;</div><div class="d" style="font-size:16px">TBC</div><div class="m">&nbsp;</div></div><div class="grow"><div class="name">Trackside Radio</div><div class="meta">Abu Dhabi · dates to come</div></div><span class="badge b-quiet">€480 owed</span></div>
+      </div>
+
+      <div class="sechead">All clients</div>
+      <div class="panel">
+        <div class="r"><div class="mono">AM</div><div class="grow"><div class="name" style="font-size:15px">Apex Media</div><div class="meta">14 events · USD</div></div><span class="chev">›</span></div>
+        <div class="r"><div class="mono">CB</div><div class="grow"><div class="name" style="font-size:15px">Coastline Broadcasting</div><div class="meta">Last Mar 2026 · USD</div></div><span class="chev">›</span></div>
+        <div class="r"><div class="mono">FS</div><div class="grow"><div class="name" style="font-size:15px">Fieldhouse Sports</div><div class="meta">4 events · USD</div></div><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="idx"><span>A</span><span>C</span><span>F</span><span>M</span><span>N</span><span>T</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>Client list</b>"Coming up" uses the same date rail as Upcoming, so the list fills with real schedule. Below, the full roster with initials, event count and currency, plus a scrub index once the list is long.</figcaption>
+  </figure>
+
+  <!-- B2 detail events -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn">‹ Clients</span><span style="display:flex;gap:8px"><span class="glassbtn round">✉︎</span><span class="glassbtn">Edit</span></span></div>
+    <div class="scroll">
+      <div style="display:flex;gap:12px;align-items:center;margin-top:4px"><div class="mono" style="width:52px;height:52px;font-size:18px">AM</div><div><h3 class="big" style="font-size:26px;margin:0">Apex Media</h3><div class="sub">Client since Mar 2024</div></div></div>
+      <div class="facts"><span>14 events</span><span>USD</span><span>Net 30</span><span class="warn">$3,150 overdue</span></div>
+      <div class="segs" style="margin-top:14px"><span class="on">Events</span><span>Money</span><span>Details</span></div>
+
+      <div class="sechead">Next up</div>
+      <div class="panel">
+        <div class="r inset"><div class="rail"><div class="w">Fri</div><div class="d">24</div><div class="m">Oct</div></div><div class="grow"><div class="name" style="font-size:15px">Laguna Seca</div><div class="meta">Fri–Sun · 4 sessions · Commentator</div></div><span class="badge b-forest">Booked</span></div>
+        <div class="r inset"><div class="rail"><div class="w">Sat</div><div class="d">15</div><div class="m">Nov</div></div><div class="grow"><div class="name" style="font-size:15px">Sebring test days</div><div class="meta">Schedule to come</div></div><span class="badge b-amber">Tentative</span></div>
+      </div>
+
+      <div class="year"><span>2026</span><span class="num">9 events</span></div>
+      <div class="panel">
+        <div class="r inset"><div class="rail quiet"><div class="w">Sat</div><div class="d">27</div><div class="m">Sep</div></div><div class="grow"><div class="name" style="font-size:15px">Road America</div><div class="meta">2 days</div></div><span class="badge b-blue">Ready to invoice</span></div>
+        <div class="r inset"><div class="rail quiet"><div class="w">Sat</div><div class="d">30</div><div class="m">Aug</div></div><div class="grow"><div class="name" style="font-size:15px">Watkins Glen</div><div class="meta">APX-2207</div></div><span class="badge b-red">Overdue</span></div>
+        <div class="r inset"><div class="rail quiet"><div class="w">Sun</div><div class="d">10</div><div class="m">Aug</div></div><div class="grow"><div class="name" style="font-size:15px">Mid-Ohio</div><div class="meta">APX-2198</div></div><span class="badge b-quiet">Paid</span></div>
+      </div>
+      <div class="year"><span>2025</span><span class="num">5 events ›</span></div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>Client view · Events</b>Compact header with fact chips instead of an icon list. Events tab splits Next up from past seasons, which collapse by year.</figcaption>
+  </figure>
+
+  <!-- B3 detail money -->
+  <figure>
+  <div class="phone">
+    <div class="status"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="nav"><span class="glassbtn">‹ Clients</span><span style="display:flex;gap:8px"><span class="glassbtn round">✉︎</span><span class="glassbtn">Edit</span></span></div>
+    <div class="scroll">
+      <div style="display:flex;gap:12px;align-items:center;margin-top:4px"><div class="mono" style="width:52px;height:52px;font-size:18px">AM</div><div><h3 class="big" style="font-size:26px;margin:0">Apex Media</h3><div class="sub">Client since Mar 2024</div></div></div>
+      <div class="facts"><span>14 events</span><span>USD</span><span>Net 30</span><span class="warn">$3,150 overdue</span></div>
+      <div class="segs" style="margin-top:14px"><span>Events</span><span class="on">Money</span><span>Details</span></div>
+
+      <div class="sechead">2026 in USD</div>
+      <div class="panel" style="padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:22px;font-weight:700" class="num">$24,950</span><span class="sub">earned</span></div>
+        <div class="bar"><i style="flex:18400;background:var(--forest)"></i><i style="flex:3150;background:#C77F12"></i><i style="flex:3400;background:var(--blue)"></i></div>
+        <div class="key"><span><b style="background:var(--forest)"></b>Paid $18,400</span><span><b style="background:#C77F12"></b>Overdue $3,150</span><span><b style="background:var(--blue)"></b>To invoice $3,400</span></div>
+      </div>
+
+      <div class="sechead">Invoices</div>
+      <div class="panel">
+        <div class="r"><div class="grow"><div class="name" style="font-size:15px">APX-2207</div><div class="meta">Watkins Glen · due Oct 4</div></div><div class="amt"><div class="v amberText">$3,150</div><div class="l amberText">12 days overdue</div></div></div>
+        <div class="r"><div class="grow"><div class="name" style="font-size:15px">APX-2198</div><div class="meta">Mid-Ohio · paid Sep 2</div></div><div class="amt"><div class="v">$2,400</div><div class="l">Paid</div></div></div>
+        <div class="r"><div class="grow"><div class="name" style="font-size:15px">APX-2181</div><div class="meta">Indianapolis · paid Aug 11</div></div><div class="amt"><div class="v">$3,800</div><div class="l">Paid</div></div></div>
+      </div>
+      <div style="margin-top:12px"><span class="glassbtn prom" style="width:100%;height:44px">Invoice Road America</span></div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>Client view · Money</b>One bar per currency, matching Expenses. Invoices list with due or paid dates; the next invoicing step becomes the primary action, like To settle on events.</figcaption>
+  </figure>
+
+  <!-- B4 edit -->
+  <figure>
+  <div class="phone" style="background:#E3E1DA">
+    <div style="height:44px"></div>
+    <div style="flex:1;background:var(--ivory);border-radius:14px 14px 0 0;display:flex;flex-direction:column;overflow:hidden">
+    <div class="sheetgrab"></div>
+    <div class="nav"><span class="glassbtn">Cancel</span><span class="t">Edit client</span><span class="glassbtn prom">Save</span></div>
+    <div class="scroll">
+      <h3 class="big" style="font-size:26px;margin-top:8px">Fieldhouse Sports</h3>
+      <div class="sub">Renaming updates every event for this client.</div>
+
+      <div class="sechead">Client</div>
+      <div class="panel">
+        <div class="lrow"><span class="k">Name</span><span class="v">Fieldhouse Sports</span></div>
+        <div class="lrow"><span class="k">Contact</span><span class="v">Priya Shah<br>priya@fieldhouse.co</span></div>
+        <div class="lrow"><span class="k">Currency</span><span class="v" style="display:flex;justify-content:space-between">USD <span class="chev">⌄</span></span></div>
+      </div>
+
+      <div class="sechead">Invoicing <small>3 of 4</small></div>
+      <div class="panel">
+        <div style="padding:10px 14px 2px"><div class="meter"><i></i><i></i><i></i><i class="off"></i></div></div>
+        <div class="lrow"><span class="k">Bill to</span><span class="v">Fieldhouse Sports Ltd</span></div>
+        <div class="lrow"><span class="k">Email</span><span class="v">accounts@fieldhouse.co</span></div>
+        <div class="lrow"><span class="k need">Address</span><span class="v ph">Street, city, postcode, country</span></div>
+        <div class="lrow"><span class="k">Terms</span><span class="v" style="display:flex;justify-content:space-between">30 days <span class="chev">⌄</span></span></div>
+        <div class="lrow"><span class="k">Tax ID</span><span class="v ph">Optional</span></div>
+      </div>
+      <p class="foot">Address is needed before Fieldhouse events can be marked ready to invoice.</p>
+
+      <div class="sechead">Notes</div>
+      <div class="panel"><div class="notes">Confirm call times with the producer the Tuesday before.</div></div>
+    </div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>Edit client</b>Same aligned label column as the invoicing sheet, so the two editors stop feeling different. Missing required fields turn amber, with one plain sentence on why it matters.</figcaption>
+  </figure>
+  </div>
+</section>
+</div>
+</body>
+</html>

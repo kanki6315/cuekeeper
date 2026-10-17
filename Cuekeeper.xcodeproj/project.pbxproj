@@ -9,10 +9,12 @@
 /* Begin PBXBuildFile section */
 		0013320DBAFD2C12FE0291E0 /* BackupWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F671FB10FB025AD3E29BEF0 /* BackupWorkspace.swift */; };
 		039EE0DA6A8FDEA54C66F5DC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A6C890CABAF4353CE145B9D8 /* Assets.xcassets */; };
+		054F12566E7AC62975AE4599 /* ExpensesMonthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF559422C0BEE4D17587EC25 /* ExpensesMonthTests.swift */; };
 		062400846722C32FFC23825F /* DaybookStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8ED53C84820D6F2724070C6 /* DaybookStyle.swift */; };
 		122713CA8BFE6DC9CCAFCA22 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C523DAE46E20D652126E21F3 /* UITestSupport.swift */; };
 		1DDC24A942627579A1EDAB3D /* UpcomingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB8169DE40CC3D98FB90106 /* UpcomingView.swift */; };
 		1ED3D411CEF476412227AA25 /* SchedulePublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44709BFEE171E9E5F9BC20A6 /* SchedulePublisher.swift */; };
+		2072D82545AF7460598BAF1D /* ClientSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0476B84B0DEAC41AD31C919 /* ClientSummaryTests.swift */; };
 		21B9B37832158DEF77AD99BC /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1CED6CB0B409CB158E465774 /* ThirdPartyNotices.txt */; };
 		2349E476E2580C0A2FBC71C1 /* SiriCreatedEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF48A388274EFB06F360A8D5 /* SiriCreatedEventView.swift */; };
 		240C2163199761D478ECBE4B /* Expenses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3763FF11F6A434226B2DBD /* Expenses.swift */; };
@@ -23,6 +25,7 @@
 		2B4598A753C6F385AEEC47AE /* BackupWorkflow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BDB272EC77BB927B9362A4 /* BackupWorkflow.swift */; };
 		2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */; };
 		31296B6D5EDECA64D1FE7B8E /* CuekeeperWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDD0611228811620BC354E3 /* CuekeeperWidgets.swift */; };
+		32BBEB07E086F6DC4C8510E8 /* ClientViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2DC533FA34F0534C2C770FB /* ClientViews.swift */; };
 		338F3FC1DDC47E81D4CC054A /* CalendarPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */; };
 		33C82DB863203C00DEF8E78C /* TrackLocationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */; };
 		34013DCD7F646C106E4C7E6E /* SiriEventTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B5DD4F16CD97B0B59D5309C /* SiriEventTests.swift */; };
@@ -45,6 +48,7 @@
 		51444908CCE08FC785E329D6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DCC5C17265C5E63723173397 /* PrivacyInfo.xcprivacy */; };
 		53C75F6086D7A02F11282AF7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893F1EA4F4B4BB063F301463 /* main.swift */; };
 		56FD0CB1E2686A2BD6BA0266 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */; };
+		59FBCBB8E3FEC770411B94D6 /* InvoiceLedgerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18C6953AC2311B5A53EB8E2 /* InvoiceLedgerTests.swift */; };
 		5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */; };
 		5A572CBD38F92272C8BC8657 /* FeeAndInvoiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAE78E9489C239158E347DB7 /* FeeAndInvoiceTests.swift */; };
 		5A71B3F0331257FECB2ADD7D /* PaymentsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B406C18DE001292BB7EC4D5 /* PaymentsComponents.swift */; };
@@ -68,6 +72,7 @@
 		7C3981B233655BCC6ADF3626 /* JobDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6813AB65D56DEB9B484FB834 /* JobDetailView.swift */; };
 		8CC72F971763A21CF66D3875 /* WeatherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7909B1A1A8D84B8D9BCCC8 /* WeatherTests.swift */; };
 		8DC18CBE3C781DED3F4B888C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
+		8EC3822D1BA47EBD2F378F6C /* InvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5266CDEBB4213D6B97531E4A /* InvoicesView.swift */; };
 		8FCB4E47836A4382380C6D83 /* FirstLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */; };
 		92339E8B9B9F67BE1793652E /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4201CFBC74D97C4425E97FD /* BackupView.swift */; };
 		976472552A08D5CD31A7FFD9 /* CuekeeperMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */; };
@@ -77,6 +82,7 @@
 		9C8EBEEBD8BF1ED307478FB3 /* WizardOptionalStepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5EDB224149CB3F7273CC3D /* WizardOptionalStepTests.swift */; };
 		9DC58F2C1AE2C2F5D7730D8E /* DayScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */; };
 		9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682B024A3E281F66B73080A /* JobEditorView.swift */; };
+		9FFC5082A860AD6180BFFBA1 /* ClientSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE5950F3A628E14B78F07ED /* ClientSummary.swift */; };
 		A28ED7E82351B9557E0B880C /* CuekeeperWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2FD4E574C023B4B517FEA1B8 /* CuekeeperWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A2AD048CA15BD5624B21B0BA /* Billing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618C864D7A24CC9C62D1E183 /* Billing.swift */; };
 		A8F6275D847E686B5FC978BA /* PendingExpensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC028165CC976F299783F54 /* PendingExpensesView.swift */; };
@@ -108,6 +114,7 @@
 		C94502CCC6AD8B533F1DFE7A /* BackupArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4510B4441D5730C579C736AA /* BackupArchive.swift */; };
 		C98339F7FD17877747472285 /* CalendarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71531F3273F27F2929AC0EE9 /* CalendarTests.swift */; };
 		CDBC80DF658894D0F3959A0F /* EventEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 903F333B340E02F26BC552E8 /* EventEditorTests.swift */; };
+		CDD104A2685229F0B24BB272 /* ExpensesMonth.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D6CE2B9DF5C4DECD3683C6 /* ExpensesMonth.swift */; };
 		D02E228CBF65DF5AFF129172 /* EventCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CABBC13C32EC0722F5E2994 /* EventCaptureTests.swift */; };
 		D2F5F7D4DAFBD2CB1B51CFC4 /* BackgroundExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7BB0700FCD1D53FA4F1CBF /* BackgroundExpenseTests.swift */; };
 		D3C9527CEA68B7181C4AD974 /* Expenses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3763FF11F6A434226B2DBD /* Expenses.swift */; };
@@ -118,10 +125,12 @@
 		DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEAE870AB9902DB980A7DE4 /* CreateEventIntent.swift */; };
 		DC429538ECBC0861722CA774 /* CaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06442705EA3E6D3F4031E809 /* CaptureTests.swift */; };
 		DCF5239950C0B0CFD22B1449 /* FirstLaunchBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */; };
+		DD533608C5B5F55476EE684E /* InvoiceLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C2FC0E960A24DE3BA76EE1 /* InvoiceLedger.swift */; };
 		DE6839B173599AEF04121980 /* ExpenseAutomationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */; };
 		DE9A2949C4C78D6CD04EBCEA /* PaymentsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC3E7DF08A543BC402EDE65 /* PaymentsTests.swift */; };
 		E39B5D066CD54FD2D66CBB20 /* BackupPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9459F7EEB801C95C854C005 /* BackupPackage.swift */; };
 		E87E8E7C6AECCF11ECC0FA0C /* DaySchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F836C8BA3141120B7425E7 /* DaySchedule.swift */; };
+		EB4DAC28660BECD06FCE08F0 /* ExpensesMonthUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245FC6F2C879064EADDB40CC /* ExpensesMonthUITests.swift */; };
 		EEF6F74D6395DF0098A9C424 /* EventWizardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3E87A29ED3276D8FA148A4 /* EventWizardHandoff.swift */; };
 		F01FCB601EEE93F007056B13 /* EventWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 919618A957BA6EC5BAA77600 /* EventWeather.swift */; };
 		F31D1FEB833879C33B8CF0DC /* EventCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEFABCDE89943322F8A9CC6 /* EventCreation.swift */; };
@@ -178,6 +187,7 @@
 		06442705EA3E6D3F4031E809 /* CaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureTests.swift; sourceTree = "<group>"; };
 		0AC022135F654D55A6A7311E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		0B5DD4F16CD97B0B59D5309C /* SiriEventTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriEventTests.swift; sourceTree = "<group>"; };
+		0DE5950F3A628E14B78F07ED /* ClientSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientSummary.swift; sourceTree = "<group>"; };
 		0F671FB10FB025AD3E29BEF0 /* BackupWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupWorkspace.swift; sourceTree = "<group>"; };
 		0F879EB8F593E50CF7664861 /* UpcomingSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpcomingSummary.swift; sourceTree = "<group>"; };
 		1093B6F82FA8A321302AD71B /* CuekeeperUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CuekeeperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -192,8 +202,10 @@
 		1D404E63E0CA7BA010061FA4 /* UpcomingSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpcomingSummaryTests.swift; sourceTree = "<group>"; };
 		206A75976A88F3D6564A881F /* Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recovery.swift; sourceTree = "<group>"; };
 		242555E7CFC7B70FD8E8C9F7 /* LibraryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDraft.swift; sourceTree = "<group>"; };
+		245FC6F2C879064EADDB40CC /* ExpensesMonthUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpensesMonthUITests.swift; sourceTree = "<group>"; };
 		252FA8AA4804BAF13CE8E06B /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
 		25B12BA29F7D5844E942A1F2 /* TrackLocationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackLocationView.swift; sourceTree = "<group>"; };
+		25C2FC0E960A24DE3BA76EE1 /* InvoiceLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceLedger.swift; sourceTree = "<group>"; };
 		2B406C18DE001292BB7EC4D5 /* PaymentsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsComponents.swift; sourceTree = "<group>"; };
 		2BE8FC36A37D1122F844EE96 /* RecoveryBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryBackupTests.swift; sourceTree = "<group>"; };
 		2CC25F847FFB2944BBBC0D0D /* FeeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeView.swift; sourceTree = "<group>"; };
@@ -214,6 +226,7 @@
 		49377ADAEC3F34E1DFCEEAB5 /* CuekeeperV6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV6.xcdatamodel; sourceTree = "<group>"; };
 		4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPublisher.swift; sourceTree = "<group>"; };
 		4B4865D2C31DB0707417581E /* PaymentsBillingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsBillingTests.swift; sourceTree = "<group>"; };
+		5266CDEBB4213D6B97531E4A /* InvoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicesView.swift; sourceTree = "<group>"; };
 		5281AB6F1525268F5E58336E /* CuekeeperWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CuekeeperWidgets.entitlements; sourceTree = "<group>"; };
 		54BB016BE1437AC97CC962A7 /* CuekeeperV12.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV12.xcdatamodel; sourceTree = "<group>"; };
 		575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceEditorView.swift; sourceTree = "<group>"; };
@@ -271,6 +284,7 @@
 		BD01A2E6209DEA34712B22C4 /* Cuekeeper.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Cuekeeper.icon; sourceTree = "<group>"; };
 		BEFFA106DACF6243A46ECA93 /* CuekeeperV7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV7.xcdatamodel; sourceTree = "<group>"; };
 		C0182E2DEB657EF7A4C5AD79 /* CuekeeperMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuekeeperMark.swift; sourceTree = "<group>"; };
+		C18C6953AC2311B5A53EB8E2 /* InvoiceLedgerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceLedgerTests.swift; sourceTree = "<group>"; };
 		C31D03E096ABF3A6E23F885D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C42AD7432BF268805135A824 /* CalendarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSettingsView.swift; sourceTree = "<group>"; };
 		C4ECFB76E1416305BD27E80B /* CuekeeperV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CuekeeperV3.xcdatamodel; sourceTree = "<group>"; };
@@ -282,6 +296,7 @@
 		D1263D4943E5C2184F3EADD2 /* EventDetailComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailComponents.swift; sourceTree = "<group>"; };
 		D21DE922D3CF0B828242B6F0 /* PreferenceFields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferenceFields.swift; sourceTree = "<group>"; };
 		D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchBackupView.swift; sourceTree = "<group>"; };
+		D2DC533FA34F0534C2C770FB /* ClientViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientViews.swift; sourceTree = "<group>"; };
 		D305E1038A9ABA4A3975A914 /* ReceiptExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptExtractor.swift; sourceTree = "<group>"; };
 		D32CAA2E3C0D27BDF3B934FD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D43D3DB11E412B4E118EEC2B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -300,6 +315,9 @@
 		EADBC2E574A8868BC2101485 /* EventDetailSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailSummaryTests.swift; sourceTree = "<group>"; };
 		EAE78E9489C239158E347DB7 /* FeeAndInvoiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeAndInvoiceTests.swift; sourceTree = "<group>"; };
 		EDE600824A3A4DC39439FDF0 /* CalendarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarController.swift; sourceTree = "<group>"; };
+		EF559422C0BEE4D17587EC25 /* ExpensesMonthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpensesMonthTests.swift; sourceTree = "<group>"; };
+		F0476B84B0DEAC41AD31C919 /* ClientSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientSummaryTests.swift; sourceTree = "<group>"; };
+		F1D6CE2B9DF5C4DECD3683C6 /* ExpensesMonth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpensesMonth.swift; sourceTree = "<group>"; };
 		F25B88AB5D34BAAE0391076C /* EventsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventsList.swift; sourceTree = "<group>"; };
 		F26B1DE5EBB870F41896D3CC /* WorkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSession.swift; sourceTree = "<group>"; };
 		F583A1BED698DD37AA3738ED /* UpcomingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpcomingTests.swift; sourceTree = "<group>"; };
@@ -332,6 +350,7 @@
 				903F333B340E02F26BC552E8 /* EventEditorTests.swift */,
 				1C39653F7538932613199392 /* EventVisualTests.swift */,
 				69DFC518A6A7190800E88CDF /* EventWizardTests.swift */,
+				245FC6F2C879064EADDB40CC /* ExpensesMonthUITests.swift */,
 				A69C16751D64E2080FCAD476 /* ExpenseTests.swift */,
 				EAE78E9489C239158E347DB7 /* FeeAndInvoiceTests.swift */,
 				9294E5D7FBABB3737812E0C0 /* FirstLaunchTests.swift */,
@@ -423,12 +442,15 @@
 			children = (
 				1CFACBC1B744FA3EEBB5FD4B /* BackgroundExpenseTests.swift */,
 				71531F3273F27F2929AC0EE9 /* CalendarTests.swift */,
+				F0476B84B0DEAC41AD31C919 /* ClientSummaryTests.swift */,
 				B75359E1E5CC7A25F190B3D0 /* DayScheduleTests.swift */,
 				EADBC2E574A8868BC2101485 /* EventDetailSummaryTests.swift */,
 				3C8B3B05A3C598E893DFF617 /* EventsListTests.swift */,
 				01D7FF67CCBF18B220D5C632 /* EventWeatherTests.swift */,
+				EF559422C0BEE4D17587EC25 /* ExpensesMonthTests.swift */,
 				F64C852DCADF5AFEBBEFC013 /* ExpenseTests.swift */,
 				5A1A3615096553A427E9202D /* FirstLaunchTests.swift */,
+				C18C6953AC2311B5A53EB8E2 /* InvoiceLedgerTests.swift */,
 				D5E2C1963461227A58D165E3 /* InvoicePlanningTests.swift */,
 				4B4865D2C31DB0707417581E /* PaymentsBillingTests.swift */,
 				722C715CA9E1B3CE3A9E15E7 /* PaymentsReadinessTests.swift */,
@@ -449,6 +471,8 @@
 				05184E3E54EFACC22183D7E6 /* CalendarPlan.swift */,
 				4A5C7A2008D33B1B55FCC28C /* CalendarPublisher.swift */,
 				C42AD7432BF268805135A824 /* CalendarSettingsView.swift */,
+				0DE5950F3A628E14B78F07ED /* ClientSummary.swift */,
+				D2DC533FA34F0534C2C770FB /* ClientViews.swift */,
 				77E6DB6F2628C8A88BCDD097 /* CloudBackupStore.swift */,
 				40A57E11DA88086857902024 /* Cuekeeper.entitlements */,
 				DD6273FE8C74EAD8099D291B /* CuekeeperApp.swift */,
@@ -465,13 +489,16 @@
 				60A535829E430BC6AF335536 /* EventWizardView.swift */,
 				5A3E07913A7CBBA0E9F5D6C1 /* ExpenseAutomationSettingsView.swift */,
 				A8242BC562D7713F5EAFAAE4 /* ExpenseNotifications.swift */,
+				F1D6CE2B9DF5C4DECD3683C6 /* ExpensesMonth.swift */,
 				9B6F1A7864EA8EF9E6647080 /* ExpenseView.swift */,
 				2CC25F847FFB2944BBBC0D0D /* FeeView.swift */,
 				D2229C450D785F8D47AA06B4 /* FirstLaunchBackupView.swift */,
 				762E08735536CF82AAD4C49D /* FirstLaunchView.swift */,
 				C31D03E096ABF3A6E23F885D /* Info.plist */,
 				575FD35B3CFF6BA5FFC75543 /* InvoiceEditorView.swift */,
+				25C2FC0E960A24DE3BA76EE1 /* InvoiceLedger.swift */,
 				CCE4E683C10FE2B34BBC6B9A /* InvoicePlanning.swift */,
+				5266CDEBB4213D6B97531E4A /* InvoicesView.swift */,
 				6813AB65D56DEB9B484FB834 /* JobDetailView.swift */,
 				D682B024A3E281F66B73080A /* JobEditorView.swift */,
 				91C80D913C2F1C3287CFD3DF /* LibraryView.swift */,
@@ -718,6 +745,7 @@
 				BC4BAD64E3C41BCEC423D7B9 /* EventVisualTests.swift in Sources */,
 				AD8486D75DB2BC6875E65E18 /* EventWizardTests.swift in Sources */,
 				5D61BFB198A9CC57CF470000 /* ExpenseTests.swift in Sources */,
+				EB4DAC28660BECD06FCE08F0 /* ExpensesMonthUITests.swift in Sources */,
 				5A572CBD38F92272C8BC8657 /* FeeAndInvoiceTests.swift in Sources */,
 				8FCB4E47836A4382380C6D83 /* FirstLaunchTests.swift in Sources */,
 				DE9A2949C4C78D6CD04EBCEA /* PaymentsTests.swift in Sources */,
@@ -739,12 +767,15 @@
 			files = (
 				5A1C6B4D794A6A131E3946EB /* BackgroundExpenseTests.swift in Sources */,
 				C98339F7FD17877747472285 /* CalendarTests.swift in Sources */,
+				2072D82545AF7460598BAF1D /* ClientSummaryTests.swift in Sources */,
 				9DC58F2C1AE2C2F5D7730D8E /* DayScheduleTests.swift in Sources */,
 				40CC77A126552FDDBE397EC0 /* EventDetailSummaryTests.swift in Sources */,
 				F34DF047E116D243841F18F8 /* EventWeatherTests.swift in Sources */,
 				D9E0D7F4732E91CE252A8A57 /* EventsListTests.swift in Sources */,
 				6F10F9A23FA535E443F05AAB /* ExpenseTests.swift in Sources */,
+				054F12566E7AC62975AE4599 /* ExpensesMonthTests.swift in Sources */,
 				A933C1120214E017ABB6DABE /* FirstLaunchTests.swift in Sources */,
+				59FBCBB8E3FEC770411B94D6 /* InvoiceLedgerTests.swift in Sources */,
 				4C2102C48143B4143C5735E7 /* InvoicePlanningTests.swift in Sources */,
 				F890E6E6A939B440633D6A47 /* PaymentsBillingTests.swift in Sources */,
 				D5E3E230AEEEE579AC0D64B5 /* PaymentsReadinessTests.swift in Sources */,
@@ -798,6 +829,8 @@
 				2D7D637E9BB236A24EFABFCB /* CalendarPublisher.swift in Sources */,
 				471B1E5481708380CCDD65FC /* CalendarSettingsView.swift in Sources */,
 				FB86A1E722C6D0BEB91A95B7 /* CaptureExpenseIntent.swift in Sources */,
+				9FFC5082A860AD6180BFFBA1 /* ClientSummary.swift in Sources */,
+				32BBEB07E086F6DC4C8510E8 /* ClientViews.swift in Sources */,
 				BB946F58C6118E99571762DC /* CloudBackupStore.swift in Sources */,
 				DB68DCE75B7D5823728BB8EA /* CreateEventIntent.swift in Sources */,
 				28706B283FBFBF9010081815 /* Cuekeeper.xcdatamodeld in Sources */,
@@ -822,12 +855,15 @@
 				65C1A4E83D4C7A58B11D893A /* ExpenseNotifications.swift in Sources */,
 				390F74DA1120AA42FC06A91E /* ExpenseView.swift in Sources */,
 				D3C9527CEA68B7181C4AD974 /* Expenses.swift in Sources */,
+				CDD104A2685229F0B24BB272 /* ExpensesMonth.swift in Sources */,
 				D54D54A4BF39D6CDCCC5CB41 /* FeeView.swift in Sources */,
 				4EA1FBAF120B261072530418 /* Fees.swift in Sources */,
 				DCF5239950C0B0CFD22B1449 /* FirstLaunchBackupView.swift in Sources */,
 				F32D8B7636FD757FB78A8368 /* FirstLaunchView.swift in Sources */,
 				B282F1BAE155B6BDB2D69E9E /* InvoiceEditorView.swift in Sources */,
+				DD533608C5B5F55476EE684E /* InvoiceLedger.swift in Sources */,
 				67CD3AFE80D84786DD462CB2 /* InvoicePlanning.swift in Sources */,
+				8EC3822D1BA47EBD2F378F6C /* InvoicesView.swift in Sources */,
 				AE321AB59E8253F5DFBEEDAD /* Job.swift in Sources */,
 				7C3981B233655BCC6ADF3626 /* JobDetailView.swift in Sources */,
 				9F92362C41B5F9825F1D467F /* JobEditorView.swift in Sources */,
@@ -1043,7 +1079,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.2.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1241,7 +1277,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.2.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1311,7 +1347,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.2.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

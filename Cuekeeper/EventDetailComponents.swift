@@ -153,7 +153,7 @@ private struct StatusChip: View {
     }
 }
 
-private struct EventChip<Content: View>: View {
+struct EventChip<Content: View>: View {
     @ScaledMetric(relativeTo: .subheadline) private var height = 30
     @Environment(\.colorSchemeContrast) private var contrast
     var tint: Color = .primary
@@ -167,7 +167,7 @@ private struct EventChip<Content: View>: View {
     }
 }
 
-private struct EventFactChip: View {
+struct EventFactChip: View {
     let symbol: String
     let text: String
     var body: some View {
@@ -179,7 +179,7 @@ private struct EventFactChip: View {
 }
 
 /// Lays chips out on one row, wrapping to further rows only when they don't fit.
-private struct ChipFlow: Layout {
+struct ChipFlow: Layout {
     var spacing: CGFloat
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = rows(width: proposal.width ?? .infinity, subviews: subviews)

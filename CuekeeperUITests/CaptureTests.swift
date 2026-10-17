@@ -38,7 +38,7 @@ final class ClientLibraryTests: EventWorkflowTestCase {
         if settings.exists { settings.tap() } else { app.staticTexts["Settings"].firstMatch.tap() }
         app.buttons["Clients"].tap()
         app.buttons["Add Client"].tap()
-        let name = app.textFields["Name"]
+        let name = app.textFields["client-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
         name.typeText("North Sports\n")

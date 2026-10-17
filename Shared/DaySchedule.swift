@@ -52,7 +52,7 @@ struct DaySchedule: Codable, Equatable {
         }
     }
     func nextCommitment(at now: Date, calendar: Calendar = .current) -> ScheduleSession? {
-        today(at: now, calendar: calendar).filter {
+        upcoming(at: now, calendar: calendar).filter {
             $0.confirmed && $0.coverage == "covering" && event(for: $0)?.status == "booked"
                 && ($0.call ?? $0.start ?? .distantPast) >= now
         }.min { ($0.call ?? $0.start ?? .distantFuture) < ($1.call ?? $1.start ?? .distantFuture) }
@@ -62,6 +62,33 @@ struct DaySchedule: Codable, Equatable {
             $0.coverage != "notCovering" && event(for: $0)?.status != "completed"
                 && ($0.end ?? .distantFuture) > now
         }
+    }
+    /// Today's remaining sessions, followed by sessions on later days in chronological order.
+    func upcoming(at now: Date, calendar: Calendar = .current) -> [ScheduleSession] {
+        let current = remaining(at: now, calendar: calendar)
+        let shown = Set(current.map(\.id))
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
+        let later: [(session: ScheduleSession, anchor: Date)] = sessions.compactMap { session in
+            guard !shown.contains(session.id), session.coverage != "notCovering",
+                  let event = event(for: session), event.status != "cancelled", event.status != "completed" else { return nil }
+            if let time = session.start ?? session.call { return time >= tomorrow ? (session, time) : nil }
+            let zone = TimeZone(identifier: session.zone) ?? calendar.timeZone
+            let key = session.day.isEmpty ? event.startDay : session.day
+            guard key > Self.dayKey(now, zone: zone), let anchor = Self.date(fromKey: key, zone: zone) else { return nil }
+            return (session, anchor)
+        }
+        return current + later.sorted {
+            if $0.anchor != $1.anchor { return $0.anchor < $1.anchor }
+            return ($0.session.title, $0.session.id.uuidString) < ($1.session.title, $1.session.id.uuidString)
+        }.map(\.session)
+    }
+    private static func date(fromKey key: String, zone: TimeZone) -> Date? {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = zone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: key)
     }
     func unscheduledEvents(at now: Date, calendar: Calendar = .current) -> [ScheduleEvent] {
         let key = Self.dayKey(now, zone: calendar.timeZone)

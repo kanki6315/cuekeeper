@@ -4,115 +4,334 @@ import PhotosUI
 import SwiftUI
 import VisionKit
 
+/// Expenses as a month: money by state per currency, what to finish and rebill, then every expense by day.
 struct ExpensesView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.managedObjectContext) private var context
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Expense.createdAt, ascending: false)]) private var expenses: FetchedResults<Expense>
-    // Observe event changes too, including deletion/restoration and renamed clients.
+    // Observe events, clients and invoices too: renames, deletions and billing change what rows show.
     @FetchRequest(sortDescriptors: []) private var jobs: FetchedResults<Job>
     @FetchRequest(sortDescriptors: []) private var clients: FetchedResults<Client>
-    @State private var scope = "All"
-    @State private var selected: Expense?
+    @FetchRequest(sortDescriptors: []) private var invoiceRevisions: FetchedResults<InvoiceRevision>
+    @FetchRequest(sortDescriptors: []) private var payments: FetchedResults<PaymentRecord>
+    @State private var month = PaymentsView.currentMonth
+    @State private var filter = ExpenseFilter.all
+    @SceneStorage("expenses.finishExpanded") private var finishExpanded = false
+    @State private var sheet: ExpenseSheet?
     @State private var choosingEvent = false
-    @State private var captureJob: Job?
-
-    private var visibleExpenses: [Expense] {
-        _ = jobs.count + clients.count
-        return expenses.filter { expense in
-            let value = expense.value
-            let matchesScope = scope == "All" || (scope == "Saved" ? !expense.isDraft : expense.isDraft)
-            return value.discarded != true && matchesScope
-        }.sorted {
-            let lhs = $0.value.day, rhs = $1.value.day
-            if lhs != rhs { return lhs > rhs }
-            return ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast)
-        }
-    }
+    @State private var pendingCapture: ExpenseSheet?
+    @State private var invoicing: ReadyInvoice?
 
     var body: some View {
-        let records = visibleExpenses
-        DaybookForm(topPadding: 12) {
+        _ = jobs.count + clients.count + invoiceRevisions.count + payments.count
+        let summary = ExpensesMonth.load(month: month, expenses: Array(expenses), context: context)
+        let days = summary.days(filter)
+        return DaybookForm(topPadding: 12) {
             Section {
                 DaybookTabHeader {
                     Button("Scan Receipt", systemImage: "doc.viewfinder") { choosingEvent = true }
                         .buttonStyle(DaybookPrimaryButton())
                         .accessibilityIdentifier("scan-receipt-overview")
                 }
-            }.containerValue(\.daybookUnframed, true)
-                .containerValue(\.daybookFlushTop, true)
+            }.containerValue(\.daybookUnframed, true).containerValue(\.daybookFlushTop, true)
             Section {
-                DaybookSegments(title: "Show expenses", selection: $scope,
-                                options: ["All", "Saved", "Needs review"],
-                                identifier: "expense-scope", label: { $0 })
+                MonthStepper(month: $month, eventCount: summary.count, noun: (one: "expense", many: "expenses"))
             }.containerValue(\.daybookUnframed, true)
-            Section { PendingExpensesPrompt() }
-            if records.isEmpty {
+            if !summary.currencies.isEmpty {
+                Section { ExpenseMoneyPanel(currencies: summary.currencies) }
+            }
+            if !summary.finish.isEmpty {
                 Section {
-                    ContentUnavailableView("No expenses to show", systemImage: "receipt",
-                        description: Text(scope == "All"
-                            ? "Scan a receipt to record an expense for an event. Captured payment drafts appear here too."
-                            : "Choose a different expense filter."))
+                    finishHeader(summary.finish.count)
+                    ForEach(Array((finishExpanded ? summary.finish : Array(summary.finish.prefix(1))).enumerated()), id: \.element.id) { index, item in
+                        finishRow(item, primary: index == 0)
+                    }
+                }
+            }
+            if !summary.rebill.isEmpty {
+                Section {
+                    ForEach(summary.rebill) { rebillRow($0) }
+                } header: { Text("To rebill") }
+            }
+            Section {
+                DaybookSegments(title: "Show expenses", selection: $filter, options: ExpenseFilter.allCases,
+                                identifier: "expense-filter", label: \.rawValue)
+            } header: { Text("Expenses") }
+                .containerValue(\.daybookUnframed, true)
+            if days.isEmpty {
+                Section {
+                    ContentUnavailableView(filter == .all ? "No expenses in \(MonthStepper.title(month))" : "No \(filter.rawValue.lowercased()) expenses",
+                                           systemImage: "receipt",
+                                           description: Text(filter == .all ? "Scan a receipt or add a business cost." : "Choose All to see every expense."))
                 }
             } else {
                 Section {
-                    ForEach(records, id: \.objectID) { expense in
-                        if expense.job?.deletedAt != nil {
-                            expenseRow(expense)
-                        } else {
-                            Button { selected = expense } label: { expenseRow(expense) }
-                                .accessibilityIdentifier("all-expense-row")
-                        }
-                    }
+                    ForEach(days) { dayRow($0) }
+                }
+            }
+            if summary.earlier.count > 0 {
+                Section {
+                    Button { month = summary.earlier.latestMonth } label: { earlierRow(summary.earlier) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("expenses-earlier-rebill")
                 }
             }
         }
         .navigationTitle("").navigationBarTitleDisplayMode(.inline)
         .toolbar(sizeClass == .compact ? .hidden : .visible, for: .navigationBar)
-        .sheet(item: $selected) { ExpenseEditorView(expense: $0) }
-        .sheet(isPresented: $choosingEvent, onDismiss: {
-            if let job = captureJob { selectedCaptureJob = job; captureJob = nil }
-        }) {
-            ExpenseEventSelection { id in
-                captureJob = jobs.first { $0.objectID == id }
-                choosingEvent = false
+        .sheet(item: $sheet) { sheet in
+            switch sheet {
+            case .edit(let expense): ExpenseEditorView(expense: expense)
+            case .capture(let job): ExpenseEditorView(job: job)
+            case .business(let template): ExpenseEditorView(business: template)
             }
         }
-        .sheet(isPresented: Binding(get: { selectedCaptureJob != nil }, set: { if !$0 { selectedCaptureJob = nil } })) {
-            if let job = selectedCaptureJob { ExpenseEditorView(job: job) }
+        .sheet(item: $invoicing) { InvoiceEditorView(ready: $0) }
+        .sheet(isPresented: $choosingEvent, onDismiss: {
+            if let pendingCapture { sheet = pendingCapture; self.pendingCapture = nil }
+        }) {
+            ExpenseEventSelection(select: { id in
+                if let job = jobs.first(where: { $0.objectID == id }) { pendingCapture = .capture(job) }
+                choosingEvent = false
+            }, onBusiness: {
+                pendingCapture = .business(ExpenseValue())
+                choosingEvent = false
+            })
         }
     }
 
-    @State private var selectedCaptureJob: Job?
+    // MARK: To finish
 
-    private func expenseRow(_ expense: Expense) -> some View {
-        let value = expense.value
-        let headingLayout = typeSize.isAccessibilitySize
+    private func finishHeader(_ count: Int) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.2)) { finishExpanded.toggle() }
+        } label: {
+            HStack(spacing: 8) {
+                Text("To finish").font(.headline)
+                AmberCount(count: count)
+                Spacer(minLength: 8)
+                Image(systemName: finishExpanded ? "chevron.up" : "chevron.down")
+                    .font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText"))
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: 32).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("To finish, \(count)")
+        .accessibilityValue(finishExpanded ? "Expanded" : "Collapsed")
+        .accessibilityIdentifier("expenses-finish-toggle")
+    }
+
+    private func finishRow(_ item: FinishItem, primary: Bool) -> some View {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
+        return layout {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title).font(.subheadline.weight(.semibold))
+                Text(item.detail).font(.footnote).foregroundStyle(Color("SecondaryText"))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            Group {
+                if primary {
+                    Button(item.actionTitle) { perform(item) }.buttonStyle(DaybookPrimaryButton()).controlSize(.small)
+                } else {
+                    Button(item.actionTitle) { perform(item) }.font(.subheadline.weight(.semibold)).frame(minWidth: 44, minHeight: 44)
+                }
+            }
+            .accessibilityIdentifier("expenses-finish-\(item.actionTitle.lowercased())")
+        }
+    }
+
+    private func perform(_ item: FinishItem) {
+        switch item.kind {
+        case .draft(let id):
+            if let expense = expenses.first(where: { $0.id == id }) { sheet = .edit(expense) }
+        case let .repeatDue(template, day):
+            guard let expense = expenses.first(where: { $0.id == template }) else { return }
+            var value = expense.value
+            value.day = day; value.capture = nil; value.notes = ""
+            sheet = .business(value)
+        }
+    }
+
+    // MARK: To rebill
+
+    private func rebillRow(_ group: RebillGroup) -> some View {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
+        return layout {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(group.name).font(.headline)
+                Text((group.events + [group.receipts.count == 1 ? "1 receipt" : "\(group.receipts.count) receipts", Money.format(group.amount, currency: group.currency)])
+                    .joined(separator: " · "))
+                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            if group.canInvoice, let clientID = group.clientID {
+                Button("Invoice") {
+                    invoicing = ReadyInvoice(clientID: clientID, currency: group.currency,
+                                             jobs: jobs.filter { $0.id.map(group.invoiceableJobs.contains) ?? false },
+                                             expenses: expenses.filter { $0.id.map(group.receipts.contains) ?? false })
+                }
+                .buttonStyle(DaybookPrimaryButton()).controlSize(.small)
+                .accessibilityIdentifier("expenses-rebill-invoice")
+            }
+        }
+    }
+
+    // MARK: Expenses by day
+
+    private func dayRow(_ day: ExpenseDay) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            if !typeSize.isAccessibilitySize { DaybookDateRail(day: day.day) }
+            VStack(alignment: .leading, spacing: 0) {
+                if typeSize.isAccessibilitySize {
+                    Text(Day.display(day.day)).font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor).padding(.bottom, 6)
+                }
+                ForEach(Array(day.expenses.enumerated()), id: \.element.id) { index, fact in
+                    if index > 0 { Divider().padding(.vertical, 10) }
+                    expenseRow(fact)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func expenseRow(_ fact: ExpenseFact) -> some View {
+        if fact.eventDeleted {
+            expenseLabel(fact)
+        } else {
+            Button { if let expense = expenses.first(where: { $0.id == fact.id }) { sheet = .edit(expense) } } label: { expenseLabel(fact) }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("all-expense-row")
+        }
+    }
+
+    private func expenseLabel(_ fact: ExpenseFact) -> some View {
+        let layout = typeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
             : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
         return VStack(alignment: .leading, spacing: 4) {
-            headingLayout {
-                Text(value.merchant.isEmpty ? "Expense to complete" : value.merchant)
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let amount = ExpenseValue.displayAmount(value.amount, currency: value.currency) {
-                    Text(amount)
-                        .font(.subheadline.weight(.semibold)).monospacedDigit()
-                        .fixedSize(horizontal: true, vertical: false)
+            layout {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(fact.title).font(.headline)
+                    subtitle(fact).font(.subheadline)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 2) {
+                    if let amount = fact.displayAmount { Text(amount).font(.subheadline).monospacedDigit() }
+                    status(fact).font(.caption.weight(.semibold))
+                }
+                .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: false)
             }
-            Text([expense.job?.eventTitle ?? "Event to choose", expense.job?.client?.name]
-                .compactMap { $0 }.joined(separator: " · "))
-                .font(.subheadline).foregroundStyle(Color("SecondaryText"))
-            Text([expense.isDraft ? "Needs review" : "", value.day.isEmpty ? "" : Day.display(value.day), value.category,
-                  value.reimbursable ? "Reimbursable" : ""]
-                .filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(.caption)
-                .foregroundStyle(Color(expense.isDraft ? "AmberText" : "SecondaryText"))
-            if expense.job?.deletedAt != nil {
-                Text("Deleted event · Restore the event in Settings to open this expense.")
+            if fact.eventDeleted {
+                Text("Deleted event · Restore it in Settings to open this expense.")
                     .font(.caption).foregroundStyle(Color("SecondaryText"))
             }
-        }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private func subtitle(_ fact: ExpenseFact) -> Text {
+        if fact.isBusiness { return Text("Business · \(fact.category)").foregroundStyle(Color("SecondaryText")) }
+        guard let event = fact.eventTitle else { return Text("Event to choose").foregroundStyle(Color("AmberText")) }
+        return Text(fact.state == .toFinish && fact.merchant.isEmpty ? event : "\(event) · \(fact.category)").foregroundStyle(Color("SecondaryText"))
+    }
+
+    @ViewBuilder private func status(_ fact: ExpenseFact) -> some View {
+        switch fact.state {
+        case .toFinish: Text("To finish").foregroundStyle(Color("AmberText"))
+        case .yourCost: Text("Your cost").foregroundStyle(Color("SecondaryText"))
+        case .business:
+            if fact.repeats { Label("Monthly", systemImage: "repeat").labelStyle(.titleAndIcon).foregroundStyle(Color("SecondaryText")) }
+        case .toRebill: Text("To rebill").foregroundStyle(Color("BookingCompleted"))
+        case .onInvoice(let reference): Text(reference.isEmpty ? "On draft invoice" : "On \(reference)").foregroundStyle(Color("SecondaryText"))
+        case .paidBack: Text("Paid back").foregroundStyle(Color.accentColor)
+        case .review: Text("Billing review").foregroundStyle(Color("AmberText"))
+        }
+    }
+
+    private func earlierRow(_ earlier: EarlierRebill) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Still to rebill from earlier")
+                Text(([earlier.count == 1 ? "1 receipt" : "\(earlier.count) receipts"]
+                      + earlier.amounts.keys.sorted().map { Money.format(earlier.amounts[$0]!, currency: $0) }).joined(separator: " · "))
+                    .font(.subheadline).foregroundStyle(Color("SecondaryText"))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color("SecondaryText")).accessibilityHidden(true)
+        }
+        .frame(minHeight: 44).contentShape(Rectangle())
+    }
+}
+
+/// Editors the Expenses tab presents.
+enum ExpenseSheet: Identifiable {
+    case edit(Expense), capture(Job), business(ExpenseValue)
+    var id: String {
+        switch self {
+        case .edit(let expense): "edit-\(expense.objectID)"
+        case .capture(let job): "capture-\(job.objectID)"
+        case .business(let value): "business-\(value.seriesID?.uuidString ?? "new")-\(value.day)"
+        }
+    }
+}
+
+struct AmberCount: View {
+    let count: Int
+    var body: some View {
+        Text(count, format: .number)
+            .font(.caption.weight(.bold)).monospacedDigit()
+            .foregroundStyle(Color("AmberText"))
+            .padding(.horizontal, 7).padding(.vertical, 2)
+            .background(Color.orange.opacity(0.18), in: Capsule())
+    }
+}
+
+extension ExpenseBucket {
+    var fill: Color {
+        switch self {
+        case .paidBack: Color.accentColor
+        case .onInvoice: Color.accentColor.opacity(0.55)
+        case .toRebill: Color("BookingCompleted")
+        case .toFinish: Color.orange
+        case .yourCost: Color.primary.opacity(0.28)
+        }
+    }
+}
+
+struct ExpenseMoneyPanel: View {
+    let currencies: [ExpenseCurrency]
+    private var present: [ExpenseBucket] { ExpenseBucket.allCases.filter { bucket in currencies.contains { ($0.amounts[bucket] ?? 0) > 0 } } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(currencies) { currency in
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(currency.currency).fontWeight(.semibold)
+                        Spacer(minLength: 8)
+                        Text(Money.format(currency.total, currency: currency.currency)).monospacedDigit()
+                    }
+                    .font(.subheadline)
+                    SegmentedMoneyBar(currency: currency.currency, parts: ExpenseBucket.allCases.compactMap { bucket in
+                        (currency.amounts[bucket] ?? 0) > 0 ? .init(label: bucket.label, fill: bucket.fill, amount: currency.amounts[bucket]!) : nil
+                    })
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)], alignment: .leading, spacing: 6) {
+                ForEach(present, id: \.self) { bucket in
+                    HStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 3).fill(bucket.fill).frame(width: 10, height: 10)
+                        Text(bucket.label).font(.footnote)
+                    }
+                }
+            }
+            .accessibilityHidden(true)
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -183,12 +402,21 @@ struct ExpenseEditorView: View {
     @State private var replacing = false
     @State private var choosingPhoto = false
     @State private var enlarged = false
+    /// A cost that belongs to no event, such as a software subscription.
+    @State private var business: Bool
+    private let initialBusiness: Bool
+    /// Opened with known details (the next month of a repeating cost), so the camera stays closed.
+    private let prefilled: Bool
 
-    init(job: Job? = nil, expense: Expense? = nil) {
+    /// `business` starts a new cost with no event, optionally prefilled.
+    init(job: Job? = nil, expense: Expense? = nil, business template: ExpenseValue? = nil) {
         self.job = job
         initialJobID = expense?.job?.objectID ?? job?.objectID
         _selectedJobID = State(initialValue: initialJobID)
-        let value = expense?.value ?? ExpenseValue()
+        let isBusiness = template != nil || expense?.isBusiness == true
+        _business = State(initialValue: isBusiness); initialBusiness = isBusiness
+        prefilled = !(template?.merchant.isEmpty ?? true)
+        let value = expense?.value ?? template ?? ExpenseValue()
         _draft = State(initialValue: value); _initial = State(initialValue: value)
         _recordID = State(initialValue: expense?.objectID); _revision = State(initialValue: expense?.revision ?? "")
         _photo = State(initialValue: expense?.photo); _isDraft = State(initialValue: expense?.isDraft ?? true)
@@ -196,6 +424,14 @@ struct ExpenseEditorView: View {
     var body: some View {
         NavigationStack {
             DaybookForm {
+                if job == nil {
+                    Section {
+                        DaybookSegments(title: "What it's for", selection: $business, options: [false, true],
+                                        identifier: "expense-purpose", label: { $0 ? "Business" : "An event" })
+                    } header: { Text("What it's for") }
+                        .containerValue(\.daybookUnframed, true)
+                }
+                if !business {
                 Section {
                     if let selected = events.first(where: { $0.objectID == selectedJobID }) {
                         Text(selected.eventTitle).font(.headline)
@@ -203,6 +439,7 @@ struct ExpenseEditorView: View {
                     } else { Text("Choose an event to complete this expense.").foregroundStyle(Color("SecondaryText")) }
                     Button(selectedJobID == nil ? "Choose Event" : "Change Event") { choosingEvent = true }.accessibilityIdentifier("expense-choose-event")
                 }.containerValue(\.daybookUnframed, true)
+                }
                 Section {
                     if let photo, let image = UIImage(data: photo) {
                         Button { enlarged = true } label: {
@@ -260,7 +497,7 @@ struct ExpenseEditorView: View {
                         }
                     }
                 }
-                if photo != nil || recordID != nil {
+                if photo != nil || recordID != nil || business {
                     Section {
                         field("Merchant", text: $draft.merchant, identifier: "expense-merchant")
                         dateField
@@ -271,13 +508,18 @@ struct ExpenseEditorView: View {
                         }.accessibilityIdentifier("expense-currency")
                         field("Tax included (optional)", text: $draft.tax, identifier: "expense-tax", decimal: true)
                         DaybookPicker("Category", selection: $draft.category) { ForEach(ExpenseValue.categories, id: \.self) { Text($0).tag($0) } }
-                        Toggle("Reimbursable", isOn: $draft.reimbursable)
+                        if business {
+                            Toggle("Repeats monthly", isOn: Binding(get: { draft.repeatsMonthly == true }, set: { draft.repeatsMonthly = $0 ? true : nil }))
+                                .accessibilityIdentifier("expense-repeats")
+                        } else {
+                            Toggle("Reimbursable", isOn: $draft.reimbursable)
+                        }
                         field("Notes (optional)", text: $draft.notes, identifier: "expense-notes")
                     } header: { Text("Review details") } footer: { Text("Check the date, currency and final total against the photo. Empty fields need your input. Tax is already included in the total.") }
                     .disabled(busy)
                 }
             }
-            .navigationTitle(isDraft ? "Receipt" : "Expense").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(business ? "Business cost" : isDraft ? "Receipt" : "Expense").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(isDraft && recordID != nil ? "Keep Draft" : "Close") { close() }.disabled(savingPhoto)
@@ -287,7 +529,7 @@ struct ExpenseEditorView: View {
                         }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save(confirmed: true) }.disabled(photo == nil || busy || !conflicts.isEmpty).accessibilityIdentifier("save-expense")
+                    Button("Save") { save(confirmed: true) }.disabled((photo == nil && !business) || busy || !conflicts.isEmpty).accessibilityIdentifier("save-expense")
                 }
             }
             .sheet(isPresented: $choosingEvent) {
@@ -336,7 +578,7 @@ struct ExpenseEditorView: View {
                 #endif
                 // Only open the scanner automatically when the camera can actually be used; otherwise the
                 // receipt section explains why and offers Settings instead of presenting a blank scanner.
-                if recordID == nil && photo == nil && VNDocumentCameraViewController.isSupported && !cameraUnavailable { await openCamera() }
+                if recordID == nil && photo == nil && !prefilled && VNDocumentCameraViewController.isSupported && !cameraUnavailable { await openCamera() }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { cameraAccess = AVCaptureDevice.authorizationStatus(for: .video) }
@@ -346,7 +588,7 @@ struct ExpenseEditorView: View {
                 Button(cameraAccess == .denied ? "Not Now" : "OK", role: .cancel) {}
             } message: { Text(cameraUnavailableMessage) }
             .onDisappear { task?.cancel() }
-            .interactiveDismissDisabled(savingPhoto || recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID)
+            .interactiveDismissDisabled(savingPhoto || recordID != nil || photo != nil || draft != initial || selectedJobID != initialJobID || business != initialBusiness)
             .preservesDraftOnTodayLink()
             .alert("Couldn’t save changes", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
                 if failedDraftSave {
@@ -416,8 +658,8 @@ struct ExpenseEditorView: View {
                     try await Expense.replacePhotoAsync(data, id: recordID, revision: revision, in: context)
                     id = recordID
                 } else {
-                    guard let selectedJobID else { throw RecordError.invalid("Choose an event before scanning a new receipt.") }
-                    id = try await Expense.capturePhoto(data, jobID: selectedJobID, in: context)
+                    guard selectedJobID != nil || business else { throw RecordError.invalid("Choose an event before scanning a new receipt.") }
+                    id = try await Expense.capturePhoto(data, jobID: business ? nil : selectedJobID, in: context)
                 }
                 let record = try context.existingObject(with: id) as! Expense
                 recordID = id; revision = record.revision; photo = data
@@ -448,14 +690,19 @@ struct ExpenseEditorView: View {
     private func close() {
         task?.cancel(); busy = false
         if isDraft && recordID != nil { save(confirmed: false) }
-        else if draft != initial || selectedJobID != initialJobID { discard = true }
+        else if draft != initial || selectedJobID != initialJobID || business != initialBusiness { discard = true }
         else { dismiss() }
     }
     private func save(confirmed: Bool) {
-        guard let recordID else { return }
         failedDraftSave = false
+        guard let recordID else {
+            // A business cost can be saved without a receipt photo.
+            guard business, confirmed else { return }
+            do { _ = try Expense.createBusiness(draft, in: context); dismiss() } catch { self.error = error.localizedDescription }
+            return
+        }
         do {
-            try Expense.save(draft, id: recordID, revision: revision, confirmed: confirmed, jobID: selectedJobID, in: context)
+            try Expense.save(draft, id: recordID, revision: revision, confirmed: confirmed, jobID: business ? nil : selectedJobID, business: business, in: context)
             if confirmed, let expense = try context.existingObject(with: recordID) as? Expense, let id = expense.id { ExpenseNotifications.shared.clear(id: id) }
             dismiss()
         } catch {

@@ -36,7 +36,7 @@ struct DaybookSections<Content: View>: View {
     var compact: Bool = false
     @ViewBuilder var content: Content
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 8 : 24) {
+        VStack(alignment: .leading, spacing: compact ? 8 : 12) {
             ForEach(sections: content) { section in
                 VStack(alignment: .leading, spacing: compact ? 4 : 9) {
                     if !section.header.isEmpty {

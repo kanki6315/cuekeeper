@@ -39,8 +39,7 @@ struct UpcomingView: View {
     var body: some View {
         let _ = (events.count, sessions.count, invoices.count, invoiceRevisions.count, payments.count, feeRevisions.count, clients.count, drafts.count)
         TimelineView(.periodic(from: .now, by: 60)) { timeline in
-            let summary = UpcomingSummary(jobs: UpcomingSummary.facts(jobs: Array(jobs), context: context),
-                                          receipts: UpcomingSummary.receipts(Array(drafts)), now: timeline.date)
+            let summary = UpcomingSummary(jobs: UpcomingSummary.facts(jobs: Array(jobs), context: context), now: timeline.date)
             page(summary, now: timeline.date)
         }
         .daybookSurface()

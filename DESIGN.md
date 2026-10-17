@@ -243,9 +243,9 @@ the next 3 days", a link to the next job with its first call, and a link to Plan
 
 **Plan** opens with To settle collapsed: title, amber count and a category summary ("2 bookings · 1 schedule · 2 money"),
 then the item with the earliest day and its action, unlabelled. Expanded, every item lists its event, detail and action,
-with Show less. Items rank by the day they are tied to: an ended event by its last day, invoices by due day, receipts by
-purchase day, everything else by the event's start. Booking and schedule gaps surface only for events within 30 days;
-money items always surface. A booked or tentative event that has ended asks to be marked completed. Items cannot be
+with Show less. Items rank by the day they are tied to: an ended event by its last day, everything else by the event's start. Money
+items are fee gaps only; invoicing, owed balances, billing reviews and receipt details are settled on the event page,
+Payments and Expenses. Booking and schedule gaps surface only for events within 30 days; fee gaps always surface. A booked or tentative event that has ended asks to be marked completed. Items cannot be
 dismissed; they clear when the data is fixed. Below sit a two-week strip from this Monday (one mark per session: solid
 covering, outlined not covering, dashed amber time to come; past unscheduled days stay blank) whose days scroll Coming
 up to the matching job, and Coming up: jobs within 30 days with their coverage summary and open-item count, then All events.

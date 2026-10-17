@@ -23,8 +23,8 @@ final class UpcomingSummaryTests: XCTestCase {
                                      sessions: sessions, fee: fee, billing: billing, expenseDrafts: [])
         return UpcomingJobFact(id: UUID(), title: title, client: client, work: "Commentator", arrangement: arrangement, facts: facts)
     }
-    private func summary(_ jobs: [UpcomingJobFact], receipts: [UpcomingReceiptFact] = [], at time: Date? = nil) -> UpcomingSummary {
-        UpcomingSummary(jobs: jobs, receipts: receipts, now: time ?? now, zone: newYork)
+    private func summary(_ jobs: [UpcomingJobFact], at time: Date? = nil) -> UpcomingSummary {
+        UpcomingSummary(jobs: jobs, now: time ?? now, zone: newYork)
     }
 
     // MARK: In flight
@@ -111,21 +111,21 @@ final class UpcomingSummaryTests: XCTestCase {
         let weekend = job("Silverstone weekend", start: "2026-10-16", end: "2026-10-18", sessions: [sprint])
         let studio = job("Studio highlights", status: "tentative", start: "2026-10-20")
         let finals = job("National finals", start: "2026-10-30", fee: .value(FeeValue(currency: "EUR")))
-        let receipt = UpcomingReceiptFact(id: UUID(), merchant: "Fuel", amount: 3_840, currency: "EUR", day: "2026-10-14")
-        let result = summary([finals, studio, weekend, over], receipts: [receipt])
-        XCTAssertEqual(result.items.map(\.item.kind), [.eventOver, .expenseDraft, .sessionTime, .tentativeBooking, .feeUnknown])
+        let result = summary([finals, studio, weekend, over])
+        XCTAssertEqual(result.items.map(\.item.kind), [.eventOver, .sessionTime, .tentativeBooking, .feeUnknown])
         XCTAssertEqual(result.items.first?.item.title, "City vs United is over")
         XCTAssertEqual(result.items.first?.item.action, .markCompleted)
-        XCTAssertEqual(result.categorySummary, "2 bookings · 1 schedule · 2 money")
+        XCTAssertEqual(result.categorySummary, "2 bookings · 1 schedule · 1 money")
         XCTAssertEqual(result.openCount(for: weekend.id), 1)
     }
 
-    func testBalanceOwedRanksByItsDueDay() {
+    func testInvoicingAndReceiptsAreLeftToOtherPages() {
+        let ready = job("Ready", status: "completed", start: "2026-10-10")
+        let draft = job("Drafted", status: "completed", start: "2026-10-10", billing: .draft(invoiceID: UUID()))
         let billing = EventBillingFact.sent(invoiceID: UUID(), reference: "INV-1", currency: "EUR", total: 1_000, balance: 500, dueDay: "2026-10-01", otherEvents: 0)
         let owed = job("Paid late", status: "completed", start: "2026-09-10", billing: billing)
-        let item = summary([owed]).items.first
-        XCTAssertEqual(item?.item.kind, .balanceOwed)
-        XCTAssertEqual(item?.rankDay, "2026-10-01")
+        let review = job("Review", status: "completed", start: "2026-10-10", billing: .review(message: "Check", invoiceID: nil))
+        XCTAssertTrue(summary([ready, draft, owed, review]).items.isEmpty)
     }
 
     func testDistantScheduleGapsWaitButMoneyDoesNot() {
@@ -133,13 +133,6 @@ final class UpcomingSummaryTests: XCTestCase {
         XCTAssertTrue(summary([distant]).items.isEmpty)
         let unknownFee = job("Season finale", start: "2027-03-01", fee: .value(FeeValue(currency: "EUR")))
         XCTAssertEqual(summary([unknownFee]).items.map(\.item.kind), [.feeUnknown])
-    }
-
-    func testAReceiptWithoutAnEventNamesThatInItsContext() {
-        let receipt = UpcomingReceiptFact(id: UUID(), merchant: "Wallet", amount: 3_840, currency: "EUR", day: "2026-10-14")
-        let item = summary([], receipts: [receipt]).items[0]
-        XCTAssertNil(item.jobID)
-        XCTAssertEqual(item.context, "Wallet · \(Money.format(3_840, currency: "EUR")) · no event yet")
     }
 
     // MARK: Fortnight and coming up

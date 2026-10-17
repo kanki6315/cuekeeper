@@ -10,9 +10,15 @@ OUT = ROOT / 'dist'
 DOMAIN = 'https://cuekeeper.arjunakankipati.com'
 EMAIL = 'cuekeeper@arjunakankipati.com'
 
+def email_link(label=EMAIL, cls=''):
+    # Cloudflare's Email Address Obfuscation swaps addresses for "[email protected]" and relies on
+    # a decoder script that our CSP blocks; email_off markers tell it to leave this link alone.
+    attr = f' class="{cls}"' if cls else ''
+    return f'<!--email_off--><a{attr} href="mailto:{EMAIL}">{label}</a><!--/email_off-->'
+
 def text(value):
     value = html.escape(value)
-    value = value.replace(EMAIL, f'<a href="mailto:{EMAIL}">{EMAIL}</a>')
+    value = value.replace(EMAIL, email_link())
     value = value.replace(DOMAIN + '/privacy', '<a href="/privacy">Cuekeeper privacy policy</a>')
     return value
 
@@ -51,7 +57,7 @@ def shell(title, description, route, body, *, noindex=False):
 {body}
 <footer class="site-footer wrap">
 <p>© 2026 Arjuna Kankipati · Cuekeeper</p>
-<nav class="footer-links" aria-label="Footer"><a href="/support">Help & Support</a><a href="/privacy">Privacy policy</a><a href="mailto:{EMAIL}">Email support</a></nav>
+<nav class="footer-links" aria-label="Footer"><a href="/support">Help & Support</a><a href="/privacy">Privacy policy</a>{email_link('Email support')}</nav>
 </footer>
 </body>
 </html>
@@ -73,7 +79,7 @@ def guide(data, route):
             after += '<p><a href="https://www.apple.com/legal/privacy/">Apple privacy policy</a></p>'
         sections.append(f'<section id="{section["id"]}" aria-labelledby="{section["id"]}-heading"><h2 id="{section["id"]}-heading">{html.escape(section["title"])}</h2>{paragraphs}{steps}{after}{note}<a class="back-top" href="#top">Back to top</a></section>')
     updated = f'<p class="updated">Last updated {html.escape(data["updated"])}</p>' if data.get('updated') else ''
-    contact = f'<div class="contact-line"><a class="button" href="mailto:{EMAIL}">Email support</a><a class="email" href="mailto:{EMAIL}">{EMAIL}</a></div>' if route == '/support' else ''
+    contact = f'<div class="contact-line">{email_link("Email support", "button")}{email_link(cls="email")}</div>' if route == '/support' else ''
     body = f'''<main id="main" class="wrap">
 <div class="page-intro"><h1>{html.escape(data['title'])}</h1>{updated}<p class="lede">{text(data['introduction'])}</p>{contact}</div>
 <div class="guide-layout"><aside class="topic-index"><nav aria-labelledby="topics-heading"><h2 id="topics-heading">On this page</h2><ul>{index}</ul></nav></aside>

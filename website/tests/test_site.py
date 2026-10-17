@@ -77,6 +77,13 @@ class StaticSiteTests(unittest.TestCase):
         self.assertTrue((self.output / '404.html').is_file())
         self.assertLess(sum(p.stat().st_size for p in self.output.rglob('*') if p.is_file()), 250_000)
 
+    def test_email_is_shielded_from_cloudflare_obfuscation(self):
+        # Every address must sit inside email_off markers, or Cloudflare shows "[email protected]".
+        import re
+        for page in self.output.glob('*.html'):
+            source = re.sub(r'<!--email_off-->.*?<!--/email_off-->', '', page.read_text(), flags=re.S)
+            self.assertNotIn(builder.EMAIL, source, page.name)
+
     def test_primary_color_pairs_meet_contrast(self):
         def luminance(hex):
             channels = [int(hex[i:i+2], 16)/255 for i in (0,2,4)]

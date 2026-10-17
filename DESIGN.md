@@ -305,14 +305,41 @@ are the gap, and *Create invoice* once ready. Other rows open the event.
 At 900 pt and wider (non-accessibility) the clients become a ledger table with gate columns
 beside a 340 pt column holding the money panel and *Still open from earlier*.
 
-Invoices started from a ready group preselect those events and offer that client's finished,
-reimbursable, unbilled receipts in the invoice currency as *Reimbursable receipts* lines. Marking
-an invoice sent fills the due date from the client's terms when none is set. The client editor has
+The invoice editor is described under *Invoice editor (pick, then record)*. The client editor has
 an *Invoicing details* section; the event page adds *Invoicing details to add* before *Ready to
 invoice* when only details are missing.
 
 Sources: `Cuekeeper/PaymentsView.swift`, `Cuekeeper/PaymentsComponents.swift`,
 `Cuekeeper/PaymentsReadiness.swift`. Brief: `design/payments/implementation-brief.md`.
+
+### Invoice editor (pick, then record)
+
+`InvoiceEditorView` is a two-step sheet with a step line (*What's on it* · *Record it*) and the
+step under the inline title. Candidates come from `InvoiceCandidates` and `InvoiceClientOption`
+(`Cuekeeper/InvoicePlanning.swift`), built from the same `EventReadiness` as Payments.
+
+- **Who is it for?** Only when nothing chose a client (Payments *Add Invoice*). There's a search
+  field, then *Work ready to bill* with one row per client and currency (event and receipt counts,
+  total), *Or continue a draft*, and *Other clients* (*Nothing ready*, or amber *Invoicing details
+  to add*). Picking a ready row ticks that work.
+- **What's on it.** The client name has *Change* beside it, then a currency menu and *from <event>*
+  when the editor started from one. Next come the client's invoicing form when details are
+  incomplete, *Ready to bill* (most recent first, each event's receipts indented under it) and
+  *Not ready yet* (amber gap text; can still be ticked). Last are *Or add to a draft* for an open
+  draft with the same client and currency, and a count of events already on other invoices. Round
+  check marks; receipts follow their event. The bottom bar shows the running total, a count and
+  *Next*.
+- **Record it.** The client and a large total, then *Have you sent it?* (Not yet / Yes, sent; Draft /
+  Sent / Void when editing). Below that are the reference, sent and due dates, and the billed
+  amounts with *Edit lines*. An optional note sits behind *Add a note*. A full-width primary
+  action: *Save draft*, *Save sent invoice* or *Save*.
+
+Entry points: the event page and Upcoming open on the lines with that event ticked, together with
+its receipts, even when the event isn't ready. The readiness sheet does the same. A Payments
+client group opens on *Record it* with the group ticked. Editing opens on *Record it*, and sent
+invoices hide the step line and lock the lines. A new invoice suggests the reference after the
+client's latest one, skipping references that any invoice already uses, and says so in the
+footnote. Marking it sent fills the due date from the client's terms.
 
 ### Event deletion
 

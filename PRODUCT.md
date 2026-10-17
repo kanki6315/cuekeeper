@@ -329,3 +329,16 @@ Older builds ignore them and show a lower total for invoices with receipt lines 
 updated. Backups without the field still restore. The V15 Development schema still needs
 initialising and exporting, and Production deployment remains a release prerequisite.
 Brief: `design/payments/implementation-brief.md`; evidence: `design/payments/verification/`.
+
+## Guided invoice creation — October 16, 2026
+
+Create Invoice is now a two-step sheet, *pick, then record*. It replaces the single form, which
+listed every event twice. Each entry point hands over what it knows. The event page, Upcoming and
+the readiness sheet open with that event and its rebillable receipts ticked. A Payments client
+group opens ready to record, and Payments *Add Invoice* starts by choosing a client ranked by
+ready work. Not-ready work stays visible with its gap and can still be included. People can add to
+an open draft for the same client and currency instead of starting another. New invoices suggest
+the next reference after the client's last one; no data model changes. Direction B on the concept
+canvas <https://claude.ai/artifact/GuNvK5Tq21N97JSStLqbmQ> was chosen.
+Focused unit tests and the two invoice UI workflows pass on iPhone; the iPad, dark mode and
+accessibility sizes haven't been checked yet.

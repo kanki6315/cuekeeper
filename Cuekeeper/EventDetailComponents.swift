@@ -228,6 +228,7 @@ extension OpenItem {
         case .addToInvoice: return "Invoice"
         case .editClientInvoicing: return "Add details"
         case .openInvoice: return kind == .balanceOwed ? "Record payment" : "Open"
+        case .recordDirectPayment: return "Record payment"
         case .reviewBilling, .reviewExpense: return "Review"
         }
     }

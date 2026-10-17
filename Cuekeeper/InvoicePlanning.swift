@@ -41,7 +41,7 @@ struct InvoiceCandidates: Equatable {
             case .ready: ready.append(InvoiceCandidate(event: event, receipts: receipts, note: ""))
             case .heldUp, .upcoming: notReady.append(InvoiceCandidate(event: event, receipts: receipts, note: Self.note(event)))
             case .draft, .invoiced, .paid: invoiced += 1
-            case .review, .directPaid, .noFee, .cancelled: break
+            case .review, .directPaid, .directPartial, .noFee, .cancelled: break
             }
         }
         // Most recent work first: it is usually what the person came to bill.

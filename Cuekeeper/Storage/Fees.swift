@@ -137,10 +137,15 @@ extension Job {
         guard revisions.isEmpty || !heads.isEmpty else { throw RecordError.invalid("Fee history could not be resolved.") }
         return heads
     }
+    /// The currency recorded on this job's direct payments. Once money is received it is the
+    /// authority, so changing client or device defaults never relabels the history.
+    var paymentCurrency: String? { (payments ?? []).compactMap { $0.currency.isEmpty ? nil : $0.currency }.first }
+    /// A saved fee revision fixes its own currency, even with an unknown amount. With no revision
+    /// there is nothing agreed, so existing payment history decides before any default.
     func currentFee() throws -> FeeValue {
         let heads = try feeHeads()
         guard heads.count <= 1 else { throw RecordError.invalid("This fee has conflicting edits. Review both versions before using it for an invoice.") }
-        return heads.first?.value ?? FeeValue(currency: client?.defaultCurrency ?? UserDefaults.standard.string(forKey: "defaultCurrency") ?? "USD")
+        return heads.first?.value ?? FeeValue(currency: paymentCurrency ?? client?.defaultCurrency ?? UserDefaults.standard.string(forKey: "defaultCurrency") ?? "USD")
     }
     var feeSummary: String {
         do { let value = try currentFee(); return value.amount.map { Money.format($0, currency: value.currency) } ?? "Fee unknown" }

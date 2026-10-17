@@ -295,6 +295,7 @@ struct JobDetailView: View {
         case .reviewBilling(let id):
             if let invoice = id.flatMap({ id in invoices.first { $0.id == id } }) { openedInvoice = invoice } else { storedTab = EventTab.money.rawValue }
         case .reviewExpense(let id): reviewingExpense = expenses.first { $0.id == id }
+        case .recordDirectPayment: addingPayment = true
         }
     }
 

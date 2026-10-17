@@ -92,8 +92,24 @@ final class PaymentsReadinessTests: XCTestCase {
         XCTAssertEqual(owed.amount, 130_000)
         XCTAssertFalse(owed.showsGates)
         XCTAssertEqual(readiness(facts(billing: .sent(invoiceID: invoice, reference: "INV-0401", currency: "EUR", total: 39_000, balance: 0, dueDay: "", otherEvents: 0))).state, .paid(reference: "INV-0401"))
-        XCTAssertEqual(readiness(facts(billing: .directPayments(paid: 25_000, currency: "USD"))).state, .directPaid)
+        XCTAssertEqual(readiness(facts(billing: .directPayments(paid: 65_000, currency: "EUR"))).state, .directPaid)
         XCTAssertEqual(readiness(facts(billing: .review(message: "Twice", invoiceID: nil))).state, .review("Twice"))
+    }
+
+    func testDirectPaymentsSplitMoneyReceivedFromTheFeeStillToCollect() {
+        let partial = readiness(facts(billing: .directPayments(paid: 10_000, currency: "EUR")))
+        XCTAssertEqual(partial.state, .directPartial(received: 10_000, remaining: 55_000, currency: "EUR"))
+        let excess = readiness(facts(billing: .directPayments(paid: 70_000, currency: "EUR")))
+        XCTAssertEqual(excess.state, .directPaid)
+        XCTAssertEqual(excess.parts, [MoneyPart(bucket: .paid, amount: 70_000)], "Paid shows money actually received")
+        let unknown = readiness(facts(fee: .value(FeeValue(amount: nil, currency: "EUR")), billing: .directPayments(paid: 10_000, currency: "EUR")))
+        XCTAssertEqual(unknown.state, .directPartial(received: 10_000, remaining: nil, currency: "EUR"))
+
+        let month = PaymentsMonth(month: "2026-10", events: [partial, excess, unknown], clients: [:], openInvoices: [], displayed: ["EUR"])
+        XCTAssertEqual(month.currencies.first?.amounts, [.paid: 90_000, .heldUp: 55_000])
+        XCTAssertEqual(month.currencies.first?.unknownFees, 1)
+        let next = PaymentsMonth(month: "2026-11", events: [partial, excess], clients: [:], openInvoices: [], displayed: ["EUR"])
+        XCTAssertEqual(next.earlier.map(\.id), ["event-\(partial.id)"], "The rest of the fee stays in outstanding work")
     }
 
     func testBilledAmountOverridesFee() {

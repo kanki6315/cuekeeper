@@ -65,11 +65,30 @@ final class InvoiceLedgerTests: XCTestCase {
 
     func testClientAndYearScopeTotalsSkipDraftsAndVoids() {
         let filter = LedgerFilter(client: "Velocity TV", year: "2026")
-        XCTAssertEqual(sample.totals(filter), [LedgerTotals(currency: "USD", billed: 240_000 + 25_000, received: 60_000 + 25_000)])
+        XCTAssertEqual(sample.totals(filter), [LedgerTotals(currency: "USD", billed: 240_000 + 25_000, received: 60_000 + 25_000, owed: 180_000)])
         XCTAssertEqual(sample.totals(LedgerFilter(client: "Northside Sports", year: "2025")),
-                       [LedgerTotals(currency: "EUR", billed: 120_000, received: 120_000)])
+                       [LedgerTotals(currency: "EUR", billed: 120_000, received: 120_000, owed: 0)])
         XCTAssertEqual(sample.years, ["2026", "2025"])
         XCTAssertEqual(sample.clients, ["Apex Media", "Northside Sports", "Trackside Radio", "Velocity TV"])
+    }
+
+    func testYearTotalsDateBillingBySentDayAndReceiptsByReceivedDay() {
+        func receipt(_ day: String, _ amount: Int64) -> LedgerReceipt { LedgerReceipt(day: day, amount: amount) }
+        var spanning = entry("DEC-1", total: 100_000, received: 100_000, state: .paid, sent: "2025-12-15", settled: "2026-01-10")
+        spanning.receipts = [receipt("2025-12-20", 40_000), receipt("2026-01-10", 60_000)]
+        var partial = entry("DEC-2", total: 50_000, received: 20_000, state: .unpaid, sent: "2025-12-01")
+        partial.receipts = [receipt("2026-02-01", 20_000)] // a reversed receipt is already left out
+        let unpaid = entry("JAN-1", total: 30_000, state: .unpaid, sent: "2026-01-05")
+        let void = entry("JAN-2", total: 99_000, state: .void, sent: "2026-01-06", settled: "2026-01-07")
+        var direct = entry("Direct payment", total: 15_000, received: 15_000, state: .direct, settled: "2026-01-03", kind: .directPayment)
+        direct.receipts = [receipt("2025-12-30", 5_000), receipt("2026-01-03", 10_000)]
+        let ledger = InvoiceLedger(entries: [spanning, partial, unpaid, void, direct], today: today)
+
+        XCTAssertEqual(ledger.totals(LedgerFilter(year: "2025")), [LedgerTotals(currency: "USD", billed: 150_000 + 5_000, received: 45_000, owed: 30_000)])
+        XCTAssertEqual(ledger.totals(LedgerFilter(year: "2026")), [LedgerTotals(currency: "USD", billed: 30_000 + 10_000, received: 90_000, owed: 30_000)])
+        XCTAssertEqual(ledger.totals(LedgerFilter()), [LedgerTotals(currency: "USD", billed: 195_000, received: 135_000, owed: 60_000)])
+        XCTAssertEqual(Set(ledger.filtered(LedgerFilter(year: "2025")).map(\.title)), ["DEC-1", "DEC-2", "Direct payment"])
+        XCTAssertEqual(Set(ledger.filtered(LedgerFilter(year: "2026")).map(\.title)), ["DEC-1", "DEC-2", "JAN-1", "JAN-2", "Direct payment"])
     }
 
     func testEmptyMessageNamesTheFilters() {

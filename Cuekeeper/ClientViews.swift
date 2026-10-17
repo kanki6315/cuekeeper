@@ -394,9 +394,6 @@ struct ClientDetailView: View {
                         .foregroundStyle(invoicing.isComplete ? Color.accentColor : Color("AmberText"))
                 }
             }
-            Section("Defaults") {
-                LabeledContent("Currency for new events", value: client.defaultCurrency)
-            }
             if !client.notes.isEmpty {
                 Section("Notes") { Text(client.notes).textSelection(.enabled) }
             }

@@ -5,7 +5,7 @@ import Foundation
 
 /// One of the four things an event needs before it can be invoiced.
 enum ReadinessGate: String, CaseIterable, Hashable {
-    case work, fee, receipts, client
+    case fee, client, work, receipts
     var label: String {
         switch self {
         case .work: "Work"
@@ -120,12 +120,6 @@ struct EventReadiness: Equatable, Identifiable {
         var gates: [ReadinessGate: GateState] = [:]
         var gaps: [ReadinessGap] = []
 
-        if finished { gates[.work] = .done }
-        else if facts.endDay < today && facts.bookingStatus != "cancelled" {
-            gates[.work] = .missing
-            gaps.append(ReadinessGap(gate: .work, text: "Mark completed"))
-        } else { gates[.work] = .notYet }
-
         var feeAmount: Int64?
         switch facts.fee {
         case .conflict:
@@ -139,13 +133,6 @@ struct EventReadiness: Equatable, Identifiable {
             } else { gates[.fee] = .done }
         }
 
-        if facts.blockingReceipts.isEmpty { gates[.receipts] = .done }
-        else {
-            gates[.receipts] = .missing
-            let count = facts.blockingReceipts.count
-            gaps.append(ReadinessGap(gate: .receipts, text: count == 1 ? "1 receipt to finish" : "\(count) receipts to finish"))
-        }
-
         if facts.clientID == nil {
             gates[.client] = .missing
             gaps.append(ReadinessGap(gate: .client, text: "Client to add"))
@@ -154,6 +141,19 @@ struct EventReadiness: Equatable, Identifiable {
             // The client header names the missing details; rows stay short.
             gaps.append(ReadinessGap(gate: .client, text: "Client details missing"))
         } else { gates[.client] = .done }
+
+        if finished { gates[.work] = .done }
+        else if facts.endDay < today && facts.bookingStatus != "cancelled" {
+            gates[.work] = .missing
+            gaps.append(ReadinessGap(gate: .work, text: "Mark completed"))
+        } else { gates[.work] = .notYet }
+
+        if facts.blockingReceipts.isEmpty { gates[.receipts] = .done }
+        else {
+            gates[.receipts] = .missing
+            let count = facts.blockingReceipts.count
+            gaps.append(ReadinessGap(gate: .receipts, text: count == 1 ? "1 receipt to finish" : "\(count) receipts to finish"))
+        }
 
         self.gates = gates
         self.gaps = gaps

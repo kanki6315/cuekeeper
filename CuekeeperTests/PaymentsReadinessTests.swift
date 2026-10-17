@@ -79,7 +79,7 @@ final class PaymentsReadinessTests: XCTestCase {
 
     func testGapsListInGateOrder() {
         let event = readiness(facts(start: "2026-10-10", status: "booked", missing: ["billing email"], fee: .value(FeeValue(amount: nil)), blocking: 1))
-        XCTAssertEqual(event.gaps.map(\.gate), [.work, .fee, .receipts, .client])
+        XCTAssertEqual(event.gaps.map(\.gate), [.fee, .client, .work, .receipts])
     }
 
     // MARK: Billing states

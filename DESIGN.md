@@ -291,12 +291,12 @@ Sources: `Cuekeeper/JobDetailView.swift`, `Cuekeeper/EventDetailSummary.swift`, 
 
 Built from `PaymentsMonth` (`Cuekeeper/PaymentsReadiness.swift`), derived on each render from
 events, fees, invoices, receipts and client invoicing details; nothing is stored. Each event has
-four gates in a fixed order — **Work · Fee · Receipts · Client** — each done, missing or not yet:
+four gates in a fixed order — **Fee · Client · Work · Receipts** — each done, missing or not yet:
 
-- Work: completed is done; ended but not completed is missing (*Mark completed*); otherwise not yet.
 - Fee: a known amount is done; unknown or conflicting is missing. A zero fee reads *No fee* and is not counted.
-- Receipts: any draft receipt on the event blocks, prompting the bookkeeping. Finished receipts never block.
 - Client: needs a client with billing name, billing email, address and payment terms (tax ID optional).
+- Work: completed is done; ended but not completed is missing (*Mark completed*); otherwise not yet.
+- Receipts: any draft receipt on the event blocks, prompting the bookkeeping. Finished receipts never block.
 
 Billing state wins over gates: review, paid, invoiced (with balance and due), draft, paid directly.
 Otherwise all four done is *Ready to invoice*, work done with a gap is *Held up*, and work still to
